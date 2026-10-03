@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Gridiron Engine</title>
+    <style>
+      :root { color-scheme: dark; }
+      * { box-sizing: border-box; }
+      html, body { margin: 0; height: 100%; background: #05070d; overflow: hidden; }
+      body { font-family: "Inter", system-ui, -apple-system, sans-serif; color: #fff; }
+      canvas { display: block; }
+      #overlay { position: fixed; inset: 0; pointer-events: none; }
+      #boot {
+        position: fixed; inset: 0; display: grid; place-content: center; gap: 10px;
+        text-align: center; background: #05070d; z-index: 50;
+      }
+      #boot h1 { margin: 0; font-size: 2rem; letter-spacing: .14em; text-transform: uppercase; }
+      #boot p { margin: 0; color: #8fa3c0; font-size: .9rem; }
+    </style>
+  </head>
+  <body>
+    <div id="boot"><h1>Gridiron</h1><p>Loading stadium…</p></div>
+    <div id="overlay"></div>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
