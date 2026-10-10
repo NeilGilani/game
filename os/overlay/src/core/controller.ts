@@ -650,8 +650,9 @@ export class OverlayController {
     const p = this.lastContentPoint ?? center(this.display);
     const step = Math.round(this.display.height * 0.6);
     const dir = zoneId.slice(5);
-    const dx = dir === "left" ? step : dir === "right" ? -step : 0;
-    const dy = dir === "up" ? step : dir === "down" ? -step : 0;
+    // agency-native convention: positive dx/dy reveal content further right/down (like scrollBy).
+    const dx = dir === "left" ? -step : dir === "right" ? step : 0;
+    const dy = dir === "up" ? -step : dir === "down" ? step : 0;
     void this.host.native("input.scroll", { x: p.x, y: p.y, dx, dy });
   }
 

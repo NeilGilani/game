@@ -48,8 +48,8 @@ controller options if you'd rather the overlay own all dwell.
 - Precision decisions from the gaze engine (Instance 2): the overlay's local `PrecisionDecision` in
   `src/core/precision.ts` (`direct` | `pick` | `magnify`) is ready to be moved into `gaze.ts` or `targets.ts`.
   The overlay will switch to the engine's decisions once they're published.
-- `input.scroll` units: the overlay sends `dx`/`dy` in points, positive `dy` meaning "show content above"
-  (the CGEvent wheel convention). Please state this in `native.ts`.
+- `input.scroll` units: agency-native and the overlay both use points, with positive `dy` revealing content
+  further down (like `window.scrollBy`). Please state this in `native.ts`.
 
 ## 4. Shared code the overlay reuses (Instance 2)
 

@@ -264,7 +264,7 @@ describe("modes", () => {
     ctrl.activate("menu:scroll");
     lookAt("zone:down", 1300);
     expect(host.nativeCalls("input.scroll")).toHaveLength(1);
-    expect((host.nativeCalls("input.scroll")[0]?.params as { dy: number }).dy).toBeLessThan(0);
+    expect((host.nativeCalls("input.scroll")[0]?.params as { dy: number }).dy).toBeGreaterThan(0);
     lookAt("zone:down", 2100);
     const n = host.nativeCalls("input.scroll").length;
     expect(n).toBeGreaterThanOrEqual(3);
