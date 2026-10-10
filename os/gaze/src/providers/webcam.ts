@@ -73,6 +73,8 @@ export class WebcamProvider implements GazeProvider {
   private onFrame: ((f: ProviderFrame) => void) | null = null;
   private handle: number | null = null;
   private timer: ReturnType<typeof setTimeout> | null = null;
+  private watchdog: ReturnType<typeof setInterval> | null = null;
+  private lastCallbackAt = 0;
   private lastVideoTime = -1;
   private targetFps = 30;
   /** Token bucket for the governor: jittery or bunched camera frames don't cause drops. */
@@ -95,6 +97,11 @@ export class WebcamProvider implements GazeProvider {
     this.video.playsInline = true;
     this.video.muted = true;
     this.video.setAttribute("aria-hidden", "true");
+    // Browsers pause a video element when it is removed from the page (e.g. a camera preview that
+    // closes). A live camera must keep going, or gaze and Lifeline's blink detection would stop.
+    this.video.addEventListener("pause", () => {
+      if (this.running && this.stream) void this.video.play().catch(() => undefined);
+    });
   }
 
   onStatus(listener: (s: WebcamStatus, e: CameraErrorKind | null) => void): () => void {
@@ -162,6 +169,13 @@ export class WebcamProvider implements GazeProvider {
     this.running = true;
     this.setStatus("running");
     this.schedule();
+    // If frame callbacks stall (video paused, page hidden mid-wait), restart the loop.
+    this.watchdog = setInterval(() => {
+      if (!this.running || performance.now() - this.lastCallbackAt < 700) return;
+      if (this.video.paused && this.stream) void this.video.play().catch(() => undefined);
+      this.cancelPending();
+      this.schedule();
+    }, 500);
   }
 
   stop(): void {
@@ -172,6 +186,12 @@ export class WebcamProvider implements GazeProvider {
 
   private stopLoop(): void {
     this.running = false;
+    if (this.watchdog !== null) clearInterval(this.watchdog);
+    this.watchdog = null;
+    this.cancelPending();
+  }
+
+  private cancelPending(): void {
     if (this.timer !== null) clearTimeout(this.timer);
     this.timer = null;
     if (this.handle !== null) {
@@ -191,7 +211,7 @@ export class WebcamProvider implements GazeProvider {
   private useTimer(): boolean {
     if (this.scheduler === "timer") return true;
     if (this.scheduler === "video-frame") return false;
-    return typeof document !== "undefined" && document.hidden;
+    return (typeof document !== "undefined" && document.hidden) || this.video.paused;
   }
 
   private schedule(): void {
@@ -201,6 +221,7 @@ export class WebcamProvider implements GazeProvider {
       // Poll a little faster than the camera so no frame waits long; skip frames already seen.
       this.timer = setTimeout(() => {
         this.timer = null;
+        this.lastCallbackAt = performance.now();
         if (this.video.currentTime !== this.lastVideoTime) {
           this.lastVideoTime = this.video.currentTime;
           this.process(undefined);
@@ -209,11 +230,15 @@ export class WebcamProvider implements GazeProvider {
       }, 1000 / 60);
     } else if (rvfc) {
       this.handle = rvfc.call(this.video, (_now, meta) => {
+        this.handle = null;
+        this.lastCallbackAt = performance.now();
         this.process(meta.captureTime);
         this.schedule();
       });
     } else {
       this.handle = requestAnimationFrame(() => {
+        this.handle = null;
+        this.lastCallbackAt = performance.now();
         this.process(undefined);
         this.schedule();
       });
