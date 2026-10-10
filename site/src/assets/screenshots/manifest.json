@@ -1,0 +1,48 @@
+{
+  "source": "The AGENCY web prototype in this repository (frontend/), served by a real coordinator with demo data.",
+  "commit": "e204b61",
+  "captured": "2026-10-10",
+  "viewport": "1280x800 at 2x",
+  "shots": [
+    {
+      "file": "home.png",
+      "alt": "The AGENCY prototype's home screen: Help at the top left, Stop agent at the top right, Lifeline's status, and large choices to start a task.",
+      "theme": "light"
+    },
+    {
+      "file": "new-task.png",
+      "alt": "Starting a task in the prototype: a suggestion for you, then large goal cards such as getting a wheelchair repaired or moving an appointment.",
+      "theme": "light"
+    },
+    {
+      "file": "lifeline.png",
+      "alt": "The prototype's Lifeline screen: Watch over me, the three ways to call for help, and a readiness check.",
+      "theme": "light"
+    },
+    {
+      "file": "home-dark.png",
+      "alt": "The AGENCY prototype's home screen: Help at the top left, Stop agent at the top right, Lifeline's status, and large choices to start a task.",
+      "theme": "dark"
+    },
+    {
+      "file": "new-task-dark.png",
+      "alt": "Starting a task in the prototype: a suggestion for you, then large goal cards such as getting a wheelchair repaired or moving an appointment.",
+      "theme": "dark"
+    },
+    {
+      "file": "lifeline-dark.png",
+      "alt": "The prototype's Lifeline screen: Watch over me, the three ways to call for help, and a readiness check.",
+      "theme": "dark"
+    },
+    {
+      "file": "approval.png",
+      "alt": "An approval in the prototype: exactly what will be booked, when, and for how much, with large Approve, Change, Explain and Say no buttons.",
+      "theme": "light"
+    },
+    {
+      "file": "help-countdown.png",
+      "alt": "Lifeline's 8-second countdown after asking for help. Cancel needs a longer look; Call now skips the wait.",
+      "theme": "light"
+    }
+  ]
+}
