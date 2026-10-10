@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { api } from "../api/client";
 import type { Approval } from "../api/types";
 import { useAnnounce } from "../state/announcer";
@@ -75,67 +75,109 @@ export function TopBar() {
     }
   };
 
+  const keyboard = () => {
+    // Typing happens with the Mac app's eye keyboard (overlay) or a helper's keyboard; this puts the cursor where
+    // the text goes.
+    const field = document.querySelector<HTMLElement>("#main textarea, #main input:not([type=checkbox])");
+    if (field) {
+      field.focus();
+      announce("Ready to type. Use the eye keyboard, or a helper's keyboard.");
+    } else announce("There's nothing to type into on this screen.");
+  };
+
   return (
-    <header className="topbar">
-      <HelpButton />
-      <button className="brand" onClick={() => navigate("/")} aria-label="AGENCY home" data-dwell>
-        <BrandMark />
-        AGENCY
-      </button>
-      <div className="status-strip" aria-label="System status">
-        <a className="chip" data-tone={online ? "ok" : "danger"} href="#/status" title={coord.long}>
-          <Icon name={!online ? "offline" : health?.node.is_raspberry_pi ? "chip" : "laptop"} size={20} />
-          <span>
-            <span className="chip-label">Coordinator: </span>
-            <strong>{coord.short}</strong>
-          </span>
-        </a>
-        <a
-          className="chip chip-optional"
-          data-tone={reasoningTone}
-          href="#/status"
-          title={reasoning?.description}
-        >
-          <Icon name={reasoning?.mode === "deterministic" ? "shield" : "sparkle"} size={20} />
-          <strong>{reasoningText}</strong>
-        </a>
-        <a className="chip" data-tone={chip.tone} href="#/camera" title={MODE_LABELS[input.mode].long}>
-          <Icon name={input.usesCamera ? "eye" : input.mode === "scan_key" ? "key" : "pointer"} size={20} />
-          <strong>{chip.text}</strong>
-        </a>
-      </div>
-      {input.usesCamera && input.status === "running" && (
-        <button
-          className="btn btn-quiet"
-          onClick={() => {
-            input.setEyeControlPaused(!input.eyeControlPaused);
-            announce(
-              input.eyeControlPaused
-                ? "Eye control resumed."
-                : "Eye control paused. Look at Resume eye control to turn it back on.",
-            );
-          }}
-          data-dwell
-          data-dwell-always={input.eyeControlPaused ? "" : undefined}
-          aria-pressed={input.eyeControlPaused}
-        >
-          <Icon name={input.eyeControlPaused ? "play" : "pause"} />
-          {input.eyeControlPaused ? "Resume eye control" : "Pause eye control"}
+    <>
+      <header className="topbar dock" aria-label="Always here">
+        <HelpButton />
+        <button className="btn dock-btn" onClick={() => navigate("/")} aria-label="Home" data-dwell>
+          <Icon name="home" size={30} />
+          <span>Home</span>
         </button>
-      )}
-      <button
-        className={`btn pause-agent ${paused ? "" : "btn-danger"}`}
-        data-paused={paused}
-        onClick={togglePause}
-        disabled={busy || (!online && paused)}
-        data-dwell
-        data-dwell-always
-        aria-pressed={paused}
-      >
-        <Icon name={paused ? "play" : "stop"} />
-        {paused ? "Resume agent" : "Stop agent"}
-      </button>
-    </header>
+        <button className="btn dock-btn" onClick={() => navigate("/talk")} data-dwell>
+          <Icon name="speak" size={30} />
+          <span>Talk</span>
+        </button>
+        <button className="btn dock-btn" onClick={keyboard} data-dwell>
+          <Icon name="keyboard" size={30} />
+          <span>Keyboard</span>
+        </button>
+        {input.usesCamera && input.status === "running" && (
+          <button
+            className="btn dock-btn"
+            onClick={() => {
+              input.setEyeControlPaused(!input.eyeControlPaused);
+              announce(
+                input.eyeControlPaused
+                  ? "Eye control resumed."
+                  : "Eye control paused. Look at Resume eye control to turn it back on.",
+              );
+            }}
+            data-dwell
+            data-dwell-always={input.eyeControlPaused ? "" : undefined}
+            aria-pressed={input.eyeControlPaused}
+          >
+            <Icon name={input.eyeControlPaused ? "play" : "pause"} size={30} />
+            <span>{input.eyeControlPaused ? "Resume eye control" : "Pause eye control"}</span>
+          </button>
+        )}
+        <button
+          className={`btn dock-btn pause-agent ${paused ? "" : "btn-danger"}`}
+          data-paused={paused}
+          onClick={togglePause}
+          disabled={busy || (!online && paused)}
+          data-dwell
+          data-dwell-always
+          aria-pressed={paused}
+        >
+          <Icon name={paused ? "play" : "stop"} size={30} />
+          <span>{paused ? "Resume agent" : "Stop agent"}</span>
+        </button>
+      </header>
+      <div className="menubar">
+        <span className="menubar-brand">
+          <BrandMark />
+          AGENCY
+        </span>
+        <Clock />
+        <div className="status-strip" aria-label="System status">
+          <a className="chip" data-tone={online ? "ok" : "danger"} href="#/status" title={coord.long}>
+            <Icon name={!online ? "offline" : health?.node.is_raspberry_pi ? "chip" : "laptop"} size={18} />
+            <span>
+              <span className="chip-label">Coordinator: </span>
+              <strong>{coord.short}</strong>
+            </span>
+          </a>
+          <a
+            className="chip chip-optional"
+            data-tone={reasoningTone}
+            href="#/status"
+            title={reasoning?.description}
+          >
+            <Icon name={reasoning?.mode === "deterministic" ? "shield" : "sparkle"} size={18} />
+            <strong>{reasoningText}</strong>
+          </a>
+          <a className="chip" data-tone={chip.tone} href="#/camera" title={MODE_LABELS[input.mode].long}>
+            <Icon name={input.usesCamera ? "eye" : input.mode === "scan_key" ? "key" : "pointer"} size={18} />
+            <strong>{chip.text}</strong>
+          </a>
+        </div>
+      </div>
+    </>
+  );
+}
+
+/** The time, to the minute. It changes once a minute and never moves. */
+function Clock() {
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const t = setInterval(() => setNow(new Date()), 15_000);
+    return () => clearInterval(t);
+  }, []);
+  return (
+    <span className="menubar-time">
+      {now.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" })}{" "}
+      {now.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}
+    </span>
   );
 }
 
@@ -148,14 +190,14 @@ function HelpButton() {
   const open = !!ll.open || !!ll.queued;
   return (
     <button
-      className="btn help-btn"
+      className="btn dock-btn help-btn"
       onClick={() => void ll.requestHelp("help_button")}
       data-dwell
       data-dwell-always
       aria-label={open ? "Help: an alert is already open" : "Help: call for help"}
     >
-      <Icon name="bell" size={28} />
-      Help
+      <Icon name="bell" size={30} />
+      <span>Help</span>
     </button>
   );
 }
