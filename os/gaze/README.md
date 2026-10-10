@@ -87,11 +87,13 @@ still photo):
 
 |                                      | Frames per second                      | Landmark detection (median) | Camera-to-event latency (median / p95) | Engine time per frame |
 | ------------------------------------ | -------------------------------------- | --------------------------- | -------------------------------------- | --------------------- |
-| GPU delegate                         | 30.0 (camera-limited)                  | 10.2 ms                     | 23.9 / 27.8 ms                         | < 0.1 ms              |
-| CPU delegate                         | 30.0 (17–30 when the machine was busy) | 21.1 ms                     | 24.2 / 28.0 ms                         | < 0.1 ms              |
-| GPU, timer scheduler (hidden window) | 29.9                                   | 9.5 ms                      | not reported by this scheduler         | < 0.1 ms              |
+| GPU delegate                         | 30.0 (camera-limited)                  | 9.7 ms                      | 13.6 / 28.0 ms                         | < 0.1 ms              |
+| CPU delegate                         | 30.0 (17–30 when the machine was busy) | 21.2 ms                     | 24.4 / 28.4 ms                         | < 0.1 ms              |
+| GPU, timer scheduler (hidden window) | 30.0                                   | 9.5 ms                      | not reported by this scheduler         | < 0.1 ms              |
 
-Latency is from the camera's reported capture time to the `GazeEvent` in the engine window. It does not include IPC
+Latency is from the camera's reported capture time to the `GazeEvent` in the engine window, measured on the
+frames delivered by video-frame callbacks (the timer poll has no capture time). A separate test checks that frames
+keep flowing at about 30 fps after the camera preview is removed from the page. It does not include IPC
 to the overlay. The engine drops to 15 fps while eye control is paused and 10 fps when nobody is in view, never
 lower (the help signal must keep working).
 

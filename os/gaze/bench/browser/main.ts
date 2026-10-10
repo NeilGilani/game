@@ -60,6 +60,12 @@ async function main() {
     return;
   }
   const loadMs = performance.now() - t0;
+  if (q.get("detach") === "1") {
+    // Like the web app's camera screen: show the video, then navigate away (removing it).
+    document.body.append(camera.video);
+    await new Promise((r) => setTimeout(r, 1000));
+    camera.video.remove();
+  }
   status.textContent = "Running";
   // Warm up (first frames include shader compilation), then measure.
   await new Promise((r) => setTimeout(r, 2000));
@@ -91,6 +97,7 @@ async function main() {
   window.__bench = {
     delegate: camera.stats().delegate,
     scheduler,
+    videoPausedAtEnd: camera.video.paused,
     loadMs,
     seconds: elapsed,
     fps: frames / elapsed,

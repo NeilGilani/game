@@ -31,6 +31,19 @@ test("keeps processing frames with the timer scheduler (what a hidden engine win
   expect(result.fps as number).toBeGreaterThan(15);
 });
 
+test("keeps getting fresh frames after the camera preview is removed from the page", async ({ page }) => {
+  // Browsers pause a video element removed from the document; the engine must resume it, or gaze
+  // and Lifeline's blink detection would stop when the person leaves the camera screen.
+  await page.goto(`/?delegate=CPU&seconds=5&fps=30&detach=1`);
+  const handle = await page.waitForFunction(() => window.__bench, null, { timeout: 120_000 });
+  const result = (await handle.jsonValue()) as Record<string, unknown>;
+  console.log("detach", JSON.stringify(result));
+  expect(result.error).toBeUndefined();
+  expect(result.videoPausedAtEnd).toBe(false);
+  expect(result.fps as number).toBeGreaterThan(15);
+  expect(result.faceFraction as number).toBeGreaterThan(0.9);
+});
+
 for (const delegate of ["GPU", "CPU"] as const) {
   test(`runs the engine on the fake camera with the ${delegate} delegate`, async ({ page }) => {
     const seconds = Number(process.env.BENCH_SECONDS ?? 10);

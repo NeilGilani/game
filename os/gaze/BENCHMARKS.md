@@ -89,9 +89,9 @@ fake camera 640×480 at ~31 fps (still photo), 15 s after a 2 s warm-up.
 
 | Run                                            | fps  | camera fps | detection median | latency median / p95 | engine per frame (p95) |
 | ---------------------------------------------- | ---- | ---------- | ---------------- | -------------------- | ---------------------- |
-| GPU delegate                                   | 30.0 | 31         | 10.2 ms          | 23.9 / 27.8 ms       | 0.1 ms                 |
-| CPU delegate                                   | 30.0 | 31         | 21.1 ms          | 24.2 / 28.0 ms       | 0.1 ms                 |
-| GPU, timer scheduler (hidden window path), 6 s | 29.9 | 31         | 9.5 ms           | n/a                  | 0.1 ms                 |
+| GPU delegate                                   | 30.0 | 31         | 9.7 ms           | 13.6 / 28.0 ms       | 0.1 ms                 |
+| CPU delegate                                   | 30.0 | 31         | 21.2 ms          | 24.4 / 28.4 ms       | 0.1 ms                 |
+| GPU, timer scheduler (hidden window path), 6 s | 30.0 | 31         | 9.5 ms           | n/a                  | 0.1 ms                 |
 
 Earlier runs while the machine was heavily loaded (load average 9 to 26 from other work) gave 17–29 fps on the CPU
 delegate; the GPU delegate held 30 fps once the frame governor used a token bucket. Engine compute in Node is

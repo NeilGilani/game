@@ -4,9 +4,9 @@
  * stored or sent anywhere. The landmarker is injected (see mediapipe.ts for the real one) so
  * this file has no MediaPipe dependency and tests can supply a fake.
  *
- * Uses requestVideoFrameCallback when available: it fires once per new camera frame (no wasted
- * work on repeated frames) and reports the capture time, which gives honest camera-to-event
- * latency. Falls back to requestAnimationFrame.
+ * Frames arrive two ways at once, de-duplicated by the video's current time: requestVideoFrameCallback
+ * (once per camera frame, with the capture time, which gives honest camera-to-event latency) and
+ * a timer poll (works in hidden windows and where frame callbacks are throttled).
  */
 
 import { type CameraErrorKind, cameraEnvironment, classifyCameraError, openCamera } from "../camera";
@@ -30,12 +30,9 @@ export type LandmarkerFactory = () => Promise<{ landmarker: Landmarker; delegate
 export type WebcamStatus = "off" | "starting" | "loading-model" | "running" | "error";
 
 /**
- * How frames are scheduled. "video-frame" uses requestVideoFrameCallback (once per camera frame,
- * with capture times). Hidden pages (AGENCY OS runs the engine in a hidden window) get no
- * animation or video-frame callbacks, so "timer" polls with setTimeout at the target rate; the
- * window must disable background throttling (Electron: webPreferences.backgroundThrottling =
- * false) for timers to run at full rate. "auto" picks per frame: video-frame while the page is
- * visible, timer while hidden.
+ * How frames are scheduled. "video-frame": requestVideoFrameCallback only. "timer": a setTimeout
+ * poll only (hidden pages get no frame callbacks; the window must disable background throttling,
+ * Electron: webPreferences.backgroundThrottling = false). "auto" (default): both, de-duplicated.
  */
 export type FrameScheduler = "auto" | "video-frame" | "timer";
 
@@ -73,8 +70,7 @@ export class WebcamProvider implements GazeProvider {
   private onFrame: ((f: ProviderFrame) => void) | null = null;
   private handle: number | null = null;
   private timer: ReturnType<typeof setTimeout> | null = null;
-  private watchdog: ReturnType<typeof setInterval> | null = null;
-  private lastCallbackAt = 0;
+  private lastFreshAt = 0;
   private lastVideoTime = -1;
   private targetFps = 30;
   /** Token bucket for the governor: jittery or bunched camera frames don't cause drops. */
@@ -168,14 +164,9 @@ export class WebcamProvider implements GazeProvider {
     }
     this.running = true;
     this.setStatus("running");
-    this.schedule();
-    // If frame callbacks stall (video paused, page hidden mid-wait), restart the loop.
-    this.watchdog = setInterval(() => {
-      if (!this.running || performance.now() - this.lastCallbackAt < 700) return;
-      if (this.video.paused && this.stream) void this.video.play().catch(() => undefined);
-      this.cancelPending();
-      this.schedule();
-    }, 500);
+    this.lastFreshAt = performance.now();
+    this.videoLoop();
+    this.pollLoop();
   }
 
   stop(): void {
@@ -186,18 +177,11 @@ export class WebcamProvider implements GazeProvider {
 
   private stopLoop(): void {
     this.running = false;
-    if (this.watchdog !== null) clearInterval(this.watchdog);
-    this.watchdog = null;
-    this.cancelPending();
-  }
-
-  private cancelPending(): void {
     if (this.timer !== null) clearTimeout(this.timer);
     this.timer = null;
     if (this.handle !== null) {
       const v = this.video as HTMLVideoElement & { cancelVideoFrameCallback?: (h: number) => void };
-      if (v.cancelVideoFrameCallback) v.cancelVideoFrameCallback(this.handle);
-      else cancelAnimationFrame(this.handle);
+      v.cancelVideoFrameCallback?.(this.handle);
     }
     this.handle = null;
   }
@@ -208,40 +192,44 @@ export class WebcamProvider implements GazeProvider {
     this.video.srcObject = null;
   }
 
-  private useTimer(): boolean {
-    if (this.scheduler === "timer") return true;
-    if (this.scheduler === "video-frame") return false;
-    return (typeof document !== "undefined" && document.hidden) || this.video.paused;
+  /** Once per new camera frame, with its capture time (does not fire in hidden pages). */
+  private videoLoop(): void {
+    if (!this.running || this.scheduler === "timer") return;
+    const rvfc = (this.video as unknown as { requestVideoFrameCallback?: RVFC }).requestVideoFrameCallback;
+    if (!rvfc) return;
+    this.handle = rvfc.call(this.video, (_now, meta) => {
+      this.handle = null;
+      this.offer(meta.captureTime, false);
+      this.videoLoop();
+    });
   }
 
-  private schedule(): void {
-    if (!this.running) return;
-    const rvfc = (this.video as unknown as { requestVideoFrameCallback?: RVFC }).requestVideoFrameCallback;
-    if (this.useTimer()) {
-      // Poll a little faster than the camera so no frame waits long; skip frames already seen.
-      this.timer = setTimeout(() => {
-        this.timer = null;
-        this.lastCallbackAt = performance.now();
-        if (this.video.currentTime !== this.lastVideoTime) {
-          this.lastVideoTime = this.video.currentTime;
-          this.process(undefined);
-        }
-        this.schedule();
-      }, 1000 / 60);
-    } else if (rvfc) {
-      this.handle = rvfc.call(this.video, (_now, meta) => {
-        this.handle = null;
-        this.lastCallbackAt = performance.now();
-        this.process(meta.captureTime);
-        this.schedule();
-      });
-    } else {
-      this.handle = requestAnimationFrame(() => {
-        this.handle = null;
-        this.lastCallbackAt = performance.now();
-        this.process(undefined);
-        this.schedule();
-      });
+  /**
+   * A timer poll alongside the video-frame callbacks: it keeps the engine fed in hidden windows
+   * and wherever those callbacks are throttled (some headless browsers), and resumes a camera
+   * video that the browser paused. Frames are de-duplicated by the video's current time.
+   */
+  private pollLoop(): void {
+    if (!this.running || this.scheduler === "video-frame") return;
+    this.timer = setTimeout(() => {
+      this.timer = null;
+      if (this.video.paused && this.stream) void this.video.play().catch(() => undefined);
+      this.offer(undefined, true);
+      this.pollLoop();
+    }, 1000 / 60);
+  }
+
+  private offer(captureTime: number | undefined, fromPoll: boolean): void {
+    const now = performance.now();
+    const time = this.video.currentTime;
+    if (time !== this.lastVideoTime) {
+      this.lastVideoTime = time;
+      this.lastFreshAt = now;
+      this.process(captureTime);
+    } else if (fromPoll && now - this.lastFreshAt > 250) {
+      // The stream's clock isn't advancing (seen with some fake or virtual cameras): read the
+      // current picture anyway, at the governed rate, rather than going blind.
+      this.process(undefined);
     }
   }
 
