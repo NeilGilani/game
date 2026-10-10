@@ -83,7 +83,8 @@ def test_suggestions_per_surface_are_ranked_and_explained(svc: MemoryService, cl
     clock.set(FRIDAY_EVENING)
     food = svc.suggestions("food")
     assert [s["label"] for s in food] == ["Pad thai (mild)"]
-    assert food[0]["reason"] == "You chose this 3 of your last 3 Friday evenings."
+    # Three Fridays is a streak, not yet a usual: the reason says what happened, nothing more.
+    assert food[0]["reason"] == "You chose this 3 times on Friday evenings."
     assert 0 < food[0]["score"] <= 1
     calls = svc.suggestions("call")
     assert [s["label"] for s in calls] == ["Jordan"]
@@ -189,12 +190,16 @@ def test_prefill_only_when_settled(svc: MemoryService, clock: FakeClock) -> None
     req = PrefillRequest.model_validate({"path": ["food", "delivery"], "question": question})
     assert svc.prefill(req) is None
     fridays(svc, clock, [DINNER, DINNER, DINNER])
+    assert svc.prefill(req) is None  # three times is a streak, not yet settled
+    clock.set(FRIDAY_EVENING - timedelta(weeks=4))
+    choose(svc, DINNER, spice="mild")
+    clock.set(FRIDAY_EVENING)
     result = svc.prefill(req)
     assert result == {
         "questionId": "q-spice",
         "optionId": "mild",
         "score": 1.0,
-        "reason": "You chose Mild 3 of your last 3 Friday evenings.",
+        "reason": "You chose Mild 4 of your last 4 Friday evenings.",
     }
     # Options can match a level of the path too (which restaurant?).
     where = PrefillRequest.model_validate(
@@ -218,11 +223,10 @@ def test_learning_paused_stores_nothing(svc: MemoryService) -> None:
 
 
 def test_half_life_is_configurable(svc: MemoryService, clock: FakeClock) -> None:
-    clock.set(FRIDAY_EVENING - timedelta(days=90))
-    for _ in range(3):
-        clock.advance(hours=1)
+    for weeks in (15, 14, 13):  # three Friday evenings, three months ago
+        clock.set(FRIDAY_EVENING - timedelta(weeks=weeks))
         choose(svc, ["food", "delivery", "Old place", "Old dish"])
-    clock.set(FRIDAY_EVENING - timedelta(days=3))
+    clock.set(FRIDAY_EVENING - timedelta(weeks=1))
     choose(svc, ["food", "delivery", "New place", "New dish"])
     clock.set(FRIDAY_EVENING)
     svc.save_settings(svc.settings().model_copy(update={"half_life_days": 365}))
