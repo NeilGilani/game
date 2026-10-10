@@ -15,11 +15,12 @@
     "test": "vitest run",
     "bench": "vitest run --config vitest.bench.config.ts",
     "fixtures": "vitest run --config vitest.bench.config.ts bench/make-fixtures.bench.ts",
-    "format": "prettier --write \"src/**/*.ts\" \"tests/**/*.ts\" \"bench/**/*.ts\" \"e2e/**/*.ts\"",
-    "format:check": "prettier --check \"src/**/*.ts\" \"tests/**/*.ts\" \"bench/**/*.ts\" \"e2e/**/*.ts\"",
+    "format": "prettier --write \"src/**/*.ts\" \"tests/**/*.ts\" \"bench/**/*.ts\" \"e2e/**/*.ts\" \"engine/**/*.ts\"",
+    "format:check": "prettier --check \"src/**/*.ts\" \"tests/**/*.ts\" \"bench/**/*.ts\" \"e2e/**/*.ts\" \"engine/**/*.ts\"",
     "check": "npm run typecheck && npm run format:check && npm test",
     "test:e2e": "playwright test",
-    "bench:browser": "BENCH_SECONDS=15 playwright test"
+    "bench:browser": "BENCH_SECONDS=15 playwright test",
+    "build": "vite build --config engine/vite.config.ts"
   },
   "peerDependencies": {
     "@mediapipe/tasks-vision": "0.10.35"
@@ -37,5 +38,8 @@
     "typescript": "5.9.3",
     "vite": "7.3.7",
     "vitest": "4.1.11"
+  },
+  "dependencies": {
+    "@agency/contracts": "*"
   }
 }

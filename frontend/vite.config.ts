@@ -1,6 +1,6 @@
 /// <reference types="vitest/config" />
 import react from "@vitejs/plugin-react";
-import { defineConfig, searchForWorkspaceRoot } from "vite";
+import { defineConfig } from "vite";
 
 // The coordinator (FastAPI) runs on this MacBook by default. To use a Raspberry Pi
 // coordinator, start Vite with AGENCY_BACKEND_URL=http://<pi-address>:8000 so the browser
@@ -15,8 +15,6 @@ const proxy = {
 export default defineConfig({
   plugins: [react()],
   server: {
-    // The gaze pipeline lives in ../os/gaze (@agency/gaze); let the dev server read it.
-    fs: { allow: [searchForWorkspaceRoot(process.cwd()), "../os/gaze", "../os/contracts"] },
     host: "127.0.0.1",
     port: 5173,
     strictPort: true,

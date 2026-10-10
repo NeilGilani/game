@@ -15,7 +15,7 @@
       "rawPrecisionPt": 117.08292731379228,
       "settleMs": 80.89411077990735,
       "usable": 0.9744013025936271,
-      "computeMsPerFrame": 0.006320120129707512,
+      "computeMsPerFrame": 0.006271575444669884,
       "reportedCalibrationPt": null,
       "reportedCalibrationDeg": null,
       "trainingPoints": 9
@@ -35,7 +35,7 @@
       "rawPrecisionPt": 124.4733030485316,
       "settleMs": 87.21443994856126,
       "usable": 0.9734880951386726,
-      "computeMsPerFrame": 0.03266243716438123,
+      "computeMsPerFrame": 0.03194478383510777,
       "reportedCalibrationPt": 31.452539933201177,
       "reportedCalibrationDeg": 0.6021299366937158,
       "trainingPoints": 9
@@ -55,7 +55,7 @@
       "rawPrecisionPt": 112.3117877656853,
       "settleMs": 74.82453513673063,
       "usable": 0.9742802372183244,
-      "computeMsPerFrame": 0.0030949123645419973,
+      "computeMsPerFrame": 0.002991660896586267,
       "reportedCalibrationPt": null,
       "reportedCalibrationDeg": null,
       "trainingPoints": 9
@@ -75,7 +75,7 @@
       "rawPrecisionPt": 124.22909570595516,
       "settleMs": 83.28120731593954,
       "usable": 0.9734988779501739,
-      "computeMsPerFrame": 0.02741873858720404,
+      "computeMsPerFrame": 0.027847206243634008,
       "reportedCalibrationPt": 44.51408158168313,
       "reportedCalibrationDeg": 0.8502166970877381,
       "trainingPoints": 9.3
@@ -95,7 +95,7 @@
       "rawPrecisionPt": 110.21393281209521,
       "settleMs": 75.74985663918851,
       "usable": 0.9738938842741153,
-      "computeMsPerFrame": 0.0034772066680770278,
+      "computeMsPerFrame": 0.0033629035013446585,
       "reportedCalibrationPt": null,
       "reportedCalibrationDeg": null,
       "trainingPoints": 9
@@ -115,7 +115,7 @@
       "rawPrecisionPt": 121.8959602254723,
       "settleMs": 83.9240563047766,
       "usable": 0.9724644987456124,
-      "computeMsPerFrame": 0.026499585800887265,
+      "computeMsPerFrame": 0.030411123993632654,
       "reportedCalibrationPt": 51.04618254964135,
       "reportedCalibrationDeg": 0.9604521809370397,
       "trainingPoints": 11.5
@@ -135,7 +135,7 @@
       "rawPrecisionPt": 200.22844970034203,
       "settleMs": 127.88034115296905,
       "usable": 0.9739037672875961,
-      "computeMsPerFrame": 0.00315511600316267,
+      "computeMsPerFrame": 0.004015275053260349,
       "reportedCalibrationPt": null,
       "reportedCalibrationDeg": null,
       "trainingPoints": 9
@@ -155,7 +155,7 @@
       "rawPrecisionPt": 241.5174767706647,
       "settleMs": 173.92513625231587,
       "usable": 0.9718238797094759,
-      "computeMsPerFrame": 0.030313665782478395,
+      "computeMsPerFrame": 0.038385315333702104,
       "reportedCalibrationPt": 43.74180225945303,
       "reportedCalibrationDeg": 0.8383480710299702,
       "trainingPoints": 14
@@ -175,7 +175,7 @@
       "rawPrecisionPt": 188.91393349689707,
       "settleMs": 113.59317192404342,
       "usable": 0.9739037672875961,
-      "computeMsPerFrame": 0.00340550832155632,
+      "computeMsPerFrame": 0.0029603368962298916,
       "reportedCalibrationPt": null,
       "reportedCalibrationDeg": null,
       "trainingPoints": 9
@@ -195,7 +195,7 @@
       "rawPrecisionPt": 238.69541680391671,
       "settleMs": 168.7147593136593,
       "usable": 0.9719688070200128,
-      "computeMsPerFrame": 0.03170319029942832,
+      "computeMsPerFrame": 0.03143536296187755,
       "reportedCalibrationPt": 55.185246378154055,
       "reportedCalibrationDeg": 1.0583221571860253,
       "trainingPoints": 14.1
@@ -215,7 +215,7 @@
       "rawPrecisionPt": 184.94423853519487,
       "settleMs": 116.24269934060649,
       "usable": 0.9739037672875961,
-      "computeMsPerFrame": 0.0027776410249123174,
+      "computeMsPerFrame": 0.003101700520721465,
       "reportedCalibrationPt": null,
       "reportedCalibrationDeg": null,
       "trainingPoints": 9
@@ -235,7 +235,7 @@
       "rawPrecisionPt": 235.65975431262282,
       "settleMs": 182.23980753388096,
       "usable": 0.9714218643750835,
-      "computeMsPerFrame": 0.03324549730510129,
+      "computeMsPerFrame": 0.032442338730713324,
       "reportedCalibrationPt": 86.37718787567276,
       "reportedCalibrationDeg": 1.6579112232516504,
       "trainingPoints": 14.5
@@ -255,7 +255,7 @@
       "rawPrecisionPt": 269.69551155251673,
       "settleMs": 179.37014156053482,
       "usable": 0.9739037672875961,
-      "computeMsPerFrame": 0.00282697541488043,
+      "computeMsPerFrame": 0.003113007474292319,
       "reportedCalibrationPt": null,
       "reportedCalibrationDeg": null,
       "trainingPoints": 9
@@ -275,7 +275,7 @@
       "rawPrecisionPt": 425.27770890648645,
       "settleMs": 386.843317136632,
       "usable": 0.9554352794575616,
-      "computeMsPerFrame": 0.034291062503327065,
+      "computeMsPerFrame": 0.03420916990429338,
       "reportedCalibrationPt": 126.35344406038317,
       "reportedCalibrationDeg": 2.42368491269242,
       "trainingPoints": 13.7
@@ -295,7 +295,7 @@
       "rawPrecisionPt": 259.60612422708715,
       "settleMs": 178.2625026659378,
       "usable": 0.9739037672875961,
-      "computeMsPerFrame": 0.003196590840652556,
+      "computeMsPerFrame": 0.0029629062406517632,
       "reportedCalibrationPt": null,
       "reportedCalibrationDeg": null,
       "trainingPoints": 9
@@ -315,7 +315,7 @@
       "rawPrecisionPt": 430.5604359899809,
       "settleMs": 360.9132034482187,
       "usable": 0.9524961516408676,
-      "computeMsPerFrame": 0.03410868964615715,
+      "computeMsPerFrame": 0.03382358618640033,
       "reportedCalibrationPt": 135.00763591142442,
       "reportedCalibrationDeg": 2.590219303720056,
       "trainingPoints": 14.1
@@ -335,7 +335,7 @@
       "rawPrecisionPt": 246.41294809715637,
       "settleMs": 156.66258927620947,
       "usable": 0.9739037672875961,
-      "computeMsPerFrame": 0.0035278437336407295,
+      "computeMsPerFrame": 0.003431339325590406,
       "reportedCalibrationPt": null,
       "reportedCalibrationDeg": null,
       "trainingPoints": 9
@@ -355,7 +355,7 @@
       "rawPrecisionPt": 398.0936219977788,
       "settleMs": 334.58341241659,
       "usable": 0.9577355204717349,
-      "computeMsPerFrame": 0.03572643644848977,
+      "computeMsPerFrame": 0.03426878430197254,
       "reportedCalibrationPt": 179.29645465713944,
       "reportedCalibrationDeg": 3.451690815415027,
       "trainingPoints": 14
@@ -692,16 +692,16 @@
     }
   ],
   "calibrationComputeMs": {
-    "median": 341.60858299999745,
-    "p90": 459.6593329999996,
+    "median": 343.1772920000003,
+    "p90": 464.74954199999956,
     "note": "whole simulated calibration incl. rendering"
   },
   "meta": {
     "seeds": 10,
     "node": "v26.8.2",
     "platform": "darwin arm64",
-    "ranAt": "2026-10-10T19:21:56.411Z",
-    "runtimeS": 58.944712458000005,
+    "ranAt": "2026-10-10T19:52:16.206Z",
+    "runtimeS": 70.35260420799999,
     "simulated": true
   }
 }
