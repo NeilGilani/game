@@ -1,0 +1,111 @@
+# Release: on a v* tag, build AGENCY.app for Apple silicon and Intel, sign and notarize when the secrets exist,
+# and publish the .dmg files with SHA256SUMS to GitHub Releases (the landing page downloads from there).
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Existing tag to (re)build, e.g. v0.1.0"
+        required: true
+
+permissions:
+  contents: write
+
+env:
+  NODE_VERSION: "22"
+  PYTHON_VERSION: "3.12"
+
+jobs:
+  build:
+    name: build ${{ matrix.arch }}
+    strategy:
+      fail-fast: true
+      matrix:
+        include:
+          - arch: arm64
+            runner: macos-15
+          - arch: x64
+            runner: macos-15-intel
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 60
+    env:
+      CSC_LINK: ${{ secrets.CSC_LINK }}
+      CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
+      APPLE_ID: ${{ secrets.APPLE_ID }}
+      APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+      APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.tag || github.ref }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - name: Version from the tag
+        run: |
+          TAG="${{ github.event.inputs.tag || github.ref_name }}"
+          npm version --no-git-tag-version --allow-same-version "${TAG#v}" -w @agency/desktop
+      - name: Setup
+        run: make setup
+      - name: Checks
+        run: make os-check
+      - name: Build
+        run: make os-build
+      - name: agency-native (when os/native-macos exists)
+        run: |
+          if [ -f os/native-macos/Package.swift ]; then
+            cd os/native-macos && swift build -c release --product agency-native
+          else
+            echo "os/native-macos not present; the app ships without system-wide control."
+          fi
+      - name: Frozen coordinator
+        run: make sidecar
+        env:
+          CODESIGN_IDENTITY: ""
+      - name: Package (signed and notarized only if the secrets are set)
+        run: npm run dist -w @agency/desktop -- --arch ${{ matrix.arch }}
+      - name: Smoke-test the packaged app
+        run: bash os/desktop/scripts/packaged-smoke.sh os/desktop/dist/mac*/AGENCY.app
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dmg-${{ matrix.arch }}
+          path: os/desktop/dist/*.dmg
+
+  publish:
+    name: publish to GitHub Releases
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: dmg-*
+          merge-multiple: true
+          path: release
+      - name: SHA256SUMS
+        run: cd release && sha256sum *.dmg | tee SHA256SUMS
+      - name: Create or update the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.event.inputs.tag || github.ref_name }}
+          SIGNED: ${{ secrets.CSC_LINK != '' }}
+        run: |
+          if [ "$SIGNED" = "true" ]; then
+            NOTE="Signed and notarized for macOS 13 or later."
+          else
+            NOTE="Unsigned build. macOS will block it the first time: see docs/os/INSTALL.md (Open Anyway in System Settings > Privacy & Security). Unsigned updates also make macOS forget the Accessibility permission, so turn it on again after each update."
+          fi
+          BODY="AGENCY ${TAG}. ${NOTE}
+
+          Download AGENCY-*-arm64.dmg for Apple silicon (M1 or later) or AGENCY-*-x64.dmg for Intel Macs. Check the download with SHA256SUMS."
+          if gh release view "$TAG" -R "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release upload "$TAG" release/* --clobber -R "$GITHUB_REPOSITORY"
+          else
+            gh release create "$TAG" release/* --title "AGENCY $TAG" --notes "$BODY" -R "$GITHUB_REPOSITORY"
+          fi
