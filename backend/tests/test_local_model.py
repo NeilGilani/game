@@ -185,3 +185,62 @@ def test_paragraph_splitting() -> None:
     assert split_paragraphs("One.\nTwo.\n") == ["One.", "Two."]
     assert split_paragraphs("\n".join(str(i) for i in range(9))) == ["0", "1", "2", "3"]
     assert split_paragraphs("x" * 900) == ["x" * 600]
+
+
+class EdgeSynapse(FakeSynapse):
+    """The newer Synapse-Mesh: an edge client whose generation runs on a cloud GPU kernel."""
+
+    def handle(self, request: httpx.Request) -> httpx.Response:
+        if request.method == "GET" and request.url.path == "/health":
+            return httpx.Response(
+                200,
+                json={
+                    "status": "cold",
+                    "base_model": "Qwen/Qwen2.5-1.5B-Instruct",
+                    "device": "edge",
+                    "engine": "cloud-edge-client",
+                    "cloud_configured": True,
+                    "network": {"state": "OPTIMAL", "mode": "cloud"},
+                },
+            )
+        return super().handle(request)
+
+
+def test_a_cloud_kernel_synapse_is_never_called_on_device(tmp_path: Path) -> None:
+    synapse = EdgeSynapse()
+    provider = WithLocalFallback(primary=DisabledProvider(), local=synapse.provider())
+    with make_client(tmp_path, provider=provider) as c:
+        explained = explain_first_approval(c)
+        health = c.get("/api/health").json()["reasoning"]
+    assert explained["on_device"] is False
+    assert explained["label"] == "Synapse-Mesh" and "cloud GPU" in explained["model"]
+    assert health["mode"] == "cloud" and health["local"]["on_device"] is False
+    assert health["local"]["network"]["state"] == "OPTIMAL"
+    assert "left this computer" in health["local"]["description"]
+
+
+def test_private_mode_refuses_a_cloud_kernel_synapse(tmp_path: Path) -> None:
+    synapse = EdgeSynapse()
+    provider = WithLocalFallback(primary=DisabledProvider(), local=synapse.provider(), private=True)
+    with make_client(tmp_path, provider=provider) as c:
+        explained = explain_first_approval(c)
+    assert explained["source"] == "deterministic"
+    assert synapse.prompts == []  # the text never went to the edge, so never to its cloud kernel
+
+
+def test_private_mode_refuses_a_synapse_whose_setup_is_unknown(tmp_path: Path) -> None:
+    def broken_health(body: Any) -> httpx.Response:
+        return httpx.Response(200, text=json.dumps({"event": "response", "text": "x"}))
+
+    class NoHealth(FakeSynapse):
+        def handle(self, request: httpx.Request) -> httpx.Response:
+            if request.method == "GET":
+                return httpx.Response(503)
+            return super().handle(request)
+
+    synapse = NoHealth()
+    provider = WithLocalFallback(primary=DisabledProvider(), local=synapse.provider(), private=True)
+    with make_client(tmp_path, provider=provider) as c:
+        explained = explain_first_approval(c)
+    assert explained["source"] == "deterministic"
+    assert synapse.prompts == []

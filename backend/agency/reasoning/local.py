@@ -1,14 +1,16 @@
-"""Optional on-device model: Synapse-Mesh running on this Mac.
+"""Optional second model: Synapse-Mesh (github.com/RayB-007/synapse-mesh).
 
-Synapse-Mesh (github.com/RayB-007/synapse-mesh) serves a small local model (Qwen2.5-1.5B with
-code, medical and legal LoRA experts blended per token) over HTTP. AGENCY uses it for one job
-only: explaining an approval in plain words when the cloud model can't be reached, or always
-when the person has chosen to keep explanations on this device. It never interprets goals or
-drafts plans (a 1.5B model is not reliable enough for that); those fall back to the
+Synapse-Mesh blends code, medical and legal LoRA experts into a small base model (Qwen2.5-1.5B) per request,
+and adapts how much fusion it does to the network state its Cisco sentinel measures. Older versions generate on
+this Mac; newer versions are an edge client that classifies the request on this Mac and sends it to a cloud GPU
+kernel. AGENCY reads which from /health and says so: "On-device" only when generation really runs here.
+
+AGENCY uses it for one job only: explaining an approval in plain words when the main cloud model can't be
+reached or isn't configured. With private explanations on, only a truly on-device Synapse-Mesh is used. It never
+interprets goals or drafts plans (a 1.5B model is not reliable enough for that); those fall back to the
 deterministic built-in rules and plans.
 
-Privacy: the server must be on this machine (a loopback address) unless
-AGENCY_LOCAL_MODEL_ALLOW_REMOTE=1, so "on-device" stays true.
+The server must be on this machine (a loopback address) unless AGENCY_LOCAL_MODEL_ALLOW_REMOTE=1.
 """
 
 from __future__ import annotations
@@ -59,10 +61,21 @@ class SynapseMeshProvider:
     last_error_at: str | None = None
     state: str = "configured"
     base_model: str | None = None
+    # Newer Synapse-Mesh runs as an edge client that sends prompts to a cloud GPU kernel. Learned from /health:
+    # True = prompts leave this computer, False = generation runs here, None = not known yet.
+    remote: bool | None = None
+    network: dict[str, Any] | None = None
     history: list[dict[str, Any]] = field(default_factory=list)
 
     name = "synapse-mesh"
-    label = LABEL
+
+    @property
+    def on_device(self) -> bool:
+        return self.remote is False
+
+    @property
+    def label(self) -> str:
+        return LABEL if self.on_device else "Synapse-Mesh"
 
     def __post_init__(self) -> None:
         self.url = self.url.rstrip("/")
@@ -75,16 +88,26 @@ class SynapseMeshProvider:
 
     @property
     def model(self) -> str:
-        return f"Synapse-Mesh ({self.base_model})" if self.base_model else "Synapse-Mesh"
+        where = "cloud GPU via this Mac" if self.remote else self.base_model
+        return f"Synapse-Mesh ({where})" if where else "Synapse-Mesh"
 
     def status(self) -> dict[str, Any]:
+        if self.remote:
+            done = "Synapse-Mesh answered the last request through its cloud GPU kernel (the text left this computer)."
+        elif self.on_device:
+            done = "On-device model (Synapse-Mesh) answered the last request. Nothing left this computer."
+        else:
+            done = "Synapse-Mesh answered the last request."
         descriptions = {
-            "configured": f"On-device model configured at {self.url}; not used yet in this session.",
-            "ok": "On-device model (Synapse-Mesh) answered the last request. Nothing left this computer.",
-            "error": f"On-device model (Synapse-Mesh) unavailable: {self.last_error}",
+            "configured": f"Synapse-Mesh configured at {self.url}; not used yet in this session.",
+            "ok": done,
+            "error": f"Synapse-Mesh unavailable: {self.last_error}",
         }
+        good = "local" if self.on_device else "cloud"
         return {
-            "mode": "local" if self.state != "error" else "local_degraded",
+            "mode": good if self.state != "error" else f"{good}_degraded",
+            "on_device": self.on_device,
+            "network": self.network,
             "provider": self.name,
             "label": self.label,
             "model": self.model,
@@ -118,7 +141,7 @@ class SynapseMeshProvider:
         try:
             async with self.client.stream("POST", f"{self.url}/generate", json=body) as response:
                 if response.status_code != 200:
-                    self._record(False, purpose, f"the on-device server answered {response.status_code}")
+                    self._record(False, purpose, f"the Synapse-Mesh server answered {response.status_code}")
                     return None
                 async for line in response.aiter_lines():
                     if not line.strip():
@@ -129,23 +152,41 @@ class SynapseMeshProvider:
                         continue
                     kind = event.get("event")
                     if kind == "error":
-                        self._record(False, purpose, f"the on-device model failed: {str(event.get('message', ''))[:160]}")
+                        self._record(False, purpose, f"Synapse-Mesh failed: {str(event.get('message', ''))[:160]}")
                         return None
                     if kind == "response":
                         text = str(event.get("text") or "")
         except httpx.TimeoutException:
-            self._record(False, purpose, "the on-device model took too long")
+            self._record(False, purpose, "Synapse-Mesh took too long")
             return None
         except (httpx.HTTPError, OSError):
-            self._record(False, purpose, f"the on-device server isn't running at {self.url}")
+            self._record(False, purpose, f"the Synapse-Mesh server isn't running at {self.url}")
             return None
         if not text or not text.strip():
-            self._record(False, purpose, "the on-device model returned nothing")
+            self._record(False, purpose, "Synapse-Mesh returned nothing")
             return None
         self._record(True, purpose)
         return text
 
+    async def probe(self) -> None:
+        """Read /health: where generation runs (this Mac or a cloud kernel) and the network state it sees."""
+        try:
+            response = await self.client.get(f"{self.url}/health")
+            if response.status_code != 200:
+                return
+            data = response.json()
+        except (httpx.HTTPError, OSError, ValueError):
+            return
+        if not isinstance(data, dict):
+            return
+        self.base_model = str(data.get("base_model") or "") or self.base_model
+        self.remote = data.get("engine") == "cloud-edge-client" or data.get("cloud_configured") is True
+        network = data.get("network")
+        self.network = network if isinstance(network, dict) else None
+
     async def explain(self, topic: dict[str, Any]) -> list[str] | None:
+        if self.remote is None:
+            await self.probe()
         prompt = (
             "Explain this to a person who uses an accessibility assistant, in 2 or 3 short paragraphs of plain, "
             "kind language: what will happen, why they are being asked, and what happens if they say no. "
@@ -158,14 +199,14 @@ class SynapseMeshProvider:
     async def check(self) -> dict[str, Any]:
         try:
             response = await self.client.get(f"{self.url}/health")
-            data = response.json() if response.status_code == 200 else {}
             if response.status_code != 200:
-                self._record(False, "check", f"the on-device server answered {response.status_code}")
-            else:
-                self.base_model = str(data.get("base_model") or "") or self.base_model
-                self._record(True, "check")
-        except (httpx.HTTPError, OSError, ValueError):
-            self._record(False, "check", f"the on-device server isn't running at {self.url}")
+                self._record(False, "check", f"the Synapse-Mesh server answered {response.status_code}")
+                return self.status()
+        except (httpx.HTTPError, OSError):
+            self._record(False, "check", f"the Synapse-Mesh server isn't running at {self.url}")
+            return self.status()
+        await self.probe()
+        self._record(True, "check")
         return self.status()
 
 
@@ -237,9 +278,19 @@ class WithLocalFallback:
             error = str(self.primary.status().get("last_error") or "")
             if not any(word in error for word in UNREACHABLE):
                 return None  # the cloud answered but declined or was malformed: don't route around it
+        if self.private:
+            # Private means the text stays on this Mac. Synapse-Mesh as a cloud-kernel client doesn't qualify,
+            # and neither does a server whose setup we couldn't read: AGENCY explains in its own words instead.
+            await self.local.probe()
+            if not self.local.on_device:
+                return None
         local = await self.local.explain(topic)
         if local:
-            self.last_explained_by = {"label": self.local.label, "model": self.local.model, "on_device": True}
+            self.last_explained_by = {
+                "label": self.local.label,
+                "model": self.local.model,
+                "on_device": self.local.on_device,
+            }
         return local
 
     async def check(self) -> dict[str, Any]:

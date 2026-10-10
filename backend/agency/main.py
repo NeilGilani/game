@@ -148,6 +148,9 @@ def create_app(
         )
         if provider is None:
             chosen = with_local_model(chosen, dict(os.environ))
+        local_model = getattr(chosen, "local", None)
+        if local_model is not None and hasattr(local_model, "probe"):
+            await local_model.probe()  # where it generates (this Mac or a cloud kernel); fine if it isn't up yet
         lifeline = LifelineService(
             db,
             ChannelRouter(engine.faults, TwilioChannel.from_env()),

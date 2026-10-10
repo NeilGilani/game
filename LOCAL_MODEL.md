@@ -1,4 +1,11 @@
-# On-device model (Synapse-Mesh)
+# Synapse-Mesh (Ray's expert-fusion model)
+
+> **Two versions.** The first Synapse-Mesh generated on the Mac. The current one is an *edge controller*: it
+> classifies the request on the Mac, then sends it to a **cloud GPU kernel** (`deploy/cloud` in Ray's repo),
+> with a Cisco sentinel adapting how much fusion it asks for to the network state. AGENCY reads which one is
+> running from `/health`: the edge version is labelled **Synapse-Mesh (cloud GPU via this Mac)**, never
+> "on-device", and private explanations never use it. The cloud kernel needs an NVIDIA GPU server that hasn't
+> been provisioned yet (per Ray's README); without it the edge reports an error and AGENCY uses its own words.
 
 AGENCY can use [Synapse-Mesh](https://github.com/RayB-007/synapse-mesh), a small model that runs entirely on
 the Mac (Qwen2.5-1.5B with code, medical and legal experts blended per token), as its **offline and private
