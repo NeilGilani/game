@@ -19,8 +19,8 @@
   --radius-tile: 30%; /* squircle-like tiles via a large relative radius */
   --gap: 24px;
   --target: 96px;
-  --menubar: 52px;
-  --topbar: 52px;
+  --menubar: 46px;
+  --topbar: 46px;
 
   /* Motion: springy, short, and off with reduced motion. */
   --spring: cubic-bezier(0.32, 1.25, 0.5, 1);

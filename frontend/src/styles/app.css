@@ -3074,3 +3074,13 @@ h2 {
   --accent-ink: #ffffff;
   color-scheme: light;
 }
+/* A compact dock: buttons stay 96 px, the frame around them is slimmer. */
+.topbar.dock {
+  margin: 2px auto 8px;
+  padding: 6px 10px;
+}
+/* Talk (frontend/src/talk) lays out its own rows; give it the full height. */
+.main[data-zone="talk"] {
+  padding-top: 4px;
+  padding-bottom: 0;
+}
