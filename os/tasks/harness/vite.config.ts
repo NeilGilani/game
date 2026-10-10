@@ -4,11 +4,15 @@
  * tested before the shell routes to them. Not shipped.
  */
 import react from "@vitejs/plugin-react";
+import { existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { defineConfig } from "vite";
 
 const repo = fileURLToPath(new URL("../../..", import.meta.url));
-const frontendModules = `${repo}/frontend/node_modules`;
+// npm workspaces hoist packages to the repository root.
+const frontendModules = existsSync(`${repo}/frontend/node_modules/react`)
+  ? `${repo}/frontend/node_modules`
+  : `${repo}/node_modules`;
 
 export default defineConfig({
   root: fileURLToPath(new URL(".", import.meta.url)),

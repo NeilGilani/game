@@ -53,6 +53,13 @@ function useUsual(flow: FlowDef): { usual: Suggestion | null; ready: boolean } {
   return state;
 }
 
+/** Where each task pack (os/tasks) has its screens. */
+const PACK_SCREENS: Record<string, string> = {
+  call: "/talk/call",
+  documents: "/talk/papers",
+  ordering: "/talk/shop",
+};
+
 export function FlowScreen({ id }: { id: string }) {
   const flow = FLOWS[id];
   if (!flow) {
@@ -106,6 +113,9 @@ function FlowRunner({ flow }: { flow: FlowDef }) {
         : `Couldn't open ${outcome.name}: ${result.error ?? "unknown problem"}.`;
       announce(text);
       setLaunched(text);
+    } else if (outcome.pack && PACK_SCREENS[outcome.pack]) {
+      // Task packs (os/tasks) run in Talk, which hosts their pack agent, call simulator and document engine.
+      navigate(PACK_SCREENS[outcome.pack]!);
     } else {
       const taskId = agent.start({
         goal: outcome.goal,

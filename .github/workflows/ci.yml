@@ -47,6 +47,8 @@ jobs:
         run: make e2e
       - name: Memory end-to-end tests
         run: cd frontend && npx playwright test -c e2e/memory/playwright.config.ts
+      - name: Task packs end-to-end tests (os/tasks harness)
+        run: npm run e2e -w @agency/tasks
       - name: Chromium for the bridge's Playwright version
         run: cd os/browser-bridge && npx playwright install --with-deps chromium
       - name: AGENCY Bridge end-to-end tests (headless Chromium, sandbox web world)
