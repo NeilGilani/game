@@ -179,6 +179,11 @@ clean:
 # CI does the same on every push to main once the CLOUDFLARE_* secrets are set (.github/workflows/cloudflare-pages.yml).
 CF_PROJECT ?= agency-os
 site-deploy:
-	npm ci --workspace site --no-audit --no-fund
+	npm install --workspace site --no-audit --no-fund
 	SITE_BASE=/ SITE_URL=$${SITE_URL:-https://$(CF_PROJECT).pages.dev} npm run build -w site
+	@# Creates the project with "main" as its production branch; harmless if it already exists.
+	-npx --yes wrangler@4 pages project create $(CF_PROJECT) --production-branch=main
 	npx --yes wrangler@4 pages deploy site/dist --project-name=$(CF_PROJECT) --branch=main --commit-dirty=true
+	@# site/dist is tracked in git (built for GitHub Pages); put it back so git pull keeps working.
+	git checkout -- site/dist && git clean -fdq site/dist
+	@echo "Deployed. Open the https://...pages.dev address printed above (the first deploy can take a minute)."
