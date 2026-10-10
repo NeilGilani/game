@@ -378,6 +378,12 @@ class Store:
             (case_id, step_id, utcnow(), kind, actor, message, dumps(data or {})),
         )
 
+    def last_audit(self, case_id: str) -> dict[str, Any] | None:
+        row = self.db.query_one("SELECT * FROM audit_events WHERE case_id = ? ORDER BY id DESC LIMIT 1", (case_id,))
+        if not row:
+            return None
+        return {"id": row["id"], "ts": row["ts"], "kind": row["kind"], "actor": row["actor"], "message": row["message"]}
+
     def audit_events(self, case_id: str | None = None, *, after_id: int = 0, limit: int = 500) -> list[dict[str, Any]]:
         if case_id:
             rows = self.db.query(

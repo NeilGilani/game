@@ -20,3 +20,4 @@ frontend/playwright-report/
 .env.local
 *.log
 .DS_Store
+frontend/e2e/fixtures/.cache/

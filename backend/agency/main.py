@@ -300,6 +300,15 @@ def create_app(
         s = st(request)
         return await interpret(body, s.engine.profile(), s.provider)
 
+    @api.get("/activity")
+    async def activity(request: Request, limit: int = 8) -> list[dict[str, Any]]:
+        """Recent verified outcomes and notable events across cases, newest first."""
+        s = st(request)
+        kinds = {"verified", "case_completed", "recovery_planned", "step_failed", "reconciled"}
+        titles = {c["id"]: c["title"] for c in s.engine.store.list_cases()}
+        events = [e for e in s.engine.store.audit_events(None, limit=400) if e["kind"] in kinds and e["case_id"]]
+        return [e | {"case_title": titles.get(e["case_id"] or "", "")} for e in events[: max(1, min(limit, 30))]]
+
     # -- cases ----------------------------------------------------------------------------
     def case_payload(s: AppState, case_id: str) -> dict[str, Any]:
         case = s.engine.store.get_case(case_id)
@@ -326,6 +335,7 @@ def create_app(
             "next_actions": s.engine.next_actions(case, steps),
             "counts": counts,
             "busy": s.runner.busy(case_id),
+            "last_event": s.engine.store.last_audit(case_id),
             "automation_paused": s.engine.automation_paused(),
         }
 

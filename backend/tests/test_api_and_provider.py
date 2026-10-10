@@ -316,3 +316,12 @@ def test_provider_handles_unusable_stop_reasons(stop_reason: str) -> None:
     provider = AnthropicProvider(model="claude-opus-5-5", client=client)
     assert asyncio.run(provider.explain({"x": 1})) is None
     assert provider.status()["state"] == "error"
+
+
+def test_activity_lists_verified_outcomes(client: TestClient) -> None:
+    case = start_repair(client)
+    ids = [a["id"] for a in case["pending_approvals"]]
+    client.post("/api/approvals/batch", json={"approval_ids": ids, "decision": "approve"})
+    activity = client.get("/api/activity").json()
+    assert activity and activity[0]["case_title"].startswith("Wheelchair repair")
+    assert {"verified"} <= {e["kind"] for e in activity}
