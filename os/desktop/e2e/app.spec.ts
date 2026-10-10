@@ -297,6 +297,18 @@ test.describe("AGENCY.app", () => {
     });
   });
 
+  test("Home from the overlay brings the shell forward and tells it", async () => {
+    const shell = await windowByUrl(ctx.app, "agency://shell/");
+    await shell.evaluate(() => {
+      (window as unknown as { __home: number }).__home = 0;
+      window.agency.onShowHome(() => ((window as unknown as { __home: number }).__home += 1));
+    });
+    const overlay = await windowByUrl(ctx.app, "agency://overlay/");
+    await overlay.evaluate(() => window.agency.showHome());
+    await expect.poll(() => shell.evaluate(() => (window as unknown as { __home: number }).__home)).toBe(1);
+    expect(await ctx.app.evaluate(() => (globalThis as any).__agency.shell.isVisible())).toBe(true);
+  });
+
   test("the main process sends Lifeline heartbeats", async () => {
     await expect
       .poll(

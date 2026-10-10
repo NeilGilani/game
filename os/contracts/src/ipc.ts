@@ -31,6 +31,12 @@ export const IPC = {
   permissions: "agency:permissions",
   /** renderer -> main (invoke): HostStatus, onboarding state */
   host: "agency:host",
+  /** overlay -> main: its clickable rects in global points (main toggles click-through from the cursor) */
+  overlayRegions: "agency:overlay-regions",
+  /** any -> main: bring the shell's Home to the front; main -> shell: show Home */
+  showHome: "agency:show-home",
+  /** shell, overlay -> main (invoke): memory suggestions and selection events, proxied to the coordinator */
+  memory: "agency:memory",
 } as const;
 
 export type IpcChannel = (typeof IPC)[keyof typeof IPC];

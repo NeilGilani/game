@@ -25,6 +25,10 @@ import {
   type OverlayMode,
   type PermissionKind,
   type PermissionStatus,
+  type ScreenRect,
+  type SelectionEvent,
+  type Suggestion,
+  type Surface,
   type StopAllResult,
   type Target,
   type TargetSnapshot,
@@ -75,8 +79,17 @@ const api: AgencyApi = {
   overlay: {
     display: () => ipcRenderer.invoke(IPC.overlayDisplay) as Promise<OverlayDisplay | null>,
     onMode: (l) => subscribe<OverlayMode>(IPC.overlay, l),
+    setInteractiveRegions: (rects: ScreenRect[]) => ipcRenderer.send(IPC.overlayRegions, rects),
     setInteractive: (interactive: boolean) => ipcRenderer.send(IPC.overlayInteractive, interactive),
   },
+  memory: {
+    suggestions: (surface: Surface, limit?: number) =>
+      ipcRenderer.invoke(IPC.memory, "suggestions", { surface, limit }) as Promise<Suggestion[]>,
+    usual: (path: string) => ipcRenderer.invoke(IPC.memory, "usual", { path }) as Promise<Suggestion | null>,
+    event: (event: SelectionEvent) => ipcRenderer.invoke(IPC.memory, "event", event) as Promise<void>,
+  },
+  showHome: () => ipcRenderer.send(IPC.showHome),
+  onShowHome: (l) => subscribe<null>(IPC.showHome, () => l()),
   stopAll: () => ipcRenderer.invoke(IPC.stopAll) as Promise<StopAllResult>,
   onStopAll: (l) => subscribe<StopAllResult>(IPC.stopAll, l),
   permissions: {

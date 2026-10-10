@@ -39,6 +39,8 @@ import {
   type PermissionKind,
   type ProcessName,
   type ProcessState,
+  type ScreenRect,
+  type SelectionEvent,
   type StopAllResult,
   type TargetSnapshot,
   type WindowRole,
@@ -80,6 +82,8 @@ interface OverlayWin {
   win: BrowserWindow;
   display: OverlayDisplay;
   interactive: boolean;
+  /** Clickable regions in global points, when the overlay manages click-through by regions. */
+  regions: ScreenRect[];
 }
 
 export class AgencyApp {
@@ -210,6 +214,7 @@ export class AgencyApp {
     this.mouse.end();
     if (this.axTimer) clearInterval(this.axTimer);
     if (this.statusTimer) clearInterval(this.statusTimer);
+    if (this.regionTimer) clearInterval(this.regionTimer);
     await Promise.allSettled(this.supervisors.map((s) => s.stop()));
   }
 
@@ -431,7 +436,7 @@ export class AgencyApp {
         existing.win.setBounds(d.bounds);
         continue;
       }
-      this.overlays.set(d.id, { win: this.createOverlay(display), display, interactive: false });
+      this.overlays.set(d.id, { win: this.createOverlay(display), display, interactive: false, regions: [] });
     }
   }
 
@@ -720,6 +725,18 @@ export class AgencyApp {
       }
     });
 
+    on(IPC.overlayRegions, ["overlay"], (e, rects) => {
+      for (const o of this.overlays.values()) {
+        if (o.win.webContents.id !== e.sender.id) continue;
+        o.regions = sanitizeRects(rects);
+      }
+      this.updateRegionWatch();
+    });
+
+    on(IPC.showHome, ["shell", "overlay"], () => this.showHome());
+
+    handle(IPC.memory, ["shell", "overlay"], (_e, _role, op, arg) => this.memory(String(op), arg));
+
     handle(IPC.overlayDisplay, ["overlay"], (e) => {
       for (const o of this.overlays.values()) if (o.win.webContents.id === e.sender.id) return o.display;
       return null;
@@ -751,6 +768,65 @@ export class AgencyApp {
           this.roles.set(contents.id, url.startsWith(ONBOARDING_URL) ? "onboarding" : "shell");
       });
     });
+  }
+
+  // ------------------------------------------------------------------------------------------------------
+  // Overlay click-through by regions, Home, memory
+
+  private regionTimer: ReturnType<typeof setInterval> | null = null;
+
+  private updateRegionWatch(): void {
+    const any = [...this.overlays.values()].some((o) => o.regions.length > 0);
+    if (any && !this.regionTimer) this.regionTimer = setInterval(() => this.checkRegions(), 33);
+    if (!any && this.regionTimer) {
+      clearInterval(this.regionTimer);
+      this.regionTimer = null;
+    }
+  }
+
+  private checkRegions(): void {
+    const p = screen.getCursorScreenPoint();
+    for (const o of this.overlays.values()) {
+      if (o.regions.length === 0 || o.win.isDestroyed()) continue;
+      const inside = o.regions.some(
+        (r) => p.x >= r.x && p.x < r.x + r.width && p.y >= r.y && p.y < r.y + r.height,
+      );
+      if (inside !== o.interactive) {
+        o.interactive = inside;
+        o.win.setIgnoreMouseEvents(!inside, { forward: true });
+      }
+    }
+  }
+
+  showHome(): void {
+    const win = this.shell;
+    if (!win || win.isDestroyed()) return;
+    if (win.isMinimized()) win.restore();
+    win.show();
+    if (process.platform === "darwin") app.focus({ steal: true });
+    win.focus();
+    win.webContents.send(IPC.showHome, null);
+    this.record("home");
+  }
+
+  private async memory(op: string, arg: unknown): Promise<unknown> {
+    const a = (arg ?? {}) as Record<string, unknown>;
+    if (op === "suggestions") {
+      const surface = String(a.surface ?? "home").replace(/[^a-z]/g, "");
+      const limit = Math.max(1, Math.min(20, Number(a.limit ?? 6) || 6));
+      return this.client.request("GET", `/api/memory/suggestions?surface=${surface}&limit=${limit}`);
+    }
+    if (op === "usual") {
+      return this.client.request("GET", `/api/memory/usual?path=${encodeURIComponent(String(a.path ?? ""))}`);
+    }
+    if (op === "event") {
+      const ev = arg as SelectionEvent;
+      if (!Array.isArray(ev?.path) || ev.path.some((p) => typeof p !== "string"))
+        throw new Error("bad event");
+      await this.client.request("POST", "/api/memory/events", ev);
+      return undefined;
+    }
+    throw new Error("unknown memory operation");
   }
 
   // ------------------------------------------------------------------------------------------------------
@@ -853,6 +929,19 @@ export class AgencyApp {
   get engineLastSeen(): number {
     return this.engineSeenAt;
   }
+}
+
+function sanitizeRects(input: unknown): ScreenRect[] {
+  if (!Array.isArray(input)) return [];
+  return input
+    .slice(0, 64)
+    .filter(
+      (r): r is ScreenRect =>
+        Boolean(r) &&
+        [r.x, r.y, r.width, r.height].every((n: unknown) => typeof n === "number" && Number.isFinite(n)),
+    )
+    .filter((r) => r.width > 0 && r.height > 0)
+    .map((r) => ({ x: r.x, y: r.y, width: r.width, height: r.height }));
 }
 
 function toOverlayDisplay(d: Display, primary: number): OverlayDisplay {

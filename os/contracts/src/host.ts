@@ -10,6 +10,7 @@ import type { AgentCommand, AgentEvent } from "./agent";
 import type { GazeEvent } from "./gaze";
 import type { HelpSource, LifelineSignal } from "./lifeline";
 import type { NativeEvent, NativeMethod, NativeMethods, PermissionKind, PermissionStatus } from "./native";
+import type { SelectionEvent, Suggestion, Surface } from "./memory";
 import type { ScreenRect, Target, TargetSnapshot } from "./targets";
 
 export type WindowRole = "shell" | "overlay" | "gaze" | "onboarding";
@@ -32,8 +33,12 @@ export const NATIVE_ALLOWED: Record<WindowRole, readonly NativeMethod[]> = {
     "input.scroll",
     "input.type",
     "input.key",
-    "apps.frontmost",
+    "input.drag",
+    "apps.list",
+    "apps.launch",
     "apps.activate",
+    "apps.hide",
+    "apps.frontmost",
   ],
   gaze: [],
   onboarding: ["permissions.status"],
@@ -130,9 +135,23 @@ export interface AgencyApi {
   overlay: {
     display(): Promise<OverlayDisplay | null>;
     onMode(listener: (mode: OverlayMode) => void): Unsubscribe;
+    /**
+     * Overlay: its clickable regions in global points. Main watches the cursor and makes the window clickable only
+     * while the cursor is inside one of them (click-through everywhere else). Send [] to clear.
+     */
+    setInteractiveRegions(rects: ScreenRect[]): void;
     /** Overlay: true while the mouse is over one of its own targets, so clicks reach it instead of passing through. */
     setInteractive(interactive: boolean): void;
   };
+  /** Shell and overlay: the memory tree on the coordinator (memory.ts), proxied by main. */
+  memory: {
+    suggestions(surface: Surface, limit?: number): Promise<Suggestion[]>;
+    usual(path: string): Promise<Suggestion | null>;
+    event(event: SelectionEvent): Promise<void>;
+  };
+  /** Any window: bring the shell to the front on Home. The shell listens with onShowHome. */
+  showHome(): void;
+  onShowHome(listener: () => void): Unsubscribe;
   stopAll(): Promise<StopAllResult>;
   /** Every window hears when Stop was used (from any window, the hotkey or the agent). */
   onStopAll(listener: (result: StopAllResult) => void): Unsubscribe;
