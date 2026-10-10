@@ -1,6 +1,8 @@
 /**
  * agency-native: the Swift helper (os/native-macos). Newline-delimited JSON-RPC 2.0 over stdio.
  * Only the Electron main process talks to it. Methods map 1:1 to the entries below.
+ * Events are JSON-RPC notifications: {"jsonrpc":"2.0","method":"event","params":<NativeEvent>}.
+ * Logs go to stderr (the host writes them to ~/Library/Logs/AGENCY/native.log), never stdout.
  */
 
 import type { TargetSnapshot } from "./targets";
@@ -27,6 +29,7 @@ export interface NativeMethods {
   /** Prefer this: performs the element's AXPress/AXConfirm action. */
   "ax.press": { params: { targetId: string }; result: { ok: boolean; error?: string } };
   "input.click": { params: { x: number; y: number; button?: "left" | "right"; count?: 1 | 2 }; result: { ok: boolean } };
+  /** dx/dy in points; positive dy shows content above (the CGEvent scroll-wheel convention). */
   "input.scroll": { params: { x: number; y: number; dx: number; dy: number }; result: { ok: boolean } };
   /** Refuses (ok: false) when the focused element is a secure text field. */
   "input.type": { params: { text: string }; result: { ok: boolean; error?: string } };
@@ -44,6 +47,10 @@ export interface NativeMethods {
   "speech.voices": { params: Record<string, never>; result: { voices: { id: string; name: string; personal: boolean }[] } };
   /** On-device recognition only (SFSpeechRecognizer.requiresOnDeviceRecognition). Results arrive as events. */
   "speech.listen": { params: { on: boolean; locale?: string }; result: { ok: boolean; error?: string } };
+  /** Press at `from`, move to `to`, release. Added in v0 (additive) for the overlay's Drag mode. */
+  "input.drag": { params: { from: { x: number; y: number }; to: { x: number; y: number } }; result: { ok: boolean; error?: string } };
+  /** Added in v0 (additive). Quitting apps is not here: it goes through the agent's approval. */
+  "apps.hide": { params: { bundleId: string }; result: { ok: boolean } };
   /** Global kill switch: stop all synthetic input immediately. */
   "input.stopAll": { params: Record<string, never>; result: { ok: boolean } };
 }
