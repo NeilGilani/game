@@ -7,6 +7,8 @@ import { useEffect, useState } from "react";
 import { Icon } from "../components/Icon";
 import { useLifeline } from "../lifeline/LifelineProvider";
 import { useAgent } from "../state/agent";
+import type { InputMode } from "../api/types";
+import { MODE_LABELS, useInput } from "../state/input";
 import type { Suggestion } from "../state/contracts";
 import { memory } from "../state/memory";
 import { navigate } from "../state/router";
@@ -43,6 +45,48 @@ export const HOME_TILES: Tile[] = [
   { id: "settings", label: "Settings", sub: "Eyes, voice, memory", icon: "gear", path: "/settings" },
 ];
 
+/** One plain sentence on how to choose, for the input the person is using now. */
+export function howToChoose(mode: InputMode): string {
+  if (mode === "gaze") return "Look at a choice until its ring fills.";
+  if (mode === "head") return "Point with your head; hold still until the ring fills.";
+  if (mode === "scan_blink") return "Choices light up in turn: close your eyes briefly on yours.";
+  if (mode === "scan_key") return "Choices light up in turn: press Space on yours.";
+  return "Click a choice, or use the keyboard.";
+}
+
+/** Eye control needs the camera on and a calibration; say so plainly, with one big way to fix it. */
+function needsEyeSetup(input: ReturnType<typeof useInput>): boolean {
+  if (!input.usesCamera) return false;
+  return input.status === "off" || input.status === "error" || input.calibrationNeeded;
+}
+
+function EyeControlCard() {
+  const input = useInput();
+  if (!needsEyeSetup(input)) return null;
+  const cameraOff = input.status === "off" || input.status === "error";
+  const label = cameraOff ? "Turn on eye control" : "Teach AGENCY your eyes";
+  const why = cameraOff
+    ? `${MODE_LABELS[input.mode].short} needs the camera. It stays on this computer.`
+    : "Follow a few dots with your eyes, about a minute. Until then the mouse works.";
+  return (
+    <button
+      className="usual usual-continue home-setup"
+      onClick={() => navigate(cameraOff ? "/camera" : "/calibrate")}
+      data-dwell
+      aria-label={`${label}. ${why}`}
+    >
+      <span className="usual-icon">
+        <Icon name="eye" size={30} />
+      </span>
+      <span className="usual-text">
+        <span className="usual-kicker">Start here</span>
+        <span className="usual-title">{label}</span>
+        <span className="usual-why">{why}</span>
+      </span>
+    </button>
+  );
+}
+
 function greeting(): string {
   const h = new Date().getHours();
   return h < 12 ? "Good morning" : h < 18 ? "Good afternoon" : "Good evening";
@@ -76,6 +120,7 @@ function continueText(t: TaskView): string {
 
 export function Home() {
   const agent = useAgent();
+  const input = useInput();
   const ll = useLifeline();
   const usuals = useUsuals();
   const unfinished = agent.tasks.filter((t) => !isFinished(t) || needsPerson(t));
@@ -94,16 +139,23 @@ export function Home() {
   };
 
   // Up to 3 usuals and one Continue card share the first row: 4 fixed slots.
-  const slots = (usuals ?? []).slice(0, resume ? USUALS - 1 : USUALS);
+  const fixed = (resume ? 1 : 0) + (needsEyeSetup(input) ? 1 : 0);
+  const slots = (usuals ?? []).slice(0, Math.max(0, USUALS - fixed));
 
   return (
     <div className="home" aria-label="Home">
       <section className="widget home-widget" aria-labelledby="home-greeting">
-        <h1 id="home-greeting">{greeting()}, Riley.</h1>
+        <div className="home-widget-head">
+          <h1 id="home-greeting">{greeting()}.</h1>
+          <p className="home-howto">
+            {howToChoose(input.mode)} <strong>Help</strong> is the red button below.
+          </p>
+        </div>
         <p className="widget-sub">
           {memory().kind() === "demo" && usuals?.length ? "Your usuals (demo examples)" : "Your usuals"}
         </p>
         <div className="home-usuals" aria-label="Your usuals">
+          <EyeControlCard />
           {resume && (
             <button
               className="usual usual-continue"
@@ -142,7 +194,7 @@ export function Home() {
                   </span>
                 </button>
               ))}
-          {usuals?.length === 0 && !resume && (
+          {usuals?.length === 0 && !resume && !needsEyeSetup(input) && (
             <p className="usual-empty muted">
               As you use AGENCY, the things you choose most will appear here, with the reason.
             </p>

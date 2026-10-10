@@ -11,7 +11,7 @@ import { Permissions, SETTINGS_PANES, mapMediaStatus } from "../src/main/permiss
 import { CSP, createHandler, safeJoin } from "../src/main/protocol";
 import { decidePermission, isAllowedNavigation } from "../src/main/security";
 import { DEFAULT_SETTINGS, loadSettings, saveSettings } from "../src/main/settings";
-import { TargetMerger, overlapRatio, sanitizeTargets, toGlobal } from "../src/main/targets";
+import { SHELL_OWNER, TargetMerger, overlapRatio, readBundleId, sanitizeTargets, toGlobal } from "../src/main/targets";
 import { DwellTracker, hitTest } from "../src/renderer/shared/dwell";
 
 const t = (id: string, x: number, y: number, w = 100, h = 100, extra: Partial<Target> = {}): Target => ({
@@ -24,7 +24,7 @@ const t = (id: string, x: number, y: number, w = 100, h = 100, extra: Partial<Ta
 });
 
 describe("security", () => {
-  it("grants the camera only to the gaze window, video only", () => {
+  it("grants the camera only to eye-tracking windows (shell, gaze), video only", () => {
     expect(decidePermission("media", true, ["video"])).toBe(true);
     expect(decidePermission("media", true, ["video", "audio"])).toBe(false);
     expect(decidePermission("media", true, ["audio"])).toBe(false);
@@ -136,6 +136,40 @@ describe("targets", () => {
     const merged = m.merged(1, true);
     expect(merged.targets.map((x) => x.id)).toEqual(["home"]);
     expect(merged.truncated).toBe(false);
+  });
+
+  it("never shows AGENCY's own window as an accessibility pile while the shell is in front", () => {
+    // The bug: the shell published nothing, so its Electron accessibility tree ("Unlabelled row") was used.
+    const m = new TargetMerger();
+    m.update("ax", { t: 0, owner: "com.github.Electron", truncated: false, targets: [t("row1", 0, 0), t("row2", 0, 120)] });
+    const merged = m.merged(1, true, "com.github.Electron");
+    expect(merged.targets).toEqual([]);
+    expect(merged.owner).toBe(SHELL_OWNER);
+  });
+
+  it("ignores accessibility snapshots of AGENCY's own windows even when the shell isn't focused", () => {
+    const m = new TargetMerger();
+    m.update("ax", { t: 0, owner: "com.agency.app", truncated: true, targets: [t("row1", 0, 0)] });
+    const merged = m.merged(1, false, "com.agency.app");
+    expect(merged.targets).toEqual([]);
+    expect(merged.truncated).toBe(false);
+    m.update("ax", { t: 1, owner: "com.apple.finder", truncated: false, targets: [t("open", 0, 0)] });
+    expect(m.merged(2, false, "com.agency.app").targets.map((x) => x.id)).toEqual(["open"]);
+  });
+
+  it("reads the app's bundle id from its Info.plist", () => {
+    const plist = "<dict><key>CFBundleIdentifier</key>\n\t<string>com.github.Electron</string></dict>";
+    const read = (p: string) => {
+      expect(p).toBe("/x/Electron.app/Contents/Info.plist");
+      return plist;
+    };
+    expect(readBundleId("/x/Electron.app/Contents/MacOS/Electron", read)).toBe("com.github.Electron");
+    expect(readBundleId("/usr/bin/electron", read)).toBeNull();
+    expect(
+      readBundleId("/x/A.app/Contents/MacOS/A", () => {
+        throw new Error("missing");
+      }),
+    ).toBeNull();
   });
 
   it("converts shell client coordinates to global points", () => {

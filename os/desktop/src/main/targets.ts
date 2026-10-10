@@ -4,6 +4,25 @@ import type { ScreenRect, Target, TargetSnapshot, TargetSource } from "@agency/c
 
 const MAX_TARGETS = 400;
 
+/** Snapshot owner while AGENCY's own shell is in front; the overlay stands down for it. */
+export const SHELL_OWNER = "agency.shell";
+
+/**
+ * The bundle id of the running app (macOS), read from the Info.plist next to the executable, so accessibility
+ * snapshots of AGENCY's own windows can be recognised. Null where it can't be read.
+ */
+export function readBundleId(execPath: string, read: (path: string) => string): string | null {
+  const m = /^(.*?\.app)\/Contents\/MacOS\//.exec(execPath);
+  if (!m) return null;
+  try {
+    const plist = read(`${m[1]}/Contents/Info.plist`);
+    const id = /<key>CFBundleIdentifier<\/key>\s*<string>([^<]+)<\/string>/.exec(plist);
+    return id?.[1]?.trim() || null;
+  } catch {
+    return null;
+  }
+}
+
 export class TargetMerger {
   private readonly bySource = new Map<TargetSource, TargetSnapshot>();
 
@@ -16,10 +35,12 @@ export class TargetMerger {
   }
 
   /**
-   * Shell targets win where they overlap accessibility targets of the same window (the shell knows its own
-   * buttons best); web targets win over accessibility targets inside browser content.
+   * While AGENCY's shell is in front, only its own targets count: the accessibility tree of an Electron window
+   * is a pile of unlabelled rows, and the shell runs its own dwell. Otherwise web targets win over
+   * accessibility targets inside browser content. Accessibility snapshots of AGENCY's own windows
+   * (`selfOwner`) are never used.
    */
-  merged(now: number, shellFrontmost: boolean): TargetSnapshot {
+  merged(now: number, shellFrontmost: boolean, selfOwner: string | null = null): TargetSnapshot {
     const shell = this.bySource.get("shell");
     const ax = this.bySource.get("ax");
     const web = this.bySource.get("web");
@@ -27,18 +48,19 @@ export class TargetMerger {
     let truncated = false;
     let owner: string | null = null;
 
-    if (shellFrontmost && shell) {
-      out.push(...shell.targets);
-      owner = shell.owner;
+    if (shellFrontmost) {
+      out.push(...(shell?.targets ?? []));
+      owner = SHELL_OWNER;
     } else {
       const webTargets = web?.targets ?? [];
       out.push(...webTargets);
-      for (const t of ax?.targets ?? []) {
+      const axUsable = ax && !(selfOwner && ax.owner === selfOwner);
+      for (const t of axUsable ? ax.targets : []) {
         if (webTargets.some((w) => overlapRatio(w.rect, t.rect) > 0.6)) continue;
         out.push(t);
       }
-      owner = ax?.owner ?? web?.owner ?? null;
-      truncated = Boolean(ax?.truncated || web?.truncated);
+      owner = (axUsable ? ax.owner : null) ?? web?.owner ?? null;
+      truncated = Boolean((axUsable && ax.truncated) || web?.truncated);
     }
     if (out.length > MAX_TARGETS) {
       out.length = MAX_TARGETS;

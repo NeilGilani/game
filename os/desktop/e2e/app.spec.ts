@@ -117,8 +117,9 @@ test.describe("AGENCY.app", () => {
     });
     const opened = await shell.evaluate(() => window.open("https://example.com") === null);
     expect(opened).toBe(true);
-    // The camera is refused outside the gaze window.
-    const camera = await shell.evaluate(async () => {
+    // The shell may use the camera (it runs the calibrated eye tracking); the overlay may not.
+    const overlay = await windowByUrl(ctx.app, "agency://overlay/");
+    const camera = await overlay.evaluate(async () => {
       try {
         await navigator.mediaDevices.getUserMedia({ video: true });
         return "granted";
