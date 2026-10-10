@@ -7,3 +7,5 @@ pydantic>=2.7,<3
 # (GEMINI_API_KEY for Google Gemini, ANTHROPIC_API_KEY for Claude).
 google-genai>=2.29,<3
 anthropic>=1.10,<2
+# HTTP client for the optional on-device model (Synapse-Mesh); also used by the cloud SDKs.
+httpx>=0.27,<1

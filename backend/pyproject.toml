@@ -9,6 +9,7 @@ dependencies = [
   "pydantic>=2.7,<3",
   "google-genai>=2.29,<3",
   "anthropic>=1.10,<2",
+  "httpx>=0.27,<1",
 ]
 
 [project.optional-dependencies]
@@ -37,4 +38,4 @@ ignore_missing_imports = true
 exclude = ["tests/"]
 
 [tool.ruff.lint.isort]
-known-first-party = ["agency", "conftest", "test_api_and_provider", "test_lifeline"]
+known-first-party = ["agency", "conftest", "test_api_and_provider", "test_gemini", "test_lifeline"]

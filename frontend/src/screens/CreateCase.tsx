@@ -101,7 +101,8 @@ export function CreateCase({ route }: { route: Route }) {
 
   const goal = preview.goal;
   const question = preview.questions[0];
-  const cloudPlanning = health?.reasoning.mode !== "deterministic";
+  // Only a cloud model adapts plans; the on-device model only explains.
+  const cloudPlanning = health?.reasoning.mode === "cloud" || health?.reasoning.mode === "cloud_degraded";
 
   const start = async () => {
     setStarting(true);
