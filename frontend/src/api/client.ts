@@ -28,6 +28,7 @@ import type {
   Situation,
   Runtime,
   Timeline,
+  WorkflowInsights,
 } from "./types";
 
 const COORDINATOR_KEY = "agency.coordinator";
@@ -116,6 +117,10 @@ const post = <T>(path: string, body?: unknown, timeoutMs?: number) =>
     timeoutMs,
   });
 
+// Cloud calls can include a 45-second provider request and one retry. Keep the
+// browser connected through that budget instead of abandoning a case creation.
+const CLOUD_TIMEOUT_MS = 120000;
+
 const alertPath = (id: string, action: string) => `/api/lifeline/alerts/${encodeURIComponent(id)}/${action}`;
 
 /** Lifeline (emergency signalling). Short timeouts: a slow answer must never delay the local alarm. */
@@ -154,16 +159,16 @@ export function respondUrl(link: string): string {
 export const api = {
   health: () => request<Health>("/api/health", { timeoutMs: 4000 }),
   runtime: () => request<Runtime>("/api/runtime"),
-  checkCloud: () => post<ReasoningStatus>("/api/runtime/check-cloud"),
+  checkCloud: () => post<ReasoningStatus>("/api/runtime/check-cloud", undefined, CLOUD_TIMEOUT_MS),
   catalog: () => request<Catalog>("/api/goals/catalog"),
   interpret: (body: {
     goal_type?: GoalType;
     selections?: Record<string, string>;
     phrases?: string[];
     free_text?: string;
-  }) => post<GoalPreview>("/api/goals/interpret", body),
+  }) => post<GoalPreview>("/api/goals/interpret", body, CLOUD_TIMEOUT_MS),
   createCase: (goal: Goal, useCloudPlan = true) =>
-    post<CaseDetail>("/api/cases", { goal, use_cloud_plan: useCloudPlan }),
+    post<CaseDetail>("/api/cases", { goal, use_cloud_plan: useCloudPlan }, CLOUD_TIMEOUT_MS),
   cases: (status?: "active") => request<CaseListItem[]>(`/api/cases${status ? `?status=${status}` : ""}`),
   case: (id: string) => request<CaseDetail>(`/api/cases/${encodeURIComponent(id)}`),
   timeline: (id: string) => request<Timeline>(`/api/cases/${encodeURIComponent(id)}/timeline`),
@@ -200,7 +205,7 @@ export const api = {
       source: "deterministic" | "cloud";
       model: string | null;
       facts?: string[];
-    }>(`/api/approvals/${encodeURIComponent(approvalId)}/explain`, { timeoutMs: 60000 }),
+    }>(`/api/approvals/${encodeURIComponent(approvalId)}/explain`, { timeoutMs: CLOUD_TIMEOUT_MS }),
   pauseAll: () => post<{ automation_paused: boolean }>("/api/system/pause"),
   resumeAll: () => post<{ automation_paused: boolean }>("/api/system/resume"),
   preferences: () => request<Preferences>("/api/preferences"),
@@ -211,6 +216,7 @@ export const api = {
     request<Faults>("/api/demo/faults", { method: "PUT", body: JSON.stringify(faults) }),
   resetDemo: () => post<{ today: string; deadline: string }>("/api/demo/reset"),
   activity: () => request<ActivityEvent[]>("/api/activity?limit=8"),
+  insights: () => request<WorkflowInsights>("/api/insights"),
   calendarEvents: () =>
     request<{
       events: { event_id: string; title: string; starts_at: string; location: string; status: string }[];

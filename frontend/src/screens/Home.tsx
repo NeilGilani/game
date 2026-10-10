@@ -1,6 +1,7 @@
 import { api } from "../api/client";
 import type { ActivityEvent, Approval, CaseListItem } from "../api/types";
 import { Icon } from "../components/Icon";
+import { ProofStrip } from "../components/ProofStrip";
 import { Page } from "../components/Shell";
 import { CaseBadge, Loading, formatTime } from "../components/status";
 import { useLifeline } from "../lifeline/LifelineProvider";
@@ -40,15 +41,15 @@ export function Home() {
 
   return (
     <Page label="Home">
-      <div className="page-head">
+      <div className="page-head home-heading">
         <div>
           <div className="eyebrow">
             {new Date().toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" })}
           </div>
           <h1>{greeting()}, Riley.</h1>
           <p>
-            Tell AGENCY what you want done. It plans the steps, asks before anything important, and checks
-            every result.
+            What would make today easier? Choose a task. AGENCY handles the steps, checks the results, and
+            keeps you in control.
           </p>
         </div>
       </div>
@@ -83,19 +84,14 @@ export function Home() {
       </section>
 
       <div className="grid grid-4">
-        <button
-          className="tile tile-primary"
-          style={{ gridColumn: "span 2" }}
-          onClick={() => navigate("/new")}
-          data-dwell
-        >
+        <button className="tile tile-primary" data-home-primary onClick={() => navigate("/new")} data-dwell>
           <span className="tile-icon">
             <Icon name="plus" size={30} />
           </span>
           <span>
             <span className="tile-title">Start a task</span>
             <br />
-            <span className="tile-sub">Repairs, appointments, paperwork, messages</span>
+            <span className="tile-sub">A repair. An appointment. A message. One less thing in your way.</span>
           </span>
         </button>
         <button
@@ -130,6 +126,8 @@ export function Home() {
         </button>
       </div>
 
+      <ProofStrip />
+
       <div className="grid grid-3">
         <section className="panel" aria-labelledby="h-progress">
           <h2 id="h-progress">
@@ -154,6 +152,9 @@ export function Home() {
                   <span className="small muted">
                     {c.progress.done} of {c.progress.total} steps done
                   </span>
+                  <button className="btn btn-quiet" onClick={() => navigate(`/case/${c.id}`)} data-dwell>
+                    <Icon name="right" size={20} /> Open case
+                  </button>
                 </li>
               ))}
             </ul>
@@ -177,6 +178,13 @@ export function Home() {
                     <strong>{a.summary}</strong>
                     <br />
                     <span className="small muted">{a.case_title}</span>
+                    <button
+                      className="btn btn-quiet"
+                      onClick={() => navigate(`/case/${a.case_id}/approve`)}
+                      data-dwell
+                    >
+                      <Icon name="hand" size={20} /> Review action
+                    </button>
                   </span>
                 </li>
               ))}

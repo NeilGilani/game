@@ -1,4 +1,5 @@
 import { BrandMark, Icon } from "../components/Icon";
+import { AgencyFlow } from "../components/AgencyFlow";
 import { MODE_LABELS } from "../state/input";
 import { navigate } from "../state/router";
 import { ModePicker } from "./SettingsViews";
@@ -22,13 +23,18 @@ export function Welcome() {
           <BrandMark />
           <span style={{ fontWeight: 700, letterSpacing: "0.2em", fontSize: "1.3rem" }}>AGENCY</span>
         </div>
-        <div>
-          <h1 className="hero-title">You say what you want done. AGENCY carries it through.</h1>
-          <p style={{ fontSize: "1.2rem", maxWidth: "60ch" }}>
-            Choose a goal with a few deliberate selections, using your eyes, a small head movement, a blink or
-            a single switch. AGENCY plans the steps, asks before anything important, checks every result, and
-            remembers where things stand.
+        <div className="welcome-intro">
+          <div className="eyebrow">Less effort. More independence.</div>
+          <h1 className="hero-title">
+            Your intention.
+            <br />
+            <span>Your independence.</span>
+          </h1>
+          <p className="welcome-lead">
+            A repair arranged. An appointment moved. A message sent. Choose what you need with your eyes, a
+            blink, or a switch. AGENCY takes care of the steps, with you in control.
           </p>
+          <AgencyFlow />
         </div>
         <section className="stack" aria-labelledby="h-mode">
           <h2 id="h-mode">How would you like to control it?</h2>
@@ -38,14 +44,17 @@ export function Welcome() {
             someone helping you.
           </p>
         </section>
-        <button
-          className="btn btn-quiet"
-          style={{ alignSelf: "flex-start" }}
-          onClick={() => finish("/")}
-          data-dwell
-        >
-          <Icon name="right" /> Skip for now
-        </button>
+        <div className="row welcome-footer">
+          <button className="btn btn-quiet" onClick={() => finish("/")} data-dwell>
+            <Icon name="right" /> Skip for now
+          </button>
+          <button className="btn" onClick={() => finish("/demo")} data-dwell>
+            <Icon name="play" /> Explore the live demo
+          </button>
+          <span className="small muted">
+            <Icon name="shield" size={18} /> Camera stays on your device.
+          </span>
+        </div>
       </div>
     </main>
   );

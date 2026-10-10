@@ -1,0 +1,553 @@
+/* AGENCY's visual layer. All colors follow the existing accessible theme tokens.
+   Selection targets keep their positions: hover changes color, never geometry. */
+
+.main {
+  background-image: radial-gradient(
+    ellipse at top right,
+    color-mix(in srgb, var(--accent) 5%, transparent),
+    transparent 60%
+  );
+}
+
+/* The route focuses this reading region; rings remain on every interactive target. */
+.main:focus-visible {
+  outline: none;
+}
+
+.topbar {
+  border-bottom-width: 1px;
+}
+.nav {
+  border-right-width: 1px;
+  padding: 24px 14px;
+  gap: 8px;
+}
+.nav-item {
+  border-radius: 12px;
+}
+.nav-item[aria-current="page"] {
+  border-color: transparent;
+}
+.nav-item[aria-current="page"]::before {
+  content: "";
+  position: absolute;
+  inset: 20px auto 20px 0;
+  width: 4px;
+  border-radius: 4px;
+  background: var(--accent);
+}
+.nav-footer {
+  margin-top: auto;
+  padding: 28px 16px 8px;
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  color: var(--ink-2);
+  font-size: 0.82rem;
+}
+.brand {
+  letter-spacing: 0.12em;
+}
+.home-heading {
+  padding: 6px 0 10px;
+}
+.home-heading h1 {
+  font-size: clamp(1.9rem, 2.7vw, 2.8rem);
+  letter-spacing: -0.04em;
+}
+.home-heading p {
+  max-width: 56ch;
+}
+.eyebrow {
+  font-size: 0.73rem;
+  letter-spacing: 0.13em;
+}
+.panel,
+.tile {
+  border-width: 1px;
+}
+.panel-accent,
+.panel-warn,
+.panel-danger {
+  border-width: 2px;
+}
+.tile:hover {
+  border-color: var(--accent);
+  background-color: color-mix(in srgb, var(--accent-soft) 35%, var(--surface));
+}
+.tile-primary {
+  background-image: radial-gradient(ellipse at top right, rgb(255 255 255 / 9%), transparent 65%);
+}
+.tile-primary:hover {
+  background-color: var(--accent-hover);
+}
+.tile-title {
+  letter-spacing: -0.02em;
+}
+.tile-icon {
+  border-radius: 16px;
+}
+.tile[data-home-primary] {
+  grid-column: span 2;
+}
+.btn {
+  border-radius: 12px;
+}
+.badge {
+  font-size: 0.8rem;
+}
+.accent-text {
+  color: var(--accent);
+}
+.section-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.section-heading h2 {
+  margin: 0;
+}
+
+.proof-strip {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  padding: 24px 12px 40px;
+}
+.proof-metric {
+  display: grid;
+  grid-template-columns: 28px 1fr;
+  align-content: start;
+  column-gap: 12px;
+  padding: 0 18px;
+}
+.proof-metric + .proof-metric {
+  border-left: 1px solid var(--line);
+}
+.proof-metric > .ico {
+  align-self: center;
+  color: var(--accent);
+}
+.proof-metric strong {
+  font-size: 1.9rem;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.15;
+  letter-spacing: -0.04em;
+}
+.proof-metric > span {
+  grid-column: 2;
+  color: var(--ink-2);
+  font-size: 0.78rem;
+  margin-top: 4px;
+}
+.proof-note {
+  position: absolute;
+  bottom: 8px;
+  right: 24px;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.68rem;
+  color: var(--ink-2);
+}
+.live-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--ok);
+  flex: none;
+}
+.live-dot[data-offline="true"] {
+  background: var(--warn);
+}
+
+.agency-flow {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  list-style: none;
+  margin: 0;
+  padding: 22px 0;
+  gap: 16px;
+}
+.agency-flow li {
+  position: relative;
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  min-width: 0;
+  padding-right: 16px;
+}
+.flow-symbol {
+  display: grid;
+  place-items: center;
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: var(--accent-soft);
+  color: var(--accent);
+  flex: none;
+  border: 1px solid var(--line);
+}
+.flow-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.flow-copy strong {
+  font-size: 0.96rem;
+}
+.flow-copy > span {
+  font-size: 0.74rem;
+  color: var(--ink-2);
+}
+.flow-connector {
+  position: absolute;
+  right: -10px;
+  color: var(--line-strong);
+}
+
+.welcome {
+  padding: 40px 36px;
+  background-image: radial-gradient(
+    ellipse at 90% 10%,
+    color-mix(in srgb, var(--accent) 9%, transparent),
+    transparent 55%
+  );
+}
+.welcome-card {
+  gap: 32px;
+  max-width: 1160px;
+}
+.welcome-intro {
+  padding: 28px 0 0;
+}
+.welcome-intro > .eyebrow {
+  color: var(--accent);
+}
+.hero-title {
+  font-size: clamp(2.5rem, 5.5vw, 4.6rem);
+  letter-spacing: -0.055em;
+  line-height: 1.02;
+  margin: 14px 0 24px;
+}
+.hero-title > span {
+  color: var(--accent);
+}
+.welcome-lead {
+  font-size: 1.13rem;
+  max-width: 57ch;
+  color: var(--ink-2);
+  line-height: 1.6;
+}
+.welcome-intro .agency-flow {
+  margin-top: 28px;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+}
+.welcome-footer {
+  padding-top: 8px;
+}
+.welcome-footer > span {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
+.welcome .tile {
+  min-height: 166px;
+}
+.welcome .tile-title {
+  font-size: 1.16rem;
+}
+.welcome .tile-sub {
+  font-size: 0.9rem;
+}
+
+.cloud-proof {
+  display: flex;
+  align-items: flex-start;
+  gap: 20px;
+  border-left: 4px solid var(--accent);
+}
+.cloud-proof > div {
+  flex: 1;
+  min-width: 0;
+}
+.cloud-proof h2 {
+  font-size: 1.25rem;
+}
+.cloud-proof p {
+  margin: 10px 0 0;
+}
+.cloud-proof .btn {
+  flex: none;
+}
+.scenario-tile {
+  min-height: 310px;
+  gap: 16px;
+}
+.scenario-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+}
+.scenario-top > span:last-child {
+  opacity: 0.85;
+}
+.scenario-proof {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+  width: 100%;
+  font-size: 0.76rem;
+  margin-top: auto;
+}
+.tile-primary .scenario-proof {
+  border-color: rgb(255 255 255 / 30%);
+}
+.demo-empty {
+  text-align: center;
+  padding: 40px 24px;
+  background: color-mix(in srgb, var(--accent-soft) 40%, var(--surface));
+  border-radius: 14px;
+  border: 1px dashed var(--line-strong);
+}
+.demo-empty > .ico {
+  color: var(--accent);
+  margin-bottom: 16px;
+}
+.demo-empty p {
+  color: var(--ink-2);
+  max-width: 52ch;
+  margin: 12px auto 0;
+}
+.demo-stages {
+  list-style: none;
+  margin: 12px 0;
+  padding: 0;
+}
+.demo-stages li {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 22px 0;
+  border-top: 1px solid var(--line);
+}
+.demo-stages li > div {
+  flex: 1;
+  min-width: 0;
+}
+.demo-stages p {
+  margin: 6px 0 0;
+  font-size: 0.86rem;
+  color: var(--ink-2);
+}
+.stage-number {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  background: var(--surface-2);
+  border-radius: 50%;
+  color: var(--ink-2);
+  font-size: 0.83rem;
+  font-weight: 700;
+}
+.demo-stages [data-done="true"] .stage-number {
+  background: var(--ok-soft);
+  color: var(--ok);
+}
+.demo-event-feed {
+  border-top: 1px solid var(--line);
+  padding-top: 22px;
+  margin-top: 8px;
+}
+.demo-event-feed ol {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.demo-event-feed li {
+  display: flex;
+  align-items: baseline;
+  gap: 18px;
+  padding: 10px 0;
+  font-size: 0.85rem;
+}
+.demo-event-feed time {
+  color: var(--ink-2);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.evidence-receipt {
+  display: flex;
+  gap: 20px;
+  align-items: center;
+  border-style: dashed;
+}
+.evidence-receipt > div {
+  flex: 1;
+  min-width: 0;
+}
+.evidence-receipt p {
+  margin-bottom: 0;
+  max-width: 62ch;
+}
+.receipt-mark {
+  flex: none;
+  width: 64px;
+  height: 64px;
+  display: grid;
+  place-items: center;
+  background: var(--accent-soft);
+  color: var(--accent);
+  border-radius: 18px;
+}
+
+@media (max-width: 1200px) {
+  .agency-flow {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 20px;
+  }
+  .agency-flow li:nth-child(2) .flow-connector {
+    display: none;
+  }
+  .proof-metric {
+    padding: 0 10px;
+    column-gap: 6px;
+  }
+  .cloud-proof {
+    flex-wrap: wrap;
+  }
+  .cloud-proof > div {
+    flex-basis: 65%;
+  }
+}
+
+@media (max-width: 860px) {
+  .nav {
+    padding: 8px;
+  }
+  .nav-footer {
+    display: none;
+  }
+  .tile[data-home-primary] {
+    grid-column: auto;
+  }
+  .proof-strip {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    row-gap: 24px;
+    padding-bottom: 46px;
+  }
+  .proof-metric:nth-child(3) {
+    border-left: 0;
+  }
+  .proof-note {
+    left: 20px;
+    right: 12px;
+  }
+  .welcome {
+    padding: 28px 20px;
+  }
+  .welcome-footer > span {
+    margin-left: 0;
+  }
+  .cloud-proof > .tile-icon {
+    display: none;
+  }
+  .scenario-tile {
+    min-height: 265px;
+  }
+  .demo-stages li {
+    flex-wrap: wrap;
+  }
+  .demo-stages li > .badge {
+    margin-left: 64px;
+  }
+  .demo-event-feed li {
+    flex-direction: column;
+    gap: 4px;
+  }
+  .evidence-receipt {
+    flex-wrap: wrap;
+  }
+  .evidence-receipt > .btn {
+    width: 100%;
+  }
+}
+
+@media (max-width: 480px) {
+  .topbar {
+    gap: 8px;
+  }
+  .topbar .brand {
+    font-size: 0.9rem;
+    gap: 8px;
+    letter-spacing: 0.08em;
+    padding: 8px 4px;
+  }
+  .topbar .brand-mark {
+    width: 32px;
+    height: 32px;
+  }
+  .topbar .help-btn {
+    font-size: 1rem;
+    padding: 0 16px;
+  }
+  .topbar .pause-agent {
+    font-size: 0.8rem;
+    padding: 0 12px;
+    min-height: 64px;
+    gap: 8px;
+  }
+  .status-strip .chip {
+    font-size: 0.72rem;
+    padding: 8px 10px;
+  }
+  .status-strip .chip-label {
+    display: none;
+  }
+  .agency-flow {
+    grid-template-columns: 1fr;
+  }
+  .flow-connector {
+    display: none;
+  }
+  .proof-metric {
+    grid-template-columns: 1fr;
+  }
+  .proof-metric > .ico {
+    display: none;
+  }
+  .proof-metric > span {
+    grid-column: 1;
+  }
+  .receipt-mark {
+    display: none;
+  }
+}
+
+@media (forced-colors: active) {
+  .live-dot,
+  .nav-item[aria-current="page"]::before {
+    background: CanvasText;
+  }
+  .flow-symbol,
+  .stage-number,
+  .receipt-mark {
+    border: 1px solid CanvasText;
+  }
+}

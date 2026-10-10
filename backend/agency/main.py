@@ -27,6 +27,7 @@ from .config import Settings, load_settings
 from .db import Database, dumps, loads, utcnow
 from .engine.engine import Engine, EngineError
 from .engine.runner import CaseRunner
+from .insights import workflow_insights
 from .lifeline.api import build_routers as lifeline_routers
 from .lifeline.channels import ChannelRouter, TwilioChannel
 from .lifeline.home import HomeAssistantHome
@@ -260,6 +261,10 @@ def create_app(
     @api.get("/integrations")
     async def integrations() -> list[dict[str, Any]]:
         return [i.as_dict() for i in INTEGRATIONS]
+
+    @api.get("/insights")
+    async def insights(request: Request) -> dict[str, Any]:
+        return workflow_insights(st(request).db)
 
     @api.get("/profile")
     async def profile(request: Request) -> dict[str, Any]:

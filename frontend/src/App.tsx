@@ -15,6 +15,7 @@ import { ApprovalsList, CasesList, RecoveryView, TimelineView } from "./screens/
 import { CaseWorkspace } from "./screens/CaseWorkspace";
 import { CreateCase } from "./screens/CreateCase";
 import { Home } from "./screens/Home";
+import { Demo } from "./screens/Demo";
 import { LifelineAlertView, LifelineHome, LifelineSetup } from "./screens/Lifeline";
 import { PhoneSimulator } from "./screens/PhoneSimulator";
 import { NewTask, Phrases } from "./screens/NewTask";
@@ -32,6 +33,7 @@ function onboarded(): boolean {
 function Screen({ route }: { route: Route }) {
   const [a, b, c] = route.segments;
   if (!a) return <Home />;
+  if (a === "demo") return <Demo />;
   if (a === "new" && !b) return <NewTask />;
   if (a === "new" && b === "phrases") return <Phrases />;
   if (a === "new" && b === "create") return <CreateCase key={route.query.toString()} route={route} />;

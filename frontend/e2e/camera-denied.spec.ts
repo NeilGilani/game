@@ -6,6 +6,10 @@ const coordinator = new Coordinator();
 test.beforeAll(async () => coordinator.start());
 test.afterAll(async () => coordinator.stop());
 
+// Supply a device without granting permission: the browser itself denies access,
+// independently of the host machine's physical camera or macOS camera permission.
+test.use({ launchOptions: { args: ["--use-fake-device-for-media-stream"] } });
+
 test("camera permission denied leads to guidance and a working alternative", async ({ browser }) => {
   const context = await browser.newContext({ permissions: [] });
   await context.addInitScript(() => localStorage.setItem("agency.onboarded", "1"));

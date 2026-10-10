@@ -239,6 +239,18 @@ export interface Timeline {
   approvals: Approval[];
 }
 
+export interface WorkflowInsights {
+  server_time: string;
+  cases_completed: number;
+  steps_verified: number;
+  actions_verified: number;
+  approved_decisions: number;
+  recovery_steps_verified: number;
+  cloud_plans: number;
+  tool_calls: number;
+  verification_passes: number;
+}
+
 export interface ReasoningStatus {
   mode: "deterministic" | "cloud" | "cloud_degraded";
   provider: string | null;

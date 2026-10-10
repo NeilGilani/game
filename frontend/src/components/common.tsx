@@ -87,7 +87,36 @@ export function ConfirmSheet({
     // Pause hands-free selection briefly so a lingering gaze can't confirm by accident.
     window.dispatchEvent(new Event(SELECTION_RESET_EVENT));
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") cancelRef.current();
+      if (e.key === "Escape") {
+        const cancel = ref.current?.querySelector<HTMLButtonElement>("[data-autofocus]");
+        if (!cancel?.disabled) cancelRef.current();
+      }
+      if (e.key === "Tab") {
+        const targets = Array.from(
+          ref.current?.querySelectorAll<HTMLElement>(
+            'button:not(:disabled), a[href], input:not(:disabled), select:not(:disabled), textarea:not(:disabled), [tabindex="0"]',
+          ) ?? [],
+        ).filter((target) => target.getClientRects().length > 0);
+        const first = targets[0];
+        const last = targets.at(-1);
+        if (!first || !last) {
+          e.preventDefault();
+          return;
+        }
+        if (
+          e.shiftKey &&
+          (document.activeElement === first || !ref.current?.contains(document.activeElement))
+        ) {
+          e.preventDefault();
+          last.focus();
+        } else if (
+          !e.shiftKey &&
+          (document.activeElement === last || !ref.current?.contains(document.activeElement))
+        ) {
+          e.preventDefault();
+          first.focus();
+        }
+      }
     };
     window.addEventListener("keydown", onKey);
     return () => {

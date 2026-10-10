@@ -1,5 +1,42 @@
 # AGENCY demo
 
+## UCSC Cloud AI: the three-minute story
+
+Use **Live demo** (`/#/demo`) as the starting point. Before presenting, configure your Anthropic API key in
+`.env`, restart the coordinator, and use **Status → Check cloud** to check access. Create a rehearsal case and
+confirm that it says **Plan adapted by Claude, validated by AGENCY**. A configured key alone does not prove a
+cloud plan was used. If the API is unavailable, demonstrate the built-in fallback and say so.
+
+**0:00–0:25 — The person.** “For someone whose hands cannot operate a computer, booking a wheelchair repair
+can mean navigating forms, calendars, funding rules, and messages. AGENCY lets them express an intention with
+their eyes, a blink, or a single switch. The AI carries out the steps; the person stays in control.” Show the
+four-stage flow. Explain that the demonstration profile and service integrations are simulated.
+
+**0:25–1:05 — Intention becomes a plan.** Choose **Get moving again**, then **Start this task**. Demonstrate the
+input method you have actually calibrated. Show the cloud-adapted plan and its preparation steps. When the
+approval panel appears, point out that the repair is still a draft: nothing has been booked.
+
+**1:05–1:50 — Reality changes.** Return to **Live demo** and press **Arm a taken-slot failure**. Choose
+**Review pending actions**, approve the booking and funding inquiry, and confirm. Show the failed booking,
+the service check that nothing was booked, and the proposed alternate slot. Approve the replacement, then
+approve the caregiver message. Don't say the AI fixed it before the person has approved the fix.
+
+**1:50–2:25 — Proof beats promises.** Show the finished case and its booking reference. Download the evidence
+receipt. Return to **Live demo**: the recorded approvals, passing verification records, and completed tasks now
+reflect this run. “A model saying ‘done’ is not our success condition. AGENCY reads the service records back.”
+
+**2:25–3:00 — The bigger impact.** Show the appointment and communication scenarios. Open Lifeline and the
+simulated phones: “Daily independence also means having a way to ask for help. The separate coordinator keeps
+asking contacts until a person responds.” If you demonstrate an alert, use a test alert and show the actual
+response. Close with: “Cloud AI should turn a person's intention into agency, with permission and evidence at
+every consequential step.”
+
+**Before judges arrive:** rehearse the entire path; reset demo data from Status; verify the camera and input
+mode; check cloud access; keep the built-in fallback available; test alarm audio with a real click; and open the
+simulated phones in a second window. Keep the optional longer Lifeline demonstration below for questions.
+
+---
+
 The judges must see: a physical-input constraint, an AI-driven plan, real software execution, a recovery path, a
 verifiable result, and why it matters. Everything below is live; nothing is pre-recorded.
 
