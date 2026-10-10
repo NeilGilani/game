@@ -17,7 +17,7 @@
     "format:check": "prettier --check \"src/**/*.ts\" \"tests/**/*.ts\" \"evals/**/*.ts\"",
     "test": "vitest run",
     "evals": "tsx evals/run.ts",
-    "build": "esbuild src/utility.ts --bundle --platform=node --format=esm --target=node20 --outfile=dist/agent-utility.mjs --external:electron",
+    "build": "esbuild src/utility.ts --bundle --platform=node --format=esm --target=node20 --outfile=dist/agent-utility.mjs --external:electron --banner:js=\"import { createRequire as __agencyCreateRequire } from 'node:module'; const require = __agencyCreateRequire(import.meta.url);\"",
     "check": "npm run lint && npm run format:check && npm run typecheck && npm test && npm run build"
   },
   "dependencies": {
