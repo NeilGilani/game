@@ -7,7 +7,7 @@
 
 import type { LandmarkerFactory } from "./webcam";
 
-export function mediapipeLandmarker(assetBase = "/"): LandmarkerFactory {
+export function mediapipeLandmarker(assetBase = "/", only?: "GPU" | "CPU"): LandmarkerFactory {
   return async () => {
     const { FaceLandmarker, FilesetResolver } = await import("@mediapipe/tasks-vision");
     const fileset = await FilesetResolver.forVisionTasks(`${assetBase}mediapipe/wasm`);
@@ -21,6 +21,8 @@ export function mediapipeLandmarker(assetBase = "/"): LandmarkerFactory {
       minFacePresenceConfidence: 0.5,
       minTrackingConfidence: 0.5,
     });
+    if (only)
+      return { landmarker: await FaceLandmarker.createFromOptions(fileset, options(only)), delegate: only };
     try {
       return { landmarker: await FaceLandmarker.createFromOptions(fileset, options("GPU")), delegate: "GPU" };
     } catch (gpuError) {

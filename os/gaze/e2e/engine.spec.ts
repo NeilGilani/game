@@ -1,0 +1,44 @@
+/**
+ * The gaze engine end to end in Chromium: real camera API (fed by a FAKE video of a still sample
+ * portrait), real MediaPipe Face Landmarker, real WebcamProvider and GazeEngine. Proves the
+ * pipeline runs in a browser window (as in AGENCY OS's hidden engine window) and measures speed
+ * on the machine running the test. It cannot measure gaze accuracy: the video is a photo.
+ * Results are written to bench/results/browser-<delegate>.json.
+ */
+import { existsSync, mkdirSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
+import { expect, test } from "@playwright/test";
+import { FAKE_VIDEO } from "../playwright.config";
+
+test.skip(
+  !existsSync(FAKE_VIDEO),
+  "Fake webcam fixture missing: run `make e2e-fixtures` (needs network + Pillow).",
+);
+
+for (const delegate of ["GPU", "CPU"] as const) {
+  test(`runs the engine on the fake camera with the ${delegate} delegate`, async ({ page }) => {
+    const seconds = Number(process.env.BENCH_SECONDS ?? 10);
+    await page.goto(`/?delegate=${delegate}&seconds=${seconds}&fps=30`);
+    const handle = await page.waitForFunction(() => window.__bench, null, { timeout: 120_000 });
+    const result = (await handle.jsonValue()) as Record<string, unknown>;
+    const dir = join(import.meta.dirname, "..", "bench", "results");
+    mkdirSync(dir, { recursive: true });
+    writeFileSync(
+      join(dir, `browser-${delegate}.json`),
+      JSON.stringify(
+        { ...result, ranAt: new Date().toISOString(), host: process.platform + " " + process.arch },
+        null,
+        2,
+      ),
+    );
+    console.log(delegate, JSON.stringify(result));
+    if (delegate === "GPU" && result.error)
+      test.skip(true, `GPU delegate unavailable here: ${String(result.error)}`);
+    expect(result.error).toBeUndefined();
+    expect(result.delegate).toBe(delegate);
+    // The portrait is found in nearly every frame.
+    expect(result.faceFraction as number).toBeGreaterThan(0.9);
+    expect(result.blinkEvents as number).toBeGreaterThan(0);
+    expect(result.fps as number).toBeGreaterThan(5);
+  });
+}

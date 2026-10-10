@@ -37,7 +37,10 @@ export interface PointerFrame {
 export type ProviderFrame = { kind: "face"; frame: FaceFrame } | { kind: "pointer"; frame: PointerFrame };
 
 export interface ProviderStats {
+  /** Frames processed in the last second. */
   fps: number;
+  /** Frames the camera delivered in the last second (processed or skipped), when known. */
+  cameraFps?: number;
   delegate: "GPU" | "CPU" | null;
   /** Mean time spent in landmark detection per frame (ms). */
   detectMs: number | null;

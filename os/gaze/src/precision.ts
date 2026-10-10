@@ -9,8 +9,11 @@
  * - "magnify": too many targets, or targets without usable names. Zoom the region two to four
  *   times for a second, more precise dwell; magnifiedToScreen maps that dwell back.
  *
- * The error circle comes from measured accuracy (validation and recent selections) plus live
- * noise, so the helpers appear exactly when the tracker can't tell targets apart.
+ * The decision is probabilistic: with the gaze estimate's error (measured accuracy from validation
+ * and recent selections, plus live noise) as a Gaussian, each nearby target gets the probability
+ * that the person is looking at it. One target at 90 % or more: direct. Otherwise the plausible
+ * ones (4 % or more) go in a picker, or the magnifier when there are too many or they have no
+ * usable names. So the helpers appear exactly when the tracker can't tell targets apart.
  */
 
 import type { ScreenRect, Target } from "./contracts";
@@ -59,9 +62,6 @@ export function distanceToRect(x: number, y: number, r: ScreenRect): number {
   const dy = Math.max(r.y - y, 0, y - (r.y + r.height));
   return Math.hypot(dx, dy);
 }
-
-const contains = (r: ScreenRect, x: number, y: number) =>
-  x >= r.x && x <= r.x + r.width && y >= r.y && y <= r.y + r.height;
 
 /** Display that contains the point (or the nearest one). */
 export function displayFor(displays: readonly ScreenRect[], x: number, y: number): ScreenRect {
@@ -136,32 +136,78 @@ export function layoutPicker(
   }));
 }
 
+/** Standard normal cumulative distribution (Abramowitz-Stegun 7.1.26 erf, error < 1.5e-7). */
+export function normalCdf(z: number): number {
+  const x = Math.abs(z) / Math.SQRT2;
+  const t = 1 / (1 + 0.3275911 * x);
+  const y =
+    1 -
+    ((((1.061405429 * t - 1.453152027) * t + 1.421413741) * t - 0.284496736) * t + 0.254829592) *
+      t *
+      Math.exp(-x * x);
+  return z >= 0 ? (1 + y) / 2 : (1 - y) / 2;
+}
+
+/**
+ * How likely each target is the one being looked at, given the estimate and a Gaussian error
+ * of `sigmaPt` per axis (normalised over the targets near enough to matter).
+ */
+export function targetProbabilities(
+  gaze: { x: number; y: number },
+  sigmaPt: number,
+  targets: readonly Target[],
+): { target: Target; p: number }[] {
+  const s = Math.max(sigmaPt, 2);
+  const mass = targets.map((t) => {
+    const px = normalCdf((t.rect.x + t.rect.width - gaze.x) / s) - normalCdf((t.rect.x - gaze.x) / s);
+    const py = normalCdf((t.rect.y + t.rect.height - gaze.y) / s) - normalCdf((t.rect.y - gaze.y) / s);
+    return { target: t, p: Math.max(0, px * py) };
+  });
+  const total = mass.reduce((a, m) => a + m.p, 0);
+  if (total <= 1e-9) return [];
+  return mass
+    .map((m) => ({ target: m.target, p: m.p / total }))
+    .filter((m) => m.p > 1e-4)
+    .sort((a, b) => b.p - a.p);
+}
+
+/** Per-axis error sigma from a mean Euclidean error (Rayleigh: mean = sigma * sqrt(pi / 2)). */
+export function sigmaFromMeanError(meanErrorPt: number): number {
+  return meanErrorPt / Math.sqrt(Math.PI / 2);
+}
+
+export interface DecideOptions extends PrecisionOptions {
+  /** Go direct when one target is at least this likely. */
+  directProbability: number;
+  /** Targets less likely than this are left out of a picker. */
+  minCandidateProbability: number;
+}
+
+export const DEFAULT_DECIDE: DecideOptions = {
+  ...DEFAULT_PRECISION,
+  directProbability: 0.9,
+  minCandidateProbability: 0.04,
+};
+
+/**
+ * @param sigmaPt per-axis error of the gaze estimate (accuracy and remaining noise combined).
+ */
 export function decidePrecision(
   gaze: { x: number; y: number },
-  errorRadiusPt: number,
+  sigmaPt: number,
   targets: readonly Target[],
   displays: readonly ScreenRect[],
-  o: PrecisionOptions = DEFAULT_PRECISION,
+  options: Partial<DecideOptions> = {},
 ): PrecisionDecision {
-  const r = Math.max(errorRadiusPt, 8);
-  const near = targets
-    .map((t) => ({ t, d: distanceToRect(gaze.x, gaze.y, t.rect) }))
-    .filter((c) => c.d <= r)
-    .sort((a, b) => a.d - b.d || a.t.rect.width * a.t.rect.height - b.t.rect.width * b.t.rect.height);
-  if (near.length === 0) return { kind: "direct", targetId: null };
-  if (near.length === 1) return { kind: "direct", targetId: near[0]!.t.id };
-  const first = near[0]!.t;
-  // A big target under the gaze, with the error circle inside it, is not ambiguous.
-  if (
-    contains(first.rect, gaze.x, gaze.y) &&
-    gaze.x - r >= first.rect.x &&
-    gaze.x + r <= first.rect.x + first.rect.width &&
-    gaze.y - r >= first.rect.y &&
-    gaze.y + r <= first.rect.y + first.rect.height
-  ) {
-    return { kind: "direct", targetId: first.id };
-  }
-  const candidates = near.map((c) => c.t);
+  const o = { ...DEFAULT_DECIDE, ...options };
+  const r = 2 * Math.max(sigmaPt, 4);
+  // Only targets within about three sigma can matter.
+  const nearby = targets.filter((t) => distanceToRect(gaze.x, gaze.y, t.rect) <= 1.5 * r);
+  const probs = targetProbabilities(gaze, sigmaPt, nearby);
+  if (probs.length === 0) return { kind: "direct", targetId: null };
+  if (probs[0]!.p >= o.directProbability) return { kind: "direct", targetId: probs[0]!.target.id };
+  const candidates = probs.filter((c) => c.p >= o.minCandidateProbability).map((c) => c.target);
+  if (candidates.length <= 1) return { kind: "direct", targetId: probs[0]!.target.id };
   const display = displayFor(displays, gaze.x, gaze.y);
   if (candidates.length <= o.maxPickerOptions && candidates.every(usableLabel)) {
     const labels = pickerLabels(candidates);

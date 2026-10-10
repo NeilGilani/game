@@ -1,0 +1,24 @@
+{
+  "delegate": "GPU",
+  "loadMs": 410.9000000022352,
+  "seconds": 15.001900000002236,
+  "fps": 29.996200481267902,
+  "faceFraction": 1,
+  "detectMsMean": 9.660888888955945,
+  "detectMsP50": 9.680000000447034,
+  "cameraFpsP50": 31,
+  "webgl": "ANGLE (Apple, ANGLE Metal Renderer: Apple M5 Pro, Unspecified Version)",
+  "engineMsP50": 0,
+  "engineMsP95": 0.10000000149011612,
+  "latencyMsP50": 21.600000001490116,
+  "latencyMsP95": 25.60000000074524,
+  "latencySamples": 450,
+  "blinkEvents": 501,
+  "video": {
+    "width": 640,
+    "height": 480
+  },
+  "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/153.0.0.0 Safari/537.36",
+  "ranAt": "2026-10-10T19:28:15.908Z",
+  "host": "darwin arm64"
+}

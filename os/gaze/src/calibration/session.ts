@@ -109,14 +109,17 @@ const EXTRA = [
   [0.9, 0.3],
   [0.1, 0.7],
 ] as const;
-/** Held-out validation positions, never used for training. */
+/**
+ * Held-out validation positions, never used for training. Spread towards the edges (where
+ * webcam error is largest) so the reported quality doesn't flatter the model.
+ */
 const VALIDATION = [
-  [0.22, 0.38],
-  [0.78, 0.38],
-  [0.38, 0.78],
-  [0.62, 0.62],
-  [0.5, 0.25],
-  [0.2, 0.8],
+  [0.3, 0.17],
+  [0.83, 0.3],
+  [0.17, 0.7],
+  [0.7, 0.83],
+  [0.5, 0.4],
+  [0.4, 0.6],
 ] as const;
 
 export class CalibrationSession {

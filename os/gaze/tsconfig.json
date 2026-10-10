@@ -16,5 +16,5 @@
     "verbatimModuleSyntax": true,
     "types": ["node"]
   },
-  "include": ["src", "tests", "bench", "vitest.config.ts", "vitest.bench.config.ts"]
+  "include": ["src", "tests", "bench", "e2e", "vitest.config.ts", "vitest.bench.config.ts", "playwright.config.ts"]
 }

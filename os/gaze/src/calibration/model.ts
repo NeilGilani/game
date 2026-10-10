@@ -2,10 +2,14 @@
  * Calibration v2: map GazeInputs to global screen points.
  *
  * Candidate models differ in which eye(s) they read (left, right, binocular average, or a fusion
- * of separate per-eye models), the polynomial degree of the eye terms (1 to 3), how the head is
- * handled ("linear": pose and position terms; "geometric": additionally the nominal eye ray hit
- * point on the display, which carries head rotation and position physically) and the ridge
- * strength. All candidates are scored by leave-one-target-out cross-validation on the person's
+ * of separate per-eye models), the polynomial degree (1 to 3), how the head is handled, and the
+ * ridge strength. Head handling:
+ * - "ray": only where the eye's ray meets the display (nominal eyeball model, head rotation and
+ *   position from the facial transformation matrix). All eye signal flows through physics, so
+ *   head movement is compensated even when the person held still during calibration (when the
+ *   data alone can't teach the model what head movement does).
+ * - "linear": eye terms plus head pose and position terms learned from the data.
+ * - "geometric": both. All candidates are scored by leave-one-target-out cross-validation on the person's
  * own samples, so the chosen model is the one that best predicts a target it never saw, and the
  * reported error is that held-out error, not a training fit.
  */
@@ -14,7 +18,7 @@ import { type Standardiser, designRow, dot, mad, median, ridge, standardiser } f
 import type { GazeInput } from "./features";
 
 export type EyeChoice = "binocular" | "fused" | "left" | "right";
-export type HeadTerms = "linear" | "geometric";
+export type HeadTerms = "ray" | "linear" | "geometric";
 
 export interface ModelConfig {
   eye: EyeChoice;
@@ -50,7 +54,7 @@ export interface FittedModel {
 export const LAMBDAS = [1e-3, 1e-2, 1e-1, 1] as const;
 export const DEGREES = [1, 2, 3] as const;
 export const EYES: readonly EyeChoice[] = ["fused", "binocular", "left", "right"];
-export const HEADS: readonly HeadTerms[] = ["geometric", "linear"];
+export const HEADS: readonly HeadTerms[] = ["ray", "geometric", "linear"];
 
 function poly(h: number, v: number, degree: number): number[] {
   const out = [h, v];
@@ -87,6 +91,10 @@ export function basis(
 ): number[] | null {
   const e = eyeData(input, eye);
   if (!e) return null;
+  if (head === "ray") {
+    if (e.gx === null || e.gy === null) return null;
+    return poly(e.gx, e.gy, degree);
+  }
   const row = poly(e.h, e.v, degree);
   row.push(input.yaw, input.pitch, input.roll, input.tx, input.ty, input.tz);
   if (degree >= 2) row.push(e.h * input.tz, e.v * input.tz);

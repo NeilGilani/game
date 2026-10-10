@@ -63,9 +63,12 @@ export class WebcamProvider implements GazeProvider {
   private onFrame: ((f: ProviderFrame) => void) | null = null;
   private handle: number | null = null;
   private targetFps = 30;
-  private lastProcessed = -Infinity;
+  /** Token bucket for the governor: jittery or bunched camera frames don't cause drops. */
+  private tokens = 1;
+  private lastTokenAt: number | null = null;
   private lastTimestamp = 0;
   private frameTimes: number[] = [];
+  private offeredTimes: number[] = [];
   private detectTimes: number[] = [];
   private brightnessCanvas: HTMLCanvasElement | null = null;
   private lastBrightnessAt = -Infinity;
@@ -98,6 +101,7 @@ export class WebcamProvider implements GazeProvider {
     const d = this.detectTimes;
     return {
       fps: this.frameTimes.length,
+      cameraFps: this.offeredTimes.length,
       delegate: this.delegate,
       detectMs: d.length ? d.reduce((s, v) => s + v, 0) / d.length : null,
     };
@@ -200,9 +204,14 @@ export class WebcamProvider implements GazeProvider {
     const lm = this.landmarker;
     if (!lm || this.video.readyState < 2) return;
     let now = performance.now();
-    // Governor: skip camera frames when a lower rate was asked for (idle, paused).
-    if (now - this.lastProcessed < (1000 / this.targetFps) * 0.8) return;
-    this.lastProcessed = now;
+    this.offeredTimes.push(now);
+    while (this.offeredTimes.length && now - this.offeredTimes[0]! > 1000) this.offeredTimes.shift();
+    // Governor: skip camera frames only when a lower rate was asked for (idle, paused).
+    if (this.lastTokenAt !== null)
+      this.tokens = Math.min(2, this.tokens + ((now - this.lastTokenAt) * this.targetFps) / 1000);
+    this.lastTokenAt = now;
+    if (this.tokens < 0.95) return;
+    this.tokens -= 1;
     if (now <= this.lastTimestamp) now = this.lastTimestamp + 1;
     this.lastTimestamp = now;
     let result: LandmarkerResult;
@@ -215,7 +224,7 @@ export class WebcamProvider implements GazeProvider {
     }
     const after = performance.now();
     this.detectTimes.push(after - before);
-    if (this.detectTimes.length > 60) this.detectTimes.shift();
+    if (this.detectTimes.length > 30) this.detectTimes.shift();
     this.frameTimes.push(now);
     this.frameTimes = this.frameTimes.filter((t) => now - t < 1000);
     this.measureBrightness(now);

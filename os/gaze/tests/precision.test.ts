@@ -4,8 +4,11 @@ import {
   decidePrecision,
   magnifiedTargets,
   magnifiedToScreen,
+  normalCdf,
   pickerLabels,
   screenToMagnified,
+  sigmaFromMeanError,
+  targetProbabilities,
 } from "../src/precision";
 
 const display = { x: 0, y: 0, width: 1470, height: 956 };
@@ -15,6 +18,28 @@ const t = (id: string, x: number, y: number, w = 30, h = 20, label = id): Target
   role: "button",
   label,
   source: "ax",
+});
+
+describe("target probabilities", () => {
+  it("uses an accurate normal CDF", () => {
+    expect(normalCdf(0)).toBeCloseTo(0.5, 7);
+    expect(normalCdf(1.96)).toBeCloseTo(0.975, 3);
+    expect(normalCdf(-1.96)).toBeCloseTo(0.025, 3);
+  });
+
+  it("splits probability between neighbours by how much of the error each covers", () => {
+    const p = targetProbabilities({ x: 100, y: 50 }, 30, [
+      t("left", 0, 0, 96, 96),
+      t("right", 120, 0, 96, 96),
+    ]);
+    expect(p[0]!.target.id).toBe("left");
+    expect(p[0]!.p).toBeGreaterThan(0.6);
+    expect(p[0]!.p + p[1]!.p).toBeCloseTo(1, 6);
+  });
+
+  it("converts a mean error to a per-axis sigma", () => {
+    expect(sigmaFromMeanError(Math.sqrt(Math.PI / 2) * 40)).toBeCloseTo(40, 8);
+  });
 });
 
 describe("precision helpers", () => {
@@ -29,10 +54,13 @@ describe("precision helpers", () => {
     });
   });
 
-  it("goes direct for a big target that contains the whole error circle", () => {
+  it("goes direct when one target is at least 90 % likely", () => {
     const big = t("big", 0, 0, 600, 400);
     const d = decidePrecision({ x: 300, y: 200 }, 80, [big, t("other", 610, 200)], [display]);
     expect(d).toEqual({ kind: "direct", targetId: "big" });
+    // Between two equal targets it is ambiguous.
+    const pair = [t("one", 400, 400, 96, 96), t("two", 520, 400, 96, 96)];
+    expect(decidePrecision({ x: 508, y: 448 }, 40, pair, [display]).kind).toBe("picker");
   });
 
   it("offers a picker of big labelled buttons for a few close targets", () => {

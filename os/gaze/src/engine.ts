@@ -44,6 +44,7 @@ import {
   type PrecisionDecision,
   type PrecisionOptions,
   decidePrecision,
+  sigmaFromMeanError,
 } from "./precision";
 import { type QualityIssue, assessBrightness, assessFace, trackingConfidence } from "./quality";
 import type { ScreenSpace } from "./screen";
@@ -381,21 +382,41 @@ export class GazeEngine {
     this.run = null;
   }
 
-  /** Current error circle radius (points): measured accuracy plus live noise. */
-  get errorRadiusPt(): number {
-    if (this.provider?.kind === "pointer" && this.provider.id === "mouse") return 4;
+  /**
+   * Per-axis error of the current estimate (points): measured accuracy (recent confirmed
+   * selections, else the calibration's validation error) combined with the smoother's remaining
+   * noise.
+   */
+  get errorSigmaPt(): number {
+    if (this.provider?.kind === "pointer" && this.provider.id === "mouse") return 2;
     const recent = this.continuous?.quality.at(-1)?.errorPt;
-    const accuracy = recent ?? this.calibrationResult?.quality.meanErrorPt ?? 120;
-    const noise = this.lastDetail?.smoothed?.outputNoisePt ?? 30;
-    return Math.max(24, accuracy + 2 * noise);
+    const accuracy = sigmaFromMeanError(recent ?? this.calibrationResult?.quality.meanErrorPt ?? 120);
+    const noise = (this.lastDetail?.smoothed?.outputNoisePt ?? 30) / Math.SQRT2;
+    return Math.hypot(accuracy, noise);
   }
 
-  /** "Which one?" picker / magnifier decision for the current gaze and these targets. */
+  /** Radius of the error circle to draw (about 2 sigma: 86 % of estimates fall inside). */
+  get errorRadiusPt(): number {
+    return Math.max(12, 2 * this.errorSigmaPt);
+  }
+
+  /** How long the eyes have held the current fixation (ms); 0 when not fixating. */
+  get fixationMs(): number {
+    const s = this.lastDetail?.smoothed;
+    if (this.provider?.kind === "pointer") return this.lastDetail ? 1000 : 0;
+    return s?.fixation ? s.fixationMs : 0;
+  }
+
+  /**
+   * "Which one?" picker / magnifier decision for the current gaze and these targets. The overlay
+   * should ask once the eyes have held a fixation for about 600 ms near targets (fixationMs),
+   * rather than waiting for a dwell to finish on a target too small to hold.
+   */
   precision(targets: readonly Target[], displays?: readonly ScreenRect[]): PrecisionDecision {
     const p = this.lastPoint;
     if (!p) return { kind: "direct", targetId: null };
     const ds = displays ?? this.o.screen.displays.map((d) => d.bounds);
-    return decidePrecision(p, this.errorRadiusPt, targets, ds, { ...DEFAULT_PRECISION, ...this.o.precision });
+    return decidePrecision(p, this.errorSigmaPt, targets, ds, { ...DEFAULT_PRECISION, ...this.o.precision });
   }
 
   /**

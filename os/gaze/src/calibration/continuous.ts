@@ -13,8 +13,9 @@
  * - Each update is bounded (maxStepPt per update, maxTotalPt overall, slope within maxSlope).
  * - Never silently make things worse: an update is applied only if its leave-one-out error on
  *   the recent confirmed selections beats the current correction's error on the same ones.
- * - Quality is tracked over time; when it falls into "poor" (or two grades below calibration)
- *   the engine advises a clean recalibration instead of patching further.
+ * - Quality is tracked over time; when it falls into "poor" (or two grades below calibration),
+ *   or when half of the recent selections were undone, the engine advises a clean
+ *   recalibration instead of patching further.
  */
 
 import { ridge } from "../linalg";
@@ -46,6 +47,8 @@ export interface ContinuousOptions {
   memory: number;
   /** Minimum confirmed selections before any correction is tried. */
   minSamples: number;
+  /** Below this many, only an offset is learned (scale and shear need much more evidence). */
+  slopeSamples: number;
   /** Grade the calibration had when it was made. */
   calibratedGrade: Grade;
 }
@@ -59,6 +62,7 @@ export const DEFAULT_CONTINUOUS: Omit<ContinuousOptions, "centre" | "calibratedG
   maxSlope: 0.12,
   memory: 30,
   minSamples: 4,
+  slopeSamples: 20,
 };
 
 export interface Observation {
@@ -117,6 +121,8 @@ export class ContinuousCalibrator {
   private confirmed: Confirmed[] = [];
   private history: QualityPoint[] = [];
   private advised = false;
+  /** Recent outcomes: true = stood, false = undone. Many undos mean the gaze lands wrong. */
+  private outcomes: boolean[] = [];
 
   constructor(options: Partial<ContinuousOptions> & Pick<ContinuousOptions, "centre" | "calibratedGrade">) {
     this.o = { ...DEFAULT_CONTINUOUS, ...options };
@@ -168,7 +174,20 @@ export class ContinuousCalibrator {
   undone(id: string, t: number): ContinuousEvent[] {
     const before = this.pending.length;
     this.pending = this.pending.filter((p) => !(p.id === id && t - p.t <= this.o.confirmMs));
-    return before !== this.pending.length ? [{ type: "discarded", t, reason: "undone" }] : [];
+    if (before === this.pending.length) return [];
+    const events: ContinuousEvent[] = [{ type: "discarded", t, reason: "undone" }];
+    this.outcomes.push(false);
+    if (this.outcomes.length > 10) this.outcomes.shift();
+    const undone = this.outcomes.filter((o) => !o).length;
+    if (!this.advised && this.outcomes.length >= 6 && undone / this.outcomes.length >= 0.5) {
+      this.advised = true;
+      events.push({
+        type: "recalibrate",
+        t,
+        reason: `Eye control keeps choosing the wrong thing: ${undone} of the last ${this.outcomes.length} choices were undone.`,
+      });
+    }
+    return events;
   }
 
   /** Call regularly (each frame is fine). Confirms selections that stood for confirmMs. */
@@ -178,6 +197,8 @@ export class ContinuousCalibrator {
     if (ready.length === 0) return events;
     this.pending = this.pending.filter((p) => t - p.t < this.o.confirmMs);
     for (const p of ready) {
+      this.outcomes.push(true);
+      if (this.outcomes.length > 10) this.outcomes.shift();
       this.confirmed.push({ t: p.t, x: p.x, y: p.y, tx: p.tx, ty: p.ty, weight: p.weight });
       events.push({ type: "learned", t, weight: p.weight });
     }
@@ -198,13 +219,23 @@ export class ContinuousCalibrator {
     return w > 0 ? s / w : 0;
   }
 
-  /** Weighted affine fit, shrunk towards "no change" (strongly for slopes, gently for offsets). */
+  /**
+   * Weighted fit of the correction. With few samples only an offset (two numbers: most drift is
+   * a shift); with slopeSamples or more, an affine map shrunk towards "no change".
+   */
   private fit(samples: readonly Confirmed[]): Correction | null {
     if (samples.length < 3) return null;
     const c = this.o.centre;
+    const w = samples.map((q) => q.weight);
+    if (samples.length < this.o.slopeSamples) {
+      const total = w.reduce((a, b) => a + b, 0);
+      if (total <= 0) return null;
+      const bx = samples.reduce((a, q, i) => a + w[i]! * (q.tx - q.x), 0) / total;
+      const by = samples.reduce((a, q, i) => a + w[i]! * (q.ty - q.y), 0) / total;
+      return { ax: [1, 0], ay: [0, 1], bx, by };
+    }
     // Design: [1, dx/1000, dy/1000]; target is the residual (target - estimate).
     const rows = samples.map((q) => [1, (q.x - c.x) / 1000, (q.y - c.y) / 1000]);
-    const w = samples.map((q) => q.weight);
     try {
       const rx = ridge(
         rows,
@@ -286,7 +317,7 @@ export class ContinuousCalibrator {
     }
     const after = looSum / looW;
     const before = this.errorWith(this.correction, samples);
-    if (after < before - 2) {
+    if (after < before) {
       this.correction = proposed;
       return [{ type: "updated", t, correction: proposed, before, after }];
     }
@@ -320,6 +351,7 @@ export class ContinuousCalibrator {
     this.pending = [];
     this.confirmed = [];
     this.history = [];
+    this.outcomes = [];
     this.advised = false;
   }
 }
