@@ -55,6 +55,7 @@ class Faults:
             "repair_timeout_after_commit": bool(faults.get("repair_timeout_after_commit")),
             "messaging_unavailable": int(faults.get("messaging_unavailable_remaining", 0)) > 0,
             "lifeline_primary_unreachable": bool(faults.get("lifeline_primary_unreachable")),
+            "lifeline_power_cut": bool(faults.get("lifeline_power_cut")),
         }
 
     def configure(self, values: dict[str, bool]) -> dict[str, Any]:
@@ -68,6 +69,8 @@ class Faults:
             faults["messaging_unavailable_remaining"] = 2 if values["messaging_unavailable"] else 0
         if "lifeline_primary_unreachable" in values:
             faults["lifeline_primary_unreachable"] = bool(values["lifeline_primary_unreachable"])
+        if "lifeline_power_cut" in values:
+            faults["lifeline_power_cut"] = bool(values["lifeline_power_cut"])
         self.db.set_state("faults", faults)
         return self.snapshot()
 
@@ -130,6 +133,20 @@ INTEGRATIONS: list[IntegrationInfo] = [
         "A simulated personal calendar plus a demo clinic's open appointment times.",
         True,
         "/api/demo-services/calendar",
+    ),
+    IntegrationInfo(
+        "home",
+        "Demo Smart Home",
+        "A simulated front-door lock, hall light and ventilator outlet with a backup battery (Lifeline).",
+        True,
+        "/api/demo-services/home",
+    ),
+    IntegrationInfo(
+        "dispatch",
+        "Demo Emergency Dispatch",
+        "A simulated staffed dispatch centre for Lifeline. It never contacts real emergency services.",
+        True,
+        "/api/lifeline",
     ),
     IntegrationInfo(
         "messaging",

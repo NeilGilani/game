@@ -290,6 +290,60 @@ MIGRATIONS: list[tuple[int, str, str]] = [
         CREATE INDEX idx_lifeline_events_alert ON lifeline_events(alert_id, id)
         """,
     ),
+    (
+        4,
+        "lifeline rescue: what's wrong, questions, rescue steps, emergency dispatch, demo smart home",
+        """
+        ALTER TABLE lifeline_alerts ADD COLUMN situation TEXT;
+        ALTER TABLE lifeline_alerts ADD COLUMN urgency TEXT NOT NULL DEFAULT 'standard';
+        ALTER TABLE lifeline_alerts ADD COLUMN critical_since TEXT;
+        ALTER TABLE lifeline_alerts ADD COLUMN detail TEXT;
+        ALTER TABLE lifeline_notifications ADD COLUMN arrived_at TEXT;
+        CREATE TABLE lifeline_questions (
+            id TEXT PRIMARY KEY,
+            alert_id TEXT NOT NULL REFERENCES lifeline_alerts(id) ON DELETE CASCADE,
+            contact_id TEXT,
+            asked_by TEXT NOT NULL,
+            text TEXT NOT NULL,
+            answer TEXT,
+            asked_at TEXT NOT NULL,
+            answered_at TEXT
+        );
+        CREATE INDEX idx_lifeline_questions_alert ON lifeline_questions(alert_id, asked_at);
+        CREATE TABLE lifeline_steps (
+            alert_id TEXT NOT NULL REFERENCES lifeline_alerts(id) ON DELETE CASCADE,
+            plan TEXT NOT NULL,
+            step INTEGER NOT NULL,
+            label TEXT NOT NULL,
+            done_by TEXT NOT NULL,
+            done_at TEXT NOT NULL,
+            PRIMARY KEY (alert_id, plan, step)
+        );
+        CREATE TABLE lifeline_dispatch (
+            id TEXT PRIMARY KEY,
+            alert_id TEXT NOT NULL REFERENCES lifeline_alerts(id) ON DELETE CASCADE,
+            provider TEXT NOT NULL,
+            simulated INTEGER NOT NULL,
+            status TEXT NOT NULL,
+            reason TEXT NOT NULL,
+            requested_by TEXT NOT NULL,
+            provider_ref TEXT,
+            error TEXT,
+            note TEXT,
+            requested_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL
+        );
+        CREATE INDEX idx_lifeline_dispatch_alert ON lifeline_dispatch(alert_id, requested_at);
+        CREATE TABLE svc_home_devices (
+            id TEXT PRIMARY KEY,
+            kind TEXT NOT NULL,
+            name TEXT NOT NULL,
+            state TEXT NOT NULL,
+            attributes TEXT NOT NULL,
+            updated_at TEXT NOT NULL
+        )
+        """,
+    ),
 ]
 
 

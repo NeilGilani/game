@@ -8,12 +8,23 @@ coordinator token; the unguessable per-message token in the path is the credenti
 from __future__ import annotations
 
 from typing import Any
+from urllib.parse import parse_qs
 
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 
-from .models import CheckinResponse, Heartbeat, HelpRequest, LifelineSettings, MonitoringRequest
-from .respond import render, render_invalid
+from .models import (
+    CheckinResponse,
+    DispatchRequest,
+    Heartbeat,
+    HelpRequest,
+    LifelineSettings,
+    MonitoringRequest,
+    QuestionAnswer,
+    SituationRequest,
+)
+from .rescue import PRESET_QUESTIONS
+from .respond import VIEWS, render, render_invalid
 from .service import LifelineError, LifelineService
 
 RESPONSE_HEADERS = {
@@ -74,6 +85,27 @@ def build_routers(*, demo_controls: bool) -> tuple[APIRouter, APIRouter]:
         service = lifeline(request)
         return await service.resolve(alert_id, by=service.settings().responder.person_name or "the person", actor="user")
 
+    @api.post("/alerts/{alert_id}/situation")
+    async def situation(alert_id: str, body: SituationRequest, request: Request) -> dict[str, Any]:
+        return await lifeline(request).set_situation(alert_id, body.situation)
+
+    @api.post("/questions/{question_id}/answer")
+    async def answer(question_id: str, body: QuestionAnswer, request: Request) -> dict[str, Any]:
+        return await lifeline(request).answer(question_id, body.answer)
+
+    @api.post("/alerts/{alert_id}/dispatch")
+    async def dispatch(alert_id: str, body: DispatchRequest, request: Request) -> dict[str, Any]:
+        service = lifeline(request)
+        name = service.settings().responder.person_name or "The person"
+        return await service.request_dispatch(
+            alert_id, requested_by=name, reason=body.reason or f"{name} asked for emergency services"
+        )
+
+    @api.post("/alerts/{alert_id}/dispatch/cancel")
+    async def dispatch_cancel(alert_id: str, request: Request) -> dict[str, Any]:
+        service = lifeline(request)
+        return await service.cancel_dispatch(alert_id, by=service.settings().responder.person_name or "the person")
+
     @api.post("/heartbeat")
     async def heartbeat(body: Heartbeat, request: Request) -> dict[str, Any]:
         return await lifeline(request).heartbeat(body.model_dump())
@@ -112,16 +144,51 @@ def build_routers(*, demo_controls: bool) -> tuple[APIRouter, APIRouter]:
         if not found:
             return _page(render_invalid(), 404)
         notification, detail = found
-        return _page(render(detail, notification, service.settings(), token, done, confirm_resolve=confirm == "resolve"))
+        view = confirm if confirm in VIEWS else None
+        return _page(render(detail, notification, service, token, done, view=view))
+
+    def _back(token: str, outcome: str) -> RedirectResponse:
+        return RedirectResponse(f"/respond/{token}?done={outcome}", status_code=303, headers=RESPONSE_HEADERS)
 
     @public.post("/{token}/{action}", response_model=None)
     async def respond_action(token: str, action: str, request: Request) -> RedirectResponse | HTMLResponse:
-        if action not in {"ack", "decline", "resolve"}:
-            return _page(render_invalid(), 404)
+        service = lifeline(request)
         try:
-            _, _, outcome = await lifeline(request).respond(token, action)
+            if action in {"ack", "decline", "resolve"}:
+                _, _, outcome = await service.respond(token, action)
+            elif action == "arrived":
+                _, _, outcome = await service.arrived(token)
+            elif action == "unlock":
+                _, _, outcome = await service.unlock_for(token)
+            elif action == "dispatch":
+                _, _, outcome = await service.dispatch_by_token(token)
+            elif action == "dispatch-cancel":
+                _, _, outcome = await service.cancel_dispatch_by_token(token)
+            elif action == "ask":
+                raw = (await request.body())[:2048].decode(errors="replace")
+                text = (parse_qs(raw).get("text") or [""])[0]
+                try:
+                    _, _, outcome = await service.ask(token, text)
+                except LifelineError:
+                    outcome = "ask_invalid"
+            else:
+                return _page(render_invalid(), 404)
         except LifelineError:
             return _page(render_invalid(), 404)
-        return RedirectResponse(f"/respond/{token}?done={outcome}", status_code=303, headers=RESPONSE_HEADERS)
+        return _back(token, outcome)
+
+    @public.post("/{token}/{action}/{arg}", response_model=None)
+    async def respond_action_arg(token: str, action: str, arg: str, request: Request) -> RedirectResponse | HTMLResponse:
+        service = lifeline(request)
+        try:
+            if action == "ask" and arg in PRESET_QUESTIONS:
+                _, _, outcome = await service.ask(token, PRESET_QUESTIONS[arg])
+            elif action == "step" and arg.isdigit() and len(arg) < 3:
+                _, _, outcome = await service.step_done(token, int(arg))
+            else:
+                return _page(render_invalid(), 404)
+        except LifelineError:
+            return _page(render_invalid(), 404)
+        return _back(token, outcome)
 
     return api, public

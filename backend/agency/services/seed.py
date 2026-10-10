@@ -10,6 +10,8 @@ from datetime import date, datetime, time, timedelta
 from typing import Any
 
 from ..db import Database, dumps, utcnow
+from ..lifeline.home import seed_demo_home
+from ..lifeline.rescue import DEMO_PLANS
 
 DEMO_PROFILE: dict[str, Any] = {
     "fictional": True,
@@ -102,6 +104,25 @@ DEMO_LIFELINE: dict[str, Any] = {
         "advance_directive": "Copy on the fridge (demo).",
         "notes": "Please talk to Riley directly. They can hear and understand everything.",
     },
+    "critical_alert_everyone": True,
+    "plans": DEMO_PLANS,
+    "plans_note": "Example care plan for the fictional demo profile. A real plan must be written with the person's care team.",
+    "dispatch": {
+        "consent": True,
+        "auto_after_s": 90,
+        "address": {"line1": "100 Example Street", "line2": "Apt 2", "city": "Santa Cruz", "state": "CA", "zip": "95060"},
+        "phone": "+18315550142",
+        "entry": "Key safe by the front door (demo). The door can also be unlocked remotely.",
+        "pin": "4321",
+    },
+    "home": {
+        "lights_on_alert": True,
+        "unlock_for_responders": True,
+        "unlock_for_emergency_services": True,
+        "relock_after_min": 15,
+        "watch_power": True,
+        "power_critical_minutes": 20,
+    },
 }
 
 CONTACTS = [
@@ -158,8 +179,12 @@ def seed_demo_data(db: Database, today: date | None = None) -> dict[str, Any]:
             "svc_messages",
             "svc_message_sends",
             "lifeline_events",
+            "lifeline_questions",
+            "lifeline_steps",
+            "lifeline_dispatch",
             "lifeline_notifications",
             "lifeline_alerts",
+            "svc_home_devices",
             "profile",
         ):
             db.execute(f"DELETE FROM {table}")  # noqa: S608 - fixed table names
@@ -235,8 +260,12 @@ def seed_demo_data(db: Database, today: date | None = None) -> dict[str, Any]:
                 )
 
         db.set_state("faults", {})
-        db.set_state("lifeline_settings", {**DEMO_LIFELINE, "consented_at": utcnow()})
+        now = utcnow()
+        db.set_state("lifeline_settings", _demo_lifeline(now))
         db.set_state("lifeline_monitor", {})
+        db.set_state("lifeline_home", {})
+        db.set_state("lifeline_power", {})
+        seed_demo_home(db)
         db.set_state("seeded_at", utcnow())
     return {"today": today.isoformat(), "deadline": deadline.isoformat()}
 
@@ -244,6 +273,25 @@ def seed_demo_data(db: Database, today: date | None = None) -> dict[str, Any]:
 def ensure_seeded(db: Database) -> None:
     if db.query_one("SELECT id FROM profile WHERE id = 1") is None:
         seed_demo_data(db)
-    elif db.get_state("lifeline_settings") is None:
-        # A database created before Lifeline existed: add the demo Lifeline settings only.
-        db.set_state("lifeline_settings", {**DEMO_LIFELINE, "consented_at": utcnow()})
+        return
+    # A database created by an earlier version: add what's new without touching anything else.
+    settings = db.get_state("lifeline_settings")
+    if settings is None:
+        db.set_state("lifeline_settings", _demo_lifeline(utcnow()))
+    elif "plans" not in settings:
+        now = utcnow()
+        demo = _demo_lifeline(now)
+        db.set_state(
+            "lifeline_settings",
+            {**settings, **{k: demo[k] for k in ("critical_alert_everyone", "plans", "plans_note", "dispatch", "home")}},
+        )
+    if db.query_one("SELECT id FROM svc_home_devices LIMIT 1") is None:
+        seed_demo_home(db)
+
+
+def _demo_lifeline(now: str) -> dict[str, Any]:
+    return {
+        **DEMO_LIFELINE,
+        "consented_at": now,
+        "dispatch": {**DEMO_LIFELINE["dispatch"], "consented_at": now},
+    }

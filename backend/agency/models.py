@@ -343,3 +343,4 @@ class FaultConfig(BaseModel):
     repair_timeout_after_commit: bool = False
     messaging_unavailable: bool = False
     lifeline_primary_unreachable: bool = False
+    lifeline_power_cut: bool = False

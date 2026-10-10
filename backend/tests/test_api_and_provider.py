@@ -19,7 +19,7 @@ from conftest import make_client, start_repair, step, tune
 def test_health_reports_node_reasoning_and_database(client: TestClient) -> None:
     health = client.get("/api/health").json()
     assert health["status"] == "ok"
-    assert health["database"]["schema_version"] == 3
+    assert health["database"]["schema_version"] == 4
     assert health["reasoning"]["mode"] == "deterministic"
     assert health["reasoning"]["state"] == "not_configured"
     assert health["node"]["role"] in {"local", "raspberry-pi"}
@@ -34,6 +34,8 @@ def test_runtime_lists_simulated_integrations(client: TestClient, monkeypatch: p
         "Demo Funding Service",
         "Demo Calendar",
         "Demo Messaging Service",
+        "Demo Smart Home",
+        "Demo Emergency Dispatch",
     }
     assert all(i["simulated"] and i["real_world_effects"] is False for i in runtime["integrations"])
     assert "No frames" in runtime["privacy"]["camera_processing"]

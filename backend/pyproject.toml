@@ -36,4 +36,4 @@ ignore_missing_imports = true
 exclude = ["tests/"]
 
 [tool.ruff.lint.isort]
-known-first-party = ["agency", "conftest"]
+known-first-party = ["agency", "conftest", "test_lifeline"]

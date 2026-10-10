@@ -29,6 +29,7 @@ from .engine.engine import Engine, EngineError
 from .engine.runner import CaseRunner
 from .lifeline.api import build_routers as lifeline_routers
 from .lifeline.channels import ChannelRouter, TwilioChannel
+from .lifeline.home import HomeAssistantHome
 from .lifeline.service import LifelineError, LifelineService
 from .models import (
     ACTIVE_CASE_STATUSES,
@@ -142,7 +143,10 @@ def create_app(
             settings.anthropic_timeout_s,
         )
         lifeline = LifelineService(
-            db, ChannelRouter(engine.faults, TwilioChannel.from_env()), public_url=settings.response_base_url()
+            db,
+            ChannelRouter(engine.faults, TwilioChannel.from_env()),
+            public_url=settings.response_base_url(),
+            home=HomeAssistantHome.from_env(),
         )
         lifeline.on_startup()
         state = AppState(settings, db, engine, CaseRunner(engine, inline=inline_runner), chosen, lifeline)
@@ -596,6 +600,15 @@ def create_app(
     @svc.get("/messaging/contacts")
     async def contacts(request: Request) -> dict[str, Any]:
         return {"service": "Demo Messaging Service", "simulated": True, "contacts": st(request).engine.messaging.list_contacts()}
+
+    @svc.get("/home/devices")
+    async def home_devices(request: Request) -> dict[str, Any]:
+        rows = st(request).db.query("SELECT * FROM svc_home_devices ORDER BY id")
+        return {
+            "service": "Demo Smart Home",
+            "simulated": True,
+            "devices": [{**dict(r), "attributes": loads(r["attributes"])} for r in rows],
+        }
 
     @svc.get("/messaging/outbox")
     async def outbox(request: Request) -> dict[str, Any]:
