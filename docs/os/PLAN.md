@@ -71,8 +71,13 @@ speak, and who can't quickly undo a mistake?**
 - **Lifeline**: the existing coordinator API (`/api/lifeline/*`). The main process sends heartbeats; the gaze
   engine emits `help-signal`; the overlay's Help target posts a help request. Lifeline never waits on anything
   else (`lifeline.ts`).
-- **IPC channel names** are in `ipc.ts`. Renderer code only sees the typed `window.agency` preload API, never
-  Node or Electron directly.
+- **IPC channel names** are in `ipc.ts`. Renderer code only sees the typed `window.agency` preload API
+  (`AgencyApi` in `host.ts`), never Node or Electron directly. Main checks every call against the window's role.
+- **Host conventions** (`host.ts`, `HOST_ENTRIES`): where the app finds each package's build (`os/overlay/dist/index.html`,
+  `os/gaze/dist/engine.html`, `os/agent/dist/agent-utility.mjs`, the agency-native binary, `frontend/dist`) and the
+  messages between main and the agent utility process. Missing packages fall back to built-ins (mouse gaze, a
+  minimal overlay with Help and Stop) and are reported in `window.agency.host.status()`.
+- **Status** of every part (integrated, verified where, simulated, not yet working): `docs/os/STATUS.md`.
 
 ## Who owns what
 
