@@ -90,6 +90,7 @@ export function Approve({ id }: { id: string }) {
   const [explanation, setExplanation] = useState<{
     paragraphs: string[];
     source: string;
+    label?: string | null;
     model: string | null;
   } | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -228,7 +229,7 @@ export function Approve({ id }: { id: string }) {
                   <h3>
                     <Icon name={explanation.source === "cloud" ? "sparkle" : "info"} />
                     {explanation.source === "cloud"
-                      ? `Explained by Claude (${explanation.model})`
+                      ? `Explained by ${explanation.label ?? "the cloud model"} (${explanation.model})`
                       : "In plain terms"}
                   </h3>
                   {explanation.paragraphs.map((p) => (

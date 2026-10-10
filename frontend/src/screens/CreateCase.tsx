@@ -121,7 +121,9 @@ export function CreateCase({ route }: { route: Route }) {
         <div>
           <div className="eyebrow">
             New task · {GOAL_NAMES[goal.goal_type]} ·{" "}
-            {preview.interpretation.mode === "cloud" ? "understood by Claude" : "matched by built-in rules"}
+            {preview.interpretation.mode === "cloud"
+              ? `understood by ${health?.reasoning.label ?? "the cloud model"}`
+              : "matched by built-in rules"}
           </div>
           <h1>{goal.outcome}</h1>
           {preview.interpretation.notes.map((n) => (
@@ -230,7 +232,8 @@ export function CreateCase({ route }: { route: Route }) {
             {cloudPlanning && (
               <label className="row small">
                 <input type="checkbox" checked={useCloud} onChange={(e) => setUseCloud(e.target.checked)} />
-                Let Claude adapt the plan (it is checked by AGENCY's validator)
+                Let {health?.reasoning.label ?? "the cloud model"} adapt the plan (it is checked by AGENCY's
+                validator)
               </label>
             )}
           </div>

@@ -164,6 +164,7 @@ export interface NextAction {
 export interface Reasoning {
   mode: "deterministic" | "cloud";
   planner: string;
+  label?: string | null;
   model?: string;
   rationale?: string;
   notes: string[];
@@ -242,6 +243,8 @@ export interface Timeline {
 export interface ReasoningStatus {
   mode: "deterministic" | "cloud" | "cloud_degraded";
   provider: string | null;
+  /** Display name of the cloud model family ("Gemini", "Claude"), or null in deterministic mode. */
+  label?: string | null;
   model: string | null;
   state: "not_configured" | "configured" | "ok" | "error";
   description: string;

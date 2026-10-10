@@ -68,7 +68,7 @@ Turn **Jordan's phone unreachable** off again before the task demo.
 
 - "Riley (a fictional user) has advanced ALS. Eye movement is reliable; hands aren't."
 - Point at the status bar: **Coordinator: This MacBook** (or **Raspberry Pi**), **Demo mode: built-in plans** (or
-  **Claude · claude-opus-5-5** if a key is configured), and the input chip (**Eye gaze · tracking**).
+  **Gemini · gemini-3.8-flash** if a key is configured), and the input chip (**Eye gaze · tracking**).
 - Show a selection: look at **Start a task** and hold. The yellow bar fills; at the end it selects. Glance across a
   button quickly to show that passing over it does nothing.
 - One line on privacy: "The video never leaves this laptop; only the selection does."
