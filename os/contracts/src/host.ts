@@ -85,6 +85,8 @@ export interface HostStatus {
   gazeSource: "engine" | "mouse" | "none";
 }
 
+export type CoordinatorChoice = { mode: "bundled" } | { mode: "remote"; url: string; token: string };
+
 export interface OnboardingState {
   completedSteps: string[];
   done: boolean;
@@ -144,6 +146,12 @@ export interface AgencyApi {
     status(): Promise<HostStatus>;
     onboarding(): Promise<OnboardingState>;
     completeOnboardingStep(step: string): Promise<OnboardingState>;
+    /**
+     * Shell only. Switch between the coordinator bundled in the app and one on a Raspberry Pi (DEPLOY_PI.md), which
+     * keeps Lifeline's watchdog running even if the Mac dies. The Pi is checked first; on success AGENCY restarts.
+     * The token is kept in the macOS keychain by main and never returned.
+     */
+    setCoordinator(setting: CoordinatorChoice): Promise<{ ok: boolean; error?: string }>;
   };
 }
 

@@ -11,6 +11,7 @@ import {
   type AgencyApi,
   type AgentCommand,
   type AgentEvent,
+  type CoordinatorChoice,
   type GazeEvent,
   type HelpResult,
   type HelpSource,
@@ -88,6 +89,8 @@ const api: AgencyApi = {
   host: {
     status: () => ipcRenderer.invoke(IPC.host, "status") as Promise<HostStatus>,
     onboarding: () => ipcRenderer.invoke(IPC.host, "onboarding") as Promise<OnboardingState>,
+    setCoordinator: (setting: CoordinatorChoice) =>
+      ipcRenderer.invoke(IPC.host, "setCoordinator", setting) as Promise<{ ok: boolean; error?: string }>,
     completeOnboardingStep: (step: string) =>
       ipcRenderer.invoke(IPC.host, "completeOnboardingStep", step) as Promise<OnboardingState>,
   },

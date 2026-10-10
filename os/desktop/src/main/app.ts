@@ -27,6 +27,7 @@ import {
   NATIVE_ALLOWED,
   type AgentCommand,
   type AgentEvent,
+  type CoordinatorChoice,
   type GazeEvent,
   type HelpSource,
   type HostStatus,
@@ -736,6 +737,7 @@ export class AgencyApp {
     handle(IPC.host, "any", (_e, role, op, arg) => {
       if (op === "status") return this.status();
       if (op === "onboarding") return this.onboardingState();
+      if (op === "setCoordinator" && role === "shell") return this.setCoordinator(arg as CoordinatorChoice);
       if (op === "completeOnboardingStep" && (role === "onboarding" || role === "shell"))
         return this.completeStep(String(arg));
       throw new Error("unknown operation");
@@ -790,6 +792,45 @@ export class AgencyApp {
       saveSettings(this.settingsFile, this.settings);
     }
     return this.onboardingState();
+  }
+
+  async setCoordinator(choice: CoordinatorChoice): Promise<{ ok: boolean; error?: string }> {
+    if (choice.mode === "bundled") {
+      this.settings.coordinator = { mode: "bundled" };
+    } else {
+      let url: URL;
+      try {
+        url = new URL(choice.url);
+        if (url.protocol !== "http:" && url.protocol !== "https:") throw new Error("bad protocol");
+      } catch {
+        return { ok: false, error: "That address doesn't look right. It should start with http://" };
+      }
+      const probe = new CoordinatorClient();
+      probe.set({ mode: "remote", url: url.origin, token: choice.token || null });
+      try {
+        await probe.request("GET", "/api/lifeline/status", undefined, 5_000);
+      } catch (err) {
+        return {
+          ok: false,
+          error: `Couldn't reach the coordinator at ${url.origin} (${(err as Error).message}).`,
+        };
+      }
+      if (choice.token && !safeStorage.isEncryptionAvailable()) {
+        return { ok: false, error: "This Mac can't store the access token safely." };
+      }
+      this.settings.coordinator = {
+        mode: "remote",
+        url: url.origin,
+        tokenEncrypted: choice.token ? safeStorage.encryptString(choice.token).toString("base64") : null,
+      };
+    }
+    saveSettings(this.settingsFile, this.settings);
+    log.info(`coordinator set to ${this.settings.coordinator.mode}; restarting`);
+    setTimeout(() => {
+      app.relaunch();
+      app.quit();
+    }, 500);
+    return { ok: true };
   }
 
   /** Development: the Vite dev server forwards /api to the coordinator; add the token on the way. */
