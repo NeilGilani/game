@@ -165,6 +165,11 @@ environment checks. Run `make check` and `make e2e` to validate the current chec
 checks live demo metrics against actual records, cloud request budgets, evidence downloads, keyboard focus in
 approval dialogs, retrying an unavailable interpreter, stale responses after case selection, and mobile layouts.
 
+The experience upgrade was validated on macOS arm64 with Node 22 and Python 3.14: **117 backend tests,
+62 frontend tests, 31 desktop unit tests, and 18 browser tests passed**. `make check` passed formatting,
+linting, strict type checks, and the production build. Browser tests included the real MediaPipe pipeline with
+the fake-camera fixture. No live cloud API call was made; an Anthropic key was not configured.
+
 | Suite | Count | What it covers |
 |---|---|---|
 | Backend `pytest` | 83 | **Workflow engine (45):** case creation, plan contents, allowed and refused tools, input validation, approval creation, refusing unapproved or stale-approved actions, verification pass/fail, retries, idempotent services, timeout reconciliation (no double booking), recovery planning, rejection blocking dependents, edits rebinding approvals, global and per-case pause, crash mid-step + restart reconciliation, persistence across restarts, audit events, auth token, CORS, preferences validation, the other three goals, and the cloud provider with a fake client. **Lifeline (38), on a fake clock:** countdown, cancel, call now, escalation timing and repeating rounds, immediate fail-over, never giving up, acknowledgement and stand-down, withdrawn acknowledgement, all-clear, consent and alarm-only mode, the responder page (escaping, security headers, token uniqueness, confirmation), watchdog, check-ins (including turning Watch over me off), signal-unavailable, restart persistence, reporting, demo reset, and Twilio text + call with a fake transport |

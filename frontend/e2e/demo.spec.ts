@@ -118,6 +118,12 @@ test("late case responses never overwrite the newly selected case", async ({ pag
 });
 
 test("home and onboarding fit a phone viewport with large selection targets", async ({ page }, testInfo) => {
+  await page.goto("/#/welcome");
+  await expect(page.getByRole("heading", { name: /Your intention/ })).toBeVisible();
+  await page.evaluate(async () => {
+    await document.fonts.ready;
+  });
+  await page.screenshot({ path: testInfo.outputPath("welcome-desktop.png"), fullPage: true });
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/#/");
   const start = page.getByRole("button", { name: /Start a task/ });
