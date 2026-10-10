@@ -349,7 +349,9 @@ async def make_plan(goal: Goal, provider: ReasoningProvider, *, use_cloud: bool 
                 plan, notes = validate_plan(draft, goal.goal_type)
                 return plan, {
                     "mode": "cloud",
-                    "planner": f"Claude ({status.get('model')}), checked by AGENCY's plan validator",
+                    "planner": f"{status.get('label') or 'the cloud model'} ({status.get('model')}), "
+                    "checked by AGENCY's plan validator",
+                    "label": status.get("label"),
                     "model": status.get("model"),
                     "rationale": draft.rationale,
                     "notes": notes,
