@@ -63,12 +63,27 @@ class Settings:
     anthropic_fallbacks: bool
     anthropic_timeout_s: float
     frontend_dist: Path | None
+    public_url: str | None = None
+    lifeline_loop: bool = True
+    lifeline_tick_s: float = 1.0
     inline_runner: bool = False
     extra: dict[str, str] = field(default_factory=dict)
 
     @property
     def anthropic_key_present(self) -> bool:
         return bool(os.environ.get("ANTHROPIC_API_KEY"))
+
+    def response_base_url(self) -> str:
+        """Where contacts' phones open response links (AGENCY_PUBLIC_URL wins)."""
+        if self.public_url:
+            return self.public_url.rstrip("/")
+        host = self.host
+        if host in {"0.0.0.0", "::"}:  # noqa: S104 - describing the bind address, not binding
+            import socket
+
+            name = socket.gethostname()
+            host = name if name.endswith(".local") else f"{name}.local"
+        return f"http://{host}:{self.port}"
 
 
 def load_settings(**overrides: object) -> Settings:
@@ -103,6 +118,7 @@ def load_settings(**overrides: object) -> Settings:
         anthropic_fallbacks=_bool("AGENCY_ANTHROPIC_FALLBACKS", True),
         anthropic_timeout_s=float(os.environ.get("AGENCY_ANTHROPIC_TIMEOUT_S", "45")),
         frontend_dist=frontend_dist,
+        public_url=os.environ.get("AGENCY_PUBLIC_URL") or None,
     )
     if overrides:
         from dataclasses import replace

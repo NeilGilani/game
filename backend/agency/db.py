@@ -231,6 +231,65 @@ MIGRATIONS: list[tuple[int, str, str]] = [
         );
         """,
     ),
+    (
+        3,
+        "lifeline: emergency alerts, notifications and alert timeline",
+        """
+        CREATE TABLE lifeline_alerts (
+            id TEXT PRIMARY KEY,
+            kind TEXT NOT NULL,
+            source TEXT NOT NULL,
+            is_test INTEGER NOT NULL DEFAULT 0,
+            status TEXT NOT NULL,
+            message TEXT NOT NULL,
+            created_at TEXT NOT NULL,
+            activates_at TEXT NOT NULL,
+            activated_at TEXT,
+            level INTEGER NOT NULL DEFAULT -1,
+            cycle INTEGER NOT NULL DEFAULT 0,
+            next_escalation_at TEXT,
+            acknowledged_at TEXT,
+            acknowledged_by TEXT,
+            resolved_at TEXT,
+            resolved_by TEXT,
+            local_only INTEGER NOT NULL DEFAULT 0,
+            updated_at TEXT NOT NULL
+        );
+        CREATE INDEX idx_lifeline_alerts_status ON lifeline_alerts(status);
+        CREATE TABLE lifeline_notifications (
+            id TEXT PRIMARY KEY,
+            alert_id TEXT NOT NULL REFERENCES lifeline_alerts(id) ON DELETE CASCADE,
+            contact_id TEXT NOT NULL,
+            contact_name TEXT NOT NULL,
+            contact_role TEXT NOT NULL,
+            channel TEXT NOT NULL,
+            purpose TEXT NOT NULL,
+            level INTEGER NOT NULL,
+            cycle INTEGER NOT NULL,
+            status TEXT NOT NULL,
+            body TEXT NOT NULL,
+            token TEXT,
+            provider_ref TEXT,
+            error TEXT,
+            response TEXT,
+            responded_at TEXT,
+            created_at TEXT NOT NULL,
+            sent_at TEXT
+        );
+        CREATE UNIQUE INDEX idx_lifeline_token ON lifeline_notifications(token);
+        CREATE INDEX idx_lifeline_notifications_alert ON lifeline_notifications(alert_id);
+        CREATE TABLE lifeline_events (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            alert_id TEXT,
+            ts TEXT NOT NULL,
+            kind TEXT NOT NULL,
+            actor TEXT NOT NULL,
+            message TEXT NOT NULL,
+            data TEXT NOT NULL
+        );
+        CREATE INDEX idx_lifeline_events_alert ON lifeline_events(alert_id, id)
+        """,
+    ),
 ]
 
 

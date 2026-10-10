@@ -19,7 +19,7 @@ from conftest import make_client, start_repair, step, tune
 def test_health_reports_node_reasoning_and_database(client: TestClient) -> None:
     health = client.get("/api/health").json()
     assert health["status"] == "ok"
-    assert health["database"]["schema_version"] == 2
+    assert health["database"]["schema_version"] == 3
     assert health["reasoning"]["mode"] == "deterministic"
     assert health["reasoning"]["state"] == "not_configured"
     assert health["node"]["role"] in {"local", "raspberry-pi"}

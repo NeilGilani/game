@@ -6,6 +6,8 @@ On a Pi:       see DEPLOY_PI.md (binds to the LAN, requires AGENCY_API_TOKEN)
 
 from __future__ import annotations
 
+import asyncio
+import contextlib
 import hmac
 import logging
 import platform
@@ -25,6 +27,9 @@ from .config import Settings, load_settings
 from .db import Database, dumps, loads, utcnow
 from .engine.engine import Engine, EngineError
 from .engine.runner import CaseRunner
+from .lifeline.api import build_routers as lifeline_routers
+from .lifeline.channels import ChannelRouter, TwilioChannel
+from .lifeline.service import LifelineError, LifelineService
 from .models import (
     ACTIVE_CASE_STATUSES,
     AnswerRequest,
@@ -99,12 +104,21 @@ def node_info(settings: Settings) -> dict[str, Any]:
 
 
 class AppState:
-    def __init__(self, settings: Settings, db: Database, engine: Engine, runner: CaseRunner, provider: ReasoningProvider) -> None:
+    def __init__(
+        self,
+        settings: Settings,
+        db: Database,
+        engine: Engine,
+        runner: CaseRunner,
+        provider: ReasoningProvider,
+        lifeline: LifelineService,
+    ) -> None:
         self.settings = settings
         self.db = db
         self.engine = engine
         self.runner = runner
         self.provider = provider
+        self.lifeline = lifeline
         self.started_at = utcnow()
         self.held_on_start: list[str] = []
 
@@ -127,13 +141,28 @@ def create_app(
             settings.anthropic_fallbacks,
             settings.anthropic_timeout_s,
         )
-        state = AppState(settings, db, engine, CaseRunner(engine, inline=inline_runner), chosen)
+        lifeline = LifelineService(
+            db, ChannelRouter(engine.faults, TwilioChannel.from_env()), public_url=settings.response_base_url()
+        )
+        lifeline.on_startup()
+        state = AppState(settings, db, engine, CaseRunner(engine, inline=inline_runner), chosen, lifeline)
         state.held_on_start = engine.reconcile_on_startup()
         app.state.agency = state
-        log.info("AGENCY coordinator ready (db=%s, reasoning=%s)", settings.db_path, chosen.status()["mode"])
+        supervisor = asyncio.create_task(lifeline.run(settings.lifeline_tick_s)) if settings.lifeline_loop else None
+        log.info(
+            "AGENCY coordinator ready (db=%s, reasoning=%s, lifeline links=%s, twilio=%s)",
+            settings.db_path,
+            chosen.status()["mode"],
+            lifeline.public_url,
+            "configured" if lifeline.channels.twilio_configured else "off",
+        )
         try:
             yield
         finally:
+            if supervisor:
+                supervisor.cancel()
+                with contextlib.suppress(asyncio.CancelledError):
+                    await supervisor
             await state.runner.shutdown()
             db.close()
 
@@ -156,6 +185,10 @@ def create_app(
 
     @app.exception_handler(EngineError)
     async def engine_error(_: Request, exc: EngineError) -> JSONResponse:
+        return JSONResponse({"detail": str(exc)}, status_code=409)
+
+    @app.exception_handler(LifelineError)
+    async def lifeline_error(_: Request, exc: LifelineError) -> JSONResponse:
         return JSONResponse({"detail": str(exc)}, status_code=409)
 
     @app.exception_handler(ServiceError)
@@ -517,7 +550,8 @@ def create_app(
         await s.runner.shutdown()
         s.runner = CaseRunner(s.engine, inline=s.runner.inline)
         s.db.set_state("automation_paused", False)
-        info = seed_demo_data(s.db)
+        async with s.lifeline.lock:
+            info = seed_demo_data(s.db)
         s.engine.store.audit(None, "demo_reset", "Demo data reset.", actor="presenter")
         return info
 
@@ -574,6 +608,9 @@ def create_app(
 
     app.include_router(api)
     app.include_router(svc)
+    lifeline_api, respond_pages = lifeline_routers(demo_controls=settings.demo_controls)
+    app.include_router(lifeline_api)
+    app.include_router(respond_pages)
 
     if settings.frontend_dist and (settings.frontend_dist / "index.html").is_file():
         app.mount("/", StaticFiles(directory=settings.frontend_dist, html=True), name="frontend")

@@ -21,6 +21,7 @@ def make_client(
         api_token=token,
         frontend_dist=None,
         demo_controls=True,
+        lifeline_loop=False,
     )
     app = create_app(settings, provider=provider or DisabledProvider(), inline_runner=inline)
     return TestClient(app)

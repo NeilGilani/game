@@ -54,6 +54,7 @@ class Faults:
             "repair_slot_taken": bool(faults.get("repair_slot_taken")),
             "repair_timeout_after_commit": bool(faults.get("repair_timeout_after_commit")),
             "messaging_unavailable": int(faults.get("messaging_unavailable_remaining", 0)) > 0,
+            "lifeline_primary_unreachable": bool(faults.get("lifeline_primary_unreachable")),
         }
 
     def configure(self, values: dict[str, bool]) -> dict[str, Any]:
@@ -65,6 +66,8 @@ class Faults:
         if "messaging_unavailable" in values:
             # Enough consecutive failures to exhaust one step's retry budget.
             faults["messaging_unavailable_remaining"] = 2 if values["messaging_unavailable"] else 0
+        if "lifeline_primary_unreachable" in values:
+            faults["lifeline_primary_unreachable"] = bool(values["lifeline_primary_unreachable"])
         self.db.set_state("faults", faults)
         return self.snapshot()
 

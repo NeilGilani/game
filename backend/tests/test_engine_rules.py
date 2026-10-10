@@ -226,7 +226,7 @@ def test_demo_services_are_idempotent(tmp_path) -> None:  # type: ignore[no-unty
 
 def test_migrations_are_versioned_and_repeatable(tmp_path) -> None:  # type: ignore[no-untyped-def]
     db = Database(tmp_path / "m.db")
-    assert db.migrate() == 2
-    assert db.migrate() == 2
+    assert db.migrate() == 3
+    assert db.migrate() == 3
     names = [r["name"] for r in db.query("SELECT name FROM schema_migrations ORDER BY version")]
-    assert len(names) == 2
+    assert len(names) == 3

@@ -67,6 +67,43 @@ PROGRAMS: list[dict[str, Any]] = [
     },
 ]
 
+# Lifeline defaults for the fictional demo. Every contact uses the simulated "demo" channel, so
+# nobody real is ever contacted until someone deliberately adds a real phone number in setup.
+DEMO_LIFELINE: dict[str, Any] = {
+    "consent": True,
+    "consent_note": "Recorded for the fictional demo profile. A real user confirms this themselves in Lifeline setup.",
+    "contacts": [
+        {"id": "jordan", "name": "Jordan", "role": "caregiver", "channel": "demo", "address": "", "priority": 1},
+        {"id": "morgan", "name": "Morgan", "role": "neighbour", "channel": "demo", "address": "", "priority": 2},
+        {
+            "id": "monitoring",
+            "name": "Demo Monitoring Center",
+            "role": "monitoring_service",
+            "channel": "demo",
+            "address": "",
+            "priority": 3,
+        },
+    ],
+    "cancel_window_s": 8,
+    "ack_timeout_s": 45,
+    "watchdog_timeout_s": 30,
+    "checkin_interval_min": 0,
+    "checkin_response_s": 90,
+    "alert_on_signal_unavailable": False,
+    "signal_grace_s": 180,
+    "responder": {
+        "person_name": "Riley",
+        "address": "Demo address: 100 Example Street, Apt 2 (fictional). Key safe by the door, code with Jordan.",
+        "communication": "Can't speak. Answers yes/no with eye movements: look up for yes, close eyes for no.",
+        "breathing": "Uses a home ventilator (BiPAP) at night and when tired. Check the mask and tubing first.",
+        "medical": "ALS (fictional demo profile).",
+        "allergies": "Penicillin (demo).",
+        "medications": "Riluzole (demo).",
+        "advance_directive": "Copy on the fridge (demo).",
+        "notes": "Please talk to Riley directly. They can hear and understand everything.",
+    },
+}
+
 CONTACTS = [
     ("c_jordan", "Jordan (caregiver)", "caregiver", "demo text message"),
     ("c_clinic", "Demo Neurology Clinic front desk", "clinic", "demo patient portal"),
@@ -120,6 +157,9 @@ def seed_demo_data(db: Database, today: date | None = None) -> dict[str, Any]:
             "svc_contacts",
             "svc_messages",
             "svc_message_sends",
+            "lifeline_events",
+            "lifeline_notifications",
+            "lifeline_alerts",
             "profile",
         ):
             db.execute(f"DELETE FROM {table}")  # noqa: S608 - fixed table names
@@ -195,6 +235,8 @@ def seed_demo_data(db: Database, today: date | None = None) -> dict[str, Any]:
                 )
 
         db.set_state("faults", {})
+        db.set_state("lifeline_settings", {**DEMO_LIFELINE, "consented_at": utcnow()})
+        db.set_state("lifeline_monitor", {})
         db.set_state("seeded_at", utcnow())
     return {"today": today.isoformat(), "deadline": deadline.isoformat()}
 
@@ -202,3 +244,6 @@ def seed_demo_data(db: Database, today: date | None = None) -> dict[str, Any]:
 def ensure_seeded(db: Database) -> None:
     if db.query_one("SELECT id FROM profile WHERE id = 1") is None:
         seed_demo_data(db)
+    elif db.get_state("lifeline_settings") is None:
+        # A database created before Lifeline existed: add the demo Lifeline settings only.
+        db.set_state("lifeline_settings", {**DEMO_LIFELINE, "consented_at": utcnow()})

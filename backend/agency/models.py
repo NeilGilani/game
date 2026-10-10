@@ -342,3 +342,4 @@ class FaultConfig(BaseModel):
     repair_slot_taken: bool = False
     repair_timeout_after_commit: bool = False
     messaging_unavailable: bool = False
+    lifeline_primary_unreachable: bool = False
