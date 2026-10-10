@@ -10,7 +10,7 @@ from zoneinfo import ZoneInfo
 from fastapi.testclient import TestClient
 
 from agency.db import Database
-from agency.memory import FakeClock, MemoryService, memory_router
+from agency.memory import FakeClock, MemoryService
 from agency.memory.models import MemorySettings, SelectionEventIn
 from conftest import make_client
 
@@ -22,7 +22,6 @@ FRIDAY_EVENING = datetime(2026, 10, 9, 19, 0, tzinfo=TZ)
 def memory_client(tmp_path: Path, clock: FakeClock, **state: Any) -> TestClient:
     client = make_client(tmp_path)
     app = client.app
-    app.include_router(memory_router())  # type: ignore[attr-defined]
     app.state.memory_clock = clock  # type: ignore[attr-defined]
     for key, value in state.items():
         setattr(app.state, key, value)  # type: ignore[attr-defined]

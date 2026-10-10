@@ -31,6 +31,7 @@ from .lifeline.api import build_routers as lifeline_routers
 from .lifeline.channels import ChannelRouter, TwilioChannel
 from .lifeline.home import HomeAssistantHome
 from .lifeline.service import LifelineError, LifelineService
+from .memory import memory_router
 from .models import (
     ACTIVE_CASE_STATUSES,
     AnswerRequest,
@@ -175,7 +176,7 @@ def create_app(
     app.add_middleware(
         CORSMiddleware,
         allow_origins=settings.allowed_origins,
-        allow_methods=["GET", "POST", "PUT"],
+        allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE"],
         allow_headers=["Content-Type", "X-Agency-Token"],
     )
 
@@ -634,6 +635,7 @@ def create_app(
     lifeline_api, respond_pages = lifeline_routers(demo_controls=settings.demo_controls)
     app.include_router(lifeline_api)
     app.include_router(respond_pages)
+    app.include_router(memory_router())
 
     if settings.frontend_dist and (settings.frontend_dist / "index.html").is_file():
         app.mount("/", StaticFiles(directory=settings.frontend_dist, html=True), name="frontend")

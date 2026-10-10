@@ -7,7 +7,6 @@
 from __future__ import annotations
 
 from ..main import create_app
-from .api import memory_router
 
+# main.py mounts the memory router now; kept so existing commands keep working.
 app = create_app()
-app.include_router(memory_router())
