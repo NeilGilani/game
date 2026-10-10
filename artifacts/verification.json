@@ -1,0 +1,31 @@
+{
+  "artifact_audit": "passed",
+  "proof_cases": 5,
+  "device": "mps:0",
+  "matrices_per_case": 56,
+  "samples_verified": true,
+  "vault_revision": "989aa7980e4cf806f80c7fef2b1adb7bc71aa306",
+  "median_fusion_ms": 661.5848339861259,
+  "privacy_difference_verified": true,
+  "browser": {
+    "status": "passed",
+    "javascript_errors": [],
+    "observed_phases": [
+      "Classifying prompt\u0394W = scale \u00d7 (B @ A) \u00b7 no disk merge",
+      "Running standard model\u0394W = scale \u00d7 (B @ A) \u00b7 no disk merge",
+      "Fusing matrices\u0394W = scale \u00d7 (B @ A) \u00b7 no disk merge",
+      "Generating with fused weights658.2 ms fusion \u00b7 mps:0 \u00b7 294.0 MB snapshots",
+      "Comparison complete658.2 ms fusion \u00b7 mps:0 \u00b7 294.0 MB snapshots"
+    ],
+    "real_generation": true,
+    "matrix_rows": 56,
+    "device": "mps:0",
+    "mobile_overflow": false
+  },
+  "quality_scope": "Selected privacy improvement; broader superiority is not established",
+  "evidence_sha256": {
+    "artifacts/comparison.json": "ddb88b509ec17293e10d603bcbb50791762dc1779183af26c7d3bf5924f3d9fd",
+    "artifacts/review.json": "87de05b9d177ddc7324209f8cd2a457eedaaa4fd3eb6660073ddbf7055951d37",
+    "artifacts/browser-check.json": "f5e00f352fc4cd95b5602e56b647d6367b96acc3df7bb7a00190cb1467e24691"
+  }
+}

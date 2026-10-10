@@ -1,0 +1,1 @@
+export const defaultPrompt = 'Design a JSON audit event for a hospital API that reads patient records. Include access purpose, actor, timestamp, and resource reference. Explain how to avoid logging sensitive patient data and why an audit log alone does not establish HIPAA compliance.';

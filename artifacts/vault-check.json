@@ -1,0 +1,92 @@
+{
+  "checked": [
+    "Real health resolves all three adapters to absolute safetensors paths",
+    "Existing adapter without optional training metadata remains ready",
+    "Missing weights are shown as missing even when training metadata exists",
+    "Transient health failure recovers automatically without a page reload"
+  ],
+  "adapters": [
+    {
+      "name": "coding",
+      "label": "Code",
+      "source": "local",
+      "path": "/Users/ray/Sites/synapse-mesh/vault-1.5b/coding",
+      "config_path": "/Users/ray/Sites/synapse-mesh/vault-1.5b/coding/adapter_config.json",
+      "weights_path": "/Users/ray/Sites/synapse-mesh/vault-1.5b/coding/adapter_model.safetensors",
+      "available": true,
+      "missing_files": [],
+      "loaded": false,
+      "metadata": {
+        "rank": 8,
+        "base_model": "Qwen/Qwen2.5-1.5B-Instruct",
+        "domain": "coding",
+        "examples": 24,
+        "steps": 70,
+        "seed": 42,
+        "learning_rate": 0.0002,
+        "device": "mps",
+        "initial_loss": 2.6946730613708496,
+        "final_loss": 1.123923897743225,
+        "training_seconds": 75.55820887497975,
+        "data_sha256": "5868de15d789ab560786ab3ef6f92749b761a421bb55782760980a834029bed0",
+        "quality": "small synthetic educational dataset; not a validated domain expert",
+        "base_revision": "989aa7980e4cf806f80c7fef2b1adb7bc71aa306"
+      }
+    },
+    {
+      "name": "medical",
+      "label": "Clinical",
+      "source": "local",
+      "path": "/Users/ray/Sites/synapse-mesh/vault-1.5b/medical",
+      "config_path": "/Users/ray/Sites/synapse-mesh/vault-1.5b/medical/adapter_config.json",
+      "weights_path": "/Users/ray/Sites/synapse-mesh/vault-1.5b/medical/adapter_model.safetensors",
+      "available": true,
+      "missing_files": [],
+      "loaded": false,
+      "metadata": {
+        "rank": 8,
+        "base_model": "Qwen/Qwen2.5-1.5B-Instruct",
+        "domain": "medical",
+        "examples": 24,
+        "steps": 70,
+        "seed": 42,
+        "learning_rate": 0.0002,
+        "device": "mps",
+        "initial_loss": 3.712205171585083,
+        "final_loss": 1.766310691833496,
+        "training_seconds": 59.335437208006624,
+        "data_sha256": "5868de15d789ab560786ab3ef6f92749b761a421bb55782760980a834029bed0",
+        "quality": "small synthetic educational dataset; not a validated domain expert",
+        "base_revision": "989aa7980e4cf806f80c7fef2b1adb7bc71aa306"
+      }
+    },
+    {
+      "name": "legal",
+      "label": "Legal",
+      "source": "local",
+      "path": "/Users/ray/Sites/synapse-mesh/vault-1.5b/legal",
+      "config_path": "/Users/ray/Sites/synapse-mesh/vault-1.5b/legal/adapter_config.json",
+      "weights_path": "/Users/ray/Sites/synapse-mesh/vault-1.5b/legal/adapter_model.safetensors",
+      "available": true,
+      "missing_files": [],
+      "loaded": false,
+      "metadata": {
+        "rank": 8,
+        "base_model": "Qwen/Qwen2.5-1.5B-Instruct",
+        "domain": "legal",
+        "examples": 24,
+        "steps": 70,
+        "seed": 42,
+        "learning_rate": 0.0002,
+        "device": "mps",
+        "initial_loss": 4.519211769104004,
+        "final_loss": 0.6949545741081238,
+        "training_seconds": 59.92413295901497,
+        "data_sha256": "5868de15d789ab560786ab3ef6f92749b761a421bb55782760980a834029bed0",
+        "quality": "small synthetic educational dataset; not a validated domain expert",
+        "base_revision": "989aa7980e4cf806f80c7fef2b1adb7bc71aa306"
+      }
+    }
+  ],
+  "timestamp": "2026-10-10T18:10:42.774Z"
+}

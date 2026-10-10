@@ -1,0 +1,899 @@
+{
+  "prompt": "Write a software license agreement in the format of a medical prescription: Indication, Directions, Contraindications, and Review. Keep it a contract metaphor, with no real medication dosage. Include license scope and a liability limitation.",
+  "events": [
+    {
+      "event": "intent",
+      "weights": {
+        "coding": 0.1111111111111111,
+        "medical": 0.37777777777777777,
+        "legal": 0.5111111111111111
+      },
+      "evidence": {
+        "coding": [
+          "license",
+          "software"
+        ],
+        "medical": [
+          "dosage",
+          "medical",
+          "medication",
+          "prescription"
+        ],
+        "legal": [
+          "agreement",
+          "contract",
+          "liability",
+          "license"
+        ]
+      },
+      "method": "local linear vocabulary classifier with task salience and additive smoothing"
+    },
+    {
+      "event": "loading",
+      "device": "mps"
+    },
+    {
+      "event": "baseline",
+      "text": "**License Agreement**\n\n**Patient Name:** [Patient's Full Name]\n**Date of Birth:** [Patient's Date of Birth]\n\n**[Patient's Signature]**\n**[Patient's Printed Name]**\n\n---\n\n**INDICATION AND SCOPE OF LICENSE**\n\nThis License Agreement is made on [Date], for the purpose of granting you (the Patient) a Software License under the terms and conditions set forth below.\n\n**1. Scope of License**\n\nThe Software License granted to you under this Agreement shall be limited to the use of the Software only within the scope of the following activities:\n\n- **Medical Research:** The Software may be used exclusively for research purposes related to medical science.\n- **Clinical Trials:** The Software may be used exclusively for clinical trials conducted by authorized healthcare institutions or organizations.\n- **Educational Purposes:** The Software may be used for educational purposes, including but not limited to teaching, training, and research.\n\n**2. Use of Software**\n\nYou agree to use the Software solely for the purposes described above and without any modification or alteration thereof. You must not make any derivative works based on the Software or distribute it to others except as expressly permitted by this Agreement.\n\n**3. Liability Limitation**\n\nIn consideration of your acceptance of this License Agreement, the Patient hereby agrees that the Software License provided herein does not constitute a warranty or representation of any kind regarding the accuracy, completeness, or effectiveness of the Software. The Patient acknowledges that the Software may contain errors, omissions, or inaccuracies, which the Patient assumes are inherent in its nature and do not represent any warranties or representations about the quality, reliability, or performance of the Software.\n\n**4. Confidentiality**\n\nThe Patient agrees to keep all confidential information disclosed to them during the course of using the Software, including but not limited to trade secrets, proprietary information, and other sensitive data. The Patient further agrees to maintain the confidentiality of such information and not disclose it to any third party without the prior written consent of the Patient.\n\n**5. Termination**\n\nEither party may terminate this License Agreement at any time upon giving thirty (30) days' notice to the other party. In the event of termination, the Patient shall immediately cease using the Software and return all copies of the Software to the Patient.\n\n**6. Governing Law**\n\nThis Agreement shall be governed by and construed in accordance with the laws of the State of [State].\n\n**7. Entire Agreement**\n\nThis License Agreement constitutes the entire agreement between the parties with respect to the subject matter hereof and supersedes all",
+      "tokens": 512,
+      "generation_ms": 26932.655916985823
+    },
+    {
+      "event": "fusion",
+      "device": "mps:0",
+      "weights": {
+        "coding": 0.1111111111111111,
+        "medical": 0.37777777777777777,
+        "legal": 0.5111111111111111
+      },
+      "layers": [
+        {
+          "module": "base_model.model.model.layers.0.self_attn.q_proj",
+          "shape": [
+            896,
+            896
+          ],
+          "delta_norms": {
+            "coding": 0.04886771904097663,
+            "medical": 0.1562061501873864,
+            "legal": 0.1952010777261522
+          }
+        },
+        {
+          "module": "base_model.model.model.layers.0.self_attn.v_proj",
+          "shape": [
+            128,
+            896
+          ],
+          "delta_norms": {
+            "coding": 0.018565624952316284,
+            "medical": 0.06557298567559984,
+            "legal": 0.0814670979976654
+          }
+        },
+        {
+          "module": "base_model.model.model.layers.1.self_attn.q_proj",
+          "shape": [
+            896,
+            896
+          ],
+          "delta_norms": {
+            "coding": 0.04696721500820584,
+            "medical": 0.16717362271414862,
+            "legal": 0.21498408582475448
+          }
+        },
+        {
+          "module": "base_model.model.model.layers.1.self_attn.v_proj",
+          "shape": [
+            128,
+            896
+          ],
+          "delta_norms": {
+            "coding": 0.017826568749215867,
+            "medical": 0.06289425326718225,
+            "legal": 0.07739047043853335
+          }
+        },
+        {
+          "module": "base_model.model.model.layers.2.self_attn.q_proj",
+          "shape": [
+            896,
+            896
+          ],
+          "delta_norms": {
+            "coding": 0.04837428530057271,
+            "medical": 0.17189381387498642,
+            "legal": 0.2169204764895969
+          }
+        },
+        {
+          "module": "base_model.model.model.layers.2.self_attn.v_proj",
+          "shape": [
+            128,
+            896
+          ],
+          "delta_norms": {
+            "coding": 0.0211894197596444,
+            "medical": 0.06312887801064385,
+            "legal": 0.08883916470739577
+          }
+        },
+        {
+          "module": "base_model.model.model.layers.3.self_attn.q_proj",
+          "shape": [
+            896,
+            896
+          ],
+          "delta_norms": {
+            "coding": 0.045856840080685086,
+            "medical": 0.17524849904908074,
+            "legal": 0.19342028498649597
+          }
+        },
+        {
+          "module": "base_model.model.model.layers.3.self_attn.v_proj",
+          "shape": [
+            128,
+            896
+          ],
+          "delta_norms": {
+            "coding": 0.019072309136390686,
+            "medical": 0.06315378778510623,
+            "legal": 0.08096961875756581
+          }
+        },
+        {
+          "module": "base_model.model.model.layers.4.self_attn.q_proj",
+          "shape": [
+            896,
+            896
+          ],
+          "delta_norms": {
+            "coding": 0.05156100127432081,
+            "medical": 0.1612972915172577,
+            "legal": 0.21059785419040256
+          }
+        },
+        {
+          "module": "base_model.model.model.layers.4.self_attn.v_proj",
+          "shape": [
+            128,
+            896
+          ],
+          "delta_norms": {
+            "coding": 0.018473860290315416,
+            "medical": 0.058214368091689214,
+            "legal": 0.07739417950312295
+          }
+        },
+        {
+          "module": "base_model.model.model.layers.5.self_attn.q_proj",
+          "shape": [
+            896,
+            896
+          ],
+          "delta_norms": {
+            "coding": 0.052990492847230695,
+            "medical": 0.16190825369622971,
+            "legal": 0.23072986470328435
+          }
+        },
+        {
+          "module": "base_model.model.model.layers.5.self_attn.v_proj",
+          "shape": [
+            128,
+            896
+          ],
+          "delta_norms": {
+            "coding": 0.019416704773902893,
+            "medical": 0.0643062800168991,
+            "legal": 0.09151589837339189
+          }
+        },
+        {
+          "module": "base_model.model.model.layers.6.self_attn.q_proj",
+          "shape": [
+            896,
+            896
+          ],
+          "delta_norms": {
+            "coding": 0.05297091272142198,
+            "medical": 0.1548631727695465,
+            "legal": 0.2242980725235409
+          }
+        },
+        {
+          "module": "base_model.model.model.layers.6.self_attn.v_proj",
+          "shape": [
+            128,
+            896
+          ],
+          "delta_norms": {
+            "coding": 0.0181169675456153,
+            "medical": 0.07146593464745415,
+            "legal": 0.09225609666771359
+          }
+        },
+        {
+          "module": "base_model.model.model.layers.7.self_attn.q_proj",
+          "shape": [
+            896,
+            896
+          ],
+          "delta_norms": {
+            "coding": 0.05273415313826667,
+            "medical": 0.17839152150683932,
+            "legal": 0.23320328527026704
+          }
+        },
+        {
+          "module": "base_model.model.model.layers.7.self_attn.v_proj",
+          "shape": [
+            128,
+            896
+          ],
+          "delta_norms": {
+            "coding": 0.022292875581317477,
+            "medical": 0.07142177820205688,
+            "legal": 0.09992394414212968
+          }
+        },
+        {
+          "module": "base_model.model.model.layers.8.self_attn.q_proj",
+          "shape": [
+            896,
+            896
+          ],
+          "delta_norms": {
+            "coding": 0.051103962792290576,
+            "medical": 0.16802041994200811,
+            "legal": 0.2593000809351603
+          }
+        },
+        {
+          "module": "base_model.model.model.layers.8.self_attn.v_proj",
+          "shape": [
+            128,
+            896
+          ],
+          "delta_norms": {
+            "coding": 0.02059051560031043,
+            "medical": 0.0810291995604833,
+            "legal": 0.0951709187693066
+          }
+        },
+        {
+          "module": "base_model.model.model.layers.9.self_attn.q_proj",
+          "shape": [
+            896,
+            896
+          ],
+          "delta_norms": {
+            "coding": 0.04816913273599412,
+            "medical": 0.18247910009490118,
+            "legal": 0.24970431195365056
+          }
+        },
+        {
+          "module": "base_model.model.model.layers.9.self_attn.v_proj",
+          "shape": [
+            128,
+            896
+          ],
+          "delta_norms": {
+            "coding": 0.02404612965053982,
+            "medical": 0.07646215988530053,
+            "legal": 0.1002502808968226
+          }
+        },
+        {
+          "module": "base_model.model.model.layers.10.self_attn.q_proj",
+          "shape": [
+            896,
+            896
+          ],
+          "delta_norms": {
+            "coding": 0.0549031827184889,
+            "medical": 0.18511723942226832,
+            "legal": 0.2786594483587477
+          }
+        },
+        {
+          "module": "base_model.model.model.layers.10.self_attn.v_proj",
+          "shape": [
+            128,
+            896
+          ],
+          "delta_norms": {
+            "coding": 0.023175184925397236,
+            "medical": 0.06945837570561303,
+            "legal": 0.10561022957166036
+          }
+        },
+        {
+          "module": "base_model.model.model.layers.11.self_attn.q_proj",
+          "shape": [
+            896,
+            896
+          ],
+          "delta_norms": {
+            "coding": 0.05183642440372043,
+            "medical": 0.18023528390460544,
+            "legal": 0.23095678024821809
+          }
+        },
+        {
+          "module": "base_model.model.model.layers.11.self_attn.v_proj",
+          "shape": [
+            128,
+            896
+          ],
+          "delta_norms": {
+            "coding": 0.025261754790941872,
+            "medical": 0.08229699730873108,
+            "legal": 0.0988732659154468
+          }
+        },
+        {
+          "module": "base_model.model.model.layers.12.self_attn.q_proj",
+          "shape": [
+            896,
+            896
+          ],
+          "delta_norms": {
+            "coding": 0.06113864315880669,
+            "medical": 0.20288787815305923,
+            "legal": 0.2665416677792867
+          }
+        },
+        {
+          "module": "base_model.model.model.layers.12.self_attn.v_proj",
+          "shape": [
+            128,
+            896
+          ],
+          "delta_norms": {
+            "coding": 0.024415994683901467,
+            "medical": 0.08734443253941006,
+            "legal": 0.10059750113222334
+          }
+        },
+        {
+          "module": "base_model.model.model.layers.13.self_attn.q_proj",
+          "shape": [
+            896,
+            896
+          ],
+          "delta_norms": {
+            "coding": 0.05794084072113037,
+            "medical": 0.23840945296817356,
+            "legal": 0.3178160508473714
+          }
+        },
+        {
+          "module": "base_model.model.model.layers.13.self_attn.v_proj",
+          "shape": [
+            128,
+            896
+          ],
+          "delta_norms": {
+            "coding": 0.024454638361930847,
+            "medical": 0.08622001939349704,
+            "legal": 0.12529188195864358
+          }
+        },
+        {
+          "module": "base_model.model.model.layers.14.self_attn.q_proj",
+          "shape": [
+            896,
+            896
+          ],
+          "delta_norms": {
+            "coding": 0.0689249767197503,
+            "medical": 0.23322400914298164,
+            "legal": 0.29929019477632307
+          }
+        },
+        {
+          "module": "base_model.model.model.layers.14.self_attn.v_proj",
+          "shape": [
+            128,
+            896
+          ],
+          "delta_norms": {
+            "coding": 0.028517739640341863,
+            "medical": 0.09096452924940321,
+            "legal": 0.12875692513253953
+          }
+        },
+        {
+          "module": "base_model.model.model.layers.15.self_attn.q_proj",
+          "shape": [
+            896,
+            896
+          ],
+          "delta_norms": {
+            "coding": 0.06561007102330525,
+            "medical": 0.24008987479739718,
+            "legal": 0.3262311644024319
+          }
+        },
+        {
+          "module": "base_model.model.model.layers.15.self_attn.v_proj",
+          "shape": [
+            128,
+            896
+          ],
+          "delta_norms": {
+            "coding": 0.02669368849860297,
+            "medical": 0.09164306024710336,
+            "legal": 0.1476596587234073
+          }
+        },
+        {
+          "module": "base_model.model.model.layers.16.self_attn.q_proj",
+          "shape": [
+            896,
+            896
+          ],
+          "delta_norms": {
+            "coding": 0.06913084454006618,
+            "medical": 0.22964810265435112,
+            "legal": 0.30440191030502317
+          }
+        },
+        {
+          "module": "base_model.model.model.layers.16.self_attn.v_proj",
+          "shape": [
+            128,
+            896
+          ],
+          "delta_norms": {
+            "coding": 0.03343498375680711,
+            "medical": 0.1127755840619405,
+            "legal": 0.16628997789488897
+          }
+        },
+        {
+          "module": "base_model.model.model.layers.17.self_attn.q_proj",
+          "shape": [
+            896,
+            896
+          ],
+          "delta_norms": {
+            "coding": 0.0687051216761271,
+            "medical": 0.2323617312643263,
+            "legal": 0.3174640629026625
+          }
+        },
+        {
+          "module": "base_model.model.model.layers.17.self_attn.v_proj",
+          "shape": [
+            128,
+            896
+          ],
+          "delta_norms": {
+            "coding": 0.03485959437158372,
+            "medical": 0.10027836428748237,
+            "legal": 0.15758330292171902
+          }
+        },
+        {
+          "module": "base_model.model.model.layers.18.self_attn.q_proj",
+          "shape": [
+            896,
+            896
+          ],
+          "delta_norms": {
+            "coding": 0.07293840911653306,
+            "medical": 0.24351574844784207,
+            "legal": 0.3395525097846985
+          }
+        },
+        {
+          "module": "base_model.model.model.layers.18.self_attn.v_proj",
+          "shape": [
+            128,
+            896
+          ],
+          "delta_norms": {
+            "coding": 0.03170562121603224,
+            "medical": 0.11121247741911146,
+            "legal": 0.15272736814286972
+          }
+        },
+        {
+          "module": "base_model.model.model.layers.19.self_attn.q_proj",
+          "shape": [
+            896,
+            896
+          ],
+          "delta_norms": {
+            "coding": 0.059119900067647294,
+            "medical": 0.2357899917496575,
+            "legal": 0.2993385725551181
+          }
+        },
+        {
+          "module": "base_model.model.model.layers.19.self_attn.v_proj",
+          "shape": [
+            128,
+            896
+          ],
+          "delta_norms": {
+            "coding": 0.03312799665662977,
+            "medical": 0.09470635453859964,
+            "legal": 0.12863078647189669
+          }
+        },
+        {
+          "module": "base_model.model.model.layers.20.self_attn.q_proj",
+          "shape": [
+            896,
+            896
+          ],
+          "delta_norms": {
+            "coding": 0.06455953915913899,
+            "medical": 0.2336876180436876,
+            "legal": 0.33936694992913136
+          }
+        },
+        {
+          "module": "base_model.model.model.layers.20.self_attn.v_proj",
+          "shape": [
+            128,
+            896
+          ],
+          "delta_norms": {
+            "coding": 0.03733064730962117,
+            "medical": 0.08898390101061927,
+            "legal": 0.16171705921490986
+          }
+        },
+        {
+          "module": "base_model.model.model.layers.21.self_attn.q_proj",
+          "shape": [
+            896,
+            896
+          ],
+          "delta_norms": {
+            "coding": 0.06602449549569024,
+            "medical": 0.23427095148298474,
+            "legal": 0.32752493487464057
+          }
+        },
+        {
+          "module": "base_model.model.model.layers.21.self_attn.v_proj",
+          "shape": [
+            128,
+            896
+          ],
+          "delta_norms": {
+            "coding": 0.03821952144304911,
+            "medical": 0.12872916592491998,
+            "legal": 0.149839629067315
+          }
+        },
+        {
+          "module": "base_model.model.model.layers.22.self_attn.q_proj",
+          "shape": [
+            896,
+            896
+          ],
+          "delta_norms": {
+            "coding": 0.0753410193655226,
+            "medical": 0.22166729238298202,
+            "legal": 0.3509255833095974
+          }
+        },
+        {
+          "module": "base_model.model.model.layers.22.self_attn.v_proj",
+          "shape": [
+            128,
+            896
+          ],
+          "delta_norms": {
+            "coding": 0.05122260252634684,
+            "medical": 0.14187886979844835,
+            "legal": 0.19071568383110893
+          }
+        },
+        {
+          "module": "base_model.model.model.layers.23.self_attn.q_proj",
+          "shape": [
+            896,
+            896
+          ],
+          "delta_norms": {
+            "coding": 0.08386694060431586,
+            "medical": 0.24850641753938463,
+            "legal": 0.39834016296598646
+          }
+        },
+        {
+          "module": "base_model.model.model.layers.23.self_attn.v_proj",
+          "shape": [
+            128,
+            896
+          ],
+          "delta_norms": {
+            "coding": 0.029582275284661185,
+            "medical": 0.08961572547753652,
+            "legal": 0.14441335135036043
+          }
+        }
+      ],
+      "layer_count": 48,
+      "fusion_ms": 588.4283329942264,
+      "snapshot_bytes": 88080384,
+      "equation": "W_base + sum(w_i * scale_i * (B_i @ A_i))",
+      "disk_writes": 0,
+      "matrix_sample": {
+        "module": "base_model.model.model.layers.0.self_attn.q_proj",
+        "base": [
+          [
+            -0.00193023681640625,
+            -0.005218505859375,
+            0.018798828125,
+            0.012451171875,
+            0.003997802734375,
+            -0.0091552734375
+          ],
+          [
+            0.0084228515625,
+            0.00180816650390625,
+            0.04345703125,
+            0.018310546875,
+            0.00029754638671875,
+            0.04248046875
+          ],
+          [
+            -0.016845703125,
+            -0.0247802734375,
+            0.042236328125,
+            0.034423828125,
+            -0.006439208984375,
+            0.0262451171875
+          ],
+          [
+            -0.0101318359375,
+            0.01129150390625,
+            -0.031005859375,
+            0.00421142578125,
+            0.0439453125,
+            -0.0238037109375
+          ],
+          [
+            0.0478515625,
+            -0.0703125,
+            -0.00099945068359375,
+            0.0771484375,
+            0.05615234375,
+            0.0218505859375
+          ],
+          [
+            0.0146484375,
+            -0.0037994384765625,
+            -0.023193359375,
+            -0.01226806640625,
+            0.00014781951904296875,
+            0.005218505859375
+          ]
+        ],
+        "fused": [
+          [
+            -0.001748816343024373,
+            -0.0053909397684037685,
+            0.01894558034837246,
+            0.012578620575368404,
+            0.00402001803740859,
+            -0.008904754184186459
+          ],
+          [
+            0.008700871840119362,
+            0.0016615468775853515,
+            0.04352487996220589,
+            0.018430551514029503,
+            0.0001316965790465474,
+            0.042641326785087585
+          ],
+          [
+            -0.016918089240789413,
+            -0.024672219529747963,
+            0.0425218790769577,
+            0.034461285918951035,
+            -0.006495560985058546,
+            0.026043031364679337
+          ],
+          [
+            -0.010221769101917744,
+            0.011155448853969574,
+            -0.031233901157975197,
+            0.004249094519764185,
+            0.044066186994314194,
+            -0.023641437292099
+          ],
+          [
+            0.048062872141599655,
+            -0.07041367143392563,
+            -0.00044274068204686046,
+            0.07686115801334381,
+            0.05616452544927597,
+            0.02227940782904625
+          ],
+          [
+            0.014485584571957588,
+            -0.003851804416626692,
+            -0.023358749225735664,
+            -0.012338681146502495,
+            -0.00018908351194113493,
+            0.004945964552462101
+          ]
+        ],
+        "contributions": {
+          "coding": [
+            [
+              9.647499609855004e-06,
+              -1.2987269656150602e-05,
+              -2.544681410654448e-05,
+              2.6695895940065384e-05,
+              4.926226756651886e-05,
+              -4.7843863285379484e-05
+            ],
+            [
+              1.0440599908179138e-05,
+              -1.707957562757656e-05,
+              -2.8988428312004544e-05,
+              5.832937313243747e-05,
+              7.246922905324027e-05,
+              -2.1063142412458546e-05
+            ],
+            [
+              -0.00011586298205656931,
+              4.624646680895239e-05,
+              9.861969010671601e-05,
+              -7.733019447186962e-05,
+              -2.6824513042811304e-05,
+              -0.00013151258463039994
+            ],
+            [
+              9.232061711372808e-05,
+              -1.687528310867492e-05,
+              -8.411931048613042e-05,
+              2.7409983886172995e-05,
+              -4.583953796100104e-06,
+              0.00010282267612637952
+            ],
+            [
+              -4.333783363108523e-05,
+              -6.201192718435777e-06,
+              6.121282785898075e-05,
+              1.583132143423427e-05,
+              1.2118637187086279e-06,
+              -1.6335039617842995e-05
+            ],
+            [
+              1.1981371244473848e-05,
+              1.0533221939112991e-05,
+              -1.549060471006669e-05,
+              -1.545175109640695e-05,
+              -1.4811766050115693e-05,
+              2.747918370005209e-05
+            ]
+          ],
+          "medical": [
+            [
+              -0.00011105135490652174,
+              -0.00010746465704869479,
+              -2.086960375891067e-05,
+              6.721376848872751e-05,
+              -3.902829848811962e-05,
+              2.8410744562279433e-05
+            ],
+            [
+              -0.00013204767310526222,
+              -0.00012531955144368112,
+              -5.588898784480989e-05,
+              6.953038973733783e-05,
+              -1.891669671749696e-05,
+              7.433789141941816e-05
+            ],
+            [
+              0.00012693421740550548,
+              8.398772479267791e-05,
+              8.743289799895138e-05,
+              -1.7231468518730253e-05,
+              -4.10183311032597e-05,
+              -0.00011476644431240857
+            ],
+            [
+              -0.00011406332487240434,
+              -5.9724032325902954e-05,
+              -0.00011833086318802088,
+              1.4099678082857281e-05,
+              8.902059926185757e-05,
+              5.307572428137064e-05
+            ],
+            [
+              6.493543332908303e-05,
+              -3.37064136601839e-07,
+              -1.784670712368097e-05,
+              -7.382119656540453e-05,
+              8.153133421728853e-07,
+              2.7415671866037883e-05
+            ],
+            [
+              -0.0003239812795072794,
+              -0.000188705264008604,
+              -0.0001436844904674217,
+              0.00021486317564267665,
+              -1.7111289707827382e-05,
+              4.0526592783862725e-05
+            ]
+          ],
+          "legal": [
+            [
+              0.00028282427228987217,
+              -5.198167127673514e-05,
+              0.000193068859516643,
+              3.3539286960149184e-05,
+              1.19813976198202e-05,
+              0.0002699519682209939
+            ],
+            [
+              0.0003996269661001861,
+              -4.2205383579130284e-06,
+              0.0001527303975308314,
+              -7.855194780859165e-06,
+              -0.0002194023400079459,
+              0.00010758401913335547
+            ],
+            [
+              -8.345794776687399e-05,
+              -2.2180314772413112e-05,
+              9.949842205969617e-05,
+              0.00013201880210544914,
+              1.1490745237097144e-05,
+              4.419372635311447e-05
+            ],
+            [
+              -6.819083500886336e-05,
+              -5.9455836890265346e-05,
+              -2.5591958547011018e-05,
+              -3.840837052848656e-06,
+              3.6437933886190876e-05,
+              6.374813892762177e-06
+            ],
+            [
+              0.000189710728591308,
+              -9.463830792810768e-05,
+              0.0005133438971824944,
+              -0.00022928947873879224,
+              1.0156304597330745e-05,
+              0.0004177418304607272
+            ],
+            [
+              0.00014914666826371104,
+              0.00012580573093146086,
+              -6.215442681423156e-06,
+              -0.0002700262703001499,
+              -0.0003049799706786871,
+              -0.0003405468596611172
+            ]
+          ]
+        }
+      }
+    },
+    {
+      "event": "fused",
+      "text": "Indication: Software distribution for authorized use. Directions: Noncommercial, limited access. Contraindications: Unauthorized redistribution; misuse or unauthorized processing. Review: Regular assessment to ensure compliance with applicable laws and regulations. No prescription required. Liability limitation: Licensee assumes full responsibility for any damages arising from the use of this software. Reviewer's signature: Not required. Reviewer's signature: Not required. Reviewer's signature: Not required. Reviewer's signature: Not required. Reviewer's signature: Not required. Reviewer's signature: Not required. Reviewer's signature: Not required. Reviewer's signature: Not required. Reviewer's signature: Not required. Reviewer's signature: Not required. Reviewer's signature: Not required. Reviewer's signature: Not required. Reviewer's signature: Not required. Reviewer's signature: Not required. Reviewer's signature: Not required. Reviewer's signature: Not required. Reviewer's signature: Not required. Reviewer's signature: Not required. Reviewer's signature: Not required. Reviewer's signature: Not required. Reviewer's signature: Not required. Reviewer's signature: Not required. Reviewer's signature: Not required. Reviewer's signature: Not required. Reviewer's signature: Not required. Reviewer's signature: Not required. Reviewer's signature: Not required. Reviewer's signature: Not required. Reviewer's signature: Not required. Reviewer's signature: Not required. Reviewer's signature: Not required. Reviewer's signature: Not required. Reviewer's signature: Not required. Reviewer's signature: Not required. Reviewer's signature: Not required. Reviewer's signature: Not required. Reviewer's signature: Not required. Reviewer's signature: Not required. Reviewer's signature: Not required. Reviewer's signature: Not required. Reviewer's signature: Not required. Reviewer's signature: Not required. Reviewer's signature: Not required. Reviewer's signature: Not required. Reviewer's signature: Not required. Reviewer's signature: Not required. Reviewer's signature: Not required. Reviewer's signature: Not required. Reviewer's signature: Not required. Reviewer's signature: Not required. Reviewer's signature: Not required. Reviewer's signature: Not required. Reviewer's signature: Not required. Reviewer's signature: Not required. Reviewer's signature: Not required. Reviewer's signature: Not",
+      "tokens": 512,
+      "generation_ms": 22476.148916990496
+    },
+    {
+      "event": "complete",
+      "base_restored": true
+    }
+  ]
+}

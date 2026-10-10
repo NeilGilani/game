@@ -1,0 +1,31 @@
+{
+  "passed": true,
+  "prompt": "Draft a legally binding Software License Agreement for a new AI-driven surgical robot, but write it as a medical prescription that a surgeon would read, ensuring it maintains strict legal enforceability while using clinical terminology to describe the technical constraints of the hardware.",
+  "engine": "raw-tensor-fusion",
+  "precision": "float16",
+  "activeExperts": [
+    "coding",
+    "medical",
+    "legal",
+    "hub_7855779392a3"
+  ],
+  "chineseExcluded": true,
+  "dynamicPromptChanges": true,
+  "layers": 196,
+  "clientWallMs": 37362.5905,
+  "timing": {
+    "baseline_total_ms": 19008.065208006883,
+    "fused_total_ms": 16905.309791996842,
+    "intent_ms": 0.5184589826967567,
+    "fusion_ms": 4611.646875011502,
+    "fused_generation_ms": 12212.701582990121,
+    "restore_ms": 75.36279200576246,
+    "shared_setup_ms": 1402.588500001002,
+    "queue_wait_ms": 0.000667001586407423,
+    "comparison_wall_ms": 37316.68916600756,
+    "baseline_wait_ms": 19008.065208006883,
+    "timing_note": "Totals include per-arm preparation; fused includes intent, adapter reads/transfers, fusion, generation, and restore. Shared base loading and queue wait are shown separately. Baseline runs first."
+  },
+  "mobileOverflow": false,
+  "javascriptErrors": []
+}

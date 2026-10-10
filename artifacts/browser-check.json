@@ -1,0 +1,15 @@
+{
+  "status": "passed",
+  "javascript_errors": [],
+  "observed_phases": [
+    "Classifying promptΔW = scale × (B @ A) · no disk merge",
+    "Running standard modelΔW = scale × (B @ A) · no disk merge",
+    "Fusing matricesΔW = scale × (B @ A) · no disk merge",
+    "Generating with fused weights705.0 ms fusion · mps:0 · 294.0 MB snapshots",
+    "Comparison complete705.0 ms fusion · mps:0 · 294.0 MB snapshots"
+  ],
+  "real_generation": true,
+  "matrix_rows": 56,
+  "device": "mps:0",
+  "mobile_overflow": false
+}

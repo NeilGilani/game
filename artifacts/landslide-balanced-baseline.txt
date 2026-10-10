@@ -1,0 +1,36 @@
+**Prescription: Surgical Robot Software License Agreement**
+
+---
+
+**Patient:** The Medical Device (AI-Driven Surgical Robot)
+
+**Doctor:** Dr. John Doe
+
+**Date:** [Insert Date]
+
+**To Whom It May Concern:**
+
+I, Dr. John Doe, hereby prescribe you with the following terms and conditions regarding the use of the Medical Device known as the "Surgical Robot" ("Device"). This Prescription is intended to ensure compliance with all applicable laws and regulations governing the sale, distribution, and use of medical devices.
+
+### **1. Scope of Use**
+The Device shall be used exclusively in accordance with its approved indications and under the supervision of qualified healthcare professionals trained in the safe operation of such equipment. The Device may not be used for any purpose other than those explicitly authorized herein.
+
+### **2. Ownership and Intellectual Property Rights**
+Ownership of the Device remains with the manufacturer or supplier. Any intellectual property rights associated with the Device belong solely to them. The Patient acknowledges that they have no ownership interest in the Device and agrees not to claim any proprietary rights in connection with the Device.
+
+### **3. Warranty and Liability**
+The Manufacturer warrants that the Device will perform substantially as described in the User Manual provided with the Device. However, the Manufacturer does not warrant that the Device will meet specific performance requirements or that it will operate without error or malfunction. The Manufacturer shall not be liable for any direct, indirect, incidental, special, consequential, or punitive damages arising out of the use of the Device, even if advised of the possibility thereof.
+
+### **4. Maintenance and Support**
+Maintenance and support services for the Device are provided by the Manufacturer at their discretion. The Patient agrees to provide reasonable assistance to the Manufacturer in maintaining and supporting the Device during its term of use.
+
+### **5. Compliance with Laws and Regulations**
+The Patient agrees to comply with all applicable laws, regulations, and standards concerning the manufacture, labeling, packaging, storage, transportation, marketing, and use of the Device. Failure to do so may result in civil penalties, criminal sanctions, or both.
+
+### **6. Termination**
+This Prescription may be terminated by either party upon written notice if there has been a material breach of this Prescription by the other party. Upon termination, the Patient must immediately cease all use of the Device and return it to the Manufacturer for proper disposal.
+
+### **7. Governing Law**
+This Prescription shall be governed by and construed in accordance with the laws of the State of [State], without regard to conflicts of law principles.
+
+### **8

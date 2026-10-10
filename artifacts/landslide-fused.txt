@@ -1,0 +1,19 @@
+**Prescription: Surgical Robot License**
+
+**Patient:** The AI-Driven Surgical Robot
+
+**Doctor:** A qualified physician authorized to perform minimally invasive surgery
+
+**Instructions:** Use this device only in accordance with its approved training and within the scope of your professional competence.
+
+**Precautions:** Do not modify or disassemble the hardware without authorization. Avoid contact with water or other contaminants; if exposed, clean immediately with a sterile solution. Store securely away from children and unauthorized personnel.
+
+**Limitation of Liability:** The manufacturer is not liable for any damages arising from improper use or malfunction, except where liability may be limited under applicable law. This agreement does not create an agency relationship between you and the manufacturer.
+
+**Termination:** Either party may terminate this license upon written notice if the other fails to comply with these instructions or the terms of the contract. After termination, return the device promptly unless otherwise directed.
+
+**Acknowledgment:** Read this document carefully before proceeding. If you have questions about its meaning or application, consult a qualified attorney familiar with medical devices and software licensing.
+
+---
+
+This prescription aims to convey the necessary precautions and limitations in a clear, concise manner suitable for a healthcare provider's review. It adheres to legal standards for software agreements while emphasizing the unique risks associated with operating a specialized medical instrument.

@@ -1,0 +1,10 @@
+{
+  "passed": true,
+  "firstCount": 24,
+  "paginatedCount": 48,
+  "selectedExperts": 5,
+  "auditRows": 196,
+  "realGeneration": true,
+  "errors": [],
+  "mobileOverflow": false
+}

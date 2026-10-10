@@ -1,0 +1,22 @@
+PROMPT
+Draft a legally binding Software License Agreement for a new AI-driven surgical robot, but write it as a medical prescription that a surgeon would read, ensuring it maintains strict legal enforceability while using clinical terminology to describe the technical constraints of the hardware.
+
+STANDARD AI
+**Prescription: Surgical Robot Software License Agreement**
+
+---
+
+**Patient:** The Medical Device (AI-Driven Surgical Robot)
+
+**Doctor:** Dr. John Doe
+
+
+
+FUSED AI
+**Prescription for the AI-Driven Surgical Robot**
+
+**Patient:** The AI-Driven Surgical Robot
+
+**Prescriber:** The Medical Device Manufacturer
+
+**

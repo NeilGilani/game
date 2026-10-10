@@ -1,0 +1,9 @@
+{
+  "status": "passed",
+  "real_websocket_weights": true,
+  "reconnect": true,
+  "comparison": "historical fixture replay",
+  "mobile_overflow": false,
+  "reduced_motion": true,
+  "javascript_errors": []
+}

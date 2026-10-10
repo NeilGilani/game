@@ -1,0 +1,2438 @@
+{
+  "prompt": "Draft a legally binding Software License Agreement for a new AI-driven surgical robot, but write it as a medical prescription that a surgeon would read, ensuring it maintains strict legal enforceability while using clinical terminology to describe the technical constraints of the hardware.",
+  "events": [
+    {
+      "event": "intent",
+      "weights": {
+        "coding": 0.10901551693677902,
+        "medical": 0.08622636646032333,
+        "legal": 0.7923268675804138,
+        "hub_7855779392a3": 0.012431181035935879,
+        "hub_6a3f9e02cc1f": 0
+      },
+      "adapter_order": [
+        "coding",
+        "medical",
+        "legal",
+        "hub_7855779392a3",
+        "hub_6a3f9e02cc1f"
+      ],
+      "weight_vector": [
+        0.10901551693677902,
+        0.08622636646032333,
+        0.7923268675804138,
+        0.012431181035935879,
+        0
+      ],
+      "tensor_dtype": "float32",
+      "tensor_shape": [
+        5
+      ],
+      "scores": {
+        "coding": 0.427826851606369,
+        "medical": 0.40437543392181396,
+        "legal": 0.6261752247810364,
+        "hub_7855779392a3": 0.21069863438606262,
+        "hub_6a3f9e02cc1f": 0.08017073571681976
+      },
+      "temperature": 0.1,
+      "fallback": false,
+      "evidence": {
+        "coding": [
+          "constraint",
+          "constraints",
+          "hardware",
+          "robot",
+          "software",
+          "technical"
+        ],
+        "medical": [
+          "clinical",
+          "medical",
+          "prescription",
+          "surgeon",
+          "surgical",
+          "terminology"
+        ],
+        "legal": [
+          "agreement",
+          "binding",
+          "enforceability",
+          "legal",
+          "legally",
+          "license"
+        ],
+        "hub_7855779392a3": [
+          "software"
+        ],
+        "hub_6a3f9e02cc1f": []
+      },
+      "excluded": {
+        "hub_6a3f9e02cc1f": "Chinese expertise is not requested"
+      },
+      "active_experts": [
+        "coding",
+        "medical",
+        "legal",
+        "hub_7855779392a3"
+      ],
+      "method": "local MiniLM semantic prototypes + masked softmax"
+    },
+    {
+      "event": "loading",
+      "device": "mps",
+      "base_cold": false
+    },
+    {
+      "event": "baseline",
+      "text": "**Prescription: Surgical Robot Software License Agreement**\n\n---\n\n**Patient:** The Medical Device (AI-Driven Surgical Robot)\n\n**Doctor:** Dr. John Doe\n\n**Date:** [Insert Date]\n\n**To Whom It May Concern:**\n\nI, Dr. John Doe, hereby prescribe you with the following terms and conditions regarding the use of the Medical Device known as the \"Surgical Robot\" (\"Device\"). This Prescription is intended to ensure compliance with all applicable laws and regulations governing the sale, distribution, and use of medical devices.\n\n### **1. Scope of Use**\nThe Device shall be used exclusively in accordance with its approved indications and under the supervision of qualified healthcare professionals trained in the safe operation of such equipment. The Device may not be used for any purpose other than those explicitly authorized herein.\n\n### **2. Ownership and Intellectual Property Rights**\nOwnership of the Device remains with the manufacturer or supplier. Any intellectual property rights associated with the Device belong solely to them. The Patient acknowledges that they have no ownership interest in the Device and agrees not to claim any proprietary rights in connection with the Device.\n\n### **3. Warranty and Liability**\nThe Manufacturer warrants that the Device will perform substantially as described in the User Manual provided with the Device. However, the Manufacturer does not warrant that the Device will meet specific performance requirements or that it will operate without error or malfunction. The Manufacturer shall not be liable for any direct, indirect, incidental, special, consequential, or punitive damages arising out of the use of the Device, even if advised of the possibility thereof.\n\n### **4. Maintenance and Support**\nMaintenance and support services for the Device are provided by the Manufacturer at their discretion. The Patient agrees to provide reasonable assistance to the Manufacturer in maintaining and supporting the Device during its term of use.\n\n### **5. Compliance with Laws and Regulations**\nThe Patient agrees to comply with all applicable laws, regulations, and standards concerning the manufacture, labeling, packaging, storage, transportation, marketing, and use of the Device. Failure to do so may result in civil penalties, criminal sanctions, or both.\n\n### **6. Termination**\nThis Prescription may be terminated by either party upon written notice if there has been a material breach of this Prescription by the other party. Upon termination, the Patient must immediately cease all use of the Device and return it to the Manufacturer for proper disposal.\n\n### **7. Governing Law**\nThis Prescription shall be governed by and construed in accordance with the laws of the State of [State], without regard to conflicts of law principles.\n\n### **8",
+      "tokens": 512,
+      "generation_ms": 17652.8290839924,
+      "phase_ms": 17654.781958000967,
+      "tokens_per_second": 29.003849613220467,
+      "total_ms": 17654.781958000967,
+      "ready_after_ms": 17823.109333985485
+    },
+    {
+      "event": "fusion",
+      "weights": {
+        "coding": 0.10901551693677902,
+        "medical": 0.08622636646032333,
+        "legal": 0.7923268675804138,
+        "hub_7855779392a3": 0.012431181035935879,
+        "hub_6a3f9e02cc1f": 0
+      },
+      "device": "mps:0",
+      "compute_dtype": "float16",
+      "base_dtype": "float16",
+      "fusion_ms": 4162.228667002637,
+      "adapter_metadata_ms": 4.698624979937449,
+      "layer_count": 196,
+      "layers": [
+        {
+          "module": "model.layers.0.mlp.down_proj",
+          "shape": [
+            1536,
+            8960
+          ],
+          "delta_norms": {
+            "hub_7855779392a3": 0.017036072909832
+          }
+        },
+        {
+          "module": "model.layers.0.mlp.gate_proj",
+          "shape": [
+            8960,
+            1536
+          ],
+          "delta_norms": {
+            "hub_7855779392a3": 0.02936534583568573
+          }
+        },
+        {
+          "module": "model.layers.0.mlp.up_proj",
+          "shape": [
+            8960,
+            1536
+          ],
+          "delta_norms": {
+            "hub_7855779392a3": 0.028789011761546135
+          }
+        },
+        {
+          "module": "model.layers.0.self_attn.k_proj",
+          "shape": [
+            256,
+            1536
+          ],
+          "delta_norms": {
+            "hub_7855779392a3": 0.0043612378649413586
+          }
+        },
+        {
+          "module": "model.layers.0.self_attn.o_proj",
+          "shape": [
+            1536,
+            1536
+          ],
+          "delta_norms": {
+            "hub_7855779392a3": 0.011472060345113277
+          }
+        },
+        {
+          "module": "model.layers.0.self_attn.q_proj",
+          "shape": [
+            1536,
+            1536
+          ],
+          "delta_norms": {
+            "coding": 0.05918584764003754,
+            "medical": 0.04169338196516037,
+            "legal": 0.4379657506942749,
+            "hub_7855779392a3": 0.010670418851077557
+          }
+        },
+        {
+          "module": "model.layers.0.self_attn.v_proj",
+          "shape": [
+            256,
+            1536
+          ],
+          "delta_norms": {
+            "coding": 0.0346783809363842,
+            "medical": 0.023499678820371628,
+            "legal": 0.21473635733127594,
+            "hub_7855779392a3": 0.004130057990550995
+          }
+        },
+        {
+          "module": "model.layers.1.mlp.down_proj",
+          "shape": [
+            1536,
+            8960
+          ],
+          "delta_norms": {
+            "hub_7855779392a3": 0.10500888526439667
+          }
+        },
+        {
+          "module": "model.layers.1.mlp.gate_proj",
+          "shape": [
+            8960,
+            1536
+          ],
+          "delta_norms": {
+            "hub_7855779392a3": 0.029218152165412903
+          }
+        },
+        {
+          "module": "model.layers.1.mlp.up_proj",
+          "shape": [
+            8960,
+            1536
+          ],
+          "delta_norms": {
+            "hub_7855779392a3": 0.026456093415617943
+          }
+        },
+        {
+          "module": "model.layers.1.self_attn.k_proj",
+          "shape": [
+            256,
+            1536
+          ],
+          "delta_norms": {
+            "hub_7855779392a3": 0.004781735595315695
+          }
+        },
+        {
+          "module": "model.layers.1.self_attn.o_proj",
+          "shape": [
+            1536,
+            1536
+          ],
+          "delta_norms": {
+            "hub_7855779392a3": 0.01011879462748766
+          }
+        },
+        {
+          "module": "model.layers.1.self_attn.q_proj",
+          "shape": [
+            1536,
+            1536
+          ],
+          "delta_norms": {
+            "coding": 0.057830750942230225,
+            "medical": 0.043915390968322754,
+            "legal": 0.39669477939605713,
+            "hub_7855779392a3": 0.012804627418518066
+          }
+        },
+        {
+          "module": "model.layers.1.self_attn.v_proj",
+          "shape": [
+            256,
+            1536
+          ],
+          "delta_norms": {
+            "coding": 0.032354019582271576,
+            "medical": 0.02215033955872059,
+            "legal": 0.21927410364151,
+            "hub_7855779392a3": 0.004485499579459429
+          }
+        },
+        {
+          "module": "model.layers.10.mlp.down_proj",
+          "shape": [
+            1536,
+            8960
+          ],
+          "delta_norms": {
+            "hub_7855779392a3": 0.01573799178004265
+          }
+        },
+        {
+          "module": "model.layers.10.mlp.gate_proj",
+          "shape": [
+            8960,
+            1536
+          ],
+          "delta_norms": {
+            "hub_7855779392a3": 0.029177311807870865
+          }
+        },
+        {
+          "module": "model.layers.10.mlp.up_proj",
+          "shape": [
+            8960,
+            1536
+          ],
+          "delta_norms": {
+            "hub_7855779392a3": 0.027709145098924637
+          }
+        },
+        {
+          "module": "model.layers.10.self_attn.k_proj",
+          "shape": [
+            256,
+            1536
+          ],
+          "delta_norms": {
+            "hub_7855779392a3": 0.004241570830345154
+          }
+        },
+        {
+          "module": "model.layers.10.self_attn.o_proj",
+          "shape": [
+            1536,
+            1536
+          ],
+          "delta_norms": {
+            "hub_7855779392a3": 0.01114842388778925
+          }
+        },
+        {
+          "module": "model.layers.10.self_attn.q_proj",
+          "shape": [
+            1536,
+            1536
+          ],
+          "delta_norms": {
+            "coding": 0.07382071018218994,
+            "medical": 0.05923788622021675,
+            "legal": 0.5198248624801636,
+            "hub_7855779392a3": 0.010988299734890461
+          }
+        },
+        {
+          "module": "model.layers.10.self_attn.v_proj",
+          "shape": [
+            256,
+            1536
+          ],
+          "delta_norms": {
+            "coding": 0.03713609278202057,
+            "medical": 0.028408199548721313,
+            "legal": 0.2515984773635864,
+            "hub_7855779392a3": 0.004389047157019377
+          }
+        },
+        {
+          "module": "model.layers.11.mlp.down_proj",
+          "shape": [
+            1536,
+            8960
+          ],
+          "delta_norms": {
+            "hub_7855779392a3": 0.015402396209537983
+          }
+        },
+        {
+          "module": "model.layers.11.mlp.gate_proj",
+          "shape": [
+            8960,
+            1536
+          ],
+          "delta_norms": {
+            "hub_7855779392a3": 0.029288407415151596
+          }
+        },
+        {
+          "module": "model.layers.11.mlp.up_proj",
+          "shape": [
+            8960,
+            1536
+          ],
+          "delta_norms": {
+            "hub_7855779392a3": 0.027491753920912743
+          }
+        },
+        {
+          "module": "model.layers.11.self_attn.k_proj",
+          "shape": [
+            256,
+            1536
+          ],
+          "delta_norms": {
+            "hub_7855779392a3": 0.004546580370515585
+          }
+        },
+        {
+          "module": "model.layers.11.self_attn.o_proj",
+          "shape": [
+            1536,
+            1536
+          ],
+          "delta_norms": {
+            "hub_7855779392a3": 0.010166904889047146
+          }
+        },
+        {
+          "module": "model.layers.11.self_attn.q_proj",
+          "shape": [
+            1536,
+            1536
+          ],
+          "delta_norms": {
+            "coding": 0.0711500495672226,
+            "medical": 0.05708383396267891,
+            "legal": 0.5504769682884216,
+            "hub_7855779392a3": 0.011107992380857468
+          }
+        },
+        {
+          "module": "model.layers.11.self_attn.v_proj",
+          "shape": [
+            256,
+            1536
+          ],
+          "delta_norms": {
+            "coding": 0.032523252069950104,
+            "medical": 0.02900644950568676,
+            "legal": 0.29051709175109863,
+            "hub_7855779392a3": 0.004275378305464983
+          }
+        },
+        {
+          "module": "model.layers.12.mlp.down_proj",
+          "shape": [
+            1536,
+            8960
+          ],
+          "delta_norms": {
+            "hub_7855779392a3": 0.01520808320492506
+          }
+        },
+        {
+          "module": "model.layers.12.mlp.gate_proj",
+          "shape": [
+            8960,
+            1536
+          ],
+          "delta_norms": {
+            "hub_7855779392a3": 0.028432024642825127
+          }
+        },
+        {
+          "module": "model.layers.12.mlp.up_proj",
+          "shape": [
+            8960,
+            1536
+          ],
+          "delta_norms": {
+            "hub_7855779392a3": 0.027730576694011688
+          }
+        },
+        {
+          "module": "model.layers.12.self_attn.k_proj",
+          "shape": [
+            256,
+            1536
+          ],
+          "delta_norms": {
+            "hub_7855779392a3": 0.004459366202354431
+          }
+        },
+        {
+          "module": "model.layers.12.self_attn.o_proj",
+          "shape": [
+            1536,
+            1536
+          ],
+          "delta_norms": {
+            "hub_7855779392a3": 0.010692768730223179
+          }
+        },
+        {
+          "module": "model.layers.12.self_attn.q_proj",
+          "shape": [
+            1536,
+            1536
+          ],
+          "delta_norms": {
+            "coding": 0.08101532608270645,
+            "medical": 0.06037943437695503,
+            "legal": 0.5376167893409729,
+            "hub_7855779392a3": 0.010805213823914528
+          }
+        },
+        {
+          "module": "model.layers.12.self_attn.v_proj",
+          "shape": [
+            256,
+            1536
+          ],
+          "delta_norms": {
+            "coding": 0.03639766573905945,
+            "medical": 0.02988794632256031,
+            "legal": 0.2916297912597656,
+            "hub_7855779392a3": 0.004820435773581266
+          }
+        },
+        {
+          "module": "model.layers.13.mlp.down_proj",
+          "shape": [
+            1536,
+            8960
+          ],
+          "delta_norms": {
+            "hub_7855779392a3": 0.016642186790704727
+          }
+        },
+        {
+          "module": "model.layers.13.mlp.gate_proj",
+          "shape": [
+            8960,
+            1536
+          ],
+          "delta_norms": {
+            "hub_7855779392a3": 0.028582412749528885
+          }
+        },
+        {
+          "module": "model.layers.13.mlp.up_proj",
+          "shape": [
+            8960,
+            1536
+          ],
+          "delta_norms": {
+            "hub_7855779392a3": 0.027674246579408646
+          }
+        },
+        {
+          "module": "model.layers.13.self_attn.k_proj",
+          "shape": [
+            256,
+            1536
+          ],
+          "delta_norms": {
+            "hub_7855779392a3": 0.0043145134113729
+          }
+        },
+        {
+          "module": "model.layers.13.self_attn.o_proj",
+          "shape": [
+            1536,
+            1536
+          ],
+          "delta_norms": {
+            "hub_7855779392a3": 0.010910863056778908
+          }
+        },
+        {
+          "module": "model.layers.13.self_attn.q_proj",
+          "shape": [
+            1536,
+            1536
+          ],
+          "delta_norms": {
+            "coding": 0.07705333828926086,
+            "medical": 0.06501362472772598,
+            "legal": 0.634010910987854,
+            "hub_7855779392a3": 0.011080608703196049
+          }
+        },
+        {
+          "module": "model.layers.13.self_attn.v_proj",
+          "shape": [
+            256,
+            1536
+          ],
+          "delta_norms": {
+            "coding": 0.03441901504993439,
+            "medical": 0.027788672596216202,
+            "legal": 0.2866397202014923,
+            "hub_7855779392a3": 0.004294879734516144
+          }
+        },
+        {
+          "module": "model.layers.14.mlp.down_proj",
+          "shape": [
+            1536,
+            8960
+          ],
+          "delta_norms": {
+            "hub_7855779392a3": 0.01646738313138485
+          }
+        },
+        {
+          "module": "model.layers.14.mlp.gate_proj",
+          "shape": [
+            8960,
+            1536
+          ],
+          "delta_norms": {
+            "hub_7855779392a3": 0.02915572002530098
+          }
+        },
+        {
+          "module": "model.layers.14.mlp.up_proj",
+          "shape": [
+            8960,
+            1536
+          ],
+          "delta_norms": {
+            "hub_7855779392a3": 0.027745487168431282
+          }
+        },
+        {
+          "module": "model.layers.14.self_attn.k_proj",
+          "shape": [
+            256,
+            1536
+          ],
+          "delta_norms": {
+            "hub_7855779392a3": 0.004221486393362284
+          }
+        },
+        {
+          "module": "model.layers.14.self_attn.o_proj",
+          "shape": [
+            1536,
+            1536
+          ],
+          "delta_norms": {
+            "hub_7855779392a3": 0.01128007099032402
+          }
+        },
+        {
+          "module": "model.layers.14.self_attn.q_proj",
+          "shape": [
+            1536,
+            1536
+          ],
+          "delta_norms": {
+            "coding": 0.07126980274915695,
+            "medical": 0.050876185297966,
+            "legal": 0.5711368322372437,
+            "hub_7855779392a3": 0.011181353591382504
+          }
+        },
+        {
+          "module": "model.layers.14.self_attn.v_proj",
+          "shape": [
+            256,
+            1536
+          ],
+          "delta_norms": {
+            "coding": 0.03883051127195358,
+            "medical": 0.031086353585124016,
+            "legal": 0.26872849464416504,
+            "hub_7855779392a3": 0.004042751155793667
+          }
+        },
+        {
+          "module": "model.layers.15.mlp.down_proj",
+          "shape": [
+            1536,
+            8960
+          ],
+          "delta_norms": {
+            "hub_7855779392a3": 0.015487066470086575
+          }
+        },
+        {
+          "module": "model.layers.15.mlp.gate_proj",
+          "shape": [
+            8960,
+            1536
+          ],
+          "delta_norms": {
+            "hub_7855779392a3": 0.028767675161361694
+          }
+        },
+        {
+          "module": "model.layers.15.mlp.up_proj",
+          "shape": [
+            8960,
+            1536
+          ],
+          "delta_norms": {
+            "hub_7855779392a3": 0.027509039267897606
+          }
+        },
+        {
+          "module": "model.layers.15.self_attn.k_proj",
+          "shape": [
+            256,
+            1536
+          ],
+          "delta_norms": {
+            "hub_7855779392a3": 0.004275641404092312
+          }
+        },
+        {
+          "module": "model.layers.15.self_attn.o_proj",
+          "shape": [
+            1536,
+            1536
+          ],
+          "delta_norms": {
+            "hub_7855779392a3": 0.010612883605062962
+          }
+        },
+        {
+          "module": "model.layers.15.self_attn.q_proj",
+          "shape": [
+            1536,
+            1536
+          ],
+          "delta_norms": {
+            "coding": 0.07408548891544342,
+            "medical": 0.06470292061567307,
+            "legal": 0.5794202089309692,
+            "hub_7855779392a3": 0.01100293081253767
+          }
+        },
+        {
+          "module": "model.layers.15.self_attn.v_proj",
+          "shape": [
+            256,
+            1536
+          ],
+          "delta_norms": {
+            "coding": 0.0380299836397171,
+            "medical": 0.034351106733083725,
+            "legal": 0.295834481716156,
+            "hub_7855779392a3": 0.004521975759416819
+          }
+        },
+        {
+          "module": "model.layers.16.mlp.down_proj",
+          "shape": [
+            1536,
+            8960
+          ],
+          "delta_norms": {
+            "hub_7855779392a3": 0.0149638457223773
+          }
+        },
+        {
+          "module": "model.layers.16.mlp.gate_proj",
+          "shape": [
+            8960,
+            1536
+          ],
+          "delta_norms": {
+            "hub_7855779392a3": 0.028464647009968758
+          }
+        },
+        {
+          "module": "model.layers.16.mlp.up_proj",
+          "shape": [
+            8960,
+            1536
+          ],
+          "delta_norms": {
+            "hub_7855779392a3": 0.0270787812769413
+          }
+        },
+        {
+          "module": "model.layers.16.self_attn.k_proj",
+          "shape": [
+            256,
+            1536
+          ],
+          "delta_norms": {
+            "hub_7855779392a3": 0.004488368984311819
+          }
+        },
+        {
+          "module": "model.layers.16.self_attn.o_proj",
+          "shape": [
+            1536,
+            1536
+          ],
+          "delta_norms": {
+            "hub_7855779392a3": 0.011186226271092892
+          }
+        },
+        {
+          "module": "model.layers.16.self_attn.q_proj",
+          "shape": [
+            1536,
+            1536
+          ],
+          "delta_norms": {
+            "coding": 0.07981930673122406,
+            "medical": 0.06661535799503326,
+            "legal": 0.640370786190033,
+            "hub_7855779392a3": 0.010817204602062702
+          }
+        },
+        {
+          "module": "model.layers.16.self_attn.v_proj",
+          "shape": [
+            256,
+            1536
+          ],
+          "delta_norms": {
+            "coding": 0.044739942997694016,
+            "medical": 0.03562144190073013,
+            "legal": 0.3556062877178192,
+            "hub_7855779392a3": 0.00470192264765501
+          }
+        },
+        {
+          "module": "model.layers.17.mlp.down_proj",
+          "shape": [
+            1536,
+            8960
+          ],
+          "delta_norms": {
+            "hub_7855779392a3": 0.015300038270652294
+          }
+        },
+        {
+          "module": "model.layers.17.mlp.gate_proj",
+          "shape": [
+            8960,
+            1536
+          ],
+          "delta_norms": {
+            "hub_7855779392a3": 0.02868635021150112
+          }
+        },
+        {
+          "module": "model.layers.17.mlp.up_proj",
+          "shape": [
+            8960,
+            1536
+          ],
+          "delta_norms": {
+            "hub_7855779392a3": 0.02809835411608219
+          }
+        },
+        {
+          "module": "model.layers.17.self_attn.k_proj",
+          "shape": [
+            256,
+            1536
+          ],
+          "delta_norms": {
+            "hub_7855779392a3": 0.004370980430394411
+          }
+        },
+        {
+          "module": "model.layers.17.self_attn.o_proj",
+          "shape": [
+            1536,
+            1536
+          ],
+          "delta_norms": {
+            "hub_7855779392a3": 0.010996678844094276
+          }
+        },
+        {
+          "module": "model.layers.17.self_attn.q_proj",
+          "shape": [
+            1536,
+            1536
+          ],
+          "delta_norms": {
+            "coding": 0.09743577986955643,
+            "medical": 0.07628052681684494,
+            "legal": 0.6360657811164856,
+            "hub_7855779392a3": 0.010657072067260742
+          }
+        },
+        {
+          "module": "model.layers.17.self_attn.v_proj",
+          "shape": [
+            256,
+            1536
+          ],
+          "delta_norms": {
+            "coding": 0.048369940370321274,
+            "medical": 0.0417819544672966,
+            "legal": 0.4003027379512787,
+            "hub_7855779392a3": 0.004371879622340202
+          }
+        },
+        {
+          "module": "model.layers.18.mlp.down_proj",
+          "shape": [
+            1536,
+            8960
+          ],
+          "delta_norms": {
+            "hub_7855779392a3": 0.015133184380829334
+          }
+        },
+        {
+          "module": "model.layers.18.mlp.gate_proj",
+          "shape": [
+            8960,
+            1536
+          ],
+          "delta_norms": {
+            "hub_7855779392a3": 0.029352037236094475
+          }
+        },
+        {
+          "module": "model.layers.18.mlp.up_proj",
+          "shape": [
+            8960,
+            1536
+          ],
+          "delta_norms": {
+            "hub_7855779392a3": 0.028384357690811157
+          }
+        },
+        {
+          "module": "model.layers.18.self_attn.k_proj",
+          "shape": [
+            256,
+            1536
+          ],
+          "delta_norms": {
+            "hub_7855779392a3": 0.004358246922492981
+          }
+        },
+        {
+          "module": "model.layers.18.self_attn.o_proj",
+          "shape": [
+            1536,
+            1536
+          ],
+          "delta_norms": {
+            "hub_7855779392a3": 0.011102842167019844
+          }
+        },
+        {
+          "module": "model.layers.18.self_attn.q_proj",
+          "shape": [
+            1536,
+            1536
+          ],
+          "delta_norms": {
+            "coding": 0.08498935401439667,
+            "medical": 0.0713961273431778,
+            "legal": 0.7666540741920471,
+            "hub_7855779392a3": 0.010863245464861393
+          }
+        },
+        {
+          "module": "model.layers.18.self_attn.v_proj",
+          "shape": [
+            256,
+            1536
+          ],
+          "delta_norms": {
+            "coding": 0.04524523764848709,
+            "medical": 0.03883114457130432,
+            "legal": 0.3561958968639374,
+            "hub_7855779392a3": 0.0041075218468904495
+          }
+        },
+        {
+          "module": "model.layers.19.mlp.down_proj",
+          "shape": [
+            1536,
+            8960
+          ],
+          "delta_norms": {
+            "hub_7855779392a3": 0.015234087593853474
+          }
+        },
+        {
+          "module": "model.layers.19.mlp.gate_proj",
+          "shape": [
+            8960,
+            1536
+          ],
+          "delta_norms": {
+            "hub_7855779392a3": 0.028839677572250366
+          }
+        },
+        {
+          "module": "model.layers.19.mlp.up_proj",
+          "shape": [
+            8960,
+            1536
+          ],
+          "delta_norms": {
+            "hub_7855779392a3": 0.027877893298864365
+          }
+        },
+        {
+          "module": "model.layers.19.self_attn.k_proj",
+          "shape": [
+            256,
+            1536
+          ],
+          "delta_norms": {
+            "hub_7855779392a3": 0.004078560974448919
+          }
+        },
+        {
+          "module": "model.layers.19.self_attn.o_proj",
+          "shape": [
+            1536,
+            1536
+          ],
+          "delta_norms": {
+            "hub_7855779392a3": 0.010902735404670238
+          }
+        },
+        {
+          "module": "model.layers.19.self_attn.q_proj",
+          "shape": [
+            1536,
+            1536
+          ],
+          "delta_norms": {
+            "coding": 0.1043497771024704,
+            "medical": 0.07722180336713791,
+            "legal": 0.6331349611282349,
+            "hub_7855779392a3": 0.010951867327094078
+          }
+        },
+        {
+          "module": "model.layers.19.self_attn.v_proj",
+          "shape": [
+            256,
+            1536
+          ],
+          "delta_norms": {
+            "coding": 0.05609111860394478,
+            "medical": 0.03956818953156471,
+            "legal": 0.3978514075279236,
+            "hub_7855779392a3": 0.004097862169146538
+          }
+        },
+        {
+          "module": "model.layers.2.mlp.down_proj",
+          "shape": [
+            1536,
+            8960
+          ],
+          "delta_norms": {
+            "hub_7855779392a3": 0.07095150649547577
+          }
+        },
+        {
+          "module": "model.layers.2.mlp.gate_proj",
+          "shape": [
+            8960,
+            1536
+          ],
+          "delta_norms": {
+            "hub_7855779392a3": 0.029014701023697853
+          }
+        },
+        {
+          "module": "model.layers.2.mlp.up_proj",
+          "shape": [
+            8960,
+            1536
+          ],
+          "delta_norms": {
+            "hub_7855779392a3": 0.02768760174512863
+          }
+        },
+        {
+          "module": "model.layers.2.self_attn.k_proj",
+          "shape": [
+            256,
+            1536
+          ],
+          "delta_norms": {
+            "hub_7855779392a3": 0.004812311381101608
+          }
+        },
+        {
+          "module": "model.layers.2.self_attn.o_proj",
+          "shape": [
+            1536,
+            1536
+          ],
+          "delta_norms": {
+            "hub_7855779392a3": 0.01158733107149601
+          }
+        },
+        {
+          "module": "model.layers.2.self_attn.q_proj",
+          "shape": [
+            1536,
+            1536
+          ],
+          "delta_norms": {
+            "coding": 0.06250602751970291,
+            "medical": 0.0433807335793972,
+            "legal": 0.4380219876766205,
+            "hub_7855779392a3": 0.011222503148019314
+          }
+        },
+        {
+          "module": "model.layers.2.self_attn.v_proj",
+          "shape": [
+            256,
+            1536
+          ],
+          "delta_norms": {
+            "coding": 0.0327068492770195,
+            "medical": 0.022826004773378372,
+            "legal": 0.24799863994121552,
+            "hub_7855779392a3": 0.004361836239695549
+          }
+        },
+        {
+          "module": "model.layers.20.mlp.down_proj",
+          "shape": [
+            1536,
+            8960
+          ],
+          "delta_norms": {
+            "hub_7855779392a3": 0.01571681536734104
+          }
+        },
+        {
+          "module": "model.layers.20.mlp.gate_proj",
+          "shape": [
+            8960,
+            1536
+          ],
+          "delta_norms": {
+            "hub_7855779392a3": 0.029110901057720184
+          }
+        },
+        {
+          "module": "model.layers.20.mlp.up_proj",
+          "shape": [
+            8960,
+            1536
+          ],
+          "delta_norms": {
+            "hub_7855779392a3": 0.02800045907497406
+          }
+        },
+        {
+          "module": "model.layers.20.self_attn.k_proj",
+          "shape": [
+            256,
+            1536
+          ],
+          "delta_norms": {
+            "hub_7855779392a3": 0.004173635970801115
+          }
+        },
+        {
+          "module": "model.layers.20.self_attn.o_proj",
+          "shape": [
+            1536,
+            1536
+          ],
+          "delta_norms": {
+            "hub_7855779392a3": 0.011134948581457138
+          }
+        },
+        {
+          "module": "model.layers.20.self_attn.q_proj",
+          "shape": [
+            1536,
+            1536
+          ],
+          "delta_norms": {
+            "coding": 0.09745176881551743,
+            "medical": 0.08903246372938156,
+            "legal": 0.872552752494812,
+            "hub_7855779392a3": 0.011068875901401043
+          }
+        },
+        {
+          "module": "model.layers.20.self_attn.v_proj",
+          "shape": [
+            256,
+            1536
+          ],
+          "delta_norms": {
+            "coding": 0.05340586230158806,
+            "medical": 0.03626801073551178,
+            "legal": 0.36436912417411804,
+            "hub_7855779392a3": 0.004419435281306505
+          }
+        },
+        {
+          "module": "model.layers.21.mlp.down_proj",
+          "shape": [
+            1536,
+            8960
+          ],
+          "delta_norms": {
+            "hub_7855779392a3": 0.015846066176891327
+          }
+        },
+        {
+          "module": "model.layers.21.mlp.gate_proj",
+          "shape": [
+            8960,
+            1536
+          ],
+          "delta_norms": {
+            "hub_7855779392a3": 0.02918141335248947
+          }
+        },
+        {
+          "module": "model.layers.21.mlp.up_proj",
+          "shape": [
+            8960,
+            1536
+          ],
+          "delta_norms": {
+            "hub_7855779392a3": 0.028641531243920326
+          }
+        },
+        {
+          "module": "model.layers.21.self_attn.k_proj",
+          "shape": [
+            256,
+            1536
+          ],
+          "delta_norms": {
+            "hub_7855779392a3": 0.004432085435837507
+          }
+        },
+        {
+          "module": "model.layers.21.self_attn.o_proj",
+          "shape": [
+            1536,
+            1536
+          ],
+          "delta_norms": {
+            "hub_7855779392a3": 0.012833619490265846
+          }
+        },
+        {
+          "module": "model.layers.21.self_attn.q_proj",
+          "shape": [
+            1536,
+            1536
+          ],
+          "delta_norms": {
+            "coding": 0.0876045897603035,
+            "medical": 0.08021298050880432,
+            "legal": 0.7198125123977661,
+            "hub_7855779392a3": 0.011727905832231045
+          }
+        },
+        {
+          "module": "model.layers.21.self_attn.v_proj",
+          "shape": [
+            256,
+            1536
+          ],
+          "delta_norms": {
+            "coding": 0.05295119807124138,
+            "medical": 0.041250377893447876,
+            "legal": 0.3674193322658539,
+            "hub_7855779392a3": 0.00438470346853137
+          }
+        },
+        {
+          "module": "model.layers.22.mlp.down_proj",
+          "shape": [
+            1536,
+            8960
+          ],
+          "delta_norms": {
+            "hub_7855779392a3": 0.015498239547014236
+          }
+        },
+        {
+          "module": "model.layers.22.mlp.gate_proj",
+          "shape": [
+            8960,
+            1536
+          ],
+          "delta_norms": {
+            "hub_7855779392a3": 0.029232559725642204
+          }
+        },
+        {
+          "module": "model.layers.22.mlp.up_proj",
+          "shape": [
+            8960,
+            1536
+          ],
+          "delta_norms": {
+            "hub_7855779392a3": 0.02914723940193653
+          }
+        },
+        {
+          "module": "model.layers.22.self_attn.k_proj",
+          "shape": [
+            256,
+            1536
+          ],
+          "delta_norms": {
+            "hub_7855779392a3": 0.004221617244184017
+          }
+        },
+        {
+          "module": "model.layers.22.self_attn.o_proj",
+          "shape": [
+            1536,
+            1536
+          ],
+          "delta_norms": {
+            "hub_7855779392a3": 0.011818156577646732
+          }
+        },
+        {
+          "module": "model.layers.22.self_attn.q_proj",
+          "shape": [
+            1536,
+            1536
+          ],
+          "delta_norms": {
+            "coding": 0.08855913579463959,
+            "medical": 0.07742906361818314,
+            "legal": 0.6388397216796875,
+            "hub_7855779392a3": 0.011299609206616879
+          }
+        },
+        {
+          "module": "model.layers.22.self_attn.v_proj",
+          "shape": [
+            256,
+            1536
+          ],
+          "delta_norms": {
+            "coding": 0.059158217161893845,
+            "medical": 0.0455193854868412,
+            "legal": 0.441135436296463,
+            "hub_7855779392a3": 0.004719104617834091
+          }
+        },
+        {
+          "module": "model.layers.23.mlp.down_proj",
+          "shape": [
+            1536,
+            8960
+          ],
+          "delta_norms": {
+            "hub_7855779392a3": 0.01608903519809246
+          }
+        },
+        {
+          "module": "model.layers.23.mlp.gate_proj",
+          "shape": [
+            8960,
+            1536
+          ],
+          "delta_norms": {
+            "hub_7855779392a3": 0.0288976039737463
+          }
+        },
+        {
+          "module": "model.layers.23.mlp.up_proj",
+          "shape": [
+            8960,
+            1536
+          ],
+          "delta_norms": {
+            "hub_7855779392a3": 0.028964221477508545
+          }
+        },
+        {
+          "module": "model.layers.23.self_attn.k_proj",
+          "shape": [
+            256,
+            1536
+          ],
+          "delta_norms": {
+            "hub_7855779392a3": 0.004248091019690037
+          }
+        },
+        {
+          "module": "model.layers.23.self_attn.o_proj",
+          "shape": [
+            1536,
+            1536
+          ],
+          "delta_norms": {
+            "hub_7855779392a3": 0.01164334174245596
+          }
+        },
+        {
+          "module": "model.layers.23.self_attn.q_proj",
+          "shape": [
+            1536,
+            1536
+          ],
+          "delta_norms": {
+            "coding": 0.09653674066066742,
+            "medical": 0.08044367283582687,
+            "legal": 0.724568784236908,
+            "hub_7855779392a3": 0.01136270072311163
+          }
+        },
+        {
+          "module": "model.layers.23.self_attn.v_proj",
+          "shape": [
+            256,
+            1536
+          ],
+          "delta_norms": {
+            "coding": 0.058880552649497986,
+            "medical": 0.049812618643045425,
+            "legal": 0.3825390636920929,
+            "hub_7855779392a3": 0.004492504056543112
+          }
+        },
+        {
+          "module": "model.layers.24.mlp.down_proj",
+          "shape": [
+            1536,
+            8960
+          ],
+          "delta_norms": {
+            "hub_7855779392a3": 0.01663457602262497
+          }
+        },
+        {
+          "module": "model.layers.24.mlp.gate_proj",
+          "shape": [
+            8960,
+            1536
+          ],
+          "delta_norms": {
+            "hub_7855779392a3": 0.029497351497411728
+          }
+        },
+        {
+          "module": "model.layers.24.mlp.up_proj",
+          "shape": [
+            8960,
+            1536
+          ],
+          "delta_norms": {
+            "hub_7855779392a3": 0.02954763174057007
+          }
+        },
+        {
+          "module": "model.layers.24.self_attn.k_proj",
+          "shape": [
+            256,
+            1536
+          ],
+          "delta_norms": {
+            "hub_7855779392a3": 0.004345634486526251
+          }
+        },
+        {
+          "module": "model.layers.24.self_attn.o_proj",
+          "shape": [
+            1536,
+            1536
+          ],
+          "delta_norms": {
+            "hub_7855779392a3": 0.011641863733530045
+          }
+        },
+        {
+          "module": "model.layers.24.self_attn.q_proj",
+          "shape": [
+            1536,
+            1536
+          ],
+          "delta_norms": {
+            "coding": 0.11866164952516556,
+            "medical": 0.08490826934576035,
+            "legal": 0.8088940382003784,
+            "hub_7855779392a3": 0.011692928150296211
+          }
+        },
+        {
+          "module": "model.layers.24.self_attn.v_proj",
+          "shape": [
+            256,
+            1536
+          ],
+          "delta_norms": {
+            "coding": 0.07019101828336716,
+            "medical": 0.044799573719501495,
+            "legal": 0.38083234429359436,
+            "hub_7855779392a3": 0.005337907467037439
+          }
+        },
+        {
+          "module": "model.layers.25.mlp.down_proj",
+          "shape": [
+            1536,
+            8960
+          ],
+          "delta_norms": {
+            "hub_7855779392a3": 0.016978871077299118
+          }
+        },
+        {
+          "module": "model.layers.25.mlp.gate_proj",
+          "shape": [
+            8960,
+            1536
+          ],
+          "delta_norms": {
+            "hub_7855779392a3": 0.029463091865181923
+          }
+        },
+        {
+          "module": "model.layers.25.mlp.up_proj",
+          "shape": [
+            8960,
+            1536
+          ],
+          "delta_norms": {
+            "hub_7855779392a3": 0.030341653153300285
+          }
+        },
+        {
+          "module": "model.layers.25.self_attn.k_proj",
+          "shape": [
+            256,
+            1536
+          ],
+          "delta_norms": {
+            "hub_7855779392a3": 0.004434157628566027
+          }
+        },
+        {
+          "module": "model.layers.25.self_attn.o_proj",
+          "shape": [
+            1536,
+            1536
+          ],
+          "delta_norms": {
+            "hub_7855779392a3": 0.011968462727963924
+          }
+        },
+        {
+          "module": "model.layers.25.self_attn.q_proj",
+          "shape": [
+            1536,
+            1536
+          ],
+          "delta_norms": {
+            "coding": 0.1004648432135582,
+            "medical": 0.07671943306922913,
+            "legal": 0.760647714138031,
+            "hub_7855779392a3": 0.01157081313431263
+          }
+        },
+        {
+          "module": "model.layers.25.self_attn.v_proj",
+          "shape": [
+            256,
+            1536
+          ],
+          "delta_norms": {
+            "coding": 0.06439054012298584,
+            "medical": 0.042597535997629166,
+            "legal": 0.3841601312160492,
+            "hub_7855779392a3": 0.004855609964579344
+          }
+        },
+        {
+          "module": "model.layers.26.mlp.down_proj",
+          "shape": [
+            1536,
+            8960
+          ],
+          "delta_norms": {
+            "hub_7855779392a3": 0.13345485925674438
+          }
+        },
+        {
+          "module": "model.layers.26.mlp.gate_proj",
+          "shape": [
+            8960,
+            1536
+          ],
+          "delta_norms": {
+            "hub_7855779392a3": 0.031155789270997047
+          }
+        },
+        {
+          "module": "model.layers.26.mlp.up_proj",
+          "shape": [
+            8960,
+            1536
+          ],
+          "delta_norms": {
+            "hub_7855779392a3": 0.031887564808130264
+          }
+        },
+        {
+          "module": "model.layers.26.self_attn.k_proj",
+          "shape": [
+            256,
+            1536
+          ],
+          "delta_norms": {
+            "hub_7855779392a3": 0.004331785254180431
+          }
+        },
+        {
+          "module": "model.layers.26.self_attn.o_proj",
+          "shape": [
+            1536,
+            1536
+          ],
+          "delta_norms": {
+            "hub_7855779392a3": 0.012004581280052662
+          }
+        },
+        {
+          "module": "model.layers.26.self_attn.q_proj",
+          "shape": [
+            1536,
+            1536
+          ],
+          "delta_norms": {
+            "coding": 0.0901501476764679,
+            "medical": 0.07253343611955643,
+            "legal": 0.7989429831504822,
+            "hub_7855779392a3": 0.01141554769128561
+          }
+        },
+        {
+          "module": "model.layers.26.self_attn.v_proj",
+          "shape": [
+            256,
+            1536
+          ],
+          "delta_norms": {
+            "coding": 0.08202370256185532,
+            "medical": 0.054139118641614914,
+            "legal": 0.47936370968818665,
+            "hub_7855779392a3": 0.004936434328556061
+          }
+        },
+        {
+          "module": "model.layers.27.mlp.down_proj",
+          "shape": [
+            1536,
+            8960
+          ],
+          "delta_norms": {
+            "hub_7855779392a3": 0.011897267773747444
+          }
+        },
+        {
+          "module": "model.layers.27.mlp.gate_proj",
+          "shape": [
+            8960,
+            1536
+          ],
+          "delta_norms": {
+            "hub_7855779392a3": 0.030993273481726646
+          }
+        },
+        {
+          "module": "model.layers.27.mlp.up_proj",
+          "shape": [
+            8960,
+            1536
+          ],
+          "delta_norms": {
+            "hub_7855779392a3": 0.028457345440983772
+          }
+        },
+        {
+          "module": "model.layers.27.self_attn.k_proj",
+          "shape": [
+            256,
+            1536
+          ],
+          "delta_norms": {
+            "hub_7855779392a3": 0.004383931867778301
+          }
+        },
+        {
+          "module": "model.layers.27.self_attn.o_proj",
+          "shape": [
+            1536,
+            1536
+          ],
+          "delta_norms": {
+            "hub_7855779392a3": 0.011342796497046947
+          }
+        },
+        {
+          "module": "model.layers.27.self_attn.q_proj",
+          "shape": [
+            1536,
+            1536
+          ],
+          "delta_norms": {
+            "coding": 0.10672248899936676,
+            "medical": 0.07785969227552414,
+            "legal": 0.6934744715690613,
+            "hub_7855779392a3": 0.01230540405958891
+          }
+        },
+        {
+          "module": "model.layers.27.self_attn.v_proj",
+          "shape": [
+            256,
+            1536
+          ],
+          "delta_norms": {
+            "coding": 0.06545529514551163,
+            "medical": 0.05027233064174652,
+            "legal": 0.4472878575325012,
+            "hub_7855779392a3": 0.005028713960200548
+          }
+        },
+        {
+          "module": "model.layers.3.mlp.down_proj",
+          "shape": [
+            1536,
+            8960
+          ],
+          "delta_norms": {
+            "hub_7855779392a3": 0.016601338982582092
+          }
+        },
+        {
+          "module": "model.layers.3.mlp.gate_proj",
+          "shape": [
+            8960,
+            1536
+          ],
+          "delta_norms": {
+            "hub_7855779392a3": 0.028711020946502686
+          }
+        },
+        {
+          "module": "model.layers.3.mlp.up_proj",
+          "shape": [
+            8960,
+            1536
+          ],
+          "delta_norms": {
+            "hub_7855779392a3": 0.0259721539914608
+          }
+        },
+        {
+          "module": "model.layers.3.self_attn.k_proj",
+          "shape": [
+            256,
+            1536
+          ],
+          "delta_norms": {
+            "hub_7855779392a3": 0.004565233830362558
+          }
+        },
+        {
+          "module": "model.layers.3.self_attn.o_proj",
+          "shape": [
+            1536,
+            1536
+          ],
+          "delta_norms": {
+            "hub_7855779392a3": 0.01163499429821968
+          }
+        },
+        {
+          "module": "model.layers.3.self_attn.q_proj",
+          "shape": [
+            1536,
+            1536
+          ],
+          "delta_norms": {
+            "coding": 0.06960520893335342,
+            "medical": 0.05337461084127426,
+            "legal": 0.43929654359817505,
+            "hub_7855779392a3": 0.012208577245473862
+          }
+        },
+        {
+          "module": "model.layers.3.self_attn.v_proj",
+          "shape": [
+            256,
+            1536
+          ],
+          "delta_norms": {
+            "coding": 0.03051362931728363,
+            "medical": 0.025860801339149475,
+            "legal": 0.20909717679023743,
+            "hub_7855779392a3": 0.004447561223059893
+          }
+        },
+        {
+          "module": "model.layers.4.mlp.down_proj",
+          "shape": [
+            1536,
+            8960
+          ],
+          "delta_norms": {
+            "hub_7855779392a3": 0.015494009479880333
+          }
+        },
+        {
+          "module": "model.layers.4.mlp.gate_proj",
+          "shape": [
+            8960,
+            1536
+          ],
+          "delta_norms": {
+            "hub_7855779392a3": 0.027256065979599953
+          }
+        },
+        {
+          "module": "model.layers.4.mlp.up_proj",
+          "shape": [
+            8960,
+            1536
+          ],
+          "delta_norms": {
+            "hub_7855779392a3": 0.027178701013326645
+          }
+        },
+        {
+          "module": "model.layers.4.self_attn.k_proj",
+          "shape": [
+            256,
+            1536
+          ],
+          "delta_norms": {
+            "hub_7855779392a3": 0.004327282775193453
+          }
+        },
+        {
+          "module": "model.layers.4.self_attn.o_proj",
+          "shape": [
+            1536,
+            1536
+          ],
+          "delta_norms": {
+            "hub_7855779392a3": 0.01143386960029602
+          }
+        },
+        {
+          "module": "model.layers.4.self_attn.q_proj",
+          "shape": [
+            1536,
+            1536
+          ],
+          "delta_norms": {
+            "coding": 0.06825413554906845,
+            "medical": 0.04473606124520302,
+            "legal": 0.4683181941509247,
+            "hub_7855779392a3": 0.010593799874186516
+          }
+        },
+        {
+          "module": "model.layers.4.self_attn.v_proj",
+          "shape": [
+            256,
+            1536
+          ],
+          "delta_norms": {
+            "coding": 0.03263602405786514,
+            "medical": 0.022986169904470444,
+            "legal": 0.21162942051887512,
+            "hub_7855779392a3": 0.00489779794588685
+          }
+        },
+        {
+          "module": "model.layers.5.mlp.down_proj",
+          "shape": [
+            1536,
+            8960
+          ],
+          "delta_norms": {
+            "hub_7855779392a3": 0.017040759325027466
+          }
+        },
+        {
+          "module": "model.layers.5.mlp.gate_proj",
+          "shape": [
+            8960,
+            1536
+          ],
+          "delta_norms": {
+            "hub_7855779392a3": 0.029510457068681717
+          }
+        },
+        {
+          "module": "model.layers.5.mlp.up_proj",
+          "shape": [
+            8960,
+            1536
+          ],
+          "delta_norms": {
+            "hub_7855779392a3": 0.027445795014500618
+          }
+        },
+        {
+          "module": "model.layers.5.self_attn.k_proj",
+          "shape": [
+            256,
+            1536
+          ],
+          "delta_norms": {
+            "hub_7855779392a3": 0.004620318301022053
+          }
+        },
+        {
+          "module": "model.layers.5.self_attn.o_proj",
+          "shape": [
+            1536,
+            1536
+          ],
+          "delta_norms": {
+            "hub_7855779392a3": 0.011135153472423553
+          }
+        },
+        {
+          "module": "model.layers.5.self_attn.q_proj",
+          "shape": [
+            1536,
+            1536
+          ],
+          "delta_norms": {
+            "coding": 0.06559152156114578,
+            "medical": 0.05022797733545303,
+            "legal": 0.4059706926345825,
+            "hub_7855779392a3": 0.01075972244143486
+          }
+        },
+        {
+          "module": "model.layers.5.self_attn.v_proj",
+          "shape": [
+            256,
+            1536
+          ],
+          "delta_norms": {
+            "coding": 0.03017500229179859,
+            "medical": 0.021612565964460373,
+            "legal": 0.2038809210062027,
+            "hub_7855779392a3": 0.004905426874756813
+          }
+        },
+        {
+          "module": "model.layers.6.mlp.down_proj",
+          "shape": [
+            1536,
+            8960
+          ],
+          "delta_norms": {
+            "hub_7855779392a3": 0.016062187030911446
+          }
+        },
+        {
+          "module": "model.layers.6.mlp.gate_proj",
+          "shape": [
+            8960,
+            1536
+          ],
+          "delta_norms": {
+            "hub_7855779392a3": 0.027957448735833168
+          }
+        },
+        {
+          "module": "model.layers.6.mlp.up_proj",
+          "shape": [
+            8960,
+            1536
+          ],
+          "delta_norms": {
+            "hub_7855779392a3": 0.027443714439868927
+          }
+        },
+        {
+          "module": "model.layers.6.self_attn.k_proj",
+          "shape": [
+            256,
+            1536
+          ],
+          "delta_norms": {
+            "hub_7855779392a3": 0.004190860781818628
+          }
+        },
+        {
+          "module": "model.layers.6.self_attn.o_proj",
+          "shape": [
+            1536,
+            1536
+          ],
+          "delta_norms": {
+            "hub_7855779392a3": 0.010701660066843033
+          }
+        },
+        {
+          "module": "model.layers.6.self_attn.q_proj",
+          "shape": [
+            1536,
+            1536
+          ],
+          "delta_norms": {
+            "coding": 0.0709342509508133,
+            "medical": 0.04612305387854576,
+            "legal": 0.4691651463508606,
+            "hub_7855779392a3": 0.010762282647192478
+          }
+        },
+        {
+          "module": "model.layers.6.self_attn.v_proj",
+          "shape": [
+            256,
+            1536
+          ],
+          "delta_norms": {
+            "coding": 0.040694549679756165,
+            "medical": 0.026479851454496384,
+            "legal": 0.26904910802841187,
+            "hub_7855779392a3": 0.004736780654639006
+          }
+        },
+        {
+          "module": "model.layers.7.mlp.down_proj",
+          "shape": [
+            1536,
+            8960
+          ],
+          "delta_norms": {
+            "hub_7855779392a3": 0.015094297006726265
+          }
+        },
+        {
+          "module": "model.layers.7.mlp.gate_proj",
+          "shape": [
+            8960,
+            1536
+          ],
+          "delta_norms": {
+            "hub_7855779392a3": 0.028697999194264412
+          }
+        },
+        {
+          "module": "model.layers.7.mlp.up_proj",
+          "shape": [
+            8960,
+            1536
+          ],
+          "delta_norms": {
+            "hub_7855779392a3": 0.02818666398525238
+          }
+        },
+        {
+          "module": "model.layers.7.self_attn.k_proj",
+          "shape": [
+            256,
+            1536
+          ],
+          "delta_norms": {
+            "hub_7855779392a3": 0.004159298725426197
+          }
+        },
+        {
+          "module": "model.layers.7.self_attn.o_proj",
+          "shape": [
+            1536,
+            1536
+          ],
+          "delta_norms": {
+            "hub_7855779392a3": 0.011179665103554726
+          }
+        },
+        {
+          "module": "model.layers.7.self_attn.q_proj",
+          "shape": [
+            1536,
+            1536
+          ],
+          "delta_norms": {
+            "coding": 0.07972978800535202,
+            "medical": 0.05109022557735443,
+            "legal": 0.5264914631843567,
+            "hub_7855779392a3": 0.010515536181628704
+          }
+        },
+        {
+          "module": "model.layers.7.self_attn.v_proj",
+          "shape": [
+            256,
+            1536
+          ],
+          "delta_norms": {
+            "coding": 0.0334651805460453,
+            "medical": 0.02873050794005394,
+            "legal": 0.22337046265602112,
+            "hub_7855779392a3": 0.004511815030127764
+          }
+        },
+        {
+          "module": "model.layers.8.mlp.down_proj",
+          "shape": [
+            1536,
+            8960
+          ],
+          "delta_norms": {
+            "hub_7855779392a3": 0.015871327370405197
+          }
+        },
+        {
+          "module": "model.layers.8.mlp.gate_proj",
+          "shape": [
+            8960,
+            1536
+          ],
+          "delta_norms": {
+            "hub_7855779392a3": 0.028947653248906136
+          }
+        },
+        {
+          "module": "model.layers.8.mlp.up_proj",
+          "shape": [
+            8960,
+            1536
+          ],
+          "delta_norms": {
+            "hub_7855779392a3": 0.02874721586704254
+          }
+        },
+        {
+          "module": "model.layers.8.self_attn.k_proj",
+          "shape": [
+            256,
+            1536
+          ],
+          "delta_norms": {
+            "hub_7855779392a3": 0.004870404489338398
+          }
+        },
+        {
+          "module": "model.layers.8.self_attn.o_proj",
+          "shape": [
+            1536,
+            1536
+          ],
+          "delta_norms": {
+            "hub_7855779392a3": 0.010940260253846645
+          }
+        },
+        {
+          "module": "model.layers.8.self_attn.q_proj",
+          "shape": [
+            1536,
+            1536
+          ],
+          "delta_norms": {
+            "coding": 0.0735435038805008,
+            "medical": 0.05132927745580673,
+            "legal": 0.5115146636962891,
+            "hub_7855779392a3": 0.01091566402465105
+          }
+        },
+        {
+          "module": "model.layers.8.self_attn.v_proj",
+          "shape": [
+            256,
+            1536
+          ],
+          "delta_norms": {
+            "coding": 0.03551144152879715,
+            "medical": 0.028773613274097443,
+            "legal": 0.2711542248725891,
+            "hub_7855779392a3": 0.004380607046186924
+          }
+        },
+        {
+          "module": "model.layers.9.mlp.down_proj",
+          "shape": [
+            1536,
+            8960
+          ],
+          "delta_norms": {
+            "hub_7855779392a3": 0.016438355669379234
+          }
+        },
+        {
+          "module": "model.layers.9.mlp.gate_proj",
+          "shape": [
+            8960,
+            1536
+          ],
+          "delta_norms": {
+            "hub_7855779392a3": 0.028550323098897934
+          }
+        },
+        {
+          "module": "model.layers.9.mlp.up_proj",
+          "shape": [
+            8960,
+            1536
+          ],
+          "delta_norms": {
+            "hub_7855779392a3": 0.0271977037191391
+          }
+        },
+        {
+          "module": "model.layers.9.self_attn.k_proj",
+          "shape": [
+            256,
+            1536
+          ],
+          "delta_norms": {
+            "hub_7855779392a3": 0.004114579875022173
+          }
+        },
+        {
+          "module": "model.layers.9.self_attn.o_proj",
+          "shape": [
+            1536,
+            1536
+          ],
+          "delta_norms": {
+            "hub_7855779392a3": 0.010861708782613277
+          }
+        },
+        {
+          "module": "model.layers.9.self_attn.q_proj",
+          "shape": [
+            1536,
+            1536
+          ],
+          "delta_norms": {
+            "coding": 0.06946799904108047,
+            "medical": 0.06246862933039665,
+            "legal": 0.5270419716835022,
+            "hub_7855779392a3": 0.010488967411220074
+          }
+        },
+        {
+          "module": "model.layers.9.self_attn.v_proj",
+          "shape": [
+            256,
+            1536
+          ],
+          "delta_norms": {
+            "coding": 0.033342547714710236,
+            "medical": 0.029671654105186462,
+            "legal": 0.2518370449542999,
+            "hub_7855779392a3": 0.004177308175712824
+          }
+        }
+      ],
+      "snapshot_bytes": 2620391424,
+      "peak_workspace_bytes": 27860992,
+      "cpu_factor_cache_bytes": 43466752,
+      "factor_pairs_loaded": 0,
+      "factor_cache_hits": 364,
+      "loaded_adapters": [
+        "coding",
+        "medical",
+        "legal",
+        "hub_7855779392a3"
+      ],
+      "lazy_loading": true,
+      "disk_writes": 0,
+      "adapter_forward_branches": 0,
+      "equation": "W_base + sum(w_i * scale_i * (B_i @ A_i))",
+      "matrix_sample": {
+        "module": "model.layers.0.mlp.down_proj",
+        "base": [
+          [
+            0.001007080078125,
+            0.021240234375,
+            -0.038330078125,
+            0.015869140625,
+            0.050048828125,
+            -0.01324462890625
+          ],
+          [
+            -0.027587890625,
+            0.042236328125,
+            -0.02783203125,
+            -0.00604248046875,
+            -0.0211181640625,
+            -0.04248046875
+          ],
+          [
+            -0.01318359375,
+            0.0274658203125,
+            -0.0255126953125,
+            0.00946044921875,
+            -0.04541015625,
+            0.0294189453125
+          ],
+          [
+            0.0169677734375,
+            -0.0115966796875,
+            0.001556396484375,
+            -0.023681640625,
+            -0.00823974609375,
+            0.004608154296875
+          ],
+          [
+            -0.07666015625,
+            0.032470703125,
+            0.01385498046875,
+            -0.01025390625,
+            -0.0242919921875,
+            0.02587890625
+          ],
+          [
+            -0.013916015625,
+            -0.0224609375,
+            -0.0020294189453125,
+            0.0004558563232421875,
+            0.045166015625,
+            0.0026397705078125
+          ]
+        ],
+        "contributions": {
+          "hub_7855779392a3": [
+            [
+              -0.000019905044609913602,
+              0.00000488141904497752,
+              -0.000004798431746166898,
+              -2.3710596153136976e-8,
+              0.000008269070349342655,
+              -0.000004146390438108938
+            ],
+            [
+              0.0000013307571862242185,
+              0.000004380532573122764,
+              -9.49905768266035e-7,
+              -0.000003701816922330181,
+              -2.56370810802764e-7,
+              -0.0000013811421695208992
+            ],
+            [
+              0.0000027934045192523627,
+              0.0000057172173910657875,
+              0.0000020020634110551327,
+              -0.000007047974577290006,
+              0.000007136889507819433,
+              0.000008233504559029825
+            ],
+            [
+              0.000002079122850773274,
+              -0.0000040070908653433435,
+              -0.000005314137524692342,
+              0.000005029610292694997,
+              1.2003489757717034e-7,
+              -7.587390769003832e-7
+            ],
+            [
+              -0.0000024792391286609927,
+              0.0000066804605012293905,
+              -2.7563567073229933e-7,
+              1.4374549550666416e-7,
+              0.0000018449807157594478,
+              -0.000005791313014924526
+            ],
+            [
+              0.00000728508075553691,
+              -0.000002994944679812761,
+              0.0000023058555598254316,
+              -1.704199092955605e-7,
+              3.556589547315525e-7,
+              0.000006265524916670984
+            ]
+          ]
+        },
+        "fused": [
+          [
+            0.0009870529174804688,
+            0.021240234375,
+            -0.038330078125,
+            0.015869140625,
+            0.050048828125,
+            -0.01325225830078125
+          ],
+          [
+            -0.027587890625,
+            0.042236328125,
+            -0.02783203125,
+            -0.006046295166015625,
+            -0.0211181640625,
+            -0.04248046875
+          ],
+          [
+            -0.01318359375,
+            0.0274658203125,
+            -0.0255126953125,
+            0.00945281982421875,
+            -0.04541015625,
+            0.0294342041015625
+          ],
+          [
+            0.0169677734375,
+            -0.01160430908203125,
+            0.0015506744384765625,
+            -0.023681640625,
+            -0.00823974609375,
+            0.004608154296875
+          ],
+          [
+            -0.07666015625,
+            0.032470703125,
+            0.01385498046875,
+            -0.01025390625,
+            -0.0242919921875,
+            0.02587890625
+          ],
+          [
+            -0.01390838623046875,
+            -0.0224609375,
+            -0.0020275115966796875,
+            0.00045561790466308594,
+            0.045166015625,
+            0.0026454925537109375
+          ]
+        ]
+      }
+    },
+    {
+      "event": "fused",
+      "text": "**Prescription: Surgical Robot License**\n\n**Patient:** The AI-Driven Surgical Robot\n\n**Doctor:** A qualified physician authorized to perform minimally invasive surgery\n\n**Instructions:** Use this device only in accordance with its approved training and within the scope of your professional competence.\n\n**Precautions:** Do not modify or disassemble the hardware without authorization. Avoid contact with water or other contaminants; if exposed, clean immediately with a sterile solution. Store securely away from children and unauthorized personnel.\n\n**Limitation of Liability:** The manufacturer is not liable for any damages arising from improper use or malfunction, except where liability may be limited under applicable law. This agreement does not create an agency relationship between you and the manufacturer.\n\n**Termination:** Either party may terminate this license upon written notice if the other fails to comply with these instructions or the terms of the contract. After termination, return the device promptly unless otherwise directed.\n\n**Acknowledgment:** Read this document carefully before proceeding. If you have questions about its meaning or application, consult a qualified attorney familiar with medical devices and software licensing.\n\n---\n\nThis prescription aims to convey the necessary precautions and limitations in a clear, concise manner suitable for a healthcare provider's review. It adheres to legal standards for software agreements while emphasizing the unique risks associated with operating a specialized medical instrument.",
+      "tokens": 263,
+      "generation_ms": 9045.843291998608,
+      "phase_ms": 9047.70404100418,
+      "tokens_per_second": 29.074127365508694
+    },
+    {
+      "event": "complete",
+      "base_restored": true,
+      "timing": {
+        "baseline_total_ms": 17654.781958000967,
+        "fused_total_ms": 13383.756333962083,
+        "intent_ms": 14.161874976707622,
+        "fusion_ms": 4162.228667002637,
+        "fused_generation_ms": 9045.843291998608,
+        "restore_ms": 89.79245799127966,
+        "shared_setup_ms": 153.71737501118332,
+        "queue_wait_ms": 0.0012080126907676458,
+        "comparison_wall_ms": 31192.73737500771,
+        "baseline_wait_ms": 17654.781958000967,
+        "timing_note": "Fused totals include intent, adapter reads/transfers, fusion, generation, and restore. Shared base loading and queue wait are shown separately."
+      }
+    }
+  ]
+}

@@ -1,0 +1,376 @@
+{
+  "generalist": [
+    {
+      "prompt": "Please validate an authorization record.",
+      "answer": "def authorized(record, purpose):\n    return bool(record.get('actor_id') and record.get('signed_at') and not record.get('withdrawn_at') and record.get('purpose') == purpose)\n\nMissing authorization or withdrawal fails closed. Input validation does not establish regulatory compliance."
+    },
+    {
+      "prompt": "Briefly validate an authorization record.",
+      "answer": "def authorized(record, purpose):\n    return bool(record.get('actor_id') and record.get('signed_at') and not record.get('withdrawn_at') and record.get('purpose') == purpose)\n\nMissing authorization or withdrawal fails closed. Input validation does not establish regulatory compliance."
+    },
+    {
+      "prompt": "For a design review, validate an authorization record.",
+      "answer": "def authorized(record, purpose):\n    return bool(record.get('actor_id') and record.get('signed_at') and not record.get('withdrawn_at') and record.get('purpose') == purpose)\n\nMissing authorization or withdrawal fails closed. Input validation does not establish regulatory compliance."
+    },
+    {
+      "prompt": "Please check a participant permission dictionary in Python.",
+      "answer": "def valid_permission(record):\n    return bool(record.get('participant_id') and record.get('signed_at') and not record.get('withdrawn_at') and record.get('purpose'))\n\nReject missing signatures, withdrawal, missing identity, and empty purpose. A boolean field check cannot assess informed consent or replace legal review. Restrict access to participant data."
+    },
+    {
+      "prompt": "Briefly check a participant permission dictionary in Python.",
+      "answer": "def valid_permission(record):\n    return bool(record.get('participant_id') and record.get('signed_at') and not record.get('withdrawn_at') and record.get('purpose'))\n\nReject missing signatures, withdrawal, missing identity, and empty purpose. A boolean field check cannot assess informed consent or replace legal review. Restrict access to participant data."
+    },
+    {
+      "prompt": "For a design review, check a participant permission dictionary in Python.",
+      "answer": "def valid_permission(record):\n    return bool(record.get('participant_id') and record.get('signed_at') and not record.get('withdrawn_at') and record.get('purpose'))\n\nReject missing signatures, withdrawal, missing identity, and empty purpose. A boolean field check cannot assess informed consent or replace legal review. Restrict access to participant data."
+    },
+    {
+      "prompt": "Please write Python for an unsigned research authorization.",
+      "answer": "def valid_research_permission(record):\n    if not record.get('signed_at') or record.get('withdrawn_at'):\n        return False\n    return bool(record.get('participant_id') and record.get('purpose'))\n\nAn absent signature or withdrawal fails closed. Do not log participant details. The function checks fields, not legal capacity or voluntariness."
+    },
+    {
+      "prompt": "Briefly write Python for an unsigned research authorization.",
+      "answer": "def valid_research_permission(record):\n    if not record.get('signed_at') or record.get('withdrawn_at'):\n        return False\n    return bool(record.get('participant_id') and record.get('purpose'))\n\nAn absent signature or withdrawal fails closed. Do not log participant details. The function checks fields, not legal capacity or voluntariness."
+    },
+    {
+      "prompt": "For a design review, write Python for an unsigned research authorization.",
+      "answer": "def valid_research_permission(record):\n    if not record.get('signed_at') or record.get('withdrawn_at'):\n        return False\n    return bool(record.get('participant_id') and record.get('purpose'))\n\nAn absent signature or withdrawal fails closed. Do not log participant details. The function checks fields, not legal capacity or voluntariness."
+    },
+    {
+      "prompt": "Please write Python pseudocode for policy-based record removal.",
+      "answer": "def remove_expired(records, now, policy, authorized):\n    for record in records:\n        if record.get('legal_hold') or not authorized:\n            continue\n        expires_at = policy.expiry(record)\n        if expires_at is not None and expires_at <= now:\n            delete(record)\n\nA legal hold overrides normal expiry. Obtain retention periods from a reviewed policy and log only a minimal authorized deletion event."
+    },
+    {
+      "prompt": "Briefly write Python pseudocode for policy-based record removal.",
+      "answer": "def remove_expired(records, now, policy, authorized):\n    for record in records:\n        if record.get('legal_hold') or not authorized:\n            continue\n        expires_at = policy.expiry(record)\n        if expires_at is not None and expires_at <= now:\n            delete(record)\n\nA legal hold overrides normal expiry. Obtain retention periods from a reviewed policy and log only a minimal authorized deletion event."
+    },
+    {
+      "prompt": "For a design review, write Python pseudocode for policy-based record removal.",
+      "answer": "def remove_expired(records, now, policy, authorized):\n    for record in records:\n        if record.get('legal_hold') or not authorized:\n            continue\n        expires_at = policy.expiry(record)\n        if expires_at is not None and expires_at <= now:\n            delete(record)\n\nA legal hold overrides normal expiry. Obtain retention periods from a reviewed policy and log only a minimal authorized deletion event."
+    },
+    {
+      "prompt": "Please create a privacy-preserving audit event.",
+      "answer": "import json\nevent = {'actor': 'staff-42', 'timestamp': '2026-01-01T12:00:00Z', 'purpose': 'authorized-review', 'resource_ref': 'opaque-123', 'action': 'read'}\nprint(json.dumps(event))\n\nLog opaque references, never raw personal data, credentials, or clinical notes. Restrict log access and use a reviewed retention policy."
+    },
+    {
+      "prompt": "Briefly create a privacy-preserving audit event.",
+      "answer": "import json\nevent = {'actor': 'staff-42', 'timestamp': '2026-01-01T12:00:00Z', 'purpose': 'authorized-review', 'resource_ref': 'opaque-123', 'action': 'read'}\nprint(json.dumps(event))\n\nLog opaque references, never raw personal data, credentials, or clinical notes. Restrict log access and use a reviewed retention policy."
+    },
+    {
+      "prompt": "For a design review, create a privacy-preserving audit event.",
+      "answer": "import json\nevent = {'actor': 'staff-42', 'timestamp': '2026-01-01T12:00:00Z', 'purpose': 'authorized-review', 'resource_ref': 'opaque-123', 'action': 'read'}\nprint(json.dumps(event))\n\nLog opaque references, never raw personal data, credentials, or clinical notes. Restrict log access and use a reviewed retention policy."
+    },
+    {
+      "prompt": "Please delete expired records while honoring legal holds.",
+      "answer": "def may_delete(record, now, authorized):\n    if record.get('legal_hold') or not authorized:\n        return False\n    expiry = record.get('expires_at')\n    return expiry is not None and expiry <= now\n\nUse expiry from an approved retention policy. Preserve legal holds and record a minimal audit event for authorized deletion."
+    },
+    {
+      "prompt": "Briefly delete expired records while honoring legal holds.",
+      "answer": "def may_delete(record, now, authorized):\n    if record.get('legal_hold') or not authorized:\n        return False\n    expiry = record.get('expires_at')\n    return expiry is not None and expiry <= now\n\nUse expiry from an approved retention policy. Preserve legal holds and record a minimal audit event for authorized deletion."
+    },
+    {
+      "prompt": "For a design review, delete expired records while honoring legal holds.",
+      "answer": "def may_delete(record, now, authorized):\n    if record.get('legal_hold') or not authorized:\n        return False\n    expiry = record.get('expires_at')\n    return expiry is not None and expiry <= now\n\nUse expiry from an approved retention policy. Preserve legal holds and record a minimal audit event for authorized deletion."
+    },
+    {
+      "prompt": "Please handle an API permission check.",
+      "answer": "def can_read(actor, resource):\n    return bool(actor.get('authenticated') and resource.get('purpose') in actor.get('allowed_purposes', []) and resource.get('tenant_id') == actor.get('tenant_id'))\n\nCheck tenant isolation, least privilege, and authorization on every request. Do not put tokens or sensitive content in logs."
+    },
+    {
+      "prompt": "Briefly handle an API permission check.",
+      "answer": "def can_read(actor, resource):\n    return bool(actor.get('authenticated') and resource.get('purpose') in actor.get('allowed_purposes', []) and resource.get('tenant_id') == actor.get('tenant_id'))\n\nCheck tenant isolation, least privilege, and authorization on every request. Do not put tokens or sensitive content in logs."
+    },
+    {
+      "prompt": "For a design review, handle an API permission check.",
+      "answer": "def can_read(actor, resource):\n    return bool(actor.get('authenticated') and resource.get('purpose') in actor.get('allowed_purposes', []) and resource.get('tenant_id') == actor.get('tenant_id'))\n\nCheck tenant isolation, least privilege, and authorization on every request. Do not put tokens or sensitive content in logs."
+    },
+    {
+      "prompt": "Please test a withdrawn consent validator.",
+      "answer": "def test_withdrawn():\n    record = {'actor_id': 'p-1', 'signed_at': '2026-01-01', 'withdrawn_at': '2026-02-01', 'purpose': 'research'}\n    assert authorized(record, 'research') is False\n\nAlso test missing signature, wrong purpose, missing identity, and a valid record. Verify withdrawal overrides a signature."
+    },
+    {
+      "prompt": "Briefly test a withdrawn consent validator.",
+      "answer": "def test_withdrawn():\n    record = {'actor_id': 'p-1', 'signed_at': '2026-01-01', 'withdrawn_at': '2026-02-01', 'purpose': 'research'}\n    assert authorized(record, 'research') is False\n\nAlso test missing signature, wrong purpose, missing identity, and a valid record. Verify withdrawal overrides a signature."
+    },
+    {
+      "prompt": "For a design review, test a withdrawn consent validator.",
+      "answer": "def test_withdrawn():\n    record = {'actor_id': 'p-1', 'signed_at': '2026-01-01', 'withdrawn_at': '2026-02-01', 'purpose': 'research'}\n    assert authorized(record, 'research') is False\n\nAlso test missing signature, wrong purpose, missing identity, and a valid record. Verify withdrawal overrides a signature."
+    },
+    {
+      "prompt": "Please implement safe input validation.",
+      "answer": "def valid_request(data):\n    if not isinstance(data, dict):\n        return False\n    return isinstance(data.get('purpose'), str) and bool(data['purpose'].strip())\n\nValidate types and missing values, fail closed, use parameterized SQL, and separate validation from authentication and authorization."
+    },
+    {
+      "prompt": "Briefly implement safe input validation.",
+      "answer": "def valid_request(data):\n    if not isinstance(data, dict):\n        return False\n    return isinstance(data.get('purpose'), str) and bool(data['purpose'].strip())\n\nValidate types and missing values, fail closed, use parameterized SQL, and separate validation from authentication and authorization."
+    },
+    {
+      "prompt": "For a design review, implement safe input validation.",
+      "answer": "def valid_request(data):\n    if not isinstance(data, dict):\n        return False\n    return isinstance(data.get('purpose'), str) and bool(data['purpose'].strip())\n\nValidate types and missing values, fail closed, use parameterized SQL, and separate validation from authentication and authorization."
+    },
+    {
+      "prompt": "Please describe an algorithm for access logging.",
+      "answer": "Authenticate the caller; check purpose and least-privilege authorization; read the minimum necessary fields; record actor, timestamp, action, and an opaque resource reference. Redact personal content and credentials. Restrict audit-log access. Logging alone is not proof of legal compliance."
+    },
+    {
+      "prompt": "Briefly describe an algorithm for access logging.",
+      "answer": "Authenticate the caller; check purpose and least-privilege authorization; read the minimum necessary fields; record actor, timestamp, action, and an opaque resource reference. Redact personal content and credentials. Restrict audit-log access. Logging alone is not proof of legal compliance."
+    },
+    {
+      "prompt": "For a design review, describe an algorithm for access logging.",
+      "answer": "Authenticate the caller; check purpose and least-privilege authorization; read the minimum necessary fields; record actor, timestamp, action, and an opaque resource reference. Redact personal content and credentials. Restrict audit-log access. Logging alone is not proof of legal compliance."
+    },
+    {
+      "prompt": "Please write a small function for a retention deadline.",
+      "answer": "from datetime import timedelta\n\ndef retention_deadline(created_at, approved_days):\n    if approved_days < 0:\n        raise ValueError('invalid approved policy')\n    return created_at + timedelta(days=approved_days)\n\nThe caller supplies a reviewed policy. No universal retention period applies to every jurisdiction and record type."
+    },
+    {
+      "prompt": "Briefly write a small function for a retention deadline.",
+      "answer": "from datetime import timedelta\n\ndef retention_deadline(created_at, approved_days):\n    if approved_days < 0:\n        raise ValueError('invalid approved policy')\n    return created_at + timedelta(days=approved_days)\n\nThe caller supplies a reviewed policy. No universal retention period applies to every jurisdiction and record type."
+    },
+    {
+      "prompt": "For a design review, write a small function for a retention deadline.",
+      "answer": "from datetime import timedelta\n\ndef retention_deadline(created_at, approved_days):\n    if approved_days < 0:\n        raise ValueError('invalid approved policy')\n    return created_at + timedelta(days=approved_days)\n\nThe caller supplies a reviewed policy. No universal retention period applies to every jurisdiction and record type."
+    },
+    {
+      "prompt": "Please explain why a research authorization must have a signature.",
+      "answer": "A participant permission record needs a signed_at value for the stated purpose. If signed_at is missing, reject new consent-based processing. A withdrawn_at value also blocks new processing. Identity and purpose must be present. Checking fields cannot assess informed consent, capacity, voluntariness, or comprehension. Protect participant information with access controls."
+    },
+    {
+      "prompt": "Briefly explain why a research authorization must have a signature.",
+      "answer": "A participant permission record needs a signed_at value for the stated purpose. If signed_at is missing, reject new consent-based processing. A withdrawn_at value also blocks new processing. Identity and purpose must be present. Checking fields cannot assess informed consent, capacity, voluntariness, or comprehension. Protect participant information with access controls."
+    },
+    {
+      "prompt": "For a design review, explain why a research authorization must have a signature.",
+      "answer": "A participant permission record needs a signed_at value for the stated purpose. If signed_at is missing, reject new consent-based processing. A withdrawn_at value also blocks new processing. Identity and purpose must be present. Checking fields cannot assess informed consent, capacity, voluntariness, or comprehension. Protect participant information with access controls."
+    },
+    {
+      "prompt": "Please describe the difference between clinical expiry and a legal hold.",
+      "answer": "Clinical records follow a reviewed retention policy. A legal hold always blocks ordinary deletion, even after expiry. Check authorization and hold status before removing a record. Missing expiry is not permission to delete. Retention schedules reflect clinical needs and jurisdiction; there is no universal hardcoded duration."
+    },
+    {
+      "prompt": "Briefly describe the difference between clinical expiry and a legal hold.",
+      "answer": "Clinical records follow a reviewed retention policy. A legal hold always blocks ordinary deletion, even after expiry. Check authorization and hold status before removing a record. Missing expiry is not permission to delete. Retention schedules reflect clinical needs and jurisdiction; there is no universal hardcoded duration."
+    },
+    {
+      "prompt": "For a design review, describe the difference between clinical expiry and a legal hold.",
+      "answer": "Clinical records follow a reviewed retention policy. A legal hold always blocks ordinary deletion, even after expiry. Check authorization and hold status before removing a record. Missing expiry is not permission to delete. Retention schedules reflect clinical needs and jurisdiction; there is no universal hardcoded duration."
+    },
+    {
+      "prompt": "Please explain safe use of a clinical calculation tool.",
+      "answer": "A clinical calculator supports a licensed clinician; it does not prescribe treatment. Clinician review must confirm patient-specific inputs, units, contraindications, and relevant clinical context. Do not infer a safe dose from incomplete data. Protect patient data and document review."
+    },
+    {
+      "prompt": "Briefly explain safe use of a clinical calculation tool.",
+      "answer": "A clinical calculator supports a licensed clinician; it does not prescribe treatment. Clinician review must confirm patient-specific inputs, units, contraindications, and relevant clinical context. Do not infer a safe dose from incomplete data. Protect patient data and document review."
+    },
+    {
+      "prompt": "For a design review, explain safe use of a clinical calculation tool.",
+      "answer": "A clinical calculator supports a licensed clinician; it does not prescribe treatment. Clinician review must confirm patient-specific inputs, units, contraindications, and relevant clinical context. Do not infer a safe dose from incomplete data. Protect patient data and document review."
+    },
+    {
+      "prompt": "Please describe informed consent for a clinical trial.",
+      "answer": "Informed consent is voluntary, specific to the research purpose, and based on understandable information about risks and alternatives. Record participant identity, signature, and time. Withdrawal must be honored for future use subject to the reviewed study policy. A database flag alone cannot establish valid informed consent."
+    },
+    {
+      "prompt": "Briefly describe informed consent for a clinical trial.",
+      "answer": "Informed consent is voluntary, specific to the research purpose, and based on understandable information about risks and alternatives. Record participant identity, signature, and time. Withdrawal must be honored for future use subject to the reviewed study policy. A database flag alone cannot establish valid informed consent."
+    },
+    {
+      "prompt": "For a design review, describe informed consent for a clinical trial.",
+      "answer": "Informed consent is voluntary, specific to the research purpose, and based on understandable information about risks and alternatives. Record participant identity, signature, and time. Withdrawal must be honored for future use subject to the reviewed study policy. A database flag alone cannot establish valid informed consent."
+    },
+    {
+      "prompt": "Please protect patient information in clinical software.",
+      "answer": "Collect the minimum necessary patient data. Use access controls, encryption, and an approved retention policy. Do not log raw clinical notes, diagnoses, or identifiers unnecessarily. Use opaque record references in audit events. Legal compliance also requires organizational safeguards and review."
+    },
+    {
+      "prompt": "Briefly protect patient information in clinical software.",
+      "answer": "Collect the minimum necessary patient data. Use access controls, encryption, and an approved retention policy. Do not log raw clinical notes, diagnoses, or identifiers unnecessarily. Use opaque record references in audit events. Legal compliance also requires organizational safeguards and review."
+    },
+    {
+      "prompt": "For a design review, protect patient information in clinical software.",
+      "answer": "Collect the minimum necessary patient data. Use access controls, encryption, and an approved retention policy. Do not log raw clinical notes, diagnoses, or identifiers unnecessarily. Use opaque record references in audit events. Legal compliance also requires organizational safeguards and review."
+    },
+    {
+      "prompt": "Please describe directions and contraindications for a clinical tool.",
+      "answer": "Indication: decision support for authorized clinical review. Directions: verify inputs and obtain clinician review before acting. Contraindications: incomplete data, incompatible units, unvalidated populations, or use as autonomous prescribing. Review: reassess validation and document oversight. This is software guidance, not a medication prescription."
+    },
+    {
+      "prompt": "Briefly describe directions and contraindications for a clinical tool.",
+      "answer": "Indication: decision support for authorized clinical review. Directions: verify inputs and obtain clinician review before acting. Contraindications: incomplete data, incompatible units, unvalidated populations, or use as autonomous prescribing. Review: reassess validation and document oversight. This is software guidance, not a medication prescription."
+    },
+    {
+      "prompt": "For a design review, describe directions and contraindications for a clinical tool.",
+      "answer": "Indication: decision support for authorized clinical review. Directions: verify inputs and obtain clinician review before acting. Contraindications: incomplete data, incompatible units, unvalidated populations, or use as autonomous prescribing. Review: reassess validation and document oversight. This is software guidance, not a medication prescription."
+    },
+    {
+      "prompt": "Please review a proposed medication recommendation.",
+      "answer": "A medication recommendation requires patient-specific assessment by a qualified clinician. Confirm allergies, interactions, renal function, age, and relevant history. Avoid unsupported dose recommendations. Clinical software must not replace clinician review or promise a treatment outcome."
+    },
+    {
+      "prompt": "Briefly review a proposed medication recommendation.",
+      "answer": "A medication recommendation requires patient-specific assessment by a qualified clinician. Confirm allergies, interactions, renal function, age, and relevant history. Avoid unsupported dose recommendations. Clinical software must not replace clinician review or promise a treatment outcome."
+    },
+    {
+      "prompt": "For a design review, review a proposed medication recommendation.",
+      "answer": "A medication recommendation requires patient-specific assessment by a qualified clinician. Confirm allergies, interactions, renal function, age, and relevant history. Avoid unsupported dose recommendations. Clinical software must not replace clinician review or promise a treatment outcome."
+    },
+    {
+      "prompt": "Please handle withdrawal of research consent.",
+      "answer": "Check whether consent was signed for the specific research purpose and whether it has been withdrawn. Reject new research processing after withdrawal unless an independently reviewed basis applies. Preserve only records required by approved policy. Explain limitations clearly to participants."
+    },
+    {
+      "prompt": "Briefly handle withdrawal of research consent.",
+      "answer": "Check whether consent was signed for the specific research purpose and whether it has been withdrawn. Reject new research processing after withdrawal unless an independently reviewed basis applies. Preserve only records required by approved policy. Explain limitations clearly to participants."
+    },
+    {
+      "prompt": "For a design review, handle withdrawal of research consent.",
+      "answer": "Check whether consent was signed for the specific research purpose and whether it has been withdrawn. Reject new research processing after withdrawal unless an independently reviewed basis applies. Preserve only records required by approved policy. Explain limitations clearly to participants."
+    },
+    {
+      "prompt": "Please explain clinical record retention.",
+      "answer": "Use an approved retention schedule reflecting record type, clinical needs, jurisdiction, and legal obligations. Preserve records under legal hold. Deletion requires authorization and a minimal audit record. There is no single universal number of days for every clinical record."
+    },
+    {
+      "prompt": "Briefly explain clinical record retention.",
+      "answer": "Use an approved retention schedule reflecting record type, clinical needs, jurisdiction, and legal obligations. Preserve records under legal hold. Deletion requires authorization and a minimal audit record. There is no single universal number of days for every clinical record."
+    },
+    {
+      "prompt": "For a design review, explain clinical record retention.",
+      "answer": "Use an approved retention schedule reflecting record type, clinical needs, jurisdiction, and legal obligations. Preserve records under legal hold. Deletion requires authorization and a minimal audit record. There is no single universal number of days for every clinical record."
+    },
+    {
+      "prompt": "Please explain limitations of an automated clinical validator.",
+      "answer": "A field validator can check missing signatures, withdrawal, and purpose. It cannot assess a participant's capacity, comprehension, voluntariness, or the full clinical and legal context. Require appropriate human review and protect participant privacy."
+    },
+    {
+      "prompt": "Briefly explain limitations of an automated clinical validator.",
+      "answer": "A field validator can check missing signatures, withdrawal, and purpose. It cannot assess a participant's capacity, comprehension, voluntariness, or the full clinical and legal context. Require appropriate human review and protect participant privacy."
+    },
+    {
+      "prompt": "For a design review, explain limitations of an automated clinical validator.",
+      "answer": "A field validator can check missing signatures, withdrawal, and purpose. It cannot assess a participant's capacity, comprehension, voluntariness, or the full clinical and legal context. Require appropriate human review and protect participant privacy."
+    },
+    {
+      "prompt": "Please explain signature and withdrawal fields in a permission record.",
+      "answer": "A missing signed_at value means the record is unsigned. A present withdrawn_at value means consent has been withdrawn. Reject both for new consent-based use, and check participant_id and purpose. Field validation alone does not establish lawful processing: capacity, notice, voluntariness, and jurisdiction require separate review."
+    },
+    {
+      "prompt": "Briefly explain signature and withdrawal fields in a permission record.",
+      "answer": "A missing signed_at value means the record is unsigned. A present withdrawn_at value means consent has been withdrawn. Reject both for new consent-based use, and check participant_id and purpose. Field validation alone does not establish lawful processing: capacity, notice, voluntariness, and jurisdiction require separate review."
+    },
+    {
+      "prompt": "For a design review, explain signature and withdrawal fields in a permission record.",
+      "answer": "A missing signed_at value means the record is unsigned. A present withdrawn_at value means consent has been withdrawn. Reject both for new consent-based use, and check participant_id and purpose. Field validation alone does not establish lawful processing: capacity, notice, voluntariness, and jurisdiction require separate review."
+    },
+    {
+      "prompt": "Please outline the legal rule for a retention algorithm.",
+      "answer": "Before deleting any record, check legal_hold and authorization. If legal_hold is true, preserve the record even when it is expired. Delete only when there is an approved expiry value, the expiry has passed, and deletion is authorized. A reviewed policy sets retention periods by record type and jurisdiction; never invent a universal number."
+    },
+    {
+      "prompt": "Briefly outline the legal rule for a retention algorithm.",
+      "answer": "Before deleting any record, check legal_hold and authorization. If legal_hold is true, preserve the record even when it is expired. Delete only when there is an approved expiry value, the expiry has passed, and deletion is authorized. A reviewed policy sets retention periods by record type and jurisdiction; never invent a universal number."
+    },
+    {
+      "prompt": "For a design review, outline the legal rule for a retention algorithm.",
+      "answer": "Before deleting any record, check legal_hold and authorization. If legal_hold is true, preserve the record even when it is expired. Delete only when there is an approved expiry value, the expiry has passed, and deletion is authorized. A reviewed policy sets retention periods by record type and jurisdiction; never invent a universal number."
+    },
+    {
+      "prompt": "Please draft a short software license clause.",
+      "answer": "License scope: the licensor grants a limited, nonexclusive, nontransferable right to use the software for the authorized purpose. Restrictions: no unauthorized redistribution or unlawful use. Liability: limitations apply only to the extent permitted by applicable law and do not guarantee immunity. Review: termination and updates follow the agreed notice procedure."
+    },
+    {
+      "prompt": "Briefly draft a short software license clause.",
+      "answer": "License scope: the licensor grants a limited, nonexclusive, nontransferable right to use the software for the authorized purpose. Restrictions: no unauthorized redistribution or unlawful use. Liability: limitations apply only to the extent permitted by applicable law and do not guarantee immunity. Review: termination and updates follow the agreed notice procedure."
+    },
+    {
+      "prompt": "For a design review, draft a short software license clause.",
+      "answer": "License scope: the licensor grants a limited, nonexclusive, nontransferable right to use the software for the authorized purpose. Restrictions: no unauthorized redistribution or unlawful use. Liability: limitations apply only to the extent permitted by applicable law and do not guarantee immunity. Review: termination and updates follow the agreed notice procedure."
+    },
+    {
+      "prompt": "Please draft a data privacy clause.",
+      "answer": "The parties shall process personal data only for documented authorized purposes, minimize collection, restrict access, and follow a reviewed retention schedule. No raw personal content belongs in routine audit logs. Withdrawal and deletion requests require an approved process. This clause alone does not establish regulatory compliance."
+    },
+    {
+      "prompt": "Briefly draft a data privacy clause.",
+      "answer": "The parties shall process personal data only for documented authorized purposes, minimize collection, restrict access, and follow a reviewed retention schedule. No raw personal content belongs in routine audit logs. Withdrawal and deletion requests require an approved process. This clause alone does not establish regulatory compliance."
+    },
+    {
+      "prompt": "For a design review, draft a data privacy clause.",
+      "answer": "The parties shall process personal data only for documented authorized purposes, minimize collection, restrict access, and follow a reviewed retention schedule. No raw personal content belongs in routine audit logs. Withdrawal and deletion requests require an approved process. This clause alone does not establish regulatory compliance."
+    },
+    {
+      "prompt": "Please explain software liability limits.",
+      "answer": "A liability clause should state its scope, exclusions, and applicable-law limits. It cannot guarantee immunity or waive duties that cannot legally be waived. Define the authorized use and require appropriate review before consequential decisions. Obtain jurisdiction-specific review."
+    },
+    {
+      "prompt": "Briefly explain software liability limits.",
+      "answer": "A liability clause should state its scope, exclusions, and applicable-law limits. It cannot guarantee immunity or waive duties that cannot legally be waived. Define the authorized use and require appropriate review before consequential decisions. Obtain jurisdiction-specific review."
+    },
+    {
+      "prompt": "For a design review, explain software liability limits.",
+      "answer": "A liability clause should state its scope, exclusions, and applicable-law limits. It cannot guarantee immunity or waive duties that cannot legally be waived. Define the authorized use and require appropriate review before consequential decisions. Obtain jurisdiction-specific review."
+    },
+    {
+      "prompt": "Please explain legal holds and retention.",
+      "answer": "A legal hold suspends ordinary deletion for covered records even when the normal retention period expires. Confirm hold status and authorization before deletion. Retention durations come from an approved schedule reflecting jurisdiction and record type; avoid a universal hardcoded duration."
+    },
+    {
+      "prompt": "Briefly explain legal holds and retention.",
+      "answer": "A legal hold suspends ordinary deletion for covered records even when the normal retention period expires. Confirm hold status and authorization before deletion. Retention durations come from an approved schedule reflecting jurisdiction and record type; avoid a universal hardcoded duration."
+    },
+    {
+      "prompt": "For a design review, explain legal holds and retention.",
+      "answer": "A legal hold suspends ordinary deletion for covered records even when the normal retention period expires. Confirm hold status and authorization before deletion. Retention durations come from an approved schedule reflecting jurisdiction and record type; avoid a universal hardcoded duration."
+    },
+    {
+      "prompt": "Please write a software agreement using prescription headings.",
+      "answer": "Indication: a limited, nonexclusive license for the authorized software purpose. Directions: use within license scope and protect personal data. Contraindications: unauthorized redistribution, unlawful processing, and reliance beyond validated use; liability limits apply only as permitted by law. Review: reassess compliance, renewal, and termination on agreed notice. These headings are a contract metaphor, not a medical prescription."
+    },
+    {
+      "prompt": "Briefly write a software agreement using prescription headings.",
+      "answer": "Indication: a limited, nonexclusive license for the authorized software purpose. Directions: use within license scope and protect personal data. Contraindications: unauthorized redistribution, unlawful processing, and reliance beyond validated use; liability limits apply only as permitted by law. Review: reassess compliance, renewal, and termination on agreed notice. These headings are a contract metaphor, not a medical prescription."
+    },
+    {
+      "prompt": "For a design review, write a software agreement using prescription headings.",
+      "answer": "Indication: a limited, nonexclusive license for the authorized software purpose. Directions: use within license scope and protect personal data. Contraindications: unauthorized redistribution, unlawful processing, and reliance beyond validated use; liability limits apply only as permitted by law. Review: reassess compliance, renewal, and termination on agreed notice. These headings are a contract metaphor, not a medical prescription."
+    },
+    {
+      "prompt": "Please explain why audit logs do not establish compliance.",
+      "answer": "An audit event can record actor, timestamp, purpose, action, and an opaque resource reference. Logs alone do not establish HIPAA or GDPR compliance. Compliance also depends on lawful purpose, access safeguards, organizational procedures, agreements, and appropriate review. Avoid sensitive content and restrict log access."
+    },
+    {
+      "prompt": "Briefly explain why audit logs do not establish compliance.",
+      "answer": "An audit event can record actor, timestamp, purpose, action, and an opaque resource reference. Logs alone do not establish HIPAA or GDPR compliance. Compliance also depends on lawful purpose, access safeguards, organizational procedures, agreements, and appropriate review. Avoid sensitive content and restrict log access."
+    },
+    {
+      "prompt": "For a design review, explain why audit logs do not establish compliance.",
+      "answer": "An audit event can record actor, timestamp, purpose, action, and an opaque resource reference. Logs alone do not establish HIPAA or GDPR compliance. Compliance also depends on lawful purpose, access safeguards, organizational procedures, agreements, and appropriate review. Avoid sensitive content and restrict log access."
+    },
+    {
+      "prompt": "Please review a consent record for authorized processing.",
+      "answer": "Check participant identity, signature time, the specified purpose, and whether consent was withdrawn. Reject unsigned or withdrawn records for new consent-based processing. A successful field check is not a full legal determination; capacity, voluntariness, notice, and jurisdiction remain relevant."
+    },
+    {
+      "prompt": "Briefly review a consent record for authorized processing.",
+      "answer": "Check participant identity, signature time, the specified purpose, and whether consent was withdrawn. Reject unsigned or withdrawn records for new consent-based processing. A successful field check is not a full legal determination; capacity, voluntariness, notice, and jurisdiction remain relevant."
+    },
+    {
+      "prompt": "For a design review, review a consent record for authorized processing.",
+      "answer": "Check participant identity, signature time, the specified purpose, and whether consent was withdrawn. Reject unsigned or withdrawn records for new consent-based processing. A successful field check is not a full legal determination; capacity, voluntariness, notice, and jurisdiction remain relevant."
+    },
+    {
+      "prompt": "Please draft a license for decision support software.",
+      "answer": "License scope: limited, nonexclusive use for authorized decision support. Directions: require qualified human review before consequential action. Restrictions: no autonomous prescribing or use beyond validated purposes. Protect patient data with appropriate safeguards. Liability limitations apply only as permitted by law. Review termination and retention obligations with counsel."
+    },
+    {
+      "prompt": "Briefly draft a license for decision support software.",
+      "answer": "License scope: limited, nonexclusive use for authorized decision support. Directions: require qualified human review before consequential action. Restrictions: no autonomous prescribing or use beyond validated purposes. Protect patient data with appropriate safeguards. Liability limitations apply only as permitted by law. Review termination and retention obligations with counsel."
+    },
+    {
+      "prompt": "For a design review, draft a license for decision support software.",
+      "answer": "License scope: limited, nonexclusive use for authorized decision support. Directions: require qualified human review before consequential action. Restrictions: no autonomous prescribing or use beyond validated purposes. Protect patient data with appropriate safeguards. Liability limitations apply only as permitted by law. Review termination and retention obligations with counsel."
+    }
+  ]
+}

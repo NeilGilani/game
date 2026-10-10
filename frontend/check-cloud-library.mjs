@@ -1,0 +1,56 @@
+import { chromium } from '@playwright/test';
+import fs from 'node:fs/promises';
+const browser = await chromium.launch({ executablePath: process.env.SYNAPSE_BROWSER_PATH });
+const page = await browser.newPage({ viewport: { width: 1440, height: 1100 } });
+const errors = []; page.on('pageerror', e => errors.push(e.message));
+try {
+  await page.goto('http://127.0.0.1:3000');
+  await page.locator('.cloud-model').first().waitFor({ timeout: 60000 });
+  const firstCount = await page.locator('.cloud-model').count();
+  if (firstCount !== 24) throw new Error('Missing live initial model page');
+  await page.getByRole('button', { name: 'Load more models' }).click();
+  await page.waitForFunction(() => document.querySelectorAll('.cloud-model').length > 24, null, { timeout: 60000 });
+  const paginatedCount = await page.locator('.cloud-model').count();
+  await page.getByLabel('Search cloud models').fill('chinese-text-correction-1.5b-lora');
+  await page.getByRole('button', { name: 'Search library', exact: true }).click();
+  const card = page.locator('.cloud-model').filter({ has: page.getByRole('link', { name: 'shibing624/chinese-text-correction-1.5b-lora', exact: true }) });
+  await card.waitFor({ timeout: 60000 });
+  if (await card.getByRole('button', { name: 'Inspect LoRA' }).count()) {
+    await card.getByRole('button', { name: 'Inspect LoRA' }).click();
+    await page.locator('.adapter-inspection').waitFor({ timeout: 60000 });
+    await page.locator('.adapter-inspection input').fill('Chinese language text correction spelling grammar translation');
+    await page.getByRole('button', { name: 'Download & add to vault', exact: true }).click();
+    await page.locator('.cloud-notice').waitFor({ timeout: 120000 });
+  }
+  await page.getByLabel('Manual weights').check();
+  const vaultSelections = page.locator('.vault-cards input');
+  for (const checkbox of await vaultSelections.all()) if (!(await checkbox.isChecked())) await checkbox.check();
+  const selected = await page.locator('.vault-cards input:checked').count();
+  if (selected < 5) throw new Error('Cloud adapter was not added to active mixture');
+  await page.getByLabel('Generation token limit').selectOption('128');
+  await page.getByLabel('Manual weights').check();
+  await page.getByRole('slider').first().fill('0.4');
+  const sum = await page.getByRole('slider').evaluateAll(inputs => inputs.reduce((n, input) => n + Number(input.value), 0));
+  if (Math.abs(sum - 1) > .02) throw new Error('Generalized sliders are not normalized');
+  await page.waitForTimeout(500);
+  const comparisonResponse = page.waitForResponse(r => r.url().endsWith('/kernel/compare'));
+  await page.getByRole('button', { name: 'Fuse & compare' }).click();
+  await page.waitForFunction(() => document.querySelector('.status-tag')?.textContent.includes('RESTORED'), null, { timeout: 240000 });
+  const response = await comparisonResponse;
+  const events = (await response.text()).trim().split('\n').map(line => JSON.parse(line));
+  const fusion = events.find(e => e.event === 'fusion');
+  const cloudNames = Object.keys(fusion.weights).filter(name => name.startsWith('hub_'));
+  if (cloudNames.length < 2 || cloudNames.some(name => !fusion.layers.some(row => row.delta_norms[name] > 0))) throw new Error('Cloud adapters have no measured matrix contribution');
+  await fs.writeFile('../artifacts/cloud-comparison.json', JSON.stringify({ prompt: await page.locator('#prompt').inputValue(), events }, null, 2));
+  const auditRows = await page.locator('.audit tbody tr').count();
+  if (auditRows < 56) throw new Error('Missing fused matrices');
+  if (!(await page.locator('.mesh-output pre').innerText()).trim()) throw new Error('Missing fused generation');
+  await page.screenshot({ path: '../artifacts/cloud-library-desktop.png', fullPage: true });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.screenshot({ path: '../artifacts/cloud-library-mobile.png', fullPage: true });
+  const overflow = await page.evaluate(() => document.documentElement.scrollWidth > innerWidth);
+  if (overflow || errors.length) throw new Error(JSON.stringify({ overflow, errors }));
+  const result = { passed: true, firstCount, paginatedCount, selectedExperts: selected, auditRows, realGeneration: true, errors, mobileOverflow: overflow };
+  await fs.writeFile('../artifacts/cloud-browser-check.json', JSON.stringify(result, null, 2));
+  console.log(result);
+} finally { await browser.close(); }

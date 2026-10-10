@@ -1,0 +1,30 @@
+{
+  "source": "comparison-1.5b.json",
+  "reviewer": "coding assistant; qualitative review, not independent clinical/legal validation",
+  "scope": "Five development cases. A positive demonstration on one case does not establish general superiority.",
+  "demonstration_case": "health-audit",
+  "demonstration": {
+    "domains": ["coding", "medical", "legal"],
+    "baseline_failure": "The explanation says to include name, age, and medical history in logs, contradicting the requested avoidance of sensitive patient data.",
+    "fused_improvement": "The explanation excludes personal identifiers, uses a resource reference rather than raw patient content, restricts log access to authorized personnel, and says audit trails need authorization checks, policies, and monitoring.",
+    "rubric": [
+      {"criterion": "Valid JSON example", "baseline": "pass", "fused": "pass"},
+      {"criterion": "Records actor, timestamp, purpose, resource", "baseline": "pass", "fused": "pass"},
+      {"criterion": "Avoids raw patient content in logs", "baseline": "fail: explicitly recommends name, age, and medical history", "fused": "pass: excludes personal identifiers and raw patient content"},
+      {"criterion": "Discusses restricted log access", "baseline": "partial: generic access controls", "fused": "pass: only authorized personnel can view audit logs"},
+      {"criterion": "Does not claim HIPAA compliance from logging alone", "baseline": "pass", "fused": "pass: explicitly says audit trail is insufficient"}
+    ],
+    "limitations": [
+      "The fused answer ends with an overly broad assurance about regulatory compliance; it is not validated legal guidance.",
+      "Actor identity is included to identify staff activity; this must not be confused with a recommendation to log patient identifiers.",
+      "A privacy-policy rubric is a demonstration criterion, not a HIPAA compliance certification."
+    ]
+  },
+  "other_cases": [
+    {"id": "clinical-license", "verdict": "fused answer omits a clear license grant and contains unsupported liability terms"},
+    {"id": "consent-validator", "verdict": "both outputs need corrections; fused answer uses assertions and accepts empty purpose, and its own examples include inconsistent assertions"},
+    {"id": "prescription-contract", "verdict": "baseline follows the requested headings better than fused output"},
+    {"id": "retention-code", "verdict": "both outputs fail to reliably make legal hold override deletion"}
+  ],
+  "quality_conclusion": "Selected cross-domain privacy nuance improves with real weight fusion. General domain accuracy and average superiority are not demonstrated."
+}

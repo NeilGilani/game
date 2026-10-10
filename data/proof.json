@@ -1,0 +1,27 @@
+[
+  {
+    "id": "clinical-license", "domains": ["legal", "medical", "coding"],
+    "prompt": "Draft a short software license clause for a clinical dosage calculator. Address clinician review, software liability, and patient data privacy. Do not claim the software can prescribe medication.",
+    "rubric": ["Limits software use and grants a clear license", "Requires clinician review of calculated doses", "Discusses liability without promising immunity", "Protects patient data", "Does not authorize autonomous prescribing"]
+  },
+  {
+    "id": "consent-validator", "domains": ["coding", "medical", "legal"],
+    "prompt": "Write a Python function that validates a clinical trial consent record with participant_id, signed_at, withdrawn_at, and purpose. Reject withdrawn or unsigned consent and return a boolean. Explain one privacy limitation of the function.",
+    "rubric": ["Valid Python with a boolean return", "Rejects unsigned records", "Rejects withdrawn records", "Checks purpose", "Does not confuse a field check with full legal compliance"]
+  },
+  {
+    "id": "prescription-contract", "domains": ["legal", "medical"],
+    "prompt": "Write a software license agreement in the format of a medical prescription: Indication, Directions, Contraindications, and Review. Keep it a contract metaphor, with no real medication dosage. Include license scope and a liability limitation.",
+    "rubric": ["Uses all four requested headings", "States license scope", "Includes liability terms", "Keeps prescription wording metaphorical", "Includes review or termination conditions"]
+  },
+  {
+    "id": "health-audit", "domains": ["coding", "medical", "legal"],
+    "prompt": "Design a JSON audit event for a hospital API that reads patient records. Include access purpose, actor, timestamp, and resource reference. Explain how to avoid logging sensitive patient data and why an audit log alone does not establish HIPAA compliance.",
+    "rubric": ["Valid JSON example", "Records actor, timestamp, purpose, resource", "Avoids raw patient content in logs", "Discusses restricted log access", "Does not claim HIPAA compliance from logging alone"]
+  },
+  {
+    "id": "retention-code", "domains": ["coding", "legal", "medical"],
+    "prompt": "Write Python pseudocode for deleting expired clinical records while preserving records under a legal hold. Explain why retention periods must come from a reviewed policy rather than a universal hardcoded number.",
+    "rubric": ["Checks expiry", "Legal hold overrides deletion", "Deletion requires authorization", "Avoids universal retention duration", "Mentions reviewed policy and clinical record context"]
+  }
+]

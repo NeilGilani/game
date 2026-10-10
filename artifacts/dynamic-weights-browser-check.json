@@ -1,0 +1,43 @@
+{
+  "passed": true,
+  "prompt_vectors": [
+    {
+      "coding": 0.2831667959690094,
+      "medical": 0,
+      "legal": 0,
+      "hub_7855779392a3": 0.7168332934379578,
+      "hub_6a3f9e02cc1f": 0
+    },
+    {
+      "coding": 0,
+      "medical": 1,
+      "legal": 0,
+      "hub_7855779392a3": 0,
+      "hub_6a3f9e02cc1f": 0
+    }
+  ],
+  "manual_payload": {
+    "prompt": "Explain diagnosis and treatment of a patient with diabetes",
+    "max_new_tokens": 512,
+    "experts": [
+      "medical",
+      "coding",
+      "legal"
+    ],
+    "weights": {
+      "medical": 0.30000000000000004,
+      "coding": 0.7,
+      "legal": 0
+    }
+  },
+  "http_fallback_weights": {
+    "coding": 0.2831667959690094,
+    "medical": 0,
+    "legal": 0,
+    "hub_7855779392a3": 0.7168332934379578,
+    "hub_6a3f9e02cc1f": 0
+  },
+  "manual_after_sifter_failure": true,
+  "javascript_or_asset_errors": [],
+  "generation": "mocked for payload verification"
+}

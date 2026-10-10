@@ -1,0 +1,27 @@
+[build-system]
+requires = ["setuptools>=75"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "synapse-mesh"
+version = "0.1.0"
+description = "Exact, device-resident weighted LoRA fusion"
+requires-python = ">=3.11"
+dependencies = [
+  "torch>=2.6,<3", "transformers>=4.51,<5", "peft>=0.15,<1",
+  "accelerate>=1,<2", "fastapi>=0.115,<1", "uvicorn>=0.34,<1",
+  "httpx>=0.28,<1",
+]
+
+[project.optional-dependencies]
+test = ["pytest>=8,<10", "httpx>=0.28,<1"]
+
+[project.scripts]
+synapse-mesh = "synapse_mesh.cli:main"
+synapse-intent = "synapse_mesh.intent:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

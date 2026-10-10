@@ -1,0 +1,2 @@
+# Extra dependency for the 4-bit AdapterVault (install the existing lock first).
+bitsandbytes==0.50.2

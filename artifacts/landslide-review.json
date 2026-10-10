@@ -1,0 +1,138 @@
+{
+  "verdict": "Real fusion verified. Balanced manual mixture improves cross-domain structure; a landslide quality or enforceability claim is not supported.",
+  "reviewer": "Coding assistant qualitative review; no independent expert validation",
+  "prompt": "Draft a legally binding Software License Agreement for a new AI-driven surgical robot, but write it as a medical prescription that a surgeon would read, ensuring it maintains strict legal enforceability while using clinical terminology to describe the technical constraints of the hardware.",
+  "base_model": "Qwen/Qwen2.5-1.5B-Instruct",
+  "controls": {
+    "same_prompt": true,
+    "same_base_checkpoint": true,
+    "greedy_decoding": true,
+    "equal_maximum_tokens": 512,
+    "baseline_identical_across_both_runs": true,
+    "no_prompt_injection": true,
+    "base_restored": true
+  },
+  "automatic": {
+    "weights": {
+      "coding": 0.10901551693677902,
+      "medical": 0.08622636646032333,
+      "legal": 0.7923268675804138,
+      "hub_7855779392a3": 0.012431181035935879,
+      "hub_6a3f9e02cc1f": 0
+    },
+    "symmetry": {
+      "coefficient_max_error": 2.220446049250313e-16,
+      "sample_matrix_max_error": 8.269070349342655e-06,
+      "changed_sample_values": 11
+    },
+    "matrices_modified": 196,
+    "tokens": {
+      "baseline": 512,
+      "fused": 263
+    },
+    "wall_ms": 31192.73737500771,
+    "quality": "Not a clear improvement: lacks an explicit software license grant, invents cleaning instructions, and claims adherence to legal standards without demonstrating it."
+  },
+  "balanced_manual_trial": {
+    "requested_weights": {
+      "coding": 0.3333333333333333,
+      "medical": 0.3333333333333333,
+      "legal": 0.3333333333333333
+    },
+    "applied_float32_weights": {
+      "coding": 0.3333333432674408,
+      "medical": 0.3333333432674408,
+      "legal": 0.3333333432674408
+    },
+    "symmetry": {
+      "coefficient_max_error": 9.934107481068821e-09,
+      "sample_matrix_max_error": 1.800059908418916e-05,
+      "changed_sample_values": 35
+    },
+    "matrices_modified": 56,
+    "tokens": {
+      "baseline": 512,
+      "fused": 340
+    },
+    "wall_ms": 29958.672458014917,
+    "quality": "Adds technical-constraints, authorized data access, and signature/acknowledgment sections. Still substitutes the robot for a contract party, omits a clear software-license grant, and assumes hardware requirements."
+  },
+  "rubric": [
+    {
+      "criterion": "Medical-prescription presentation",
+      "baseline": "present",
+      "automatic_fused": "present",
+      "balanced_fused": "present"
+    },
+    {
+      "criterion": "Supervised operation by trained personnel",
+      "baseline": "present",
+      "automatic_fused": "present",
+      "balanced_fused": "present"
+    },
+    {
+      "criterion": "Explicit grant of software-license rights",
+      "baseline": "missing",
+      "automatic_fused": "missing",
+      "balanced_fused": "missing"
+    },
+    {
+      "criterion": "Technical operating constraints",
+      "baseline": "generic approved-use reference",
+      "automatic_fused": "generic hardware restrictions and unsupported cleaning advice",
+      "balanced_fused": "power, network, authorized-data constraints, but specifications were not supplied"
+    },
+    {
+      "criterion": "Patient-data access terms",
+      "baseline": "missing in captured output",
+      "automatic_fused": "missing",
+      "balanced_fused": "present: authorized personnel and consent for third-party access"
+    },
+    {
+      "criterion": "Identifies licensor and licensee",
+      "baseline": "missing: robot is called the patient",
+      "automatic_fused": "missing: robot is called the patient",
+      "balanced_fused": "missing: robot is called the patient"
+    },
+    {
+      "criterion": "Signature/acceptance section",
+      "baseline": "not reached before token cap",
+      "automatic_fused": "read/consult advice only",
+      "balanced_fused": "present: acknowledgment, physician signature, authorized representative"
+    },
+    {
+      "criterion": "Finishes within identical token budget",
+      "baseline": "truncated at 512 tokens",
+      "automatic_fused": "finished at 263 tokens",
+      "balanced_fused": "finished at 340 tokens"
+    }
+  ],
+  "scaling": {
+    "trained_lora_alpha_modified": false,
+    "trained_alpha_for_local_adapters": 16,
+    "local_rank": 8,
+    "trained_scale_alpha_over_rank": 2,
+    "tuning": "Compared automatic, equal three-expert coefficients, and 0.2 Code / 0.3 Clinical / 0.5 Legal. Did not change the default classifier or silently amplify deltas."
+  },
+  "fix": {
+    "problem": "HTML range inputs with step=0.01 rounded automatic coefficient 0.10901551693677902 to 0.11 in the DOM.",
+    "resolution": "Use step=any, show the exact coefficient on hover, and render the kernel-recorded coefficients in the matrix inspector."
+  },
+  "limitations": [
+    "The 512-token baseline is truncated; completeness comparisons apply to that bounded demo setting.",
+    "Both fused trials assume technical specifications that were not supplied.",
+    "Small synthetic adapters and a 1.5B base do not establish domain accuracy or legal enforceability."
+  ],
+  "validation": {
+    "browser_automatic_audit_passed": true,
+    "browser_balanced_audit_passed": true,
+    "tensor_kernel_tests_passed": 8,
+    "typescript_check_passed": true
+  },
+  "source_sha256": {
+    "backend/synapse_mesh/tensor_fusion.py": "5e95ab7c3146ed782792128d2d46091d24fd865cbe46aa4ecd5d071be140c311",
+    "backend/synapse_mesh/runtime.py": "cc1a8e7df10ba3724b904712002b91f33d4492810f46cb71f84bd5644cbba5e9",
+    "frontend/app/dashboard.tsx": "e65a3d17a39020a7c293811075bd1e94dc1eed68d70263cf818b6d1efd107f7f",
+    "frontend/check-landslide.mjs": "045e3fe02a701984fa7d2942329582c5aa309500f1fee8744f2f79d00adf7a11"
+  }
+}

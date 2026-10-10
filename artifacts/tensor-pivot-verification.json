@@ -1,0 +1,16 @@
+{
+  "passed": true,
+  "engine": "raw-tensor-fusion",
+  "precision": "float16",
+  "chinese_not_loaded": true,
+  "sample_max_rounding_error": 1.3723969459533691e-05,
+  "timing_includes_fusion_and_restore": true,
+  "base_restored": true,
+  "quality_claim": "Execution verified; legal enforceability/superiority not established",
+  "source_sha256": {
+    "backend/synapse_mesh/tensor_fusion.py": "153f9259efe155669fe673cd9d99eba7fe3672ad2c8655856590c2874e9ab6bb",
+    "backend/synapse_mesh/runtime.py": "0b651fd1c4e34a3ecd1cbfcfa8eeb8931a4b0bfec7b8629c54fd20c229f92358",
+    "backend/synapse_mesh/intent.py": "725771cd72c887ef6980a49de1ab13fbcefb1138ba0e1290da179f8a3fc3a55a",
+    "frontend/app/page.tsx": "1e1c429bbec485c7b5dcc826623aec2adf27847677e07c3911ae16dc75d140cd"
+  }
+}
