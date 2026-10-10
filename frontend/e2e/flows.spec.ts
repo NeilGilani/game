@@ -72,7 +72,8 @@ test("food: choices, a question as cards, change makes a new approval, decline d
   await pick(page, "Front desk");
   await expect(page.getByTestId("approval")).toContainText("Front desk");
   await pick(page, "Decline");
-  await expect(page.getByText(/Nothing was paid/)).toBeVisible();
+  // The visible outcome (a polite live region announces the same words for screen readers).
+  await expect(page.locator(".task-big").getByText(/Nothing was paid/)).toBeVisible();
   await expect(page.getByRole("button", { name: "Try again" })).toBeVisible();
 });
 

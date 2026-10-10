@@ -1805,9 +1805,16 @@ body:has(.ll-minibar) .main {
 .home-head p {
   margin: 0;
 }
+.home-widget-head {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 6px 24px;
+}
 .home-howto {
-  margin: 4px 0 0;
-  font-size: 1.15rem;
+  margin: 0;
+  font-size: 1.1rem;
+  color: var(--ink-2);
 }
 .home-usuals {
   display: grid;

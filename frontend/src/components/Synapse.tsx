@@ -101,11 +101,22 @@ export function NetworkDemoControls({ onChange }: { onChange?: (snap: NetworkSna
   return (
     <div className="synapse-demo" role="group" aria-label="Simulate the network">
       {DEMO_STATES.map((d) => (
-        <button key={d.state} className="btn" onClick={() => set(d.state)} data-dwell>
+        <button
+          key={d.state}
+          className="btn"
+          onClick={() => set(d.state)}
+          data-dwell
+          aria-label={`Simulate network: ${d.label.toLowerCase()}`}
+        >
           {d.label}
         </button>
       ))}
-      <button className="btn btn-quiet" onClick={() => set(null)} data-dwell>
+      <button
+        className="btn btn-quiet"
+        onClick={() => set(null)}
+        data-dwell
+        aria-label="Simulate network: back to live"
+      >
         Live
       </button>
     </div>

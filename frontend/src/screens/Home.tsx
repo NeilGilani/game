@@ -47,12 +47,11 @@ export const HOME_TILES: Tile[] = [
 
 /** One plain sentence on how to choose, for the input the person is using now. */
 export function howToChoose(mode: InputMode): string {
-  if (mode === "gaze") return "Look at what you want and keep looking until the ring fills.";
-  if (mode === "head") return "Point with a small head movement and hold still until the ring fills.";
-  if (mode === "scan_blink")
-    return "Choices light up one at a time. Close your eyes for a moment on the one you want.";
-  if (mode === "scan_key") return "Choices light up one at a time. Press Space on the one you want.";
-  return "Click what you want, or use the keyboard.";
+  if (mode === "gaze") return "Look at a choice until its ring fills.";
+  if (mode === "head") return "Point with your head; hold still until the ring fills.";
+  if (mode === "scan_blink") return "Choices light up in turn: close your eyes briefly on yours.";
+  if (mode === "scan_key") return "Choices light up in turn: press Space on yours.";
+  return "Click a choice, or use the keyboard.";
 }
 
 /** Eye control needs the camera on and a calibration; say so plainly, with one big way to fix it. */
@@ -146,10 +145,12 @@ export function Home() {
   return (
     <div className="home" aria-label="Home">
       <section className="widget home-widget" aria-labelledby="home-greeting">
-        <h1 id="home-greeting">{greeting()}.</h1>
-        <p className="home-howto">
-          {howToChoose(input.mode)} <strong>Help</strong> is always at the top left.
-        </p>
+        <div className="home-widget-head">
+          <h1 id="home-greeting">{greeting()}.</h1>
+          <p className="home-howto">
+            {howToChoose(input.mode)} <strong>Help</strong> is the red button below.
+          </p>
+        </div>
         <p className="widget-sub">
           {memory().kind() === "demo" && usuals?.length ? "Your usuals (demo examples)" : "Your usuals"}
         </p>
