@@ -42,8 +42,8 @@ if ! python3 -m venv --help >/dev/null 2>&1; then
 fi
 
 python3 -m venv "$REPO/backend/.venv"
-"$REPO/backend/.venv/bin/pip" install --upgrade pip
-"$REPO/backend/.venv/bin/pip" install -r "$REPO/backend/requirements.txt"
+"$REPO/backend/.venv/bin/pip" install --timeout 60 --retries 10 --upgrade pip || true
+"$REPO/backend/.venv/bin/pip" install --timeout 60 --retries 10 -c "$REPO/backend/constraints.txt" -r "$REPO/backend/requirements.txt"
 mkdir -p "$DATA_DIR"
 
 if [ ! -f "$ENV_FILE" ]; then

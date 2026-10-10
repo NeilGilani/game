@@ -19,14 +19,26 @@ help:
 setup: setup-backend setup-frontend
 	@echo "Setup complete. Next: make demo  (then open http://localhost:8000)"
 
+# Long timeouts and retries for slow connections; exact versions so pip never backtracks.
+PIP_INSTALL := $(PY) -m pip install --timeout 60 --retries 10 -c backend/constraints.txt
+
 setup-backend:
 	bash scripts/bootstrap-python.sh
-	$(PY) -m pip install --upgrade pip
-	$(PY) -m pip install -r backend/requirements-dev.txt
+	-$(PY) -m pip install --timeout 60 --retries 10 --upgrade pip
+	@$(PIP_INSTALL) -r backend/requirements.txt || { \
+	  echo ""; \
+	  echo "Couldn't download the coordinator's Python packages. This is almost always a slow or"; \
+	  echo "interrupted connection (pip reports a package as missing when its download times out)."; \
+	  echo "Run make setup again; already-downloaded packages are reused."; \
+	  exit 1; }
+	@$(PIP_INSTALL) -r backend/requirements-dev.txt || { \
+	  echo ""; \
+	  echo "The developer tools (tests, linters) didn't install, probably a slow connection."; \
+	  echo "The demo still works. Run make setup again later before make check."; }
 
 setup-frontend:
 	@node -e 'const [a,b]=process.versions.node.split(".").map(Number); if (a<20||(a===20&&b<19)) { console.error("Node 20.19+ is required (found "+process.versions.node+"). brew install node"); process.exit(1) }'
-	cd frontend && npm install && npm run vendor
+	cd frontend && npm install --no-audit --no-fund && npm run vendor
 
 backend:
 	cd backend && .venv/bin/uvicorn agency.main:app --host 127.0.0.1 --port 8000 --reload
