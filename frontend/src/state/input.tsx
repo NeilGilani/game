@@ -106,6 +106,7 @@ export function InputProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     vision.setSmoothing(Math.max(0, Math.min(1, 1 - (prefs.dwell_stability_px - 10) / 290)));
+    vision.setStability(prefs.dwell_stability_px);
   }, [vision, prefs.dwell_stability_px]);
 
   // Start the camera automatically for camera modes once the person has granted access before.

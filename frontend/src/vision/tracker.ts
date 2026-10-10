@@ -22,6 +22,8 @@ import {
 import type { FaceFrame } from "../../../os/gaze/src/providers/types";
 import { type LandmarkerFactory, WebcamProvider } from "../../../os/gaze/src/providers/webcam";
 
+import { GazeStabilizer } from "./stabilizer";
+
 export type VisionStatus = "off" | "starting" | "loading-model" | "running" | "paused" | "error";
 
 export interface VisionFrame {
@@ -82,7 +84,8 @@ export class VisionEngine {
   private listeners = new Set<Listener>();
   private statusListeners = new Set<StatusListener>();
   private model: CalibrationModel | null = null;
-  private filter = new PointFilter({ minCutoff: 0.6, beta: 0.004, dCutoff: 1 });
+  private filter = new PointFilter({ minCutoff: 0.4, beta: 0.003, dCutoff: 1 });
+  private stabilizer = new GazeStabilizer();
   private opennessBlink = new OpennessBlink();
   private loadStarted = 0;
 
@@ -125,6 +128,7 @@ export class VisionEngine {
   setCalibration(model: CalibrationModel | null): void {
     this.model = model;
     this.filter.reset();
+    this.stabilizer.reset();
   }
 
   get calibration(): CalibrationModel | null {
@@ -134,7 +138,13 @@ export class VisionEngine {
   /** Higher sensitivity follows faster movements; lower smooths more. 0..1 */
   setSmoothing(sensitivity: number): void {
     const s = Math.max(0, Math.min(1, sensitivity));
-    this.filter.setOptions({ minCutoff: 0.3 + s * 1.2, beta: 0.002 + s * 0.01 });
+    // Webcam gaze is noisy: keep the cutoff low (smooth) and let the stabilizer handle fast moves.
+    this.filter.setOptions({ minCutoff: 0.1 + s * 0.5, beta: 0.001 + s * 0.004 });
+  }
+
+  /** Wobble within this many pixels holds the pointer still (the "Hold steady" setting). */
+  setStability(radiusPx: number): void {
+    this.stabilizer.setOptions({ radius: Math.max(20, Math.min(200, radiusPx)) });
   }
 
   async start(): Promise<void> {
@@ -188,7 +198,7 @@ export class VisionEngine {
       // from the fitted model; calibration learned the sign.
       const x = Math.max(0, Math.min(1, p.x)) * window.innerWidth;
       const y = Math.max(0, Math.min(1, p.y)) * window.innerHeight;
-      pointer = this.filter.filter(x, y, now);
+      pointer = this.stabilizer.update(this.filter.filter(x, y, now));
     } else if (this.last?.pointer && confidence < 0.5) {
       pointer = this.last.pointer; // hold position during a blink or brief loss
     }

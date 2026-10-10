@@ -5,6 +5,7 @@ import { describe, expect, it } from "vitest";
 import type { GazeEvent, PermissionStatus, Target } from "@agency/contracts";
 import { NATIVE_ALLOWED } from "@agency/contracts";
 import { CoordinatorClient } from "../src/main/coordinator";
+import { applyDotenv, parseDotenv } from "../src/main/dotenv";
 import { MouseGaze } from "../src/main/mouse-gaze";
 import { resolvePaths } from "../src/main/paths";
 import { Permissions, SETTINGS_PANES, mapMediaStatus } from "../src/main/permissions";
@@ -346,5 +347,29 @@ describe("settings and paths", () => {
     expect(packaged.native).toBeNull();
     expect(packaged.agent).toBeNull();
     expect(packaged.sidecar).toBeNull();
+  });
+});
+
+describe("dotenv (development only)", () => {
+  it("takes AI keys and AGENCY_* settings, skips everything else, and never overrides the environment", () => {
+    const text = [
+      "# comment",
+      "GEMINI_API_KEY=abc123",
+      'ANTHROPIC_API_KEY="quoted"',
+      "AGENCY_GEMINI_MODEL=gemini-3.8-flash",
+      "PATH=/evil",
+      "TWILIO_AUTH_TOKEN=secret",
+      "AGENCY_EMPTY=",
+      "not a line",
+    ].join("\n");
+    expect(parseDotenv(text)).toEqual({
+      GEMINI_API_KEY: "abc123",
+      ANTHROPIC_API_KEY: "quoted",
+      AGENCY_GEMINI_MODEL: "gemini-3.8-flash",
+    });
+    const env: NodeJS.ProcessEnv = { GEMINI_API_KEY: "from-shell" };
+    expect(applyDotenv(text, env)).toEqual(["ANTHROPIC_API_KEY", "AGENCY_GEMINI_MODEL"]);
+    expect(env.GEMINI_API_KEY).toBe("from-shell");
+    expect(env.PATH).toBeUndefined();
   });
 });
