@@ -14,7 +14,7 @@ SHELL := /bin/bash
 PY := backend/.venv/bin/python
 PI ?= agency-pi.local
 
-.PHONY: help setup setup-backend setup-frontend dev demo demo-local backend frontend dev-pi test test-backend test-frontend \
+.PHONY: help setup setup-backend setup-frontend dev demo demo-local site-deploy backend frontend dev-pi test test-backend test-frontend \
         lint typecheck build check e2e e2e-fixtures reset-demo pi-setup pi-start pi-stop pi-status pi-logs clean \
         os-check os-dev os-build os-dist os-test os-e2e sidecar sandbox
 
@@ -174,3 +174,11 @@ pi-logs:
 clean:
 	rm -rf os/desktop/out os/desktop/dist os/desktop/test-results os/sidecar/build os/sidecar/dist
 	rm -rf frontend/dist frontend/test-results frontend/playwright-report backend/.pytest_cache backend/.mypy_cache backend/.ruff_cache
+
+# Landing page on Cloudflare Pages straight from this Mac (opens a browser to log in to Cloudflare the first time).
+# CI does the same on every push to main once the CLOUDFLARE_* secrets are set (.github/workflows/cloudflare-pages.yml).
+CF_PROJECT ?= agency-os
+site-deploy:
+	npm ci --workspace site --no-audit --no-fund
+	SITE_BASE=/ SITE_URL=$${SITE_URL:-https://$(CF_PROJECT).pages.dev} npm run build -w site
+	npx --yes wrangler@4 pages deploy site/dist --project-name=$(CF_PROJECT) --branch=main --commit-dirty=true
