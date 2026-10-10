@@ -8,6 +8,7 @@ import type {
   LifelineContact,
   LifelineReport,
   LifelineSettings,
+  PlanKey,
   ResponderCard,
 } from "../api/types";
 import { Icon } from "../components/Icon";
@@ -32,6 +33,14 @@ import { useConnection } from "../state/connection";
 import { useInput } from "../state/input";
 import { navigate } from "../state/router";
 import { usePoll } from "../state/usePoll";
+import {
+  CarePlanSection,
+  CriticalSection,
+  DispatchSection,
+  HomeSection,
+  dispatchProblems,
+  planProblems,
+} from "./LifelineSetupSections";
 import { Stepper, Toggle } from "./SettingsViews";
 
 type CheckTone = "ok" | "warn" | "danger" | "sim";
@@ -518,6 +527,7 @@ export function LifelineSetup() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
+  const [planTexts, setPlanTexts] = useState<Partial<Record<PlanKey, string>>>({});
 
   useEffect(() => {
     let cancelled = false;
@@ -550,7 +560,8 @@ export function LifelineSetup() {
         ? "Needs a name."
         : null,
   );
-  const invalid = phoneProblems.some(Boolean);
+  const otherProblems = [...Object.values(planProblems(draft.plans)), ...dispatchProblems(draft.dispatch)];
+  const invalid = phoneProblems.some(Boolean) || otherProblems.length > 0;
 
   const save = async () => {
     setSaving(true);
@@ -565,6 +576,7 @@ export function LifelineSetup() {
         })),
       });
       setDraft(out);
+      setPlanTexts({});
       setSaved(true);
       announce("Lifeline settings saved.");
       await ll.refresh();
@@ -736,6 +748,8 @@ export function LifelineSetup() {
         </p>
       </section>
 
+      <CriticalSection draft={draft} update={update} />
+
       <section className="stack" aria-labelledby="h-timing">
         <h2 id="h-timing">
           <Icon name="clock" /> Timing
@@ -834,7 +848,22 @@ export function LifelineSetup() {
         </div>
       </section>
 
+      <CarePlanSection
+        draft={draft}
+        update={update}
+        texts={planTexts}
+        setText={(key, text) => setPlanTexts((t) => ({ ...t, [key]: text }))}
+      />
+      <DispatchSection draft={draft} update={update} status={ll.status} />
+      <HomeSection draft={draft} update={update} status={ll.status} />
+
       {error && <ErrorNote message={error} />}
+      {invalid && (
+        <p className="ll-field-error" role="status">
+          Fix the {phoneProblems.filter(Boolean).length + otherProblems.length === 1 ? "problem" : "problems"}{" "}
+          marked above before saving.
+        </p>
+      )}
       <div className="btn-row">
         <button
           className="btn btn-primary btn-xl"
@@ -898,6 +927,7 @@ export function LifelineAlertView({ id }: { id: string }) {
           </p>
         </section>
       </div>
+      <AlertRescue a={a} />
       <div className="grid grid-2">
         <section className="panel stack">
           <h2>
@@ -970,6 +1000,191 @@ export function LifelineAlertView({ id }: { id: string }) {
         <Icon name="back" /> Back to Lifeline
       </button>
     </Page>
+  );
+}
+
+const ANSWER_LABEL: Record<string, string> = { yes: "Yes", no: "No", not_sure: "Not sure" };
+const URGENCY_LABEL: Record<string, string> = {
+  standard: "Not said yet",
+  urgent: "Urgent",
+  critical: "Critical: everyone alerted",
+};
+
+/** The rescue on one alert: what's wrong, questions, care-plan steps, emergency services, handoff. */
+function AlertRescue({ a }: { a: AlertDetail }) {
+  const done = a.plan.steps.filter((st) => st.done_at);
+  const answered = a.questions.filter((q) => q.answer);
+  return (
+    <>
+      <div className="grid grid-2">
+        <section className="panel stack" aria-labelledby="h-situation">
+          <h2 id="h-situation">
+            <Icon name="alert" /> What&apos;s wrong
+          </h2>
+          <p className="ll-metric" data-testid="alert-situation">
+            {a.situation_label}
+          </p>
+          <p>
+            <span
+              className="badge"
+              data-tone={a.urgency === "critical" ? "danger" : a.urgency === "urgent" ? "warn" : "neutral"}
+            >
+              {URGENCY_LABEL[a.urgency] ?? a.urgency}
+            </span>
+            {a.critical_since ? (
+              <span className="small muted"> since {clockTime(a.critical_since)}</span>
+            ) : null}
+          </p>
+          {a.detail && <p>{a.detail}</p>}
+          {a.arrivals.length > 0 && (
+            <p>
+              <Icon name="check" size={20} /> With the person:{" "}
+              {a.arrivals.map((r) => `${r.contact_name} (${clockTime(r.arrived_at)})`).join(", ")}
+            </p>
+          )}
+          {a.door_unlocked_for && (
+            <p className="small">
+              Door unlocked for {a.door_unlocked_for} (simulated)
+              {a.door_relocks_at ? `, locks again at ${clockTime(a.door_relocks_at)}` : ""}.
+            </p>
+          )}
+        </section>
+        <section className="panel stack" aria-labelledby="h-questions">
+          <h2 id="h-questions">
+            <Icon name="question" /> Questions and answers
+          </h2>
+          {a.questions.length === 0 ? (
+            <p className="muted">Nobody asked a question.</p>
+          ) : (
+            <ul className="list" data-testid="alert-questions">
+              {a.questions.map((q) => (
+                <li key={q.id}>
+                  <span>
+                    <strong>{q.text}</strong>{" "}
+                    <span className="small muted">
+                      {q.asked_by}, {clockTime(q.asked_at)}
+                    </span>
+                    <br />
+                    {q.answer ? (
+                      <span>
+                        Answer: <strong>{ANSWER_LABEL[q.answer]}</strong>{" "}
+                        <span className="small muted">({clockTime(q.answered_at)})</span>
+                      </span>
+                    ) : (
+                      <span className="small muted">Not answered</span>
+                    )}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+          <p className="small muted">
+            {answered.length} of {a.questions.length} answered with the eyes.
+          </p>
+        </section>
+      </div>
+      <div className="grid grid-2">
+        <section className="panel stack" aria-labelledby="h-steps">
+          <h2 id="h-steps">
+            <Icon name="list" /> Care plan: {a.plan.label}
+          </h2>
+          {a.plan.steps.length === 0 ? (
+            <p className="muted">No care plan steps are written for this situation.</p>
+          ) : (
+            <ol className="ll-progress" data-testid="alert-steps">
+              {a.plan.steps.map((st) => (
+                <li key={st.key} data-tone={st.done_at ? "ok" : undefined}>
+                  <Icon name={st.done_at ? "check" : "clock"} size={20} />
+                  <span>
+                    {st.label}
+                    {st.done_at && (
+                      <span className="small muted">
+                        {" "}
+                        · done by {st.done_by}, {clockTime(st.done_at)}
+                      </span>
+                    )}
+                  </span>
+                </li>
+              ))}
+            </ol>
+          )}
+          <p className="small muted">
+            {done.length} of {a.plan.steps.length} steps done. {a.plans_note}
+          </p>
+        </section>
+        <section className="panel stack" aria-labelledby="h-ems">
+          <h2 id="h-ems">
+            <Icon name="phone" /> Emergency services
+          </h2>
+          {a.dispatch ? (
+            <div className="stack" data-testid="alert-dispatch">
+              <p>
+                <span
+                  className="badge"
+                  data-tone={
+                    a.dispatch.status === "accepted"
+                      ? "ok"
+                      : a.dispatch.status === "failed"
+                        ? "danger"
+                        : a.dispatch.status === "requested"
+                          ? "warn"
+                          : "neutral"
+                  }
+                >
+                  {a.dispatch.status === "accepted"
+                    ? "Confirmed"
+                    : a.dispatch.status === "requested"
+                      ? "Requested"
+                      : a.dispatch.status === "cancelled"
+                        ? "Cancelled"
+                        : a.dispatch.status === "failed"
+                          ? "Failed"
+                          : "Not requested"}
+                </span>{" "}
+                {a.dispatch.simulated && (
+                  <span className="badge" data-tone="sim">
+                    Simulated
+                  </span>
+                )}
+              </p>
+              <p>{a.dispatch.summary}</p>
+              <dl className="kv">
+                <dt>Asked by</dt>
+                <dd>{a.dispatch.requested_by}</dd>
+                <dt>Why</dt>
+                <dd>{a.dispatch.reason}</dd>
+                <dt>When</dt>
+                <dd>{clockTime(a.dispatch.requested_at)}</dd>
+                {a.dispatch.provider_ref && (
+                  <>
+                    <dt>Reference</dt>
+                    <dd>{a.dispatch.provider_ref}</dd>
+                  </>
+                )}
+              </dl>
+            </div>
+          ) : (
+            <p className="muted">Emergency services were not requested.</p>
+          )}
+        </section>
+      </div>
+      {a.handoff.length > 0 && (
+        <section className="panel stack" aria-labelledby="h-handoff">
+          <h2 id="h-handoff">
+            <Icon name="document" /> Summary for paramedics
+          </h2>
+          <p className="small muted">Only recorded facts, as helpers saw them on their response page.</p>
+          <dl className="kv" data-testid="alert-handoff">
+            {a.handoff.map((line) => (
+              <div key={line.label} style={{ display: "contents" }}>
+                <dt>{line.label}</dt>
+                <dd>{line.text}</dd>
+              </div>
+            ))}
+          </dl>
+        </section>
+      )}
+    </>
   );
 }
 

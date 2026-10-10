@@ -28,6 +28,7 @@ export const KIND_LABEL: Record<string, string> = {
   watchdog: "Computer stopped responding",
   checkin_missed: "Check-in missed",
   signal_unavailable: "Eye signal unavailable",
+  power_lost: "Ventilator power cut",
 };
 
 export const SOURCE_LABEL: Record<string, string> = {
@@ -37,6 +38,7 @@ export const SOURCE_LABEL: Record<string, string> = {
   test: "a test",
   watchdog: "the watchdog",
   checkin: "a missed check-in",
+  device: "the ventilator's power watch",
 };
 
 export function clockTime(iso: string | null | undefined): string {

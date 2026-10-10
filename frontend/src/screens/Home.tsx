@@ -1,253 +1,178 @@
-import { api } from "../api/client";
-import type { ActivityEvent, Approval, CaseListItem } from "../api/types";
+/**
+ * Home: a calm, Launchpad-style screen of big choices. Nothing on it moves while the person is looking: the
+ * usuals row keeps its place while memory loads, there are no animations or tickers, and the layout fits one
+ * screen at 1280 × 800 without scrolling.
+ */
+import { useEffect, useState } from "react";
 import { Icon } from "../components/Icon";
-import { Page } from "../components/Shell";
-import { CaseBadge, Loading, formatTime } from "../components/status";
 import { useLifeline } from "../lifeline/LifelineProvider";
-import { names } from "../lifeline/describe";
-import { coordinatorLabel, useConnection } from "../state/connection";
-import { MODE_LABELS, useInput } from "../state/input";
+import { useAgent } from "../state/agent";
+import type { Suggestion } from "../state/contracts";
+import { memory } from "../state/memory";
 import { navigate } from "../state/router";
-import { usePoll } from "../state/usePoll";
+import { isFinished, needsPerson, type TaskView } from "../state/tasks";
+
+interface Tile {
+  id: string;
+  label: string;
+  sub: string;
+  icon: string;
+  path: string;
+  tone?: "lifeline";
+}
+
+export const HOME_TILES: Tile[] = [
+  { id: "talk", label: "Talk", sub: "Say something out loud", icon: "speak", path: "/talk" },
+  { id: "call", label: "Call someone", sub: "Jordan, Mom, the clinic", icon: "phone", path: "/flow/call" },
+  { id: "food", label: "Food", sub: "Order a meal", icon: "food", path: "/flow/food" },
+  { id: "messages", label: "Messages", sub: "Send a quick message", icon: "message", path: "/flow/messages" },
+  { id: "watch", label: "Watch & listen", sub: "YouTube, Netflix, Music", icon: "play", path: "/flow/watch" },
+  { id: "browse", label: "Browse", sub: "News, weather, the web", icon: "globe", path: "/flow/browse" },
+  { id: "shopping", label: "Shopping", sub: "Compare and buy", icon: "bag", path: "/flow/shopping" },
+  { id: "papers", label: "Papers", sub: "Letters, forms, signing", icon: "document", path: "/flow/papers" },
+  { id: "apps", label: "Apps", sub: "Open or switch apps", icon: "grid", path: "/flow/apps" },
+  { id: "errands", label: "Errands", sub: "Repairs, rides, cases", icon: "wrench", path: "/errands" },
+  {
+    id: "lifeline",
+    label: "Lifeline",
+    sub: "Help and Watch over me",
+    icon: "lifeline",
+    path: "/lifeline",
+    tone: "lifeline",
+  },
+  { id: "settings", label: "Settings", sub: "Eyes, voice, memory", icon: "gear", path: "/settings" },
+];
 
 function greeting(): string {
   const h = new Date().getHours();
   return h < 12 ? "Good morning" : h < 18 ? "Good afternoon" : "Good evening";
 }
 
-const EVENT_ICON: Record<string, string> = {
-  verified: "check",
-  case_completed: "check",
-  recovery_planned: "refresh",
-  step_failed: "alert",
-  reconciled: "shield",
-};
+const USUALS = 3;
+
+/** Memory's suggestions for Home, loaded once. `null` while loading, so the row can hold its place. */
+function useUsuals(): Suggestion[] | null {
+  const [usuals, setUsuals] = useState<Suggestion[] | null>(null);
+  useEffect(() => {
+    let live = true;
+    memory()
+      .suggestions("home", USUALS)
+      .then((s) => live && setUsuals(s.filter((x) => x.task).slice(0, USUALS)))
+      .catch(() => live && setUsuals([]));
+    return () => {
+      live = false;
+    };
+  }, []);
+  return usuals;
+}
+
+function continueText(t: TaskView): string {
+  if (t.phase === "approval") return "Waiting for your OK";
+  if (t.phase === "question") return "Waiting for your choice";
+  if (t.phase === "paused") return "Paused";
+  if (t.phase === "failed") return "Didn't finish: you can try again";
+  return "Working on it";
+}
 
 export function Home() {
-  const cases = usePoll<CaseListItem[]>(() => api.cases("active"), 3000, "home-cases");
-  const approvals = usePoll<Approval[]>(() => api.approvals(), 3000, "home-approvals");
-  const activity = usePoll<ActivityEvent[]>(() => api.activity(), 4000, "home-activity");
-  const { health, online } = useConnection();
-  const input = useInput();
-
-  const active = cases.data ?? [];
-  const pending = approvals.data ?? [];
-  const resumable =
-    active.find((c) => ["interrupted", "paused", "needs_attention"].includes(c.status)) ?? active[0];
-  const coord = coordinatorLabel(health, online);
+  const agent = useAgent();
   const ll = useLifeline();
-  const lls = ll.status;
+  const usuals = useUsuals();
+  const unfinished = agent.tasks.filter((t) => !isFinished(t) || needsPerson(t));
+  const resume = unfinished[0];
+  const watching = !!ll.status?.monitor.armed;
+
+  const startUsual = (s: Suggestion) => {
+    if (!s.task) return;
+    void memory().record({ path: s.path, surface: "home", outcome: "chosen" });
+    const id = agent.start({ goal: s.task.goal, origin: "memory-suggestion", selections: s.task.selections });
+    navigate(`/task/${id}`);
+  };
+  const open = (tile: Tile) => {
+    void memory().record({ path: [tile.id], surface: "home", outcome: "chosen" });
+    navigate(tile.path);
+  };
+
+  // Up to 3 usuals and one Continue card share the first row: 4 fixed slots.
+  const slots = (usuals ?? []).slice(0, resume ? USUALS : USUALS + 1);
 
   return (
-    <Page label="Home">
-      <div className="page-head">
-        <div>
-          <div className="eyebrow">
-            {new Date().toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" })}
-          </div>
-          <h1>{greeting()}, Riley.</h1>
-          <p>
-            Tell AGENCY what you want done. It plans the steps, asks before anything important, and checks
-            every result.
-          </p>
-        </div>
+    <div className="home" aria-label="Home">
+      <div className="home-head">
+        <h1>{greeting()}, Riley.</h1>
+        <p className="muted">
+          {new Date().toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" })}
+          {memory().kind() === "demo" && usuals?.length ? " · Your usuals here are demo examples" : ""}
+        </p>
       </div>
 
-      <section
-        className="panel ll-home"
-        aria-labelledby="h-lifeline"
-        data-ready={lls?.ready ? "true" : "false"}
-      >
-        <Icon name="lifeline" size={34} />
-        <div>
-          <h2 id="h-lifeline">
-            Lifeline {lls ? (lls.ready ? "is ready" : "needs attention") : ""}
-            {lls?.monitor.armed ? " · Watch over me is on" : ""}
-          </h2>
-          <p className="small">
-            To call for help, look at <strong>Help</strong> or close your eyes for a second, three times.
-            {lls && lls.settings.contacts.some((c) => c.enabled)
-              ? ` ${names(
-                  lls.settings.contacts
-                    .filter((c) => c.enabled)
-                    .sort((a, b) => a.priority - b.priority)
-                    .slice(0, 1),
-                )} is contacted first.`
-              : ""}
+      <section className="home-usuals" aria-label="Your usuals">
+        {resume && (
+          <button
+            className="usual usual-continue"
+            onClick={() => navigate(`/task/${resume.id}`)}
+            data-dwell
+            aria-label={`Continue: ${resume.goal}. ${continueText(resume)}`}
+          >
+            <span className="usual-icon">
+              <Icon name="resume" size={30} />
+            </span>
+            <span className="usual-text">
+              <span className="usual-kicker">Continue</span>
+              <span className="usual-title">{resume.goal}</span>
+              <span className="usual-why">{continueText(resume)}</span>
+            </span>
+          </button>
+        )}
+        {usuals === null
+          ? Array.from({ length: USUALS }, (_, i) => (
+              <div key={i} className="usual usual-placeholder" aria-hidden />
+            ))
+          : slots.map((s) => (
+              <button
+                key={s.nodeId}
+                className="usual"
+                onClick={() => startUsual(s)}
+                data-dwell
+                aria-label={`Your usual: ${s.label}. ${s.reason}`}
+              >
+                <span className="usual-icon">
+                  <Icon name="sparkle" size={30} />
+                </span>
+                <span className="usual-text">
+                  <span className="usual-kicker">Your usual</span>
+                  <span className="usual-title">{s.label}</span>
+                  <span className="usual-why">{s.reason}</span>
+                </span>
+              </button>
+            ))}
+        {usuals?.length === 0 && !resume && (
+          <p className="usual-empty muted">
+            As you use AGENCY, the things you choose most will appear here, with the reason.
           </p>
-        </div>
-        <span className="spacer" />
-        <button className="btn" onClick={() => navigate("/lifeline")} data-dwell>
-          <Icon name="lifeline" /> Open Lifeline
-        </button>
+        )}
       </section>
 
-      <div className="grid grid-4">
-        <button
-          className="tile tile-primary"
-          style={{ gridColumn: "span 2" }}
-          onClick={() => navigate("/new")}
-          data-dwell
-        >
-          <span className="tile-icon">
-            <Icon name="plus" size={30} />
-          </span>
-          <span>
-            <span className="tile-title">Start a task</span>
-            <br />
-            <span className="tile-sub">Repairs, appointments, paperwork, messages</span>
-          </span>
-        </button>
-        <button
-          className="tile"
-          onClick={() => navigate(pending.length ? `/case/${pending[0]!.case_id}/approve` : "/approvals")}
-          data-dwell
-        >
-          <span className="tile-icon">
-            <Icon name="hand" size={30} />
-          </span>
-          <span>
-            <span className="tile-title">
-              {pending.length ? `${pending.length} waiting for you` : "Nothing to approve"}
+      <nav className="home-tiles" aria-label="Everything you can do">
+        {HOME_TILES.map((tile) => (
+          <button
+            key={tile.id}
+            className="home-tile"
+            data-tone={tile.tone}
+            onClick={() => open(tile)}
+            data-dwell
+            aria-label={`${tile.label}: ${tile.id === "lifeline" && watching ? "Watch over me is on" : tile.sub}`}
+          >
+            <span className="home-tile-icon">
+              <Icon name={tile.icon} size={34} />
             </span>
-            <br />
-            <span className="tile-sub">{pending.length ? "Review and decide" : "You're all caught up"}</span>
-          </span>
-        </button>
-        <button
-          className="tile"
-          onClick={() => navigate(resumable ? `/case/${resumable.id}` : "/cases")}
-          data-dwell
-        >
-          <span className="tile-icon">
-            <Icon name="resume" size={30} />
-          </span>
-          <span>
-            <span className="tile-title">{resumable ? "Open current case" : "Past cases"}</span>
-            <br />
-            <span className="tile-sub">{resumable ? resumable.title : "See finished work"}</span>
-          </span>
-        </button>
-      </div>
-
-      <div className="grid grid-3">
-        <section className="panel" aria-labelledby="h-progress">
-          <h2 id="h-progress">
-            <Icon name="refresh" /> In progress
-          </h2>
-          {cases.loading && !cases.data ? (
-            <Loading />
-          ) : active.length === 0 ? (
-            <p className="muted">No tasks in progress.</p>
-          ) : (
-            <ul className="list">
-              {active.slice(0, 3).map((c) => (
-                <li key={c.id} className="stack" style={{ gap: 6 }}>
-                  <strong>{c.title}</strong>
-                  <CaseBadge status={c.status} label={c.status_label} />
-                  <div
-                    className="progress"
-                    aria-label={`${c.progress.done} of ${c.progress.total} steps done`}
-                  >
-                    <span style={{ width: `${(100 * c.progress.done) / Math.max(1, c.progress.total)}%` }} />
-                  </div>
-                  <span className="small muted">
-                    {c.progress.done} of {c.progress.total} steps done
-                  </span>
-                </li>
-              ))}
-            </ul>
-          )}
-        </section>
-
-        <section className="panel" aria-labelledby="h-waiting">
-          <h2 id="h-waiting">
-            <Icon name="hand" /> Waiting for your approval
-          </h2>
-          {pending.length === 0 ? (
-            <p className="muted">
-              Nothing is waiting. AGENCY always asks before booking, sending or submitting.
-            </p>
-          ) : (
-            <ul className="list">
-              {pending.slice(0, 4).map((a) => (
-                <li key={a.id}>
-                  <Icon name="hand" size={20} />
-                  <span>
-                    <strong>{a.summary}</strong>
-                    <br />
-                    <span className="small muted">{a.case_title}</span>
-                  </span>
-                </li>
-              ))}
-            </ul>
-          )}
-        </section>
-
-        <section className="panel" aria-labelledby="h-recent">
-          <h2 id="h-recent">
-            <Icon name="check" /> Recently done and checked
-          </h2>
-          {(activity.data ?? []).length === 0 ? (
-            <p className="muted">Verified results will appear here.</p>
-          ) : (
-            <ul className="list">
-              {(activity.data ?? []).slice(0, 4).map((e) => (
-                <li key={e.id}>
-                  <Icon name={EVENT_ICON[e.kind] ?? "info"} size={20} />
-                  <span>
-                    <span>{e.message}</span>
-                    <br />
-                    <span className="small muted">
-                      {e.case_title} · {formatTime(e.ts)}
-                    </span>
-                  </span>
-                </li>
-              ))}
-            </ul>
-          )}
-        </section>
-      </div>
-
-      <div className="grid grid-3">
-        <section className="panel panel-muted">
-          <h3>
-            <Icon name="eye" /> How you're controlling AGENCY
-          </h3>
-          <p>
-            <strong>{MODE_LABELS[input.mode].long}</strong>
-          </p>
-          {input.usesCamera && input.status !== "running" ? (
-            <button className="btn btn-primary" onClick={() => navigate("/camera")} data-dwell>
-              <Icon name="camera" /> Set up the camera
-            </button>
-          ) : input.calibrationNeeded ? (
-            <button className="btn btn-primary" onClick={() => navigate("/calibrate")} data-dwell>
-              <Icon name="target" /> Calibrate
-            </button>
-          ) : (
-            <button className="btn" onClick={() => navigate("/preferences")} data-dwell>
-              <Icon name="gear" /> Change
-            </button>
-          )}
-        </section>
-        <section className="panel panel-muted">
-          <h3>
-            <Icon name={health?.node.is_raspberry_pi ? "chip" : "laptop"} /> Coordinator
-          </h3>
-          <p>{coord.long}.</p>
-          <p className="small muted">Cases, plans and the audit trail are stored there in SQLite.</p>
-        </section>
-        <section className="panel panel-muted">
-          <h3>
-            <Icon name={health?.reasoning.mode === "deterministic" ? "shield" : "sparkle"} /> Reasoning
-          </h3>
-          <p>{health?.reasoning.description ?? "Checking…"}</p>
-          <p className="small muted">
-            All services in this demo are simulated. Nothing reaches a real company or person.
-          </p>
-        </section>
-      </div>
-    </Page>
+            <span className="home-tile-label">{tile.label}</span>
+            <span className="home-tile-sub">
+              {tile.id === "lifeline" && watching ? "Watch over me is on" : tile.sub}
+            </span>
+          </button>
+        ))}
+      </nav>
+    </div>
   );
 }
