@@ -8,7 +8,7 @@ import { Loading, SimulatedBadge, formatTime } from "../components/status";
 import { useAnnounce } from "../state/announcer";
 import { coordinatorLabel, useConnection } from "../state/connection";
 import { MODE_LABELS, useInput } from "../state/input";
-import { usePreferences } from "../state/preferences";
+import { applyEasyRead, usePreferences } from "../state/preferences";
 import { navigate } from "../state/router";
 import { usePoll } from "../state/usePoll";
 
@@ -38,7 +38,6 @@ export function ModePicker({ onPicked }: { onPicked?: (mode: InputMode) => void 
           className="tile"
           role="radio"
           aria-checked={prefs.input_mode === m}
-          aria-pressed={prefs.input_mode === m}
           data-dwell
           onClick={() => {
             update({ input_mode: m });
@@ -214,7 +213,6 @@ export function PreferencesView() {
               style={{ minHeight: 110 }}
               role="radio"
               aria-checked={prefs.theme === t}
-              aria-pressed={prefs.theme === t}
               onClick={() => update({ theme: t })}
               data-dwell
             >
@@ -228,6 +226,7 @@ export function PreferencesView() {
           ))}
         </div>
         <div className="grid grid-3">
+          <EasyReadToggle />
           <Toggle
             label="Reduce motion"
             value={prefs.reduced_motion}
@@ -713,5 +712,21 @@ export function StatusView() {
         </ConfirmSheet>
       )}
     </Page>
+  );
+}
+
+/** "Easy-read font": Atkinson Hyperlegible instead of the system font. Kept on this device. */
+function EasyReadToggle() {
+  const [on, setOn] = useState(() => document.documentElement.dataset.font === "easy-read");
+  return (
+    <Toggle
+      label="Easy-read font"
+      value={on}
+      help="Atkinson Hyperlegible"
+      onChange={(v) => {
+        setOn(v);
+        applyEasyRead(v);
+      }}
+    />
   );
 }

@@ -127,7 +127,12 @@ function Shell() {
       </a>
       <TopBar />
       {tools && <Nav route={route} />}
-      <main className="main" id="main" tabIndex={-1}>
+      <main
+        className="main"
+        id="main"
+        tabIndex={-1}
+        data-zone={route.segments[0] === "lifeline" ? "lifeline" : undefined}
+      >
         <ConnectionBanner />
         {tools && <div style={{ height: 16 }} />}
         <Screen route={route} />

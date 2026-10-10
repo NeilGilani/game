@@ -121,7 +121,8 @@ function Welcome() {
           <Icon name="hand" /> AGENCY can do tasks for you, and always asks before anything important.
         </p>
         <p>
-          <Icon name="bell" /> Help is always one look away: Help is top left on every screen.
+          <Icon name="bell" /> Help is always one look away: the red Help button is always at the left of the
+          dock.
         </p>
       </div>
     </>

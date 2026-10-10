@@ -171,6 +171,7 @@ function FlowRunner({ flow }: { flow: FlowDef }) {
         </div>
       ) : (
         <div
+          key={`${state.screenId}-${state.page}`}
           className={`flow-options ${screen.layout === "compare" ? "flow-compare" : ""}`}
           data-count={page.items.length}
           role="group"
