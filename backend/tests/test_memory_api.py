@@ -128,8 +128,12 @@ def test_suggestions_for_every_surface(client: TestClient) -> None:
     for surface, path in samples.items():
         post_event(client, path, surface=surface)
     for surface, path in samples.items():
-        got = client.get("/api/memory/suggestions", params={"surface": surface}).json()
+        # Home sees all eight non-keyboard choices; ask for all of them so every one must be present.
+        got = client.get("/api/memory/suggestions", params={"surface": surface, "limit": len(samples)}).json()
         assert path[-1] in [g["label"] for g in got], surface
+    # Ties (each chosen once, at the same moment) are ordered by name, identically on every machine.
+    home = [g["label"] for g in client.get("/api/memory/suggestions", params={"surface": "home"}).json()]
+    assert home == ["Benefits letter", "Jordan", "Living room lamp", "Music", "Oat milk", "Pad thai (mild)"]
 
 
 def test_prefill_for_agent_choice_questions(client: TestClient, clock: FakeClock) -> None:

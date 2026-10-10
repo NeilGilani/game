@@ -332,7 +332,16 @@ class MemoryService:
             }
         ranked = rank(on_surface, candidates, now, params, sequence_occasions=occs)
         labels = {n.id: n.label for n in nodes.values()}
-        ranked.sort(key=lambda r: not nodes[r.node_id].pinned)  # stable: pinned first, otherwise by score
+        # Pinned first, then score, then most recent, then name: never the random node id, so equal
+        # suggestions come out in the same order on every machine.
+        ranked.sort(
+            key=lambda r: (
+                not nodes[r.node_id].pinned,
+                -r.score,
+                -(r.facts.last_at.timestamp() if r.facts.last_at else 0.0),
+                nodes[r.node_id].label.casefold(),
+            )
+        )
         out: list[dict[str, Any]] = []
         for r in ranked[: max(1, min(limit, 24))]:
             node = nodes[r.node_id]

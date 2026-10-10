@@ -37,6 +37,10 @@ SUMMARY_SYSTEM = (
 
 def summarizer_from_provider(provider: Any) -> tuple[Summarizer | None, str | None]:
     """Reuse the coordinator's Anthropic client when cloud reasoning is configured."""
+    from ..reasoning.provider import AnthropicProvider
+
+    if not isinstance(provider, AnthropicProvider):
+        return None, None  # notes are written by Claude only; other providers aren't used for memory
     client = getattr(provider, "client", None)
     model = getattr(provider, "model", None)
     if client is None or not model or not getattr(provider, "available", False):
