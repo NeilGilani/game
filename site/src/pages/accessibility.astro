@@ -1,0 +1,114 @@
+---
+import Base from "../layouts/Base.astro";
+import { CONTACT_EMAIL, ISSUES_URL, SOURCE_URL } from "../data/site";
+
+const contact = CONTACT_EMAIL
+  ? `mailto:${CONTACT_EMAIL}?subject=${encodeURIComponent("Accessibility")}`
+  : ISSUES_URL;
+---
+
+<Base
+  title="Accessibility statement: AGENCY OS"
+  description="How this website is built to work by eye gaze, a single switch, a keyboard, a screen reader or a mouse, how it's tested, and how to report a problem."
+  current="accessibility"
+>
+  <article class="wrap prose">
+    <p class="eyebrow">Accessibility statement</p>
+    <h1>This site should work for everyone AGENCY is for</h1>
+    <p class="lede">
+      If you use AGENCY, you should be able to use this website the same way: by eye gaze, a single switch, a
+      keyboard, a screen reader, or a mouse.
+    </p>
+
+    <h2 id="target">Our target</h2>
+    <p>
+      WCAG 2.2 at level AA, plus the bar AGENCY sets for itself: every standalone control is at least 96
+      pixels tall with at least 24 pixels between controls, nothing has a time limit, and nothing moves under
+      your gaze.
+    </p>
+
+    <h2 id="what">What we did</h2>
+    <ul>
+      <li>Large, well-spaced buttons and links, with a thick, high-contrast focus outline.</li>
+      <li>
+        A “Skip to content” link, a logical heading order, and landmarks for the header, navigation and
+        footer.
+      </li>
+      <li>
+        A large “Next” link at the end of each section, so you can move through the page in steps instead of
+        scrolling.
+      </li>
+      <li>
+        Atkinson Hyperlegible, a typeface designed by the Braille Institute for low-vision readers, at a large
+        base size. The site's own copy of the font is used; nothing is loaded from another company.
+      </li>
+      <li>Light and dark colours, following your Mac's setting or your choice, both checked for contrast.</li>
+      <li>
+        Motion is short and gentle, and turned off completely if you've asked your computer to reduce motion.
+      </li>
+      <li>
+        Everything works without JavaScript except finding the newest download, which falls back to a link.
+      </li>
+      <li>The page works at 400% zoom and on phone screens without scrolling sideways.</li>
+      <li>
+        Screenshots have text descriptions. The demo video, when it exists, will have captions and never play
+        by itself.
+      </li>
+      <li>Plain language, one idea at a time.</li>
+    </ul>
+
+    <h2 id="tested">How it's tested</h2>
+    <p>Every change to the site runs these checks automatically before it's published:</p>
+    <ul>
+      <li>
+        <strong>axe</strong> (an automated accessibility checker) on every page, in light and dark, on desktop
+        and phone sizes, with no violations allowed.
+      </li>
+      <li>
+        <strong>Keyboard tests</strong>: every control can be reached with Tab, the focus is always visible,
+        and the download and questions work with the keyboard alone.
+      </li>
+      <li>
+        <strong>Size tests</strong>: every standalone control is at least 96 pixels tall with 24 pixels of
+        space.
+      </li>
+      <li>
+        <strong>Lighthouse</strong>: an accessibility score of 100 is required on every page.
+      </li>
+      <li>
+        <strong>A link checker</strong>, so no link leads nowhere.
+      </li>
+    </ul>
+    <p>
+      Automated tools find many problems but not all of them. The site hasn't yet been tested by people using
+      eye gaze, switches or screen readers day to day. That testing matters most, and we'd welcome it.
+    </p>
+
+    <h2 id="known">Known limitations</h2>
+    <ul>
+      <li>
+        Links inside paragraphs are ordinary text size, as WCAG allows; every one is repeated or reachable as
+        a large control nearby.
+      </li>
+      <li>
+        The download panel needs JavaScript to find the newest version. Without it, the panel shows a large
+        link to the releases page on GitHub. GitHub's own pages are not under our control.
+      </li>
+    </ul>
+
+    <h2 id="report">Tell us about a problem</h2>
+    <p>
+      If anything on this site is hard to use, please tell us, and say how you were browsing if you're happy
+      to share. We treat accessibility problems as bugs.
+    </p>
+    <p>
+      <a class="btn" href={contact}>
+        {CONTACT_EMAIL ? "Email us" : "Report it on GitHub"}
+      </a>
+    </p>
+    <p>
+      This statement was last reviewed on 10 October 2026. The site's source code is{" "}
+      <a href={`${SOURCE_URL}/tree/main/site`}>on GitHub</a>.
+    </p>
+  </article>
+</Base>

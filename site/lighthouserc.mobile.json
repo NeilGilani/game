@@ -1,0 +1,17 @@
+{
+  "ci": {
+    "collect": {
+      "startServerCommand": "node scripts/serve.mjs 4332",
+      "startServerReadyPattern": "Serving",
+      "url": ["http://127.0.0.1:4332/game/", "http://127.0.0.1:4332/game/setup/"],
+      "numberOfRuns": 3
+    },
+    "assert": {
+      "assertions": {
+        "categories:accessibility": ["error", { "minScore": 1 }],
+        "categories:performance": ["error", { "minScore": 0.95, "aggregationMethod": "median-run" }]
+      }
+    },
+    "upload": { "target": "filesystem", "outputDir": ".lighthouseci/mobile" }
+  }
+}

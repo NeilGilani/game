@@ -1,0 +1,136 @@
+---
+import Base from "../layouts/Base.astro";
+import { SOURCE_URL } from "../data/site";
+import { manifest } from "../data/screenshots";
+
+const app = [
+  {
+    name: "MediaPipe Tasks Vision, including its WebAssembly runtime",
+    detail: "@mediapipe/tasks-vision 0.10.35, by Google",
+    license: "Apache License 2.0",
+  },
+  {
+    name: "MediaPipe Face Landmarker model",
+    detail: "face_landmarker.task, float16, version 1, by Google",
+    license: "Apache License 2.0",
+  },
+  {
+    name: "QR Code Generator for JavaScript",
+    detail: "qrcode-generator 1.4.4, by Kazuhiko Arase",
+    license: "MIT License",
+  },
+  {
+    name: "Atkinson Hyperlegible",
+    detail: "Typeface by the Braille Institute of America, packaged by Fontsource",
+    license: "SIL Open Font License 1.1",
+  },
+  {
+    name: "React, Vite, FastAPI, Pydantic, Uvicorn, the Anthropic Python SDK and other dependencies",
+    detail: "Listed in the project's package.json and backend requirements files",
+    license: "Their own open-source licenses",
+  },
+];
+
+const site = [
+  { name: "Astro", detail: "The tool that builds this site into plain HTML", license: "MIT License" },
+  {
+    name: "Atkinson Hyperlegible",
+    detail: "@fontsource/atkinson-hyperlegible 5.3.0, served from this site",
+    license: "SIL Open Font License 1.1",
+  },
+  { name: "sharp", detail: "Image resizing at build time", license: "Apache License 2.0" },
+  {
+    name: "Playwright, axe-core, Lighthouse CI, Vitest, TypeScript, Prettier",
+    detail: "Testing and checking tools, used only when building; none of them run in your browser",
+    license: "Apache License 2.0, MPL 2.0 (axe-core) and MIT",
+  },
+];
+---
+
+<Base
+  title="Credits and licenses: AGENCY OS"
+  description="The open-source work AGENCY OS and this website are built on, and their licenses."
+  current="credits"
+>
+  <article class="wrap prose">
+    <p class="eyebrow">Credits and licenses</p>
+    <h1>Built on the work of others</h1>
+    <p class="lede">AGENCY OS and this site use these components. Thank you to everyone who made them.</p>
+
+    <h2 id="app">In the AGENCY app</h2>
+    <div class="table-scroll" role="region" aria-label="Components in the AGENCY app" tabindex="0">
+      <table>
+        <thead>
+          <tr>
+            <th scope="col">Component</th>
+            <th scope="col">Details</th>
+            <th scope="col">License</th>
+          </tr>
+        </thead>
+        <tbody>
+          {app.map((c) => (
+            <tr>
+              <th scope="row">{c.name}</th>
+              <td>{c.detail}</td>
+              <td>{c.license}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+    <p>
+      The authoritative list, with versions and checksums, is{" "}
+      <a href={`${SOURCE_URL}/blob/main/THIRD_PARTY.md`}>THIRD_PARTY.md</a> in the repository. It grows as
+      AGENCY OS adds parts such as the Mac app shell and the Chrome extension.
+    </p>
+
+    <h2 id="site">In this website</h2>
+    <div class="table-scroll" role="region" aria-label="Components in this website" tabindex="0">
+      <table>
+        <thead>
+          <tr>
+            <th scope="col">Component</th>
+            <th scope="col">Details</th>
+            <th scope="col">License</th>
+          </tr>
+        </thead>
+        <tbody>
+          {site.map((c) => (
+            <tr>
+              <th scope="row">{c.name}</th>
+              <td>{c.detail}</td>
+              <td>{c.license}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+
+    <h2 id="screenshots">Screenshots</h2>
+    <p>
+      Every screenshot on this site is a real capture of the AGENCY prototype, taken automatically by a script
+      in the repository (<code>site/scripts/capture-screenshots.mjs</code>) on {manifest.captured} from commit
+      <code>{manifest.commit}</code>, using fictional demo data (“Riley”, “Jordan” and demo services). None
+      are mock-ups.
+    </p>
+
+    <h2 id="sources">Sources</h2>
+    <ul>
+      <li>
+        Bartlett G, Blais R, Tamblyn R, Clermont RJ, MacGibbon B.{" "}
+        <a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC2396356">
+          Impact of patient communication problems on the risk of preventable adverse events in acute care
+          settings
+        </a>
+        . CMAJ 2008;178(12):1555–62.
+      </li>
+    </ul>
+
+    <h2 id="project">AGENCY itself</h2>
+    <p>
+      AGENCY began at the UCSC AI Hackathon and is built in the open on <a href={SOURCE_URL}>GitHub</a>. The
+      project hasn't chosen a license for its own code yet; until it does, the code can be read but no license
+      to reuse it is granted.
+    </p>
+  </article>
+</Base>

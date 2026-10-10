@@ -1,0 +1,53 @@
+---
+// A real product screenshot from src/assets/screenshots (captured by scripts/capture-screenshots.mjs), with its
+// dark-mode capture when one exists. If a capture is missing, nothing pretends to be one: the figure is omitted.
+import { Picture } from "astro:assets";
+import type { ImageMetadata } from "astro";
+import { manifest } from "../data/screenshots";
+import { formatDate } from "../lib/release";
+
+interface Props {
+  name: string;
+  /** Load straight away (only for the first screenshot on the page). */
+  eager?: boolean;
+  sizes?: string;
+}
+
+const { name, eager = false, sizes = "(min-width: 76rem) 38rem, 92vw" } = Astro.props;
+const files = import.meta.glob<{ default: ImageMetadata }>("../assets/screenshots/*.png", { eager: true });
+const light = files[`../assets/screenshots/${name}.png`]?.default;
+const dark = files[`../assets/screenshots/${name}-dark.png`]?.default;
+const alt = manifest.shots.find((s) => s.file === `${name}.png`)?.alt ?? "";
+const widths = [480, 800, 1200, 1600];
+const common = { widths, sizes, formats: ["avif", "webp"] as const, decoding: "async" as const };
+---
+
+{light && (
+  <figure class="shot">
+    <Picture
+      src={light}
+      alt={alt}
+      class:list={["shot-img", dark && "shot-light"]}
+      loading={eager ? "eager" : "lazy"}
+      fetchpriority={eager ? "high" : "auto"}
+      {...common}
+      formats={[...common.formats]}
+    />
+    {dark && (
+      <Picture
+        src={dark}
+        alt={alt}
+        class="shot-img shot-dark"
+        loading="lazy"
+        {...common}
+        formats={[...common.formats]}
+      />
+    )}
+    <figcaption>
+      {alt}{" "}
+      <span class="provenance">
+        Real screenshot of the AGENCY prototype (captured {formatDate(manifest.captured)}, demo data).
+      </span>
+    </figcaption>
+  </figure>
+)}

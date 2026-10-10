@@ -1,0 +1,107 @@
+---
+import Base from "../layouts/Base.astro";
+import { CONTACT_EMAIL, ISSUES_URL, RELEASES_REPO, SOURCE_URL } from "../data/site";
+
+const contact = CONTACT_EMAIL
+  ? `mailto:${CONTACT_EMAIL}?subject=${encodeURIComponent("Privacy")}`
+  : ISSUES_URL;
+---
+
+<Base
+  title="Privacy policy: AGENCY OS"
+  description="This website has no trackers, analytics or cookies. AGENCY OS keeps camera video on your Mac and memory under your control."
+  current="privacy"
+>
+  <article class="wrap prose">
+    <p class="eyebrow">Privacy policy</p>
+    <h1>Privacy, in plain words</h1>
+    <p class="lede">Two parts: this website, and the AGENCY OS app.</p>
+
+    <h2 id="site">This website</h2>
+    <ul>
+      <li>
+        <strong>No trackers, no analytics, no advertising, no cookies.</strong>
+      </li>
+      <li>
+        <strong>Fonts and files come from this site.</strong> Nothing is loaded from font services or other
+        companies.
+      </li>
+      <li>
+        <strong>One request to GitHub.</strong> To show the newest download, your browser asks GitHub's public
+        API about the latest release of {RELEASES_REPO}. GitHub sees that request like any visit (including
+        your IP address) under{" "}
+        <a href="https://docs.github.com/site-policy/privacy-policies/github-general-privacy-statement">
+          GitHub's privacy statement
+        </a>
+        . The download itself also comes from GitHub. We don't receive anything about you from it.
+      </li>
+      <li>
+        <strong>Your theme choice stays in your browser.</strong> If you switch between light and dark, that
+        choice is saved in your browser's local storage on your device. It's never sent anywhere. Clearing
+        your browsing data removes it.
+      </li>
+      <li>
+        <strong>Which Mac you have stays in your browser.</strong> The page checks your browser's information
+        to suggest the Apple silicon or Intel download. That check happens on your device and isn't stored or
+        sent.
+      </li>
+      <li>
+        <strong>Hosting.</strong> The site is hosted on GitHub Pages. GitHub may keep server logs as described
+        in its privacy statement. We don't have access to visitor logs and don't ask for them.
+      </li>
+    </ul>
+
+    <h2 id="app">The AGENCY OS app</h2>
+    <p>
+      These are the rules AGENCY OS is built to follow. They are part of the project's safety rules, and every
+      part of the app is built and tested against them.
+    </p>
+    <ul>
+      <li>
+        <strong>Camera video never leaves your Mac.</strong> Frames are processed on the Mac to follow your
+        eyes, then thrown away. They're never stored, and never sent to the AI or anywhere else.
+      </li>
+      <li>
+        <strong>The AI sees only what a task needs, only when you start one.</strong> During a task you
+        started, AGENCY may send Anthropic's AI your request and screenshots of the app it's working in.
+        Screenshots aren't kept by default. Anthropic's terms apply to what's sent. Without an API key,
+        nothing is sent to an AI at all.
+      </li>
+      <li>
+        <strong>Memory is local and yours.</strong> What AGENCY learns about your usual choices stays on your
+        Mac. You can see, change or erase any of it.
+      </li>
+      <li>
+        <strong>No passwords, two-factor codes or card numbers.</strong> AGENCY never types, reads or stores
+        them.
+      </li>
+      <li>
+        <strong>Lifeline shares only what helpers need, only during an alert.</strong> Your name, what
+        happened and your responder card go only to your own contacts, through personal links that stop
+        showing the card when the alert ends.
+      </li>
+      <li>
+        <strong>Simulated by default.</strong> Out of the box, nobody real is contacted and nothing is bought.
+        Real messages, calls and purchases need deliberate setup and your approval.
+      </li>
+      <li>
+        <strong>No telemetry.</strong> AGENCY OS doesn't report how you use it to anyone.
+      </li>
+    </ul>
+    <p>
+      The full safety rules are in the project's <a href={`${SOURCE_URL}/blob/main/docs/os/PLAN.md`}>plan</a>,
+      and Lifeline's in <a href={`${SOURCE_URL}/blob/main/LIFELINE.md`}>LIFELINE.md</a>.
+    </p>
+
+    <h2 id="contact">Questions</h2>
+    <p>
+      <a class="btn" href={contact}>
+        {CONTACT_EMAIL ? "Email us" : "Ask on GitHub"}
+      </a>
+    </p>
+    <p>
+      Last updated 10 October 2026. If this policy changes, the change will be visible in the site's public
+      history on GitHub.
+    </p>
+  </article>
+</Base>
