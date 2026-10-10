@@ -1,0 +1,51 @@
+# Proposed workflow for Instance 1 to copy to .github/workflows/native-macos.yml (Instance 3 doesn't own
+# .github/workflows). Builds and tests agency-native on a GitHub-hosted macOS runner.
+#
+# What this can and can't prove: unit tests and the JSON-RPC protocol tests run against the real binary.
+# The accessibility integration test (AGENCY_NATIVE_INTEGRATION=1) needs Accessibility permission for the
+# runner's process; hosted runners don't grant it by default, so that step reports honestly and doesn't fail
+# the build if the permission is missing.
+name: native-macos
+
+on:
+  push:
+    paths: ["os/native-macos/**", "os/contracts/**", ".github/workflows/native-macos.yml"]
+  pull_request:
+    paths: ["os/native-macos/**", "os/contracts/**", ".github/workflows/native-macos.yml"]
+
+jobs:
+  build-test:
+    runs-on: macos-15
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: os/native-macos
+    steps:
+      - uses: actions/checkout@v4
+      - name: Toolchain
+        run: |
+          sw_vers
+          xcodebuild -version
+          swift --version
+      - name: Build (debug) and unit + protocol tests
+        run: scripts/test.sh
+      - name: Universal release build
+        run: |
+          bin="$(scripts/build-universal.sh dist)"
+          lipo -info "$bin"
+          lipo "$bin" -verify_arch arm64 x86_64
+          otool -s __TEXT __info_plist "$bin" | head -2
+      - name: Ad-hoc sign (signing hook smoke test)
+        run: scripts/codesign.sh dist/agency-native -
+      - name: Build the integration test app
+        run: swift build --product AgencyTestApp
+      - name: Accessibility integration test (best effort)
+        continue-on-error: true
+        env:
+          AGENCY_NATIVE_INTEGRATION: "1"
+        run: scripts/test.sh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: agency-native-universal
+          path: os/native-macos/dist/agency-native
+          retention-days: 7

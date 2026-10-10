@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>CFBundleIdentifier</key>
+  <string>org.agency.native</string>
+  <key>CFBundleName</key>
+  <string>agency-native</string>
+  <key>CFBundleDisplayName</key>
+  <string>AGENCY</string>
+  <key>CFBundleShortVersionString</key>
+  <string>0.1.0</string>
+  <key>CFBundleVersion</key>
+  <string>1</string>
+  <key>CFBundleInfoDictionaryVersion</key>
+  <string>6.0</string>
+  <key>NSCameraUsageDescription</key>
+  <string>AGENCY uses the camera to follow your eyes. Camera images never leave this Mac and are never saved.</string>
+  <key>NSMicrophoneUsageDescription</key>
+  <string>AGENCY listens during calls you start so it can show you what the other person says.</string>
+  <key>NSSpeechRecognitionUsageDescription</key>
+  <string>AGENCY turns speech on calls into text on this Mac only, so you can read what was said.</string>
+</dict>
+</plist>
