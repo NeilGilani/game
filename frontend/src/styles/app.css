@@ -1368,6 +1368,94 @@ table.data th {
   border-width: 4px;
   border-color: var(--ink);
 }
+.ll-four {
+  row-gap: 22px;
+}
+.ll-four .btn {
+  min-height: 108px;
+  font-size: 1.3rem;
+}
+.ll-question {
+  margin: 0;
+  font-size: clamp(2rem, 4.5vw, 3rem);
+  font-weight: 700;
+  line-height: 1.15;
+}
+.ll-answers {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 48px;
+  margin-top: 8px;
+}
+.ll-answers .btn {
+  min-height: 180px;
+  font-size: 1.8rem;
+  flex-direction: column;
+}
+.ll-no {
+  background: var(--ink);
+  border-color: var(--ink);
+  color: var(--surface);
+}
+.ll-no:hover {
+  background: var(--ink);
+  filter: brightness(1.15);
+}
+.ll-situations {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 28px;
+}
+.ll-situations .btn {
+  min-height: 132px;
+  font-size: 1.35rem;
+}
+.ll-situations .btn[aria-pressed="true"] {
+  outline: 6px solid var(--focus);
+  outline-offset: 3px;
+}
+.ll-back {
+  align-self: center;
+  min-width: 320px;
+  margin-top: 8px;
+}
+.ll-says {
+  margin: 0;
+  align-self: flex-start;
+  padding: 8px 16px;
+  border-radius: 12px;
+  background: var(--warn-soft);
+  border: 2px solid var(--warn);
+  font-weight: 700;
+  font-size: 1.15rem;
+}
+.ll-says[data-critical] {
+  background: var(--danger-soft);
+  border-color: var(--danger);
+}
+.ll-progress {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+}
+.ll-progress li {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  font-weight: 700;
+}
+.ll-progress li[data-tone="ok"] .ico {
+  color: var(--ok);
+}
+.ll-progress li[data-tone="danger"] .ico {
+  color: var(--danger);
+}
+.ll-plan textarea {
+  min-height: 150px;
+  font: inherit;
+}
 .ll-confirm {
   display: flex;
   flex-direction: column;
@@ -1659,6 +1747,11 @@ body:has(.ll-minibar) .main {
   margin: 0;
 }
 @media (max-width: 860px) {
+  .ll-answers,
+  .ll-situations {
+    grid-template-columns: 1fr;
+    gap: 18px;
+  }
   .ll-actions {
     grid-template-columns: 1fr;
     gap: 24px;

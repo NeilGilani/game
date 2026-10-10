@@ -11,6 +11,7 @@ import type {
   CaseDetail,
   CaseListItem,
   Catalog,
+  EyeAnswer,
   Faults,
   GoalPreview,
   GoalType,
@@ -24,6 +25,7 @@ import type {
   OutboxMessage,
   Preferences,
   ReasoningStatus,
+  Situation,
   Runtime,
   Timeline,
 } from "./types";
@@ -127,6 +129,12 @@ export const lifelineApi = {
   cancel: (id: string) => post<AlertDetail>(alertPath(id, "cancel"), undefined, 5000),
   callNow: (id: string) => post<AlertDetail>(alertPath(id, "now"), undefined, 5000),
   resolve: (id: string) => post<AlertDetail>(alertPath(id, "resolve"), undefined, 5000),
+  situation: (id: string, situation: Situation) =>
+    post<AlertDetail>(alertPath(id, "situation"), { situation }, 5000),
+  answer: (questionId: string, answer: EyeAnswer) =>
+    post<AlertDetail>(`/api/lifeline/questions/${encodeURIComponent(questionId)}/answer`, { answer }, 5000),
+  requestDispatch: (id: string) => post<AlertDetail>(alertPath(id, "dispatch"), {}, 15000),
+  cancelDispatch: (id: string) => post<AlertDetail>(alertPath(id, "dispatch/cancel"), undefined, 15000),
   alert: (id: string) => request<AlertDetail>(`/api/lifeline/alerts/${encodeURIComponent(id)}`),
   alerts: () => request<AlertSummary[]>("/api/lifeline/alerts?limit=50"),
   heartbeat: (beat: HeartbeatBody) =>

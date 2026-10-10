@@ -275,6 +275,52 @@ export function LifelineHome() {
               person is contacted.
             </Check>
           )}
+          {settings.dispatch.consent ? (
+            <Check
+              tone={s.dispatch.simulated ? "sim" : s.dispatch.ready ? "ok" : "danger"}
+              title="Emergency services"
+            >
+              {s.dispatch.simulated
+                ? `Allowed. ${s.dispatch.provider} is simulated in this build: no real emergency service is contacted.`
+                : `Allowed, through ${s.dispatch.provider}.`}{" "}
+              {settings.dispatch.auto_after_s
+                ? `Requested automatically if a critical alert goes unanswered for ${settings.dispatch.auto_after_s} s; `
+                : "Never requested automatically; "}
+              you, a helper, or a yes to "Do you want an ambulance?" can also ask.
+            </Check>
+          ) : (
+            <Check tone="warn" title="Emergency services not allowed">
+              AGENCY won't request emergency services. Helpers see a button to call{" "}
+              {settings.emergency_number} themselves.
+            </Check>
+          )}
+          {s.home.has_power && settings.home.watch_power ? (
+            <Check
+              tone={s.home.state?.power.mains === false ? "danger" : s.home.simulated ? "sim" : "ok"}
+              title={
+                s.home.state?.power.mains === false ? "Ventilator on battery" : "Ventilator power watched"
+              }
+            >
+              {s.home.state?.power.mains === false
+                ? `Mains power is off: about ${Math.round(s.home.state.power.battery_minutes ?? 0)} minutes of battery left.`
+                : "A power cut raises an alert while the battery still has time."}{" "}
+              {s.home.provider}
+              {s.home.simulated ? " (simulated)" : ""}.
+              {s.home.has_lock && settings.home.unlock_for_responders
+                ? " The front door can be unlocked for a helper who is coming, and locks again by itself."
+                : ""}
+            </Check>
+          ) : (
+            <Check tone="warn" title="Ventilator power not watched">
+              Connect the ventilator&apos;s outlet or UPS through Home Assistant, or turn power watching on in
+              setup.
+            </Check>
+          )}
+          <Check tone={Object.keys(settings.plans).length ? "ok" : "warn"} title="Care plan for helpers">
+            {Object.keys(settings.plans).length
+              ? `Step-by-step instructions for ${Object.keys(settings.plans).length} situations. ${settings.plans_note}`
+              : "No steps written yet. Write them with the care team in Lifeline setup."}
+          </Check>
           {otherProblems.map((p) => (
             <Check key={p} tone="danger" title="Problem">
               {p}
@@ -369,6 +415,8 @@ export function LifelineHome() {
               <dd>{seconds(report.data.max_seconds_to_acknowledged)}</dd>
               <dt>Cancelled in the countdown</dt>
               <dd>{report.data.cancelled_in_countdown}</dd>
+              <dt>Emergency services requested</dt>
+              <dd>{report.data.emergency_services_requested}</dd>
               <dt>Alarm only (nobody could be contacted)</dt>
               <dd>{report.data.local_only}</dd>
             </dl>
@@ -399,6 +447,12 @@ export function LifelineHome() {
               onChange={(v) =>
                 void api.setFaults({ lifeline_primary_unreachable: v }).then(() => faults.reload())
               }
+            />
+            <Toggle
+              label="Power cut at the ventilator"
+              help="The ventilator runs on its battery from now"
+              value={!!faults.data?.lifeline_power_cut}
+              onChange={(v) => void api.setFaults({ lifeline_power_cut: v }).then(() => faults.reload())}
             />
             <Toggle
               label="Freeze this computer"

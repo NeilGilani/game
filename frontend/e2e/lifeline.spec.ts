@@ -118,7 +118,8 @@ test("unreachable caregiver: fails over, neighbour answers on the response page,
     phones.getByRole("link", { name: "Open as Morgan" }).click(),
   ]);
   await expect(responder.getByRole("heading", { name: "Riley needs help" })).toBeVisible();
-  await expect(responder.getByText("Uses a home ventilator")).toBeVisible();
+  const aboutRiley = responder.locator("section").filter({ hasText: "About Riley" });
+  await expect(aboutRiley.getByText("Uses a home ventilator")).toBeVisible();
   await responder.getByRole("button", { name: "I'm on my way" }).click();
   await expect(responder.getByRole("heading", { name: "You're on the way" })).toBeVisible();
 
@@ -139,7 +140,7 @@ test("unreachable caregiver: fails over, neighbour answers on the response page,
   // The responder page no longer shows medical details once the alert has ended.
   await responder.reload();
   await expect(responder.getByRole("heading", { name: "This alert has ended" })).toBeVisible();
-  await expect(responder.getByText("Uses a home ventilator")).toBeHidden();
+  await expect(responder.getByText("Uses a home ventilator")).toHaveCount(0);
 
   // The full record.
   await page.goto(`/#/lifeline/alert/${alert.id}`);

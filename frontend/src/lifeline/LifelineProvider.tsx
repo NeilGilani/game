@@ -22,7 +22,14 @@ import {
   type ReactNode,
 } from "react";
 import { ApiError, accessToken, coordinatorUrl, lifelineApi } from "../api/client";
-import type { AlertDetail, HeartbeatBody, HelpSource, LifelineStatus } from "../api/types";
+import type {
+  AlertDetail,
+  EyeAnswer,
+  HeartbeatBody,
+  HelpSource,
+  LifelineStatus,
+  Situation,
+} from "../api/types";
 import { useAnnounce } from "../state/announcer";
 import { useInput } from "../state/input";
 import { usePreferences } from "../state/preferences";
@@ -59,6 +66,10 @@ export interface LifelineState {
   callNow: () => Promise<void>;
   resolve: () => Promise<void>;
   checkinOk: (source: string) => Promise<void>;
+  setSituation: (situation: Situation) => Promise<void>;
+  answer: (questionId: string, answer: EyeAnswer) => Promise<void>;
+  requestDispatch: () => Promise<void>;
+  cancelDispatch: () => Promise<void>;
   silence: () => void;
   setArmed: (armed: boolean) => Promise<void>;
   setFrozen: (frozen: boolean) => void;
@@ -241,6 +252,29 @@ export function LifelineProvider({ children }: { children: ReactNode }) {
       );
   }, [act, open]);
 
+  const setSituation = useCallback(
+    async (situation: Situation) => {
+      if (open)
+        await act(() => lifelineApi.situation(open.id, situation), "Sent. Everyone helping can see it.");
+    },
+    [act, open],
+  );
+
+  const answer = useCallback(
+    async (questionId: string, value: EyeAnswer) => {
+      await act(() => lifelineApi.answer(questionId, value), "Answer sent.");
+    },
+    [act],
+  );
+
+  const requestDispatch = useCallback(async () => {
+    if (open) await act(() => lifelineApi.requestDispatch(open.id), "Asking for an ambulance.");
+  }, [act, open]);
+
+  const cancelDispatch = useCallback(async () => {
+    if (open) await act(() => lifelineApi.cancelDispatch(open.id), "Ambulance request cancelled.");
+  }, [act, open]);
+
   const checkinOk = useCallback(
     async (source: string) => {
       await act(() => lifelineApi.checkin(source), "Thanks. Check-in answered.");
@@ -384,6 +418,17 @@ export function LifelineProvider({ children }: { children: ReactNode }) {
     }
   }, [announce, open]);
 
+  // A helper asked a yes/no question: get the person's attention.
+  const questionId = open?.pending_question?.id ?? null;
+  const questionRef = useRef(open?.pending_question ?? null);
+  questionRef.current = open?.pending_question ?? null;
+  useEffect(() => {
+    const q = questionRef.current;
+    if (!questionId || !q) return;
+    alarm().chime();
+    announce(`${q.asked_by} asks: ${q.text} Look at Yes, No or Not sure.`, true);
+  }, [announce, questionId]);
+
   useEffect(() => {
     if (!checkinPending) return;
     alarm().chime();
@@ -410,6 +455,10 @@ export function LifelineProvider({ children }: { children: ReactNode }) {
       callNow,
       resolve,
       checkinOk,
+      setSituation,
+      answer,
+      requestDispatch,
+      cancelDispatch,
       silence: () => {
         setSilencedId(silenceKey);
         alarm().stop();
@@ -436,6 +485,10 @@ export function LifelineProvider({ children }: { children: ReactNode }) {
       callNow,
       resolve,
       checkinOk,
+      setSituation,
+      answer,
+      requestDispatch,
+      cancelDispatch,
       setArmed,
       refresh,
       silenceKey,

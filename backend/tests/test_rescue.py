@@ -457,3 +457,15 @@ def test_an_older_database_gets_the_rescue_defaults(h: H) -> None:
     assert upgraded["plans"]["breathing"]
     assert upgraded["dispatch"]["consent"] is True
     assert db.query_one("SELECT COUNT(*) AS n FROM svc_home_devices")["n"] == 3
+
+
+def test_emergency_services_permission_is_separate_and_timestamped_by_the_coordinator(h: H) -> None:
+    current = h.client.get("/api/lifeline/settings").json()
+    off = h.settings(dispatch={**current["dispatch"], "consent": False, "consented_at": "2000-01-01T00:00:00Z"})
+    assert off["dispatch"]["consented_at"] is None
+    assert off["consent"] is True, "contacting people and requesting emergency services are separate permissions"
+    h.clock.advance(30)
+    on = h.settings(dispatch={**off["dispatch"], "consent": True, "consented_at": "2000-01-01T00:00:00Z"})
+    assert on["dispatch"]["consented_at"] == "2026-10-10T10:00:30.000Z"
+    bad = {**on["dispatch"], "phone": "555"}
+    assert h.client.put("/api/lifeline/settings", json={**on, "dispatch": bad}).status_code == 422

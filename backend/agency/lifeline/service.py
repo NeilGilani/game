@@ -119,10 +119,24 @@ class LifelineService:
             new = new.model_copy(update={"consented_at": None})
         else:
             new = new.model_copy(update={"consented_at": old.consented_at})
+        # Permission to request emergency services is separate, and also timestamped here.
+        if new.dispatch.consent and not old.dispatch.consent:
+            dispatch_at: str | None = iso(self.now())
+        elif new.dispatch.consent:
+            dispatch_at = old.dispatch.consented_at
+        else:
+            dispatch_at = None
+        new = new.model_copy(update={"dispatch": new.dispatch.model_copy(update={"consented_at": dispatch_at})})
         self.db.set_state(SETTINGS_KEY, new.model_dump())
         changes = []
         if new.consent != old.consent:
             changes.append("consent given" if new.consent else "consent withdrawn")
+        if new.dispatch.consent != old.dispatch.consent:
+            changes.append(
+                "permission to request emergency services given"
+                if new.dispatch.consent
+                else "permission to request emergency services withdrawn"
+            )
         if [c.model_dump() for c in new.contacts] != [c.model_dump() for c in old.contacts]:
             changes.append(f"{len(new.enabled_contacts())} active contacts")
         self._event(None, "settings", "user", "Lifeline settings updated" + (f": {', '.join(changes)}." if changes else "."))

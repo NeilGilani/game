@@ -344,6 +344,7 @@ export interface Faults {
   repair_timeout_after_commit: boolean;
   messaging_unavailable: boolean;
   lifeline_primary_unreachable: boolean;
+  lifeline_power_cut: boolean;
 }
 
 export interface ActivityEvent extends AuditEvent {
@@ -354,7 +355,11 @@ export interface ActivityEvent extends AuditEvent {
 
 export type ContactRole = "caregiver" | "family" | "neighbour" | "clinician" | "monitoring_service" | "other";
 export type LifelineChannel = "demo" | "sms" | "sms_call";
-export type AlertKind = "help" | "watchdog" | "checkin_missed" | "signal_unavailable";
+export type AlertKind = "help" | "watchdog" | "checkin_missed" | "signal_unavailable" | "power_lost";
+export type Situation = "breathing" | "choking" | "equipment" | "pain" | "position" | "other";
+export type PlanKey = "general" | Situation;
+export type Urgency = "standard" | "urgent" | "critical";
+export type EyeAnswer = "yes" | "no" | "not_sure";
 export type HelpSource = "eye_signal" | "help_button" | "switch" | "test";
 export type AlertStatus = "pending_cancel" | "active" | "acknowledged" | "resolved" | "cancelled";
 
@@ -380,6 +385,33 @@ export interface ResponderCard {
   notes: string;
 }
 
+export interface DispatchAddress {
+  line1: string;
+  line2: string;
+  city: string;
+  state: string;
+  zip: string;
+}
+
+export interface DispatchSettings {
+  consent: boolean;
+  consented_at: string | null;
+  auto_after_s: number;
+  address: DispatchAddress;
+  phone: string;
+  entry: string;
+  pin: string;
+}
+
+export interface HomeSettings {
+  lights_on_alert: boolean;
+  unlock_for_responders: boolean;
+  unlock_for_emergency_services: boolean;
+  relock_after_min: number;
+  watch_power: boolean;
+  power_critical_minutes: number;
+}
+
 export interface LifelineSettings {
   consent: boolean;
   consent_note: string;
@@ -394,6 +426,11 @@ export interface LifelineSettings {
   signal_grace_s: number;
   responder: ResponderCard;
   emergency_number: string;
+  critical_alert_everyone: boolean;
+  plans: Partial<Record<PlanKey, string[]>>;
+  plans_note: string;
+  dispatch: DispatchSettings;
+  home: HomeSettings;
 }
 
 export interface LifelineNotification {
@@ -403,7 +440,7 @@ export interface LifelineNotification {
   contact_name: string;
   contact_role: ContactRole;
   channel: LifelineChannel;
-  purpose: "alert" | "stand_down" | "all_clear";
+  purpose: "alert" | "stand_down" | "all_clear" | "update";
   level: number;
   cycle: number;
   status: "sending" | "delivered" | "sent" | "failed";
@@ -451,12 +488,60 @@ export interface AlertSummary {
   resolved_by: string | null;
   local_only: boolean;
   metrics: AlertMetrics;
+  situation: Situation | null;
+  urgency: Urgency;
+  critical_since: string | null;
+  detail: string | null;
+}
+
+export interface EyeQuestion {
+  id: string;
+  alert_id: string;
+  contact_id: string | null;
+  asked_by: string;
+  text: string;
+  answer: EyeAnswer | null;
+  asked_at: string;
+  answered_at: string | null;
+}
+
+export interface PlanStep {
+  index: number;
+  key: string;
+  label: string;
+  done_by: string | null;
+  done_at: string | null;
+}
+
+export interface DispatchView {
+  id: string;
+  status: "requested" | "accepted" | "failed" | "cancelled" | "test_skipped" | "not_allowed";
+  provider: string;
+  simulated: boolean;
+  reason: string;
+  requested_by: string;
+  provider_ref: string | null;
+  error: string | null;
+  note: string | null;
+  requested_at: string;
+  active: boolean;
+  summary: string;
 }
 
 export interface AlertDetail extends AlertSummary {
   notifications: LifelineNotification[];
   events: LifelineEvent[];
   waiting_on: string[];
+  situation_label: string;
+  questions: EyeQuestion[];
+  pending_question: EyeQuestion | null;
+  plan: { key: PlanKey; label: string; steps: PlanStep[] };
+  plans_note: string;
+  dispatch: DispatchView | null;
+  arrivals: { contact_id: string; contact_name: string; arrived_at: string }[];
+  door_unlocked_for: string | null;
+  door_relocks_at: string | null;
+  handoff: { label: string; text: string }[];
 }
 
 export interface LifelineMonitor {
@@ -480,6 +565,23 @@ export interface LifelineStatus {
   monitor: LifelineMonitor;
   open_alert: AlertDetail | null;
   recent: AlertSummary[];
+  rescue: {
+    situations: { key: Situation; label: string; urgency: Urgency }[];
+    questions: { key: string; text: string }[];
+  };
+  dispatch: { provider: string; simulated: boolean; sandbox: boolean; ready: boolean };
+  home: {
+    provider: string;
+    simulated: boolean;
+    has_lock: boolean;
+    has_lights: boolean;
+    has_power: boolean;
+    state: {
+      door: string | null;
+      lights: string | null;
+      power: { mains: boolean | null; battery_minutes: number | null };
+    } | null;
+  };
 }
 
 export interface OutboxMessage {
@@ -487,7 +589,7 @@ export interface OutboxMessage {
   alert_id: string;
   contact_id: string;
   contact_name: string;
-  purpose: "alert" | "stand_down" | "all_clear";
+  purpose: "alert" | "stand_down" | "all_clear" | "update";
   status: string;
   body: string;
   created_at: string;
@@ -508,6 +610,7 @@ export interface LifelineReport {
   median_seconds_to_acknowledged: number | null;
   max_seconds_to_acknowledged: number | null;
   by_kind: Record<AlertKind, number>;
+  emergency_services_requested: number;
 }
 
 export interface HeartbeatBody {

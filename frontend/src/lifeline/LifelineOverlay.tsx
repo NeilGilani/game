@@ -147,16 +147,185 @@ function Pending({ alert }: { alert: AlertDetail }) {
   );
 }
 
+/** A helper asked a yes/no question: answer it with the eyes. Takes over the screen until answered. */
+function Question({ alert }: { alert: AlertDetail }) {
+  const ll = useLifeline();
+  const q = alert.pending_question!;
+  useSelectionReset(`question-${q.id}`);
+  const more = alert.questions.filter((x) => !x.answer).length - 1;
+  return (
+    <Frame
+      tone={alert.is_test ? "test" : "calm"}
+      title={`${q.asked_by} asks:`}
+      label={`${q.asked_by} asks a question`}
+    >
+      <p className="ll-question">{q.text}</p>
+      <div className="ll-answers" role="group" aria-label="Your answer">
+        <button
+          className="btn btn-xl btn-primary"
+          onClick={() => void ll.answer(q.id, "yes")}
+          data-dwell
+          disabled={ll.busy}
+        >
+          <Icon name="check" size={34} /> Yes
+        </button>
+        <button
+          className="btn btn-xl ll-no"
+          onClick={() => void ll.answer(q.id, "no")}
+          data-dwell
+          disabled={ll.busy}
+        >
+          <Icon name="x" size={34} /> No
+        </button>
+        <button
+          className="btn btn-xl"
+          onClick={() => void ll.answer(q.id, "not_sure")}
+          data-dwell
+          disabled={ll.busy}
+        >
+          <Icon name="question" size={34} /> Not sure
+        </button>
+      </div>
+      <p className="ll-note">
+        Your answer appears on {q.asked_by}&apos;s phone straight away.
+        {more > 0 ? ` ${more} more ${more === 1 ? "question is" : "questions are"} waiting.` : ""}
+      </p>
+    </Frame>
+  );
+}
+
+function SituationPicker({ alert, onDone }: { alert: AlertDetail; onDone: () => void }) {
+  const ll = useLifeline();
+  useSelectionReset("situation-picker");
+  const options = ll.status?.rescue.situations ?? [];
+  return (
+    <Frame tone={alert.is_test ? "test" : "danger"} title="What's wrong?" label="Tell them what's wrong">
+      <p className="ll-lead">
+        Everyone helping sees your answer. Breathing, choking and equipment alert everyone at once.
+      </p>
+      <div className="ll-situations" role="group" aria-label="What's wrong">
+        {options.map((o) => (
+          <button
+            key={o.key}
+            className={`btn btn-xl ${o.urgency === "critical" ? "btn-solid-danger" : ""}`}
+            aria-pressed={alert.situation === o.key}
+            onClick={() => {
+              void ll.setSituation(o.key);
+              onDone();
+            }}
+            data-dwell
+            disabled={ll.busy}
+          >
+            {o.label}
+          </button>
+        ))}
+      </div>
+      <button className="btn btn-xl ll-back" onClick={onDone} data-dwell>
+        <Icon name="back" size={30} /> Back
+      </button>
+    </Frame>
+  );
+}
+
+function ConfirmAmbulance({ alert, onDone }: { alert: AlertDetail; onDone: () => void }) {
+  const ll = useLifeline();
+  useSelectionReset("confirm-ambulance");
+  const d = ll.status?.dispatch;
+  const address = ll.status?.settings.dispatch.address;
+  const where = address ? [address.line1, address.city].filter(Boolean).join(", ") : "";
+  return (
+    <Frame
+      tone={alert.is_test ? "test" : "danger"}
+      title="Ask for an ambulance?"
+      label="Ask for an ambulance"
+    >
+      <p className="ll-lead">
+        AGENCY asks {d?.provider ?? "the dispatch centre"} to send emergency services
+        {where ? ` to ${where}` : ""}.{d?.simulated ? " (Demo: simulated, no one is sent.)" : ""}
+        {alert.is_test ? " This is a test alert, so nothing is sent." : ""}
+      </p>
+      <div className="ll-actions">
+        <button className="btn btn-xl" onClick={onDone} data-dwell disabled={ll.busy}>
+          <Icon name="back" size={30} /> No, go back
+        </button>
+        <button
+          className="btn btn-xl btn-solid-danger"
+          onClick={() => {
+            void ll.requestDispatch();
+            onDone();
+          }}
+          data-dwell
+          disabled={ll.busy}
+        >
+          <Icon name="bell" size={30} /> Yes, ask for an ambulance
+        </button>
+      </div>
+    </Frame>
+  );
+}
+
+/** What helpers have done so far, so the person isn't left wondering. */
+function Progress({ alert }: { alert: AlertDetail }) {
+  const items: { key: string; icon: string; text: string; tone?: string }[] = [];
+  for (const a of alert.arrivals) {
+    items.push({
+      key: `arr-${a.contact_id}`,
+      icon: "check",
+      text: `${a.contact_name} is with you (${clockTime(a.arrived_at)})`,
+      tone: "ok",
+    });
+  }
+  if (alert.dispatch && alert.dispatch.status !== "test_skipped") {
+    items.push({
+      key: "dispatch",
+      icon: alert.dispatch.status === "failed" ? "alert" : "bell",
+      text: `Ambulance: ${alert.dispatch.summary}`,
+      tone: alert.dispatch.status === "failed" ? "danger" : alert.dispatch.active ? "ok" : undefined,
+    });
+  }
+  if (alert.door_unlocked_for) {
+    items.push({ key: "door", icon: "key", text: `Front door unlocked for ${alert.door_unlocked_for}` });
+  }
+  for (const st of alert.plan.steps.filter((x) => x.done_at).slice(-3)) {
+    items.push({ key: st.key, icon: "check", text: `${st.done_by}: ${st.label}`, tone: "ok" });
+  }
+  for (const q of alert.questions.filter((x) => x.answer).slice(-2)) {
+    items.push({
+      key: q.id,
+      icon: "message",
+      text: `You answered ${q.answer === "not_sure" ? "not sure" : q.answer}: ${q.text}`,
+    });
+  }
+  if (items.length === 0) return null;
+  return (
+    <ul className="ll-progress" aria-label="What's happening">
+      {items.map((i) => (
+        <li key={i.key} data-tone={i.tone}>
+          <Icon name={i.icon} size={22} />
+          <span>{i.text}</span>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+type View = "main" | "situation" | "ok" | "ambulance";
+
 function Active({ alert }: { alert: AlertDetail }) {
   const ll = useLifeline();
-  const [confirming, setConfirming] = useState(false);
+  const [view, setView] = useState<View>("main");
   const [minimized, setMinimized] = useState(false);
   useNow(1000);
-  useSelectionReset(`${alert.id}-${alert.status}`);
+  useSelectionReset(`${alert.id}-${alert.status}-${view}`);
   const settings = ll.status?.settings;
   const acked = alert.status === "acknowledged";
   const next = settings ? nextStep(alert, settings) : null;
   const test = alert.is_test;
+  const canAskAmbulance = !!settings?.dispatch.consent && !alert.dispatch?.active;
+
+  if (alert.pending_question) return <Question alert={alert} />;
+  if (view === "situation") return <SituationPicker alert={alert} onDone={() => setView("main")} />;
+  if (view === "ambulance") return <ConfirmAmbulance alert={alert} onDone={() => setView("main")} />;
 
   if (acked && minimized) {
     return (
@@ -189,7 +358,17 @@ function Active({ alert }: { alert: AlertDetail }) {
   return (
     <Frame tone={tone} title={title} label={title}>
       {test && <p className="ll-badge">TEST, not an emergency</p>}
-      {alert.kind !== "help" && <p className="ll-why">{alert.what}.</p>}
+      {alert.kind !== "help" && (
+        <p className="ll-why">
+          {alert.what}.{alert.detail ? ` ${alert.detail}` : ""}
+        </p>
+      )}
+      {alert.situation && (
+        <p className="ll-says" data-critical={alert.urgency === "critical" ? "" : undefined}>
+          You said: {alert.situation_label.toLowerCase()}
+          {alert.urgency === "critical" ? " (critical: everyone has been alerted)" : ""}
+        </p>
+      )}
       {!ll.online && (
         <p className="ll-warning" role="alert">
           <Icon name="offline" /> This screen lost contact with the coordinator. The coordinator keeps calling
@@ -215,18 +394,35 @@ function Active({ alert }: { alert: AlertDetail }) {
           {next}
         </p>
       )}
+      <Progress alert={alert} />
       <Contacts alert={alert} />
-      {confirming ? (
+      {view === "ok" ? (
         <ConfirmOk
           busy={ll.busy}
-          onNo={() => setConfirming(false)}
+          onNo={() => setView("main")}
           onYes={() => {
-            setConfirming(false);
+            setView("main");
             void ll.resolve();
           }}
         />
       ) : (
-        <div className="ll-actions">
+        <div className="ll-actions ll-four">
+          {!alert.local_only && (
+            <button
+              className={`btn btn-xl ${alert.situation ? "" : "btn-solid-danger"}`}
+              onClick={() => setView("situation")}
+              data-dwell
+              disabled={ll.busy}
+            >
+              <Icon name="message" size={30} />{" "}
+              {alert.situation ? "Change what's wrong" : "Tell them what's wrong"}
+            </button>
+          )}
+          {canAskAmbulance && (
+            <button className="btn btn-xl" onClick={() => setView("ambulance")} data-dwell disabled={ll.busy}>
+              <Icon name="bell" size={30} /> Ask for an ambulance
+            </button>
+          )}
           {acked ? (
             <button className="btn btn-xl" onClick={() => setMinimized(true)} data-dwell>
               <Icon name="down" size={30} /> Minimize
@@ -244,11 +440,11 @@ function Active({ alert }: { alert: AlertDetail }) {
           )}
           <button
             className="btn btn-xl btn-primary"
-            onClick={() => setConfirming(true)}
+            onClick={() => setView("ok")}
             data-dwell
             disabled={ll.busy}
           >
-            <Icon name="check" size={30} /> I'm OK now
+            <Icon name="check" size={30} /> I&apos;m OK now
           </button>
         </div>
       )}
