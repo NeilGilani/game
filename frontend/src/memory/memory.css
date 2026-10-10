@@ -1,0 +1,135 @@
+/* Memory explorer. Builds on the design system tokens in styles/app.css; nothing here moves
+   under the gaze, every target is at least 116 px tall and 24 px apart. */
+
+.page.mem {
+  gap: 32px;
+}
+.mem-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 24px;
+  flex-wrap: wrap;
+}
+.mem-head h1 {
+  margin: 0;
+}
+.mem-lead {
+  color: var(--ink-2);
+  margin: 6px 0 0;
+  max-width: 62ch;
+}
+.mem-back {
+  min-width: 160px;
+}
+
+.mem-grid {
+  gap: 24px;
+}
+.mem-cell {
+  display: flex;
+}
+.mem-cell > .tile {
+  flex: 1;
+}
+.mem-tile {
+  min-height: 176px;
+  width: 100%;
+}
+.mem-tile-danger {
+  border-color: var(--danger);
+}
+.mem-tile-danger .tile-icon {
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+.mem-badge {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+}
+.mem-tile[aria-pressed] .mem-badge {
+  right: 66px;
+}
+
+.mem-status {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.mem-pager {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+}
+
+.mem-stack {
+  gap: 24px;
+}
+
+.mem-usual {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.mem-usual-title {
+  margin: 0;
+  font-size: 1.6rem;
+}
+.mem-why {
+  margin: 0;
+  font-size: 1.15rem;
+}
+.mem-details {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 700;
+}
+.mem-fact {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.mem-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 24px;
+}
+.mem-actions .btn {
+  min-height: 116px;
+}
+.mem-actions-sheet {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin-top: 16px;
+}
+
+.mem-facts li {
+  font-size: 1.05rem;
+}
+
+.mem-input {
+  width: 100%;
+  min-height: 96px;
+  font: inherit;
+  font-size: 1.4rem;
+  padding: 0 20px;
+  border-radius: var(--radius);
+  border: 2px solid var(--line-strong);
+  background: var(--surface);
+  color: var(--ink);
+}
+
+.mem-code {
+  font-size: 1.6rem;
+  word-break: break-all;
+  margin: 8px 0;
+}
+
+@media (max-width: 900px) {
+  .mem-grid.grid-3 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
