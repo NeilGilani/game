@@ -10,6 +10,7 @@ import asyncio
 import contextlib
 import hmac
 import logging
+import os
 import platform
 import socket
 from collections.abc import AsyncIterator
@@ -46,6 +47,7 @@ from .models import (
     StepStatus,
 )
 from .planning.planner import GOAL_CARDS, PHRASES, case_title, interpret, make_plan
+from .reasoning.local import with_local_model
 from .reasoning.provider import ReasoningProvider, build_provider
 from .services.common import INTEGRATIONS, ServiceError
 from .services.seed import ensure_seeded, seed_demo_data
@@ -144,6 +146,8 @@ def create_app(
             fallbacks=settings.anthropic_fallbacks,
             timeout_s=settings.reasoning_timeout_s,
         )
+        if provider is None:
+            chosen = with_local_model(chosen, dict(os.environ))
         lifeline = LifelineService(
             db,
             ChannelRouter(engine.faults, TwilioChannel.from_env()),
@@ -227,7 +231,7 @@ def create_app(
             "reasoning": {
                 k: v
                 for k, v in s.provider.status().items()
-                if k in {"mode", "provider", "label", "model", "state", "description"}
+                if k in {"mode", "provider", "label", "model", "state", "description", "local", "private_explanations"}
             },
             "automation_paused": s.engine.automation_paused(),
             "auth_required": bool(settings.api_token),
@@ -521,7 +525,7 @@ def create_app(
             "This uses a demonstration service. No real company, office or person is contacted.",
         ]
         result: dict[str, Any] = {"paragraphs": paragraphs, "source": "deterministic", "model": None}
-        if use_cloud and s.provider.available:
+        if use_cloud and getattr(s.provider, "can_explain", s.provider.available):
             cloud = await s.provider.explain(
                 {
                     "headline": approval["summary"],
@@ -531,12 +535,13 @@ def create_app(
                 }
             )
             if cloud:
-                status = s.provider.status()
+                status = getattr(s.provider, "last_explained_by", None) or s.provider.status()
                 result = {
                     "paragraphs": cloud,
                     "source": "cloud",
                     "label": status.get("label"),
                     "model": status.get("model"),
+                    "on_device": bool(status.get("on_device")),
                     "facts": paragraphs,
                 }
         return result

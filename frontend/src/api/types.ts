@@ -241,7 +241,7 @@ export interface Timeline {
 }
 
 export interface ReasoningStatus {
-  mode: "deterministic" | "cloud" | "cloud_degraded";
+  mode: "deterministic" | "cloud" | "cloud_degraded" | "local" | "local_degraded";
   provider: string | null;
   /** Display name of the cloud model family ("Gemini", "Claude"), or null in deterministic mode. */
   label?: string | null;

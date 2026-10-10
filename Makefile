@@ -14,7 +14,7 @@ SHELL := /bin/bash
 PY := backend/.venv/bin/python
 PI ?= agency-pi.local
 
-.PHONY: help setup setup-backend setup-frontend dev demo backend frontend dev-pi test test-backend test-frontend \
+.PHONY: help setup setup-backend setup-frontend dev demo demo-local backend frontend dev-pi test test-backend test-frontend \
         lint typecheck build check e2e e2e-fixtures reset-demo pi-setup pi-start pi-stop pi-status pi-logs clean \
         os-check os-dev os-build os-dist os-test os-e2e sidecar sandbox
 
@@ -62,6 +62,16 @@ dev:
 demo: build
 	@echo "AGENCY is running at http://localhost:8000  (Ctrl-C to stop)"
 	cd backend && .venv/bin/uvicorn agency.main:app --host 127.0.0.1 --port 8000
+
+# AGENCY plus the on-device model (Synapse-Mesh) on port 8100. See LOCAL_MODEL.md.
+SYNAPSE_DIR ?= $(HOME)/synapse
+demo-local: build
+	@test -x "$(SYNAPSE_DIR)/.venv/bin/python" || { echo "Synapse-Mesh isn't set up in $(SYNAPSE_DIR). See LOCAL_MODEL.md (or pass SYNAPSE_DIR=/path/to/synapse-mesh)."; exit 1; }
+	@echo "AGENCY: http://localhost:8000   On-device model: http://127.0.0.1:8100   (Ctrl-C stops both)"
+	@trap 'kill 0' EXIT; \
+	  (cd "$(SYNAPSE_DIR)/backend" && ../.venv/bin/python -m uvicorn synapse_mesh.api:app --host 127.0.0.1 --port 8100) & \
+	  (cd backend && AGENCY_LOCAL_MODEL_URL=$${AGENCY_LOCAL_MODEL_URL:-http://127.0.0.1:8100} .venv/bin/uvicorn agency.main:app --host 127.0.0.1 --port 8000) & \
+	  wait
 
 dev-pi:
 	@echo "Interface on http://localhost:5173, coordinator on the Pi at http://$(PI):8000"
