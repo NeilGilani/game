@@ -343,8 +343,177 @@ export interface Faults {
   repair_slot_taken: boolean;
   repair_timeout_after_commit: boolean;
   messaging_unavailable: boolean;
+  lifeline_primary_unreachable: boolean;
 }
 
 export interface ActivityEvent extends AuditEvent {
   case_title: string;
+}
+
+// -- Lifeline ---------------------------------------------------------------------------
+
+export type ContactRole = "caregiver" | "family" | "neighbour" | "clinician" | "monitoring_service" | "other";
+export type LifelineChannel = "demo" | "sms" | "sms_call";
+export type AlertKind = "help" | "watchdog" | "checkin_missed" | "signal_unavailable";
+export type HelpSource = "eye_signal" | "help_button" | "switch" | "test";
+export type AlertStatus = "pending_cancel" | "active" | "acknowledged" | "resolved" | "cancelled";
+
+export interface LifelineContact {
+  id: string;
+  name: string;
+  role: ContactRole;
+  channel: LifelineChannel;
+  address: string;
+  priority: number;
+  enabled: boolean;
+}
+
+export interface ResponderCard {
+  person_name: string;
+  address: string;
+  communication: string;
+  breathing: string;
+  medical: string;
+  allergies: string;
+  medications: string;
+  advance_directive: string;
+  notes: string;
+}
+
+export interface LifelineSettings {
+  consent: boolean;
+  consent_note: string;
+  consented_at: string | null;
+  contacts: LifelineContact[];
+  cancel_window_s: number;
+  ack_timeout_s: number;
+  watchdog_timeout_s: number;
+  checkin_interval_min: number;
+  checkin_response_s: number;
+  alert_on_signal_unavailable: boolean;
+  signal_grace_s: number;
+  responder: ResponderCard;
+  emergency_number: string;
+}
+
+export interface LifelineNotification {
+  id: string;
+  alert_id: string;
+  contact_id: string;
+  contact_name: string;
+  contact_role: ContactRole;
+  channel: LifelineChannel;
+  purpose: "alert" | "stand_down" | "all_clear";
+  level: number;
+  cycle: number;
+  status: "sending" | "delivered" | "sent" | "failed";
+  body: string;
+  error: string | null;
+  response: "acknowledged" | "declined" | "resolved" | null;
+  responded_at: string | null;
+  created_at: string;
+  sent_at: string | null;
+  has_link: boolean;
+}
+
+export interface LifelineEvent {
+  id: number;
+  ts: string;
+  kind: string;
+  actor: "user" | "system" | "contact";
+  message: string;
+  data: Record<string, unknown>;
+}
+
+export interface AlertMetrics {
+  seconds_to_first_contact: number | null;
+  seconds_to_acknowledged: number | null;
+  people_alerted: number;
+}
+
+export interface AlertSummary {
+  id: string;
+  kind: AlertKind;
+  source: string;
+  is_test: boolean;
+  status: AlertStatus;
+  message: string;
+  what: string;
+  created_at: string;
+  activates_at: string;
+  activated_at: string | null;
+  level: number;
+  cycle: number;
+  next_escalation_at: string | null;
+  acknowledged_at: string | null;
+  acknowledged_by: string | null;
+  resolved_at: string | null;
+  resolved_by: string | null;
+  local_only: boolean;
+  metrics: AlertMetrics;
+}
+
+export interface AlertDetail extends AlertSummary {
+  notifications: LifelineNotification[];
+  events: LifelineEvent[];
+  waiting_on: string[];
+}
+
+export interface LifelineMonitor {
+  armed: boolean;
+  armed_at: string | null;
+  last_heartbeat_at: string | null;
+  seconds_since_heartbeat: number | null;
+  last_heartbeat: HeartbeatBody | null;
+  signal_unready_since: string | null;
+  next_checkin_at: string | null;
+  checkin_pending_since: string | null;
+  checkin_last_ok_at: string | null;
+}
+
+export interface LifelineStatus {
+  server_time: string;
+  settings: LifelineSettings;
+  ready: boolean;
+  problems: string[];
+  channels: { twilio_configured: boolean; public_url: string };
+  monitor: LifelineMonitor;
+  open_alert: AlertDetail | null;
+  recent: AlertSummary[];
+}
+
+export interface OutboxMessage {
+  id: string;
+  alert_id: string;
+  contact_id: string;
+  contact_name: string;
+  purpose: "alert" | "stand_down" | "all_clear";
+  status: string;
+  body: string;
+  created_at: string;
+  response: string | null;
+  alert_status: AlertStatus;
+  is_test: boolean;
+  link: string | null;
+}
+
+export interface LifelineReport {
+  alerts: number;
+  tests: number;
+  real: number;
+  cancelled_in_countdown: number;
+  acknowledged: number;
+  local_only: number;
+  open: number;
+  median_seconds_to_acknowledged: number | null;
+  max_seconds_to_acknowledged: number | null;
+  by_kind: Record<AlertKind, number>;
+}
+
+export interface HeartbeatBody {
+  signal_ready: boolean;
+  camera: string;
+  face_visible: boolean;
+  page_visible: boolean;
+  input_mode: string;
 }

@@ -65,6 +65,10 @@ def build_routers(*, demo_controls: bool) -> tuple[APIRouter, APIRouter]:
     async def cancel(alert_id: str, request: Request) -> dict[str, Any]:
         return await lifeline(request).cancel(alert_id)
 
+    @api.post("/alerts/{alert_id}/now")
+    async def call_now(alert_id: str, request: Request) -> dict[str, Any]:
+        return await lifeline(request).activate_now(alert_id)
+
     @api.post("/alerts/{alert_id}/resolve")
     async def resolve(alert_id: str, request: Request) -> dict[str, Any]:
         service = lifeline(request)

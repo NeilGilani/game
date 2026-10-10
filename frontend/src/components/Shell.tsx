@@ -6,6 +6,7 @@ import { coordinatorLabel, useConnection } from "../state/connection";
 import { MODE_LABELS, useInput } from "../state/input";
 import { navigate, type Route } from "../state/router";
 import { usePoll } from "../state/usePoll";
+import { useLifeline } from "../lifeline/LifelineProvider";
 import { BrandMark, Icon } from "./Icon";
 
 function useInputChip(): { text: string; tone: string } {
@@ -67,6 +68,7 @@ export function TopBar() {
 
   return (
     <header className="topbar">
+      <HelpButton />
       <button className="brand" onClick={() => navigate("/")} aria-label="AGENCY home" data-dwell>
         <BrandMark />
         AGENCY
@@ -127,8 +129,35 @@ export function TopBar() {
   );
 }
 
+/**
+ * Always first in the top bar, so it's the first choice when scanning. It stays selectable
+ * while eye control is paused (with a longer dwell). Pressing it starts the cancel countdown.
+ */
+function HelpButton() {
+  const ll = useLifeline();
+  const open = !!ll.open || !!ll.queued;
+  return (
+    <button
+      className="btn help-btn"
+      onClick={() => void ll.requestHelp("help_button")}
+      data-dwell
+      data-dwell-always
+      aria-label={open ? "Help: an alert is already open" : "Help: call for help"}
+    >
+      <Icon name="bell" size={28} />
+      Help
+    </button>
+  );
+}
+
 const NAV = [
   { path: "/", label: "Home", icon: "home", match: (r: Route) => r.path === "/" },
+  {
+    path: "/lifeline",
+    label: "Lifeline",
+    icon: "lifeline",
+    match: (r: Route) => r.segments[0] === "lifeline",
+  },
   { path: "/new", label: "New task", icon: "plus", match: (r: Route) => r.segments[0] === "new" },
   {
     path: "/cases",
@@ -155,6 +184,8 @@ const NAV = [
 export function Nav({ route }: { route: Route }) {
   const approvals = usePoll<Approval[]>(() => api.approvals(), 3000, "nav-approvals");
   const count = approvals.data?.length ?? 0;
+  const ll = useLifeline();
+  const watching = !!ll.status?.monitor.armed;
   return (
     <nav className="nav" aria-label="Main">
       {NAV.map((item) => (
@@ -170,6 +201,11 @@ export function Nav({ route }: { route: Route }) {
           {item.path === "/approvals" && count > 0 && (
             <span className="count" aria-label={`${count} waiting`}>
               {count}
+            </span>
+          )}
+          {item.path === "/lifeline" && watching && (
+            <span className="count count-ok" aria-label="Watch over me is on">
+              On
             </span>
           )}
         </button>

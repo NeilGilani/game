@@ -445,6 +445,17 @@ class LifelineService:
             )
             return self.alert_detail(alert_id)
 
+    async def activate_now(self, alert_id: str) -> dict[str, Any]:
+        """The person chose "Call now" during the countdown."""
+        async with self.lock:
+            alert = self._alert_row(alert_id)
+            if not alert:
+                raise LifelineError("Alert not found.")
+            if alert["status"] == "pending_cancel":
+                self._event(alert_id, "call_now", "user", f"{self._person()} chose to call now instead of waiting.")
+                await self._activate(alert, self.now())
+            return self.alert_detail(alert_id)
+
     async def resolve(self, alert_id: str, *, by: str, actor: str, exclude_contact: str | None = None) -> dict[str, Any]:
         async with self.lock:
             return await self._resolve(alert_id, by=by, actor=actor, exclude_contact=exclude_contact)
@@ -624,13 +635,16 @@ class LifelineService:
             return self.status()
 
     async def checkin_now(self) -> dict[str, Any]:
-        """Presenter control: make the next check-in due now."""
+        """Presenter control: ask for a check-in now (works even with no check-in schedule)."""
         async with self.lock:
             state = self.monitor()
-            state["next_checkin_at"] = iso(self.now())
-            self._save_monitor(state)
-        await self.tick()
-        return self.status()
+            if not state.get("armed"):
+                raise LifelineError("Turn on Watch over me first: check-ins only run while it's on.")
+            if not state.get("checkin_pending_since"):
+                state["checkin_pending_since"] = iso(self.now())
+                self._save_monitor(state)
+                self._event(None, "checkin_due", "system", f"Check-in: asking {self._person()} to confirm they're OK.")
+            return self.status()
 
     # ------------------------------------------------------------------------------
     # the clock: called every second by the supervisor loop
@@ -710,19 +724,18 @@ class LifelineService:
             self._save_monitor(state)
             await self._create("signal_unavailable", "watchdog")
             return
-        if settings.checkin_interval_min:
-            due = parse(state.get("next_checkin_at"))
-            pending = parse(state.get("checkin_pending_since"))
-            if pending:
-                if (now - pending).total_seconds() > settings.checkin_response_s:
-                    self._schedule_checkin(now)
-                    if not open_alert:
-                        self._event(None, "checkin_missed", "system", f"{self._person()} didn't answer the check-in.")
-                        await self._create("checkin_missed", "checkin")
-            elif due and due <= now:
-                state["checkin_pending_since"] = iso(now)
-                self._save_monitor(state)
-                self._event(None, "checkin_due", "system", f"Check-in: asking {self._person()} to confirm they're OK.")
+        due = parse(state.get("next_checkin_at"))
+        pending = parse(state.get("checkin_pending_since"))
+        if pending:
+            if (now - pending).total_seconds() > settings.checkin_response_s:
+                self._schedule_checkin(now)
+                if not open_alert:
+                    self._event(None, "checkin_missed", "system", f"{self._person()} didn't answer the check-in.")
+                    await self._create("checkin_missed", "checkin")
+        elif settings.checkin_interval_min and due and due <= now:
+            state["checkin_pending_since"] = iso(now)
+            self._save_monitor(state)
+            self._event(None, "checkin_due", "system", f"Check-in: asking {self._person()} to confirm they're OK.")
 
     async def run(self, interval_s: float = 1.0) -> None:
         while True:
@@ -873,7 +886,7 @@ class LifelineService:
         """Messages to simulated phones, with their (real, working) response links."""
         rows = self.db.query(
             "SELECT n.*, a.status AS alert_status, a.is_test FROM lifeline_notifications n "
-            "JOIN lifeline_alerts a ON a.id = n.alert_id WHERE n.channel = 'demo' ORDER BY n.created_at DESC, n.rowid DESC LIMIT 60"
+            "JOIN lifeline_alerts a ON a.id = n.alert_id WHERE n.channel = 'demo' AND n.status != 'failed' ORDER BY n.created_at DESC, n.rowid DESC LIMIT 60"
         )
         return [
             {

@@ -1154,7 +1154,9 @@ table.data th {
   flex-direction: column;
   gap: 8px;
 }
-.field input {
+.field input,
+.field select,
+.field textarea {
   min-height: 60px;
   font: inherit;
   padding: 0 16px;
@@ -1237,6 +1239,428 @@ table.data th {
 @media (max-width: 1100px) {
   .workspace-grid {
     grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* ---- Lifeline ------------------------------------------------------------------------ */
+
+.help-btn {
+  flex: none;
+  min-width: 0;
+  min-height: 64px;
+  padding: 0 24px;
+  font-size: 1.2rem;
+  background: var(--danger);
+  border-color: var(--danger);
+  color: var(--surface);
+}
+.help-btn:hover {
+  background: var(--danger);
+  filter: brightness(1.08);
+}
+.nav-item .count-ok {
+  background: var(--ok);
+  min-width: 44px;
+}
+.field select,
+.field textarea {
+  padding: 12px 16px;
+  min-height: 60px;
+  resize: vertical;
+}
+
+.ll-overlay {
+  --ll: var(--danger);
+  position: fixed;
+  inset: 0;
+  z-index: 950;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  overflow: auto;
+  background: color-mix(in srgb, var(--ll) 82%, black);
+}
+.ll-overlay[data-tone="warn"] {
+  --ll: var(--warn);
+}
+.ll-overlay[data-tone="ok"] {
+  --ll: var(--ok);
+}
+.ll-overlay[data-tone="test"] {
+  --ll: var(--sim);
+}
+.ll-overlay[data-tone="calm"] {
+  --ll: var(--info);
+}
+.ll-card {
+  width: min(1040px, 100%);
+  background: var(--surface);
+  color: var(--ink);
+  border: 4px solid var(--ll);
+  border-radius: 30px;
+  padding: 32px 36px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  box-shadow: 0 30px 80px rgb(0 0 0 / 35%);
+}
+.ll-title {
+  font-size: clamp(2rem, 4vw, 2.8rem);
+  line-height: 1.1;
+  margin: 0;
+}
+.ll-lead {
+  font-size: 1.3rem;
+  margin: 0;
+}
+.ll-note {
+  margin: 0;
+  color: var(--ink-2);
+}
+.ll-badge {
+  align-self: flex-start;
+  margin: 0;
+  padding: 6px 14px;
+  border-radius: 999px;
+  background: var(--sim-soft);
+  color: var(--sim);
+  font-weight: 700;
+}
+.ll-warning {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  margin: 0;
+  padding: 12px 16px;
+  border-radius: 14px;
+  background: var(--warn-soft);
+  border: 2px solid var(--warn);
+  font-weight: 700;
+}
+.ll-count {
+  display: flex;
+  align-items: baseline;
+  gap: 16px;
+}
+.ll-count-num {
+  font-size: clamp(5rem, 12vw, 8rem);
+  font-weight: 700;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  color: var(--ll);
+}
+.ll-count-unit {
+  font-size: 1.6rem;
+  font-weight: 700;
+}
+.ll-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 56px;
+  margin-top: 8px;
+}
+.ll-actions .btn {
+  width: 100%;
+  min-height: 132px;
+  font-size: 1.45rem;
+}
+.ll-cancel {
+  border-width: 4px;
+  border-color: var(--ink);
+}
+.ll-confirm {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+  border-radius: 20px;
+  background: var(--surface-2);
+}
+.ll-contacts,
+.ll-events,
+.ll-checks {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 10px;
+}
+.ll-contacts {
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+}
+.ll-contacts li {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  padding: 12px 14px;
+  border-radius: 14px;
+  border: 2px solid var(--line);
+}
+.ll-contacts li[data-tone="ok"],
+.ll-check[data-tone="ok"] .ico {
+  border-color: var(--ok);
+  color: var(--ok);
+}
+.ll-contacts li[data-tone="ok"] span {
+  color: var(--ink);
+}
+.ll-contacts li[data-tone="danger"],
+.ll-check[data-tone="danger"] .ico {
+  border-color: var(--danger);
+  color: var(--danger);
+}
+.ll-contacts li[data-tone="danger"] span {
+  color: var(--ink);
+}
+.ll-contacts li[data-tone="warn"],
+.ll-check[data-tone="warn"] .ico {
+  border-color: var(--warn);
+  color: var(--warn);
+}
+.ll-contacts li[data-tone="warn"] span {
+  color: var(--ink);
+}
+.ll-check[data-tone="sim"] .ico {
+  color: var(--sim);
+}
+.ll-role {
+  color: var(--ink-2);
+  font-size: 0.9rem;
+}
+.ll-events {
+  gap: 4px;
+  color: var(--ink-2);
+  font-size: 0.95rem;
+}
+.ll-events time {
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  margin-right: 6px;
+}
+.ll-minibar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 800;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 12px 20px;
+  background: var(--ok-soft);
+  border-top: 3px solid var(--ok);
+  font-size: 1.1rem;
+}
+body:has(.ll-minibar) .main {
+  padding-bottom: 110px;
+}
+.ll-why {
+  margin: 0;
+  font-weight: 700;
+  font-size: 1.15rem;
+}
+.ll-meter {
+  position: fixed;
+  left: 50%;
+  bottom: 24px;
+  transform: translateX(-50%);
+  z-index: 850;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 22px;
+  border-radius: 999px;
+  background: var(--surface);
+  border: 3px solid var(--danger);
+  font-weight: 700;
+  box-shadow: var(--shadow);
+}
+.ll-dots {
+  display: inline-flex;
+  gap: 8px;
+}
+.ll-dots span {
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  border: 3px solid var(--danger);
+}
+.ll-dots span[data-on] {
+  background: var(--danger);
+}
+.ll-check {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+}
+.ll-checks {
+  gap: 14px;
+}
+.ll-watch {
+  min-height: 132px;
+}
+.ll-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  min-height: var(--target);
+  padding: 8px 12px;
+  background: none;
+  border: 2px solid var(--line);
+  border-radius: 14px;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.ll-row:hover {
+  background: var(--surface-2);
+}
+.ll-home {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  flex-wrap: wrap;
+  border-left: 8px solid var(--ok);
+}
+.ll-home[data-ready="false"] {
+  border-left-color: var(--warn);
+}
+.ll-home h2 {
+  margin: 0 0 4px;
+}
+.ll-home p {
+  margin: 0;
+}
+.ll-consent {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+  font-size: 1.1rem;
+}
+.ll-consent input,
+.ll-inline input {
+  width: 28px;
+  height: 28px;
+  flex: none;
+  accent-color: var(--accent);
+}
+.ll-inline {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  font-weight: 700;
+}
+.ll-contact {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 14px;
+  align-items: end;
+  border: 2px solid var(--line);
+  border-radius: 18px;
+  padding: 16px;
+  margin: 0;
+}
+.ll-contact legend {
+  font-weight: 700;
+  padding: 0 8px;
+}
+.ll-contact .btn {
+  min-width: 0;
+  min-height: 60px;
+}
+.ll-field-error {
+  grid-column: 1 / -1;
+  margin: 0;
+  color: var(--danger);
+  font-weight: 700;
+}
+.ll-metric {
+  font-size: 2.4rem;
+  font-weight: 700;
+  margin: 4px 0;
+  font-variant-numeric: tabular-nums;
+}
+.ll-phones {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 24px;
+  align-items: start;
+}
+.ll-phone {
+  border: 3px solid var(--line-strong);
+  border-radius: 32px;
+  padding: 18px;
+  background: var(--surface);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-height: 300px;
+}
+.ll-phone header {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  padding-bottom: 10px;
+  border-bottom: 2px solid var(--line);
+}
+.ll-phone ol {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.ll-phone li {
+  background: var(--surface-2);
+  border-radius: 18px 18px 18px 4px;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.ll-phone li[data-purpose="alert"] {
+  background: var(--danger-soft);
+}
+.ll-phone li p {
+  margin: 0;
+}
+.ll-phone time {
+  font-size: 0.85rem;
+  color: var(--ink-2);
+}
+.ll-phone .btn {
+  min-height: 60px;
+}
+.phones-page {
+  min-height: 100dvh;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+.phones-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 24px;
+  flex-wrap: wrap;
+}
+.phones-head h1 {
+  margin: 0;
+}
+@media (max-width: 860px) {
+  .ll-actions {
+    grid-template-columns: 1fr;
+    gap: 24px;
+  }
+  .ll-card {
+    padding: 22px;
   }
 }
 

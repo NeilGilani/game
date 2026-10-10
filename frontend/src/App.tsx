@@ -1,6 +1,8 @@
 import { useEffect } from "react";
 import { ConnectionBanner, Nav, TopBar } from "./components/Shell";
 import { InputLayer } from "./input/InputLayer";
+import { LifelineOverlay } from "./lifeline/LifelineOverlay";
+import { LifelineProvider } from "./lifeline/LifelineProvider";
 import { AnnouncerProvider } from "./state/announcer";
 import { ConnectionProvider } from "./state/connection";
 import { InputProvider } from "./state/input";
@@ -13,6 +15,8 @@ import { ApprovalsList, CasesList, RecoveryView, TimelineView } from "./screens/
 import { CaseWorkspace } from "./screens/CaseWorkspace";
 import { CreateCase } from "./screens/CreateCase";
 import { Home } from "./screens/Home";
+import { LifelineAlertView, LifelineHome, LifelineSetup } from "./screens/Lifeline";
+import { PhoneSimulator } from "./screens/PhoneSimulator";
 import { NewTask, Phrases } from "./screens/NewTask";
 import { PreferencesView, SettingsView, StatusView } from "./screens/SettingsViews";
 import { ONBOARDED_KEY, Welcome } from "./screens/Welcome";
@@ -37,6 +41,9 @@ function Screen({ route }: { route: Route }) {
   if (a === "case" && b && c === "approve") return <Approve key={b} id={b} />;
   if (a === "case" && b && c === "timeline") return <TimelineView key={b} id={b} />;
   if (a === "case" && b && c === "recovery") return <RecoveryView key={b} id={b} />;
+  if (a === "lifeline" && !b) return <LifelineHome />;
+  if (a === "lifeline" && b === "setup") return <LifelineSetup />;
+  if (a === "lifeline" && b === "alert" && c) return <LifelineAlertView key={c} id={c} />;
   if (a === "camera") return <CameraSetup />;
   if (a === "preferences") return <PreferencesView />;
   if (a === "settings") return <SettingsView />;
@@ -70,6 +77,7 @@ function Shell() {
     return (
       <>
         <Welcome />
+        <LifelineOverlay />
         <InputLayer />
       </>
     );
@@ -78,6 +86,7 @@ function Shell() {
     return (
       <>
         <Calibrate />
+        <LifelineOverlay />
         <InputLayer />
       </>
     );
@@ -101,6 +110,7 @@ function Shell() {
         <div style={{ height: 16 }} />
         <Screen route={route} />
       </main>
+      <LifelineOverlay />
       <InputLayer />
     </div>
   );
@@ -111,13 +121,20 @@ function WithAnnouncer() {
   return (
     <AnnouncerProvider speak={prefs.speak_feedback}>
       <InputProvider>
-        <Shell />
+        <LifelineProvider>
+          <Shell />
+        </LifelineProvider>
       </InputProvider>
     </AnnouncerProvider>
   );
 }
 
 export function App() {
+  const route = useRoute();
+  if (route.segments[0] === "phones") {
+    // Stands in for the contacts' phones: none of the person's camera, alarm or heartbeat.
+    return <PhoneSimulator />;
+  }
   return (
     <ConnectionProvider>
       <PreferencesProvider>

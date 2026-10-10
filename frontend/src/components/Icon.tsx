@@ -44,6 +44,13 @@ const PATHS: Record<string, string> = {
   pointer: "M5 3l13 8-6 1.5L9 19z",
   edit: "M4 20h4L19 9l-4-4L4 16zM13.5 6.5l4 4",
   back: "M19 12H5M11 6l-6 6 6 6",
+  bell: "M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15zM10 20.5a2 2 0 0 0 4 0M12 3v2",
+  mute: "M4 9h4l5-4v14l-5-4H4zM17 9l4 6M21 9l-4 6",
+  down: "M5 9l7 7 7-7",
+  lifeline:
+    "M12 20s-7.5-4.6-9-9.5C2 7 4.2 4.5 7 4.5c2 0 3.6 1.1 5 3 1.4-1.9 3-3 5-3 2.8 0 5 2.5 4 6-.4 1.3-1.1 2.5-2 3.5M3 12h4l2-3 3 6 2-3h3",
+  phone: "M8 3h8a1 1 0 0 1 1 1v16a1 1 0 0 1-1 1H8a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1zM11 18h2",
+  watch: "M12 8v4l2.5 1.5M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM12 1v2M12 21v2",
 };
 
 export function Icon({

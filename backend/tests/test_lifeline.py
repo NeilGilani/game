@@ -190,6 +190,16 @@ def test_cancel_during_countdown_contacts_nobody(h: H) -> None:
     assert h.client.get(f"/api/lifeline/alerts/{alert['id']}").json()["notifications"] == []
 
 
+def test_call_now_skips_the_countdown(h: H) -> None:
+    alert = h.help()["alert"]
+    out = h.client.post(f"/api/lifeline/alerts/{alert['id']}/now").json()
+    assert out["status"] == "active"
+    assert h.alerts_to(out) == ["jordan"]
+    assert any(e["kind"] == "call_now" for e in out["events"])
+    again = h.client.post(f"/api/lifeline/alerts/{alert['id']}/now").json()
+    assert h.alerts_to(again) == ["jordan"], "calling now twice doesn't alert anyone twice"
+
+
 def test_cancel_is_refused_once_people_have_been_alerted(h: H) -> None:
     alert = activate(h)
     res = h.client.post(f"/api/lifeline/alerts/{alert['id']}/cancel")
@@ -274,6 +284,8 @@ def test_unreachable_first_contact_fails_over_without_waiting(h: H) -> None:
     assert statuses == {"jordan": "failed", "morgan": "delivered"}
     assert alert["level"] == 1
     assert any(e["kind"] == "delivery_failed" for e in alert["events"])
+    phones = {m["contact_id"] for m in h.client.get("/api/lifeline/outbox").json()["messages"]}
+    assert phones == {"morgan"}, "a message that failed to deliver never reaches the (simulated) phone"
 
 
 def test_never_gives_up_when_nobody_can_be_reached(h: H) -> None:
@@ -510,11 +522,23 @@ def test_missed_check_in_raises_an_alert(h: H) -> None:
     assert alert["status"] == "active"
 
 
-def test_presenter_can_make_a_check_in_due_now(h: H) -> None:
-    h.settings(checkin_interval_min=60)
+def test_presenter_can_ask_for_a_check_in_now(h: H) -> None:
+    assert h.client.post("/api/lifeline/demo/checkin-now").status_code == 409, "only while Watch over me is on"
     h.client.post("/api/lifeline/monitoring", json={"armed": True})
     out = h.client.post("/api/lifeline/demo/checkin-now").json()
     assert out["monitor"]["checkin_pending_since"] is not None
+    h.client.post("/api/lifeline/heartbeat", json={"signal_ready": True})
+    h.tick(29)
+    h.client.post("/api/lifeline/heartbeat", json={"signal_ready": True})
+    h.tick(29)
+    h.client.post("/api/lifeline/heartbeat", json={"signal_ready": True})
+    h.tick(29)
+    h.client.post("/api/lifeline/heartbeat", json={"signal_ready": True})
+    h.tick(4)
+    alert = h.alert()
+    assert alert["kind"] == "checkin_missed", "an unanswered check-in raises an alert even with no schedule"
+    assert h.status()["monitor"]["checkin_pending_since"] is None
+    assert h.status()["monitor"]["next_checkin_at"] is None
 
 
 def test_signal_unavailable_alert_is_optional(h: H) -> None:

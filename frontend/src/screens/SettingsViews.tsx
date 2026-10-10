@@ -62,7 +62,7 @@ export function ModePicker({ onPicked }: { onPicked?: (mode: InputMode) => void 
   );
 }
 
-function Stepper({
+export function Stepper({
   label,
   value,
   display,
@@ -111,7 +111,7 @@ function Stepper({
   );
 }
 
-function Toggle({
+export function Toggle({
   label,
   value,
   onChange,

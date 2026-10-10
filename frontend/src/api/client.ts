@@ -5,6 +5,8 @@
 
 import type {
   ActivityEvent,
+  AlertDetail,
+  AlertSummary,
   Approval,
   CaseDetail,
   CaseListItem,
@@ -14,6 +16,12 @@ import type {
   GoalType,
   Goal,
   Health,
+  HeartbeatBody,
+  HelpSource,
+  LifelineReport,
+  LifelineSettings,
+  LifelineStatus,
+  OutboxMessage,
   Preferences,
   ReasoningStatus,
   Runtime,
@@ -99,8 +107,41 @@ async function request<T>(path: string, init: RequestInit & { timeoutMs?: number
   return (await response.json()) as T;
 }
 
-const post = <T>(path: string, body?: unknown) =>
-  request<T>(path, { method: "POST", body: body === undefined ? undefined : JSON.stringify(body) });
+const post = <T>(path: string, body?: unknown, timeoutMs?: number) =>
+  request<T>(path, {
+    method: "POST",
+    body: body === undefined ? undefined : JSON.stringify(body),
+    timeoutMs,
+  });
+
+const alertPath = (id: string, action: string) => `/api/lifeline/alerts/${encodeURIComponent(id)}/${action}`;
+
+/** Lifeline (emergency signalling). Short timeouts: a slow answer must never delay the local alarm. */
+export const lifelineApi = {
+  status: () => request<LifelineStatus>("/api/lifeline/status", { timeoutMs: 5000 }),
+  settings: () => request<LifelineSettings>("/api/lifeline/settings"),
+  saveSettings: (settings: LifelineSettings) =>
+    request<LifelineSettings>("/api/lifeline/settings", { method: "PUT", body: JSON.stringify(settings) }),
+  help: (source: HelpSource, test = false) =>
+    post<{ alert: AlertDetail; created: boolean }>("/api/lifeline/help", { source, test }, 5000),
+  cancel: (id: string) => post<AlertDetail>(alertPath(id, "cancel"), undefined, 5000),
+  callNow: (id: string) => post<AlertDetail>(alertPath(id, "now"), undefined, 5000),
+  resolve: (id: string) => post<AlertDetail>(alertPath(id, "resolve"), undefined, 5000),
+  alert: (id: string) => request<AlertDetail>(`/api/lifeline/alerts/${encodeURIComponent(id)}`),
+  alerts: () => request<AlertSummary[]>("/api/lifeline/alerts?limit=50"),
+  heartbeat: (beat: HeartbeatBody) =>
+    post<{ ok: boolean; server_time: string }>("/api/lifeline/heartbeat", beat, 4000),
+  setMonitoring: (armed: boolean) => post<LifelineStatus>("/api/lifeline/monitoring", { armed }),
+  checkin: (source: string) => post<LifelineStatus>("/api/lifeline/checkin", { source }, 5000),
+  outbox: () => request<{ messages: OutboxMessage[] }>("/api/lifeline/outbox"),
+  report: () => request<LifelineReport>("/api/lifeline/report"),
+  checkinNow: () => post<LifelineStatus>("/api/lifeline/demo/checkin-now"),
+};
+
+/** A response link as this browser can open it (the coordinator may be on another host). */
+export function respondUrl(link: string): string {
+  return `${coordinatorUrl()}${link}`;
+}
 
 export const api = {
   health: () => request<Health>("/api/health", { timeoutMs: 4000 }),

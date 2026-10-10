@@ -3,6 +3,8 @@ import type { ActivityEvent, Approval, CaseListItem } from "../api/types";
 import { Icon } from "../components/Icon";
 import { Page } from "../components/Shell";
 import { CaseBadge, Loading, formatTime } from "../components/status";
+import { useLifeline } from "../lifeline/LifelineProvider";
+import { names } from "../lifeline/describe";
 import { coordinatorLabel, useConnection } from "../state/connection";
 import { MODE_LABELS, useInput } from "../state/input";
 import { navigate } from "../state/router";
@@ -33,6 +35,8 @@ export function Home() {
   const resumable =
     active.find((c) => ["interrupted", "paused", "needs_attention"].includes(c.status)) ?? active[0];
   const coord = coordinatorLabel(health, online);
+  const ll = useLifeline();
+  const lls = ll.status;
 
   return (
     <Page label="Home">
@@ -48,6 +52,35 @@ export function Home() {
           </p>
         </div>
       </div>
+
+      <section
+        className="panel ll-home"
+        aria-labelledby="h-lifeline"
+        data-ready={lls?.ready ? "true" : "false"}
+      >
+        <Icon name="lifeline" size={34} />
+        <div>
+          <h2 id="h-lifeline">
+            Lifeline {lls ? (lls.ready ? "is ready" : "needs attention") : ""}
+            {lls?.monitor.armed ? " · Watch over me is on" : ""}
+          </h2>
+          <p className="small">
+            To call for help, look at <strong>Help</strong> or close your eyes for a second, three times.
+            {lls && lls.settings.contacts.some((c) => c.enabled)
+              ? ` ${names(
+                  lls.settings.contacts
+                    .filter((c) => c.enabled)
+                    .sort((a, b) => a.priority - b.priority)
+                    .slice(0, 1),
+                )} is contacted first.`
+              : ""}
+          </p>
+        </div>
+        <span className="spacer" />
+        <button className="btn" onClick={() => navigate("/lifeline")} data-dwell>
+          <Icon name="lifeline" /> Open Lifeline
+        </button>
+      </section>
 
       <div className="grid grid-4">
         <button
