@@ -1,0 +1,175 @@
+---
+import "../styles/global.css";
+import Logo from "../components/Logo.astro";
+import { RELEASES_URL, SOURCE_URL } from "../data/site";
+
+interface Props {
+  title: string;
+  description: string;
+  /** Which page this is, for aria-current in the navigation. */
+  current?: "home" | "setup" | "accessibility" | "privacy" | "credits";
+}
+
+const { title, description, current = "home" } = Astro.props;
+const base = import.meta.env.BASE_URL;
+const home = base;
+const link = (path: string) => `${base}${path}`;
+const sections = [
+  { href: `${home}#how`, label: "How it works" },
+  { href: `${home}#features`, label: "Features" },
+  { href: `${home}#safety`, label: "Safety" },
+  { href: `${home}#download`, label: "Download" },
+  { href: `${home}#faq`, label: "FAQ" },
+  { href: link("setup/"), label: "Setup guide", page: "setup" },
+];
+// The header shows the main sections; the setup guide is in the menu, the download section and the footer.
+const headerSections = sections.slice(0, 5);
+const canonical = new URL(Astro.url.pathname, Astro.site);
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{title}</title>
+    <meta name="description" content={description} />
+    <link rel="canonical" href={canonical} />
+    <link rel="icon" href={link("favicon.svg")} type="image/svg+xml" />
+    <meta name="color-scheme" content="light dark" />
+    <meta name="theme-color" content="#fbf5ea" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#15110d" media="(prefers-color-scheme: dark)" />
+    <meta name="referrer" content="no-referrer" />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:type" content="website" />
+    <!--
+      The page talks to nothing but itself and GitHub (to find the latest release). No trackers, no analytics,
+      no cookies, no third-party fonts.
+    -->
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; media-src 'self'; connect-src 'self' https://api.github.com https://objects.githubusercontent.com https://release-assets.githubusercontent.com; frame-src 'none'; object-src 'none'; base-uri 'self'; form-action 'none'"
+    />
+    <script is:inline>
+      // Apply the saved theme before the first paint, so the page never flashes the wrong colours.
+      // The choice stays in this browser (localStorage). It is never sent anywhere.
+      document.documentElement.classList.add("js");
+      try {
+        const saved = localStorage.getItem("agency-site.theme");
+        if (saved === "light" || saved === "dark") document.documentElement.dataset.theme = saved;
+      } catch {}
+    </script>
+  </head>
+  <body>
+    <a class="skip-link btn" href="#main">
+      Skip to content
+    </a>
+    <header class="site-header">
+      <div class="wrap">
+        <a class="brand" href={home} aria-current={current === "home" ? "page" : undefined}>
+          <Logo />
+          <span>AGENCY OS</span>
+        </a>
+        <nav class="site-nav" aria-label="Sections">
+          <ul>
+            {headerSections.map((s) => (
+              <li>
+                <a href={s.href}>{s.label}</a>
+              </li>
+            ))}
+          </ul>
+        </nav>
+        <div class="header-tools">
+          <button class="btn theme-toggle" type="button" data-theme-toggle hidden>
+            <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"></path>
+            </svg>
+            <span data-theme-label>Dark</span>
+          </button>
+        </div>
+        <details class="menu">
+          <summary class="btn">Menu: all sections</summary>
+          <nav aria-label="Sections (menu)">
+            <ul>
+              {sections.map((s) => (
+                <li>
+                  <a class="btn" href={s.href}>
+                    {s.label}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </nav>
+        </details>
+      </div>
+    </header>
+
+    <main id="main" tabindex="-1">
+      <slot />
+    </main>
+
+    <footer class="site-footer">
+      <div class="wrap">
+        <div class="footer-grid">
+          <div>
+            <h2>AGENCY OS</h2>
+            <p>A home and accessibility layer for the Mac, for people who can move only their eyes.</p>
+          </div>
+          <nav aria-label="About this site">
+            <h2>About</h2>
+            <ul>
+              <li>
+                <a class="target-link" href={link("accessibility/")}>
+                  Accessibility statement
+                </a>
+              </li>
+              <li>
+                <a class="target-link" href={link("privacy/")}>
+                  Privacy policy
+                </a>
+              </li>
+              <li>
+                <a class="target-link" href={link("credits/")}>
+                  Credits and licenses
+                </a>
+              </li>
+            </ul>
+          </nav>
+          <nav aria-label="Project">
+            <h2>Project</h2>
+            <ul>
+              <li>
+                <a class="target-link" href={RELEASES_URL}>
+                  All releases on GitHub
+                </a>
+              </li>
+              <li>
+                <a class="target-link" href={SOURCE_URL}>
+                  Source code on GitHub
+                </a>
+              </li>
+              <li>
+                <a class="target-link" href={link("setup/")}>
+                  Setup guide
+                </a>
+              </li>
+            </ul>
+          </nav>
+        </div>
+        <p class="fine">
+          AGENCY OS is not a medical device and not an emergency service. In the box, every outside effect is
+          simulated until someone deliberately sets up real ones. This site has no trackers, no analytics and
+          no cookies.
+        </p>
+      </div>
+    </footer>
+
+    <script>
+      import { initTheme } from "../scripts/theme";
+      import { initReveal } from "../scripts/reveal";
+      initTheme();
+      initReveal();
+    </script>
+  </body>
+</html>

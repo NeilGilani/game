@@ -1,0 +1,775 @@
+---
+import Base from "../layouts/Base.astro";
+import Shot from "../components/Shot.astro";
+import NextSection from "../components/NextSection.astro";
+import {
+  CONTACT_EMAIL,
+  DEMO_CAPTIONS,
+  DEMO_VIDEO,
+  ISSUES_URL,
+  RELEASES_REPO,
+  RELEASES_URL,
+  REQUIREMENTS,
+  SOURCE_URL,
+  STATUS_LABEL,
+  STATUS_REVIEWED,
+  type Status,
+} from "../data/site";
+
+const base = import.meta.env.BASE_URL;
+const contactHref = CONTACT_EMAIL
+  ? `mailto:${CONTACT_EMAIL}?subject=${encodeURIComponent("AGENCY OS on my computer")}`
+  : `${ISSUES_URL}?q=label%3Aplatforms`;
+const contactLabel = CONTACT_EMAIL ? "Email us" : "Tell us on GitHub";
+
+interface Feature {
+  id: string;
+  title: string;
+  status: Status;
+  statusNote?: string;
+  body: string[];
+  shot?: string;
+}
+
+const features: Feature[] = [
+  {
+    id: "home",
+    title: "A calm Home that knows your usuals",
+    status: "building",
+    statusNote: "The prototype's simpler task screen is shown here; the new Home is in progress.",
+    body: [
+      "Home is a screen of big choices: Talk, Call someone, Food, Papers, Shopping, Messages, Watch & listen, Browse, Apps and Lifeline. Each one leads to a short series of big choices that ends in something getting done.",
+      "AGENCY learns what you usually choose, like Friday's pad thai, your pharmacy, or the phrases you say most, and offers it first with a plain reason: “4 of your last 5 Fridays”. You can see, change or erase everything it remembers, and it stays on your Mac.",
+    ],
+    shot: "new-task",
+  },
+  {
+    id: "approval",
+    title: "Do real tasks, with your approval",
+    status: "prototype",
+    statusNote: "Today with simulated services; the AI agent for your real apps is being built.",
+    body: [
+      "Say what you want with a few looks, and an AI agent (Claude) plans the steps and carries them out: ordering food, filling in and signing forms, booking appointments, sending messages.",
+      "Before anything that matters (sending, paying, signing, calling, submitting, deleting, sharing your details, changing settings or installing) it stops and shows you exactly what will happen. Your approval covers that exact action; if anything changes, it asks again. Afterwards it checks that the task really worked.",
+      "It never types, reads or stores your passwords, two-factor codes or card numbers.",
+    ],
+    shot: "approval",
+  },
+  {
+    id: "everywhere",
+    title: "Your eyes work in your apps and browser",
+    status: "building",
+    statusNote: "Eye control already works on AGENCY's own screens in the prototype.",
+    body: [
+      "An eye-control layer floats over every app. Your gaze snaps to real buttons in Mail, Finder, Chrome or any web page, and small targets get a zoom or a “which one?” picker, so an ordinary webcam is precise enough to use a normal Mac.",
+      "Help, Stop and Home stay on screen in every app.",
+    ],
+  },
+  {
+    id: "talk",
+    title: "Talk, in your own voice",
+    status: "building",
+    body: [
+      "Pick words and phrases with your eyes and AGENCY says them out loud, in your own voice if you've set up Apple's Personal Voice.",
+      "On phone calls, the other person hears you through text-to-speech while you choose replies with your eyes. AGENCY tells them that a synthetic voice is speaking for you.",
+    ],
+  },
+  {
+    id: "lifeline",
+    title: "Lifeline: help, one look away",
+    status: "prototype",
+    statusNote: "Contacts are simulated phones until someone sets up real ones.",
+    body: [
+      "Close your eyes for about a second, three times, or look at Help. After an 8-second chance to cancel, Lifeline contacts your people one after another, and keeps going, round after round, until someone answers “I'm on my way”.",
+      "It also raises the alarm by itself if your screen goes silent or a check-in goes unanswered. The person who comes sees a short card: how you communicate, what to check first, how to get in.",
+    ],
+    shot: "lifeline",
+  },
+];
+
+const faqs: { q: string; a: string[] }[] = [
+  {
+    q: "Do I need a special eye tracker?",
+    a: [
+      "No. AGENCY is built around an ordinary webcam, like the one in a MacBook. Webcam eye tracking is approximate, so AGENCY uses big, well-spaced choices, snaps your gaze to the nearest button, and offers zoom for small ones. It measures how well calibration went and tells you honestly. Dedicated eye trackers aren't supported yet.",
+    ],
+  },
+  {
+    q: "What if eye tracking doesn't work well for me?",
+    a: [
+      "AGENCY also works with a single switch (one button or a long blink, with choices highlighted in turn), with a head pointer, and with a mouse or keyboard for a helper. Every screen works with every one of these.",
+    ],
+  },
+  {
+    q: "Will it do things without asking me?",
+    a: [
+      "Not anything that matters. Sending, paying, signing, calling, submitting, deleting, sharing your details, changing settings and installing all need your approval of the exact action. The approve button appears away from where you were looking, after a short pause, so a lingering look can't approve by accident. Stop halts everything at once, from any screen.",
+    ],
+  },
+  {
+    q: "Does Lifeline call 911?",
+    a: [
+      "No. AGENCY never contacts emergency services by itself. Lifeline contacts the people you choose, and keeps contacting them until one of them says they're coming. They can call for an ambulance. Lifeline is not an emergency service and not a medical alarm, and it doesn't replace your ventilator's alarms.",
+    ],
+  },
+  {
+    q: "Is my camera video uploaded anywhere?",
+    a: [
+      "No. Camera frames are processed on your Mac and thrown away. They are never stored and never sent anywhere, including to the AI.",
+    ],
+  },
+  {
+    q: "What does the AI see?",
+    a: [
+      "Only what a task you started needs. While it works, AGENCY may send the AI the text of your request and screenshots of the app it's working in. Screenshots aren't kept by default. Text on web pages, emails and documents is treated as information, never as instructions: if a page tries to give the agent orders, it stops and shows you.",
+      "AI tasks need an Anthropic API key, and Anthropic's terms apply to what's sent. Without a key, AGENCY runs its built-in tasks only.",
+    ],
+  },
+  {
+    q: "Does it cost anything?",
+    a: [
+      "Downloading AGENCY OS from this page costs nothing, and there's nothing to buy here. If you use AI tasks, Anthropic bills the account whose API key you use.",
+    ],
+  },
+  {
+    q: "Is it a medical device?",
+    a: [
+      "No. AGENCY OS is not a medical device, a ventilator alarm or an emergency service, and it hasn't been clinically tested. It hasn't yet been evaluated with the people it's built for; that study is the next big piece of work.",
+    ],
+  },
+  {
+    q: "Does it work on Windows, iPad or Linux?",
+    a: [
+      "Not yet. It relies on macOS accessibility features to control every app. Tell us what you'd use, and we'll write back if that changes.",
+    ],
+  },
+];
+---
+
+<Base
+  title="AGENCY OS: run your Mac with your eyes"
+  description="A calm home and accessibility layer for macOS for people who can move only their eyes. Eye control in every app, an AI agent that asks first, Talk, and Lifeline."
+>
+  <!-- Hero ------------------------------------------------------------------------------------------- -->
+  <section class="hero" aria-labelledby="hero-title">
+    <div class="wrap hero-grid">
+      <div class="hero-copy">
+        <p class="eyebrow">For people who can move only their eyes</p>
+        <h1 id="hero-title">
+          Look. Choose.
+          <br />
+          <span class="accent">It's done.</span>
+        </h1>
+        <p class="lede">
+          AGENCY OS turns a Mac into a calm home of big choices. Look at what you want, and AGENCY does it: it
+          asks you first before anything that matters, and Lifeline brings help when you need it.
+        </p>
+        <div class="actions">
+          <a class="btn btn-primary btn-stack" href="#download">
+            Download for Mac
+            <span class="sub">macOS 13 or later · Apple silicon or Intel</span>
+          </a>
+          <a class="btn" href="#how">
+            See how it works
+          </a>
+        </div>
+        <p class="hero-honest">
+          Being built in the open. Not a medical device. Everything that reaches the outside world is
+          simulated until you set it up.
+        </p>
+      </div>
+      <div class="hero-visual">
+        <Shot name="home" eager sizes="(min-width: 76rem) 40rem, 92vw" />
+      </div>
+    </div>
+  </section>
+
+  <!-- Demo video --------------------------------------------------------------------------------------- -->
+  <section class="section section-tight" aria-labelledby="demo-title" id="demo">
+    <div class="wrap">
+      <h2 id="demo-title" class="reveal">
+        See it in 60 seconds
+      </h2>
+      {DEMO_VIDEO ? (
+        <figure class="video reveal">
+          <video controls preload="none" playsinline src={`${base}${DEMO_VIDEO}`}>
+            {DEMO_CAPTIONS && (
+              <track kind="captions" srclang="en" label="English" src={`${base}${DEMO_CAPTIONS}`} default />
+            )}
+          </video>
+          <figcaption>A recording of AGENCY OS, with captions. It never plays by itself.</figcaption>
+        </figure>
+      ) : (
+        <div class="video-slot reveal" role="note" aria-label="Demo video not recorded yet">
+          <svg viewBox="0 0 48 48" aria-hidden="true">
+            <circle cx="24" cy="24" r="22" fill="none" stroke="currentColor" stroke-width="3" />
+            <path d="M19 15l15 9-15 9z" fill="currentColor" />
+          </svg>
+          <p class="video-slot-title">The demo video isn't recorded yet.</p>
+          <p>
+            It will show one real, unedited minute of AGENCY OS: a coffee order in three looks, a form signed,
+            a call through Talk, and Lifeline at 3 a.m. Until it exists, this space stays empty rather than
+            showing a mock-up.
+          </p>
+        </div>
+      )}
+    </div>
+  </section>
+
+  <!-- How it works ------------------------------------------------------------------------------------- -->
+  <section class="section section-alt" id="how" aria-labelledby="how-title">
+    <div class="wrap">
+      <p class="eyebrow">How it works</p>
+      <h2 id="how-title" class="reveal">
+        Your eyes, then AGENCY, then done.
+      </h2>
+      <ol class="steps">
+        <li class="card step reveal">
+          <span class="step-num" aria-hidden="true">
+            1
+          </span>
+          <h3>You look</h3>
+          <p>
+            Your Mac's camera follows your eyes. Hold your look on a big choice and it fills up, then selects.
+            A quick glance across does nothing. The video never leaves your Mac.
+          </p>
+        </li>
+        <li class="card step reveal">
+          <span class="step-num" aria-hidden="true">
+            2
+          </span>
+          <h3>AGENCY works</h3>
+          <p>
+            It asks only what it doesn't know, plans the steps, and does them in your real apps. Before
+            anything that matters, it stops and shows you exactly what will happen.
+          </p>
+        </li>
+        <li class="card step reveal">
+          <span class="step-num" aria-hidden="true">
+            3
+          </span>
+          <h3>It's done, and checked</h3>
+          <p>
+            AGENCY confirms the result really happened, says so plainly, and tells you if something went wrong
+            and what it will try next.
+          </p>
+        </li>
+      </ol>
+      <NextSection href="#features" label="Features" />
+    </div>
+  </section>
+
+  <!-- Features ----------------------------------------------------------------------------------------- -->
+  <section class="section" id="features" aria-labelledby="features-title">
+    <div class="wrap">
+      <p class="eyebrow">Features</p>
+      <h2 id="features-title" class="reveal">
+        Everything a day needs, a few looks away.
+      </h2>
+      <p class="lede reveal">
+        Each feature says where it really stands, as of {STATUS_REVIEWED}. “{STATUS_LABEL.prototype}” means it
+        runs and is tested in the AGENCY prototype in our repository. “{STATUS_LABEL.building}” means it's in
+        progress for AGENCY OS.
+      </p>
+      <div class="features">
+        {features.map((f) => (
+          <article class:list={["feature", "reveal", f.shot && "has-shot"]} id={`feature-${f.id}`}>
+            <div class="feature-copy">
+              <p class:list={["chip", `chip-${f.status}`]}>
+                <span aria-hidden="true">{f.status === "prototype" ? "✓" : "◔"}</span>
+                {STATUS_LABEL[f.status]}
+              </p>
+              <h3>{f.title}</h3>
+              {f.body.map((p) => (
+                <p>{p}</p>
+              ))}
+              {f.statusNote && <p class="status-note">{f.statusNote}</p>}
+            </div>
+            {f.shot && (
+              <div class="feature-shot">
+                <Shot name={f.shot} />
+              </div>
+            )}
+          </article>
+        ))}
+      </div>
+      <NextSection href="#safety" label="Safety and privacy" />
+    </div>
+  </section>
+
+  <!-- Safety and privacy ------------------------------------------------------------------------------- -->
+  <section class="section section-alt" id="safety" aria-labelledby="safety-title">
+    <div class="wrap">
+      <p class="eyebrow">Safety and privacy</p>
+      <h2 id="safety-title" class="reveal">
+        You stay in control. In plain words:
+      </h2>
+      <ul class="promises">
+        <li class="card reveal">
+          <h3>Your camera stays on your Mac</h3>
+          <p>
+            Camera video is processed on your Mac and thrown away. It's never stored and never sent anywhere.
+          </p>
+        </li>
+        <li class="card reveal">
+          <h3>Nothing important happens without you</h3>
+          <p>
+            Sending, paying, signing, calling, submitting, deleting and sharing your details all wait for your
+            approval of that exact action. Stop works from every screen.
+          </p>
+        </li>
+        <li class="card reveal">
+          <h3>Simulated until you choose</h3>
+          <p>
+            Out of the box, shops, phones and messages are practice versions. Nobody real is contacted and
+            nothing is bought until you, or a helper, deliberately set up the real thing.
+          </p>
+        </li>
+        <li class="card reveal">
+          <h3>No passwords in the AI's hands</h3>
+          <p>
+            AGENCY never types, reads or keeps passwords, two-factor codes or card numbers. It uses the
+            accounts you're already signed in to, with your say-so.
+          </p>
+        </li>
+        <li class="card reveal">
+          <h3>Not a medical device</h3>
+          <p>
+            AGENCY OS isn't a medical device or a ventilator alarm and hasn't been clinically tested. Keep
+            your existing alarms and care routines.
+          </p>
+        </li>
+        <li class="card reveal">
+          <h3>Not an emergency service</h3>
+          <p>
+            Lifeline calls the people you choose until one of them says they're coming. It never calls 911 or
+            other emergency services by itself.
+          </p>
+        </li>
+      </ul>
+      <p class="reveal">
+        Read the full <a href={`${base}privacy/`}>privacy policy</a>, and how Lifeline is designed and what
+        has and hasn't been tested in <a href={`${SOURCE_URL}/blob/main/LIFELINE.md`}>LIFELINE.md</a>.
+      </p>
+      <NextSection href="#who" label="Who it's for" />
+    </div>
+  </section>
+
+  <!-- Who it's for ------------------------------------------------------------------------------------- -->
+  <section class="section" id="who" aria-labelledby="who-title">
+    <div class="wrap two-col">
+      <div class="reveal">
+        <p class="eyebrow">Who it's for</p>
+        <h2 id="who-title">People who can move their eyes, and the people around them.</h2>
+        <p>
+          AGENCY OS is for people living with advanced ALS, locked-in syndrome, a high spinal cord injury,
+          severe cerebral palsy, or anything else that takes away hands and voice but leaves the eyes.
+        </p>
+        <p>
+          Not being able to communicate is dangerous in care: in a review of 2,355 hospital charts, patients
+          with communication problems were three times as likely to have a preventable adverse event (
+          <a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC2396356">Bartlett et al., CMAJ 2008</a>). Every
+          part of AGENCY is judged by one question: is this safe and usable for someone who can't move or
+          speak, and can't quickly undo a mistake?
+        </p>
+      </div>
+      <div class="card reveal caregivers">
+        <h3>For caregivers and family</h3>
+        <ul>
+          <li>You can set everything up with a mouse and keyboard; the person can carry on by eye.</li>
+          <li>
+            If you're a Lifeline contact, you don't need an app or an account. You get a message with a
+            personal link to a plain page: <strong>I'm on my way</strong>, or <strong>I can't come</strong>.
+          </li>
+          <li>Approvals, memory and the history of every task are there for you both to see.</li>
+          <li>
+            The <a href={`${base}setup/`}>setup guide</a> walks through installing AGENCY and giving it the
+            permissions it needs.
+          </li>
+        </ul>
+      </div>
+    </div>
+    <div class="wrap">
+      <NextSection href="#download" label="Download" />
+    </div>
+  </section>
+
+  <!-- Download ----------------------------------------------------------------------------------------- -->
+  <section class="section section-alt" id="download" aria-labelledby="download-title">
+    <div class="wrap">
+      <p class="eyebrow">Download</p>
+      <h2 id="download-title">Get AGENCY OS for your Mac</h2>
+      <div class="download-grid">
+        <div
+          class="card download-panel"
+          id="download-panel"
+          aria-live="polite"
+          data-repo={RELEASES_REPO}
+          data-releases-url={RELEASES_URL}
+          data-contact-href={contactHref}
+          data-contact-label={contactLabel}
+          data-base={base}
+        >
+          <h3>Checking for the latest version…</h3>
+          <p>Every version of AGENCY OS is on its releases page on GitHub.</p>
+          <div class="actions">
+            <a class="btn" href={RELEASES_URL}>
+              Open the releases page on GitHub
+            </a>
+          </div>
+        </div>
+        <div class="card requirements">
+          <h3>What you need</h3>
+          <ul>
+            <li>{REQUIREMENTS.macos}</li>
+            <li>{REQUIREMENTS.chips}</li>
+            <li>{REQUIREMENTS.camera}</li>
+            <li>{REQUIREMENTS.browser}</li>
+            <li>{REQUIREMENTS.ai}</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="help-list">
+        <details class="disclosure">
+          <summary class="btn">Which Mac do I have?</summary>
+          <div class="disclosure-body">
+            <ol>
+              <li>
+                Click the Apple menu in the top-left corner of the screen, then{" "}
+                <strong>About This Mac</strong>.
+              </li>
+              <li>
+                If it lists a <strong>Chip</strong> such as Apple M1, M2, M3 or M4, you have
+                <strong>Apple silicon</strong>.
+              </li>
+              <li>
+                If it lists a <strong>Processor</strong> with “Intel” in its name, you have{" "}
+                <strong>Intel</strong>.
+              </li>
+              <li>The same window shows your macOS version: it needs to be 13 (Ventura) or later.</li>
+            </ol>
+          </div>
+        </details>
+
+        <details class="disclosure" id="unsigned">
+          <summary class="btn">If macOS says it can't open AGENCY</summary>
+          <div class="disclosure-body">
+            <p>
+              Until AGENCY OS is signed with an Apple Developer ID, macOS blocks it the first time. You only
+              need to do this once per version.
+            </p>
+            <ol>
+              <li>
+                Open the downloaded .dmg and drag <strong>AGENCY</strong> into <strong>Applications</strong>.
+              </li>
+              <li>
+                Open AGENCY from Applications. macOS says it can't verify it. Click <strong>Done</strong> (not
+                <strong>Move to Bin</strong>).
+              </li>
+              <li>
+                Open <strong>System Settings</strong>, then <strong>Privacy &amp; Security</strong>. Scroll
+                down to
+                <strong>Security</strong>. Next to “AGENCY was blocked to protect your Mac”, click
+                <strong>Open Anyway</strong>, and enter your Mac password or use Touch ID.
+              </li>
+              <li>
+                Open AGENCY again and click <strong>Open Anyway</strong> once more.
+              </li>
+            </ol>
+            <p>
+              On macOS 13 or 14 you can instead Control-click AGENCY in Applications, choose{" "}
+              <strong>Open</strong>, then
+              <strong>Open</strong>.
+            </p>
+            <p>
+              <strong>After each update</strong> of an unsigned build, macOS forgets that it allowed AGENCY to
+              use Accessibility and Screen Recording. Turn them back on as in the{" "}
+              <a href={`${base}setup/#permissions`}>setup guide</a>. Signed builds don't have this problem.
+            </p>
+            <p>
+              To check the file is exactly the one we published, open Terminal and run
+              <code>shasum -a 256 ~/Downloads/</code> followed by the file's name. The result must match the
+              SHA-256 shown above.
+            </p>
+          </div>
+        </details>
+      </div>
+      <p>
+        Next: the{" "}
+        <a class="target-link" href={`${base}setup/`}>
+          setup guide
+        </a>{" "}
+        for installing and permissions.
+      </p>
+    </div>
+  </section>
+
+  <!-- FAQ ---------------------------------------------------------------------------------------------- -->
+  <section class="section" id="faq" aria-labelledby="faq-title">
+    <div class="wrap">
+      <p class="eyebrow">Questions</p>
+      <h2 id="faq-title">Frequently asked questions</h2>
+      <div class="faq">
+        {faqs.map((f) => (
+          <details class="disclosure">
+            <summary class="btn">{f.q}</summary>
+            <div class="disclosure-body">
+              {f.a.map((p) => (
+                <p>{p}</p>
+              ))}
+            </div>
+          </details>
+        ))}
+      </div>
+      <p>
+        Something else?{" "}
+        <a class="target-link" href={contactHref}>
+          {contactLabel}
+        </a>
+      </p>
+    </div>
+  </section>
+</Base>
+
+<script>
+  import { initDownload } from "../scripts/download";
+  void initDownload();
+</script>
+
+<style>
+  .hero {
+    padding-block: clamp(40px, 5vw, 80px) clamp(56px, 8vw, 120px);
+    background: radial-gradient(60rem 30rem at 85% -10%, var(--accent-soft), transparent 70%), var(--bg);
+  }
+  .hero-grid {
+    display: grid;
+    gap: clamp(40px, 6vw, 72px);
+    align-items: center;
+    grid-template-columns: minmax(0, 1fr);
+  }
+  @media (min-width: 1024px) {
+    .hero-grid {
+      grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr);
+    }
+  }
+  .accent {
+    color: var(--accent);
+  }
+  .hero .lede {
+    margin-block: 8px 40px;
+  }
+  .hero-honest {
+    margin-top: 32px;
+    font-size: 1.1rem;
+    color: var(--ink-soft);
+  }
+  .section-tight {
+    padding-block: clamp(56px, 7vw, 96px);
+  }
+
+  .video-slot,
+  .video video {
+    aspect-ratio: 16 / 9;
+    width: 100%;
+    border-radius: var(--radius-lg);
+  }
+  .video-slot {
+    display: grid;
+    place-content: center;
+    justify-items: center;
+    gap: 8px;
+    padding: clamp(24px, 5vw, 64px);
+    text-align: center;
+    border: 3px dashed var(--line-strong);
+    background: var(--surface);
+    color: var(--ink-soft);
+  }
+  .video-slot svg {
+    width: 72px;
+    height: 72px;
+    color: var(--line-strong);
+  }
+  .video-slot p {
+    margin-inline: auto;
+  }
+  .video-slot-title {
+    font-size: clamp(1.4rem, 2.6vw, 2rem);
+    font-weight: 700;
+    color: var(--ink);
+  }
+  @media (max-width: 640px) {
+    .video-slot {
+      aspect-ratio: auto;
+    }
+  }
+  .video {
+    margin: 0;
+  }
+
+  .steps {
+    list-style: none;
+    padding: 0;
+    margin: 48px 0 0;
+    max-width: none;
+    display: grid;
+    gap: var(--gap);
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr));
+    counter-reset: step;
+  }
+  .steps li + li {
+    margin: 0;
+  }
+  .step-num {
+    display: grid;
+    place-items: center;
+    width: 72px;
+    height: 72px;
+    margin-bottom: 20px;
+    border-radius: 50%;
+    background: var(--accent);
+    color: var(--on-accent);
+    font-size: 2.2rem;
+    font-weight: 700;
+  }
+
+  .features {
+    display: grid;
+    gap: clamp(56px, 8vw, 104px);
+    margin-top: 64px;
+  }
+  .feature {
+    display: grid;
+    gap: 40px;
+    align-items: center;
+  }
+  @media (min-width: 1024px) {
+    .feature.has-shot {
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr);
+    }
+    .feature.has-shot:nth-of-type(even) .feature-shot {
+      order: -1;
+    }
+  }
+  .feature .chip {
+    margin-bottom: 16px;
+  }
+  .status-note {
+    color: var(--ink-soft);
+    font-style: italic;
+  }
+
+  .promises {
+    list-style: none;
+    padding: 0;
+    margin: 48px 0;
+    max-width: none;
+    display: grid;
+    gap: var(--gap);
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 20rem), 1fr));
+  }
+  .promises li + li {
+    margin: 0;
+  }
+
+  .two-col {
+    display: grid;
+    gap: 48px;
+    align-items: start;
+  }
+  @media (min-width: 1024px) {
+    .two-col {
+      grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
+    }
+  }
+
+  .download-grid {
+    display: grid;
+    gap: var(--gap);
+    margin-block: 40px;
+  }
+  @media (min-width: 1024px) {
+    .download-grid {
+      grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr);
+    }
+  }
+  .download-panel {
+    border-width: 3px;
+    border-color: var(--ink);
+  }
+  .help-list,
+  .faq {
+    display: grid;
+    gap: var(--gap);
+    margin-block: 32px;
+  }
+</style>
+
+<style is:global>
+  .disclosure > summary {
+    width: 100%;
+    justify-content: space-between;
+    text-align: left;
+    list-style: none;
+  }
+  .disclosure > summary::-webkit-details-marker {
+    display: none;
+  }
+  .disclosure > summary::after {
+    content: "+";
+    font-size: 1.8rem;
+    line-height: 1;
+    margin-left: 16px;
+  }
+  .disclosure[open] > summary::after {
+    content: "\2212";
+  }
+  .disclosure-body {
+    padding: 24px clamp(8px, 2vw, 24px) 8px;
+  }
+
+  .dl-status {
+    font-weight: 700;
+    color: var(--ok);
+  }
+  .dl-reason,
+  .dl-small {
+    color: var(--ink-soft);
+  }
+  .dl-reason {
+    margin-top: 24px;
+  }
+  .dl-facts {
+    display: grid;
+    gap: 12px 32px;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 12rem), 1fr));
+    max-width: none;
+    margin-block: 24px;
+  }
+  .dl-facts dt {
+    font-weight: 700;
+    font-size: 1rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--ink-soft);
+  }
+  .dl-facts dd {
+    margin: 0;
+  }
+  .dl-facts div:has(.sha),
+  .dl-facts div:has([data-sha]) {
+    grid-column: 1 / -1;
+  }
+  .sha {
+    display: block;
+    font-size: 0.95rem;
+    line-height: 1.5;
+    padding: 8px 12px;
+    word-break: break-all;
+  }
+  .dl-other {
+    margin-top: 40px;
+    padding-top: 32px;
+    border-top: 2px solid var(--line);
+  }
+</style>

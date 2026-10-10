@@ -1,0 +1,8 @@
+dist
+node_modules
+.astro
+.lighthouseci
+test-results
+playwright-report
+public/screenshots/*.png
+package-lock.json

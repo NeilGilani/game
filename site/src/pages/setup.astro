@@ -1,0 +1,163 @@
+---
+import Base from "../layouts/Base.astro";
+import { REQUIREMENTS, SOURCE_URL } from "../data/site";
+
+const base = import.meta.env.BASE_URL;
+
+const permissions = [
+  {
+    name: "Camera",
+    why: "To follow your eyes. The video is processed on the Mac and thrown away; it's never stored or sent anywhere.",
+    where: "Privacy & Security → Camera",
+  },
+  {
+    name: "Accessibility",
+    why: "To find the buttons in other apps and press them for you when you look at them. This is what makes eye control work in every app.",
+    where: "Privacy & Security → Accessibility",
+  },
+  {
+    name: "Screen Recording",
+    why: "So the AI agent can see the app it's working in, only during a task you started. Screenshots aren't kept by default.",
+    where:
+      "Privacy & Security → Screen & System Audio Recording (called Screen Recording on macOS 13 and 14)",
+  },
+  {
+    name: "Microphone",
+    why: "For phone calls through Talk, so AGENCY can hear the other person. Optional.",
+    where: "Privacy & Security → Microphone",
+  },
+  {
+    name: "Speech Recognition",
+    why: "To turn what the other person says on a call into text you can read. Optional.",
+    where: "Privacy & Security → Speech Recognition",
+  },
+];
+---
+
+<Base
+  title="Setting up AGENCY OS"
+  description="Install AGENCY OS on a Mac and give it the permissions it needs: camera, Accessibility, Screen Recording, and optionally the microphone and speech recognition."
+  current="setup"
+>
+  <article class="wrap prose">
+    <p class="eyebrow">Setup guide</p>
+    <h1>Setting up AGENCY OS</h1>
+    <p class="lede">
+      This guide is written for whoever sets AGENCY up, often a family member or caregiver with a mouse and
+      keyboard. It takes about fifteen minutes. AGENCY's own onboarding walks through the same steps and shows
+      which ones are done, and the person can carry on by eye once the camera works.
+    </p>
+    <p class="note">
+      AGENCY OS hasn't had its first release yet. This guide describes setup as it's designed, and will be
+      checked step by step against the first release.
+    </p>
+
+    <h2 id="before">1. Before you start</h2>
+    <ul>
+      <li>{REQUIREMENTS.macos}.</li>
+      <li>{REQUIREMENTS.chips}.</li>
+      <li>{REQUIREMENTS.camera}. Put the Mac at eye level, with light in front of the person, not behind.</li>
+      <li>{REQUIREMENTS.browser}.</li>
+      <li>The Mac's administrator password, to approve the permissions below.</li>
+    </ul>
+
+    <h2 id="install">2. Install</h2>
+    <ol>
+      <li>
+        <a href={`${base}#download`}>Download AGENCY OS</a> for this Mac.
+      </li>
+      <li>
+        Open the downloaded .dmg file and drag <strong>AGENCY</strong> into <strong>Applications</strong>.
+      </li>
+      <li>
+        Open AGENCY from Applications. If macOS says it can't open it, follow{" "}
+        <a href={`${base}#unsigned`}>the steps for unsigned builds</a>.
+      </li>
+    </ol>
+
+    <h2 id="permissions">3. Give AGENCY its permissions</h2>
+    <p>
+      macOS asks the first time AGENCY needs each one. You can also turn them on yourself: open{" "}
+      <strong>System Settings</strong>, choose <strong>Privacy &amp; Security</strong>, open the section
+      below, and switch <strong>AGENCY</strong> on. Some need AGENCY to be quit and reopened afterwards;
+      AGENCY tells you when.
+    </p>
+    <div class="table-scroll" role="region" aria-label="Permissions" tabindex="0">
+      <table>
+        <thead>
+          <tr>
+            <th scope="col">Permission</th>
+            <th scope="col">Why AGENCY needs it</th>
+            <th scope="col">Where to turn it on</th>
+          </tr>
+        </thead>
+        <tbody>
+          {permissions.map((p) => (
+            <tr>
+              <th scope="row">{p.name}</th>
+              <td>{p.why}</td>
+              <td>{p.where}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+    <p class="note">
+      <strong>Updating an unsigned build?</strong> macOS forgets the Accessibility and Screen Recording
+      permissions every time an unsigned AGENCY is updated. Afterwards, open those two sections again, select
+      AGENCY, remove it with the minus button, and add it again with plus (or switch it off and on). Signed
+      builds keep their permissions.
+    </p>
+
+    <h2 id="eyes">4. Set up the eyes</h2>
+    <ol>
+      <li>AGENCY checks the camera: face, eyes, light and distance, and says plainly what to change.</li>
+      <li>
+        Calibration: the person looks at a few dots in turn. AGENCY then measures how accurate it is on dots
+        it didn't learn from, and says whether the result is good, fair or poor.
+      </li>
+      <li>
+        If it's poor, try better light or a different position, or use a single switch, a head pointer, or the
+        long-blink switch instead. Every screen works with all of them.
+      </li>
+    </ol>
+
+    <h2 id="browser">5. Eye control on web pages (Chrome)</h2>
+    <p>
+      To use web pages by eye, AGENCY installs a small Chrome extension called AGENCY Bridge. AGENCY's
+      onboarding shows how to add it, and Chrome asks you to confirm. It only talks to AGENCY on the same Mac.
+    </p>
+
+    <h2 id="lifeline">6. Lifeline</h2>
+    <ol>
+      <li>Add the people to contact, in order, and how to reach them.</li>
+      <li>
+        Fill in the responder card: how the person communicates, breathing equipment to check first, how to
+        get in.
+      </li>
+      <li>
+        Give permission, once, for AGENCY to contact them without asking during an emergency. Without it,
+        Lifeline only sounds the alarm on the Mac, and says so.
+      </li>
+      <li>Send a test alert, and practise the help signal (three long blinks) until it works reliably.</li>
+    </ol>
+    <p class="note note-lifeline">
+      Out of the box, Lifeline contacts are simulated phones: no real person is messaged. Real text messages
+      and calls need a Twilio account and real numbers to be set up deliberately. Lifeline is not an emergency
+      service and never calls 911 by itself. How it works and what has been tested:{" "}
+      <a href={`${SOURCE_URL}/blob/main/LIFELINE.md`}>LIFELINE.md</a>.
+    </p>
+
+    <h2 id="ai">7. The AI agent (optional)</h2>
+    <p>
+      {REQUIREMENTS.ai} The key is kept in the Mac's keychain. AI tasks send the model only what the task
+      needs, and Anthropic's terms apply to it.
+    </p>
+
+    <p>
+      <a class="target-link" href={`${base}#download`}>
+        Back to the download
+      </a>
+    </p>
+  </article>
+</Base>
