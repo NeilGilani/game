@@ -168,17 +168,29 @@ describe("utility process plumbing", () => {
 });
 
 describe("API key lookup", () => {
-  it("prefers the environment, then the macOS keychain, else none", async () => {
-    expect(await findApiKey({ ANTHROPIC_API_KEY: " sk-env " }, "darwin", async () => "sk-kc")).toEqual({
-      key: "sk-env",
+  it("reads GEMINI_API_KEY from the environment, then the macOS keychain, else none", async () => {
+    const kc = (v: string | null) => async (account: string) =>
+      account === "gemini-api-key" ? v : "wrong-account";
+    expect(await findApiKey("gemini", { GEMINI_API_KEY: " g-env " }, "darwin", kc("g-kc"))).toEqual({
+      key: "g-env",
       source: "env",
     });
-    expect(await findApiKey({}, "darwin", async () => "sk-kc\n")).toEqual({
-      key: "sk-kc",
+    expect(await findApiKey("gemini", { ANTHROPIC_API_KEY: "a" }, "darwin", kc("g-kc\n"))).toEqual({
+      key: "g-kc",
       source: "keychain",
     });
-    expect(await findApiKey({}, "linux", async () => "sk-kc")).toEqual({ key: null, source: "none" });
-    expect(await findApiKey({}, "darwin", async () => null)).toEqual({ key: null, source: "none" });
+    expect(await findApiKey("gemini", {}, "linux", kc("g-kc"))).toEqual({ key: null, source: "none" });
+    expect(await findApiKey("gemini", {}, "darwin", kc(null))).toEqual({ key: null, source: "none" });
+  });
+  it("reads ANTHROPIC_API_KEY for the optional Claude provider", async () => {
+    expect(
+      await findApiKey(
+        "anthropic",
+        { ANTHROPIC_API_KEY: "a", GEMINI_API_KEY: "g" },
+        "darwin",
+        async () => null,
+      ),
+    ).toEqual({ key: "a", source: "env" });
   });
 });
 

@@ -6,7 +6,7 @@
  * limits, secrets, sites and owner-reserved actions in code.
  */
 
-import type Anthropic from "@anthropic-ai/sdk";
+import type { ToolSpec } from "./types";
 
 export const SYSTEM_PROMPT = `You are the task agent inside AGENCY, a home and accessibility layer for macOS used by people who can move only their eyes. The person chose a goal by looking at a few big buttons. You carry it out in their real browser and apps, carefully, and you show your work.
 
@@ -18,7 +18,7 @@ Who you work for
 How to work
 1. First call show_plan with 2 to 8 big, plain steps (for example "Open the store", "Pick your dish", "Pay with your saved card", "Check the order went through"). Mark each step's risk: read, reversible, or consequential.
 2. Call start_step before each step and complete_step after it. complete_step needs expect_text: a short piece of text that must now be visible on the page or screen if the step really worked (for example "Order confirmed"). AGENCY reads the page itself to check it. If the check fails, look again and fix the step, or explain.
-3. Prefer the most structured tool that works: read_page and the click/type tools for web pages (they use element refs), the app tools for Mac apps, and the computer toolset (screenshots and clicks) only when nothing else can reach the control.
+3. Prefer the most structured tool that works: read_page and the click/type tools for web pages (they use element refs), the app tools for Mac apps, and computer use (screenshots and clicks) only when nothing else can reach the control.
 4. When the task is done, call finish with expect_text that proves it. If you can't do it, call give_up with a plain reason. Never say something happened unless you saw it happen.
 
 Safety rules (enforced by AGENCY's code; follow them anyway)
@@ -29,9 +29,7 @@ Safety rules (enforced by AGENCY's code; follow them anyway)
 - When a message or call goes to another human on the person's behalf, include a short note that an AI assistant helped (for example "Sent with help from my AI assistant").
 - Only use what the task needs. Don't open unrelated pages or read unrelated personal information.`;
 
-type Tool = Anthropic.Beta.Messages.BetaTool;
-
-const RISK = { type: "string", enum: ["read", "reversible", "consequential"] } as const;
+const RISK = { type: "string", enum: ["read", "reversible", "consequential"] };
 const KIND = {
   type: "string",
   enum: [
@@ -46,12 +44,12 @@ const KIND = {
     "account-or-settings",
     "install",
   ],
-} as const;
+};
 const CLAIM_PROPS = {
   risk: RISK,
   kind: KIND,
   summary: { type: "string", description: "One sentence: exactly what this will do." },
-  amount: { anyOf: [{ type: "number" }, { type: "null" }], description: "Dollars that will move, or null." },
+  amount: { type: "number", description: "Dollars that will move; 0 when no money moves." },
 };
 const CLAIM_REQUIRED = ["risk", "kind", "summary", "amount"];
 
@@ -60,16 +58,15 @@ function tool(
   description: string,
   properties: Record<string, unknown>,
   required: string[],
-): Tool {
+): ToolSpec {
   return {
     name,
     description,
-    strict: true,
-    input_schema: { type: "object", properties, required, additionalProperties: false },
-  } as Tool;
+    parameters: { type: "object", properties, required, additionalProperties: false },
+  };
 }
 
-export const PLAN_TOOLS: Tool[] = [
+export const PLAN_TOOLS: ToolSpec[] = [
   tool(
     "show_plan",
     "Show the person the plan as 2 to 8 big plain steps before doing anything. Call again only if the plan must change.",
@@ -130,7 +127,7 @@ export const PLAN_TOOLS: Tool[] = [
   ),
 ];
 
-export const BRIDGE_TOOLS: Tool[] = [
+export const BRIDGE_TOOLS: ToolSpec[] = [
   tool(
     "read_page",
     "Read the current Chrome tab: address, title, elements with refs, and visible text.",
@@ -139,7 +136,7 @@ export const BRIDGE_TOOLS: Tool[] = [
   ),
   tool("open_url", "Open a web address in the current tab.", { url: { type: "string" } }, ["url"]),
   tool(
-    "click",
+    "click_element",
     "Click a page element by its ref from read_page.",
     { ref: { type: "string" }, ...CLAIM_PROPS },
     ["ref", ...CLAIM_REQUIRED],
@@ -152,7 +149,7 @@ export const BRIDGE_TOOLS: Tool[] = [
   ),
 ];
 
-export const NATIVE_TOOLS: Tool[] = [
+export const NATIVE_TOOLS: ToolSpec[] = [
   tool(
     "read_app",
     "List the controls of the frontmost Mac app (accessibility tree): id, role, label.",
@@ -185,3 +182,43 @@ export const NATIVE_TOOLS: Tool[] = [
     "bundle_id",
   ]),
 ];
+
+/**
+ * Checks a call's arguments against its spec before anything runs: required keys present, enum values valid,
+ * basic types right. Providers may also validate; this check doesn't depend on them.
+ */
+export function checkArgs(spec: ToolSpec, args: Record<string, unknown>): string | null {
+  for (const key of spec.parameters.required) {
+    if (!(key in args)) return `Missing "${key}".`;
+  }
+  for (const [key, value] of Object.entries(args)) {
+    const schema = spec.parameters.properties[key] as
+      { type?: string | string[]; enum?: unknown[] } | undefined;
+    if (!schema) return `Unknown argument "${key}".`;
+    if (schema.enum && !schema.enum.includes(value))
+      return `"${key}" must be one of ${schema.enum.join(", ")}.`;
+    const types = schema.type === undefined ? [] : Array.isArray(schema.type) ? schema.type : [schema.type];
+    if (types.length && !types.some((t) => matchesType(t, value)))
+      return `"${key}" must be ${types.join(" or ")}.`;
+  }
+  return null;
+}
+
+function matchesType(t: string, v: unknown): boolean {
+  switch (t) {
+    case "string":
+      return typeof v === "string";
+    case "number":
+      return typeof v === "number" && Number.isFinite(v);
+    case "boolean":
+      return typeof v === "boolean";
+    case "array":
+      return Array.isArray(v);
+    case "object":
+      return typeof v === "object" && v !== null && !Array.isArray(v);
+    case "null":
+      return v === null;
+    default:
+      return true;
+  }
+}

@@ -1,6 +1,6 @@
 /**
  * FakeAgent: walks a scripted task through every AgentEvent the real runtime emits, so the task UI
- * (Instance 7) can be built and tested without Claude, the bridge or the native helper. It speaks exactly
+ * (Instance 7) can be built and tested without an AI model, the bridge or the native helper. It speaks exactly
  * AgentCommand / AgentEvent from @agency/contracts and enforces the same approval-fingerprint rule.
  *
  * Script ("Order my usual Friday dinner", simulated):

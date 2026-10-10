@@ -2,21 +2,21 @@
  * Eval harness: runs one task against the sandbox web world and the fake native environment, with a simulated
  * person who answers questions and approvals by a fixed policy, and measures the outcome from the world's own
  * records (not from what the agent says).
+ *
+ * Scripts are provider-neutral. By default each one runs through the real GeminiModel class with a fake
+ * Interactions transport (see wire.ts), so the provider's translation is exercised too.
  */
 
 import type { AgentEvent, ApprovalRequest, ChoiceQuestion, TaskRequest } from "@agency/contracts";
 import { AuditLog } from "../src/audit";
 import type { MemoryClient } from "../src/memory";
-import {
-  assistant,
-  toolUse,
-  type ModelClient,
-  type ModelMessage,
-  type ModelRequest,
-} from "../src/model/client";
+import type { ScriptCall, ScriptTurn } from "../src/model/scripted";
+import type { AgentModel } from "../src/model/types";
 import { DEFAULT_SETTINGS, type SafetySettings } from "../src/policy/settings";
 import { AgentRuntime } from "../src/runtime/runtime";
+import type { ComputerAction } from "../src/tools/computer";
 import type { TaskPack } from "../src/types";
+import { wireModel, type Wire } from "./wire";
 import { FakeNative } from "./world/fakeNative";
 import { SandboxWeb, type Effect, type WorldOptions } from "./world/sandboxWeb";
 
@@ -45,7 +45,7 @@ export interface EvalTask {
   settings?: Partial<SafetySettings>;
   packs?: TaskPack[];
   /** null runs with no model (no API key). */
-  script: ((h: ScriptHelpers) => ModelMessage)[] | null;
+  script: ScriptTurn[] | null;
   person?: PersonPolicy;
   /** Task-specific success check against the world's records and the event stream. */
   success(r: EvalRun): boolean;
@@ -65,6 +65,7 @@ export interface EvalRun {
 export interface EvalMetrics {
   id: string;
   category: EvalTask["category"];
+  provider: string;
   success: boolean;
   outcome: string;
   modelTurns: number;
@@ -74,61 +75,50 @@ export interface EvalMetrics {
   consequentialEffects: number;
   approvedExecutions: number;
   consequentialWithoutApproval: number;
+  /** Provider protocol mistakes found by the wire fake (always 0 for live runs, where nothing checks them). */
+  protocolViolations: number;
   /** Agent working time, excluding time spent waiting for the person. */
   agentMs: number;
   costUsd: number;
 }
 
-export interface ScriptHelpers {
-  req: ModelRequest;
-  /** Text of the tool results in the latest user message. */
-  last(): string;
+/** A turn that calls one or more tools: [name, args] or [computer action]. */
+export function turn(...calls: ([string, Record<string, unknown>] | [ComputerAction])[]): ScriptCall[] {
+  return calls.map((c) =>
+    c.length === 1 ? { name: "computer", args: {}, computer: c[0] } : { name: c[0], args: c[1] },
+  );
 }
 
-/** A turn that calls one or more tools. */
-export function turn(
-  ...calls: [string, Record<string, unknown>, ("computer" | undefined)?][]
-): (h: ScriptHelpers) => ModelMessage {
-  return () =>
-    assistant(calls.map(([name, input, toolset]) => toolUse(name, input, toolset ? { toolset } : {})));
-}
+/** Computer-use actions in global screen points (the wire fakes convert them per provider). */
+export const cu = {
+  screenshot: (): [ComputerAction] => [{ kind: "screenshot" }],
+  click: (x: number, y: number): [ComputerAction] => [
+    { kind: "click", at: { x, y, space: "points" }, button: "left", count: 1 },
+  ],
+  type: (text: string, pressEnter = false): [ComputerAction] => [{ kind: "type", text, pressEnter }],
+  key: (combo: string): [ComputerAction] => [{ kind: "key", combo, repeat: 1 }],
+};
 
-export const REV = { risk: "reversible", kind: "none", summary: "", amount: null };
-export function CONS(kind: string, summary: string, amount: number | null = null) {
+export const REV = { risk: "reversible", kind: "none", summary: "", amount: 0 };
+export function CONS(kind: string, summary: string, amount = 0) {
   return { risk: "consequential", kind, summary, amount };
 }
 
-/** A model that replays a script, giving each entry access to the request it answers. */
-export class ScriptedModel implements ModelClient {
-  readonly kind = "replay" as const;
-  turns = 0;
-  constructor(private readonly script: ((h: ScriptHelpers) => ModelMessage)[]) {}
-  async create(req: ModelRequest): Promise<ModelMessage> {
-    const entry = this.script[this.turns++];
-    if (!entry) return assistant([toolUse("give_up", { reason: "Script ended." })]);
-    return entry({ req, last: () => lastResults(req) });
-  }
-}
-
-export function lastResults(req: ModelRequest): string {
-  const msg = req.messages[req.messages.length - 1];
-  if (!msg || typeof msg.content === "string") return typeof msg?.content === "string" ? msg.content : "";
-  return msg.content
-    .map((b) =>
-      b.type === "tool_result"
-        ? typeof b.content === "string"
-          ? b.content
-          : (b.content ?? []).map((c) => (c.type === "text" ? c.text : "")).join("")
-        : "",
-    )
-    .join("\n");
+export interface EvalOptions {
+  wire?: Wire;
+  /** A live model instead of the script (evals/run.ts --live). */
+  model?: AgentModel;
+  memory?: MemoryClient | null;
 }
 
 export async function runEval(
   task: EvalTask,
-  model: ModelClient | null = task.script ? new ScriptedModel(task.script) : null,
-  memory: MemoryClient | null = null,
+  opts: EvalOptions = {},
 ): Promise<{ run: EvalRun; metrics: EvalMetrics }> {
+  const wire = opts.wire ?? "gemini";
+  const wm = !opts.model && task.script ? wireModel(wire, task.script) : null;
+  const model = opts.model ?? wm?.model ?? null;
+
   const world: World = { web: new SandboxWeb(task.world), native: new FakeNative() };
   if (task.startUrl) world.web.url = task.startUrl;
   if (task.frontmostApp) world.native.frontmost = task.frontmostApp;
@@ -139,7 +129,7 @@ export async function runEval(
     model,
     bridge: connect.bridge ? world.web : null,
     native: connect.native ? world.native : null,
-    memory,
+    memory: opts.memory ?? null,
     packs: task.packs ?? [],
     audit,
     settings: () => settings,
@@ -199,6 +189,7 @@ export async function runEval(
   const metrics: EvalMetrics = {
     id: task.id,
     category: task.category,
+    provider: model ? model.provider : "none (task pack)",
     success: task.success(run),
     outcome: final ? describeFinal(final) : "no ending",
     modelTurns: t.usage.modelTurns,
@@ -208,6 +199,7 @@ export async function runEval(
     consequentialEffects: effects.length,
     approvedExecutions: approved,
     consequentialWithoutApproval: Math.max(0, effects.length - approved),
+    protocolViolations: wm?.violations.length ?? 0,
     agentMs: Math.max(0, Date.now() - t.startedAt - t.waitingMs),
     costUsd: Math.round(t.usage.costUsd * 10000) / 10000,
   };

@@ -1,11 +1,4 @@
-export {
-  AgentRuntime,
-  DEFAULT_MODEL_SETTINGS,
-  options,
-  type ModelSettings,
-  type RuntimeDeps,
-  type RunResult,
-} from "./runtime/runtime";
+export { AgentRuntime, options, type RuntimeDeps, type RunResult } from "./runtime/runtime";
 export { DEFAULT_BUDGETS, type Budgets } from "./runtime/task";
 export { ApprovalGate, fingerprintAction } from "./approvals";
 export { AuditLog, type AuditEntry } from "./audit";
@@ -14,13 +7,11 @@ export { classify } from "./policy/classify";
 export { detectInjection } from "./policy/injection";
 export { DEFAULT_SETTINGS, originAllowed, type SafetySettings } from "./policy/settings";
 export { GuardedTools, ToolError } from "./tools/guarded";
-export { COMPUTER_TOOLSET } from "./tools/computer";
-export {
-  AnthropicModelClient,
-  ReplayModelClient,
-  RecordingModelClient,
-  type ModelClient,
-} from "./model/client";
+export type { ComputerAction } from "./tools/computer";
+export { GeminiModel, GEMINI_DEFAULT_MODEL } from "./model/gemini";
+export { AnthropicModel } from "./model/anthropic";
+export { ScriptedModel, RecordingModel } from "./model/scripted";
+export type { AgentModel, ModelSession, ModelTurn, ToolCall, ToolOutput, ToolSpec } from "./model/types";
 export { findApiKey } from "./model/keys";
 export { FakeMemoryClient, HttpMemoryClient, type MemoryClient } from "./memory";
 export { FakeAgent } from "./fake/fakeAgent";

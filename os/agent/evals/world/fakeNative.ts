@@ -9,6 +9,9 @@ import type { AppInfo, NativeMethod, NativeMethods, Target } from "@agency/contr
 import type { NativeClient } from "../../src/types";
 import type { Effect } from "./sandboxWeb";
 
+/** The fake display: 1280×800 screenshot pixels at 0.5 pixels per point, so 2560×1600 screen points. */
+export const FAKE_SCREEN = { widthPx: 1280, heightPx: 800, pxPerPoint: 0.5, widthPt: 2560, heightPt: 1600 };
+
 interface FakeTarget extends Target {
   press?: () => void;
 }
@@ -23,7 +26,7 @@ export class FakeNative implements NativeClient {
   readonly calls: { method: string; params: unknown }[] = [];
   stopAllCalls = 0;
   /** Image pixels per screen point in fake screenshots. */
-  scale = 0.5;
+  scale = FAKE_SCREEN.pxPerPoint;
 
   async call<M extends NativeMethod>(
     method: M,
@@ -155,13 +158,13 @@ export class FakeNative implements NativeClient {
       case "apps.list":
         return { apps: [this.app("test.agency.notes"), this.app("test.agency.messages")] };
       case "screen.capture":
-        // A 1x1 JPEG stands in for the screen; the scripted model knows target positions.
+        // A 1×1 PNG stands in for the screen; scripts know where the targets are.
         return {
-          data: "/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkSEw8UHRofHh0aHBwgJC4nICIsIxwcKDcpLDAxNDQ0Hyc5PTgyPC4zNDL/wAALCAABAAEBAREA/8QAFAABAAAAAAAAAAAAAAAAAAAACf/EABQQAQAAAAAAAAAAAAAAAAAAAAD/2gAIAQEAAD8AKp//2Q==",
-          width: 1280,
-          height: 800,
+          data: "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=",
+          width: FAKE_SCREEN.widthPx,
+          height: FAKE_SCREEN.heightPx,
           scale: this.scale,
-          format: "jpeg",
+          format: "png",
         };
       case "input.stopAll":
         this.stopAllCalls++;

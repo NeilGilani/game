@@ -17,8 +17,10 @@ import type { AgentCommand, AgentEvent, NativeMethod, NativeMethods } from "@age
 import { AuditLog } from "./audit";
 import { FakeAgent } from "./fake/fakeAgent";
 import { HttpMemoryClient } from "./memory";
-import { AnthropicModelClient } from "./model/client";
-import { findApiKey } from "./model/keys";
+import { AnthropicModel } from "./model/anthropic";
+import { GeminiModel, type GeminiThinkingLevel } from "./model/gemini";
+import { findApiKey, type Provider } from "./model/keys";
+import type { AgentModel } from "./model/types";
 import { DEFAULT_SETTINGS, type SafetySettings } from "./policy/settings";
 import { AgentRuntime } from "./runtime/runtime";
 import type { BrowserBridge, NativeClient, PageSnapshot, BridgeResult } from "./types";
@@ -106,6 +108,23 @@ export function settingsFromFile(path: string | undefined): () => SafetySettings
   };
 }
 
+/**
+ * The model for a provider. Gemini is the default (AGENCY_AGENT_MODEL, default gemini-3.8-flash;
+ * AGENCY_AGENT_THINKING low | medium | high). Claude with AGENCY_AGENT_PROVIDER=anthropic
+ * (AGENCY_AGENT_MODEL, default claude-opus-5-5; AGENCY_AGENT_EFFORT).
+ */
+export function modelFor(provider: Provider, apiKey: string, env: NodeJS.ProcessEnv): AgentModel {
+  const model = env.AGENCY_AGENT_MODEL || undefined;
+  if (provider === "anthropic") {
+    const effort = env.AGENCY_AGENT_EFFORT as "low" | "medium" | "high" | "xhigh" | "max" | undefined;
+    return new AnthropicModel({ apiKey, model, effort });
+  }
+  const thinking = (["minimal", "low", "medium", "high"] as const).find(
+    (l) => l === env.AGENCY_AGENT_THINKING,
+  ) as GeminiThinkingLevel | undefined;
+  return new GeminiModel({ apiKey, model, thinkingLevel: thinking });
+}
+
 async function main(port: ParentPort): Promise<void> {
   const env = process.env;
   const rpc = new RpcPort((m) => port.postMessage(m));
@@ -117,9 +136,10 @@ async function main(port: ParentPort): Promise<void> {
     agent = new FakeAgent();
     status = { fake: true, note: "Fake agent: scripted demo task only." };
   } else {
-    const { key, source } = await findApiKey();
+    const provider: Provider = env.AGENCY_AGENT_PROVIDER === "anthropic" ? "anthropic" : "gemini";
+    const { key, source } = await findApiKey(provider);
     const runtime = new AgentRuntime({
-      model: key ? new AnthropicModelClient({ apiKey: key }) : null,
+      model: key ? modelFor(provider, key, env) : null,
       bridge: env.AGENCY_BRIDGE === "0" ? null : bridgeOverRpc(rpc),
       native: env.AGENCY_NATIVE === "0" ? null : nativeOverRpc(rpc),
       memory: env.AGENCY_COORDINATOR_URL
@@ -128,12 +148,7 @@ async function main(port: ParentPort): Promise<void> {
       packs: [],
       audit: new AuditLog(env.AGENCY_AUDIT_FILE),
       settings: settingsFromFile(env.AGENCY_AGENT_SETTINGS),
-      modelSettings: {
-        ...(env.AGENCY_AGENT_MODEL ? { model: env.AGENCY_AGENT_MODEL } : {}),
-        ...(env.AGENCY_AGENT_EFFORT
-          ? { effort: env.AGENCY_AGENT_EFFORT as "low" | "medium" | "high" | "xhigh" | "max" }
-          : {}),
-      },
+      computerUse: env.AGENCY_COMPUTER_USE !== "0",
     });
     agent = runtime;
     status = { ...runtime.capabilities(), keySource: source };
@@ -147,6 +162,8 @@ async function main(port: ParentPort): Promise<void> {
       void agent.handle((msg as { command: AgentCommand }).command).catch(() => undefined);
     } else if (msg.kind === "rpc.result") {
       rpc.settle(msg as { id: number; result?: unknown; error?: string });
+    } else if (msg.kind === "ping") {
+      port.postMessage({ kind: "pong", id: (msg as { id: number }).id });
     }
   });
 }

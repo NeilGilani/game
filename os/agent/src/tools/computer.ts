@@ -1,8 +1,9 @@
 /**
- * Tier (d): Claude computer use, the general fallback for any app. Implements the members of
- * `computer_toolset_20260801` on top of agency-native. Every member with an effect goes through the guard;
- * a pixel click is resolved to the accessibility element under it so it can be classified by its label, and
- * a click on something without a label is treated as consequential (we ask rather than guess).
+ * Tier (d): computer use, the general fallback for any app. Each provider translates its own computer-use
+ * calls (Gemini Computer Use, Claude's computer toolset) into the neutral ComputerAction below, and this tier
+ * performs them on agency-native. Every action with an effect goes through the guard: a click is resolved to
+ * the accessibility element under it so it can be classified by its label, and a click on something without a
+ * label is treated as consequential (we ask rather than guess).
  *
  * Screenshots go to the model only during an active task, are kept in memory only for that task's
  * conversation, and are never written to disk.
@@ -10,26 +11,40 @@
 
 import type { Modifier, ScreenRect, Target } from "@agency/contracts";
 import type { GuardOutcome } from "../guard";
-import type { NativeClient } from "../types";
+import type { ActionClaim, NativeClient } from "../types";
 import { isSimulatedApp, ToolError, type GuardedTools } from "./guarded";
 
-/** Members we can't implement faithfully with agency-native are switched off rather than faked. */
-export const COMPUTER_TOOLSET = {
-  type: "computer_toolset_20260801" as const,
-  configs: {
-    zoom: { enabled: false },
-    hold_key: { enabled: false },
-    left_mouse_down: { enabled: false },
-    left_mouse_up: { enabled: false },
-    left_click_drag: { enabled: false },
-    middle_click: { enabled: false },
-    triple_click: { enabled: false },
-  },
-};
+/**
+ * Where a coordinate is measured:
+ *   "pixels"     pixels of the last screenshot sent to the model (Claude)
+ *   "normalized" 0..999 across the screen, independent of size (Gemini)
+ *   "points"     global screen points (scripts and tests)
+ */
+export interface ScreenPoint {
+  x: number;
+  y: number;
+  space: "pixels" | "normalized" | "points";
+}
 
-export type ComputerResult =
-  | { kind: "text"; text: string; isError?: boolean }
-  | { kind: "image"; data: string; mediaType: "image/png" | "image/jpeg" };
+export type ComputerAction =
+  | { kind: "screenshot" }
+  | { kind: "wait"; seconds: number }
+  | { kind: "move"; at: ScreenPoint }
+  | { kind: "click"; at: ScreenPoint; button: "left" | "right"; count: 1 | 2 }
+  | { kind: "type"; text: string; pressEnter: boolean }
+  | { kind: "key"; combo: string; repeat: number }
+  | { kind: "scroll"; at: ScreenPoint | null; direction: "up" | "down" | "left" | "right"; amount: number }
+  /** A provider action we don't support (e.g. drag); refused with a plain message, never faked. */
+  | { kind: "unsupported"; name: string };
+
+export interface ComputerResult {
+  text: string;
+  isError?: boolean;
+  /** Present for screenshots, and after every action when the provider wants one. */
+  image?: { data: string; mediaType: "image/png" | "image/jpeg" };
+  /** Frontmost app after the action, reported to providers that want a location (Gemini's url field). */
+  app?: string;
+}
 
 /** Longest screenshot edge sent to the model; 1280 keeps cost down and stays inside image limits. */
 const MAX_WIDTH = 1280;
@@ -37,62 +52,71 @@ const MAX_WIDTH = 1280;
 export class ComputerTier {
   /** Image pixels per global screen point, from the last screenshot. */
   private pxPerPoint = 1;
-  private hasScreenshot = false;
+  /** Screen size in points, from the last screenshot. */
+  private screen: { width: number; height: number } | null = null;
 
   constructor(
     private readonly native: NativeClient,
     private readonly tools: GuardedTools,
+    /** Return a fresh screenshot with every result (Gemini Computer Use expects one). */
+    private readonly screenshotAfterEach = false,
   ) {}
 
-  async run(member: string, input: Record<string, unknown>): Promise<ComputerResult> {
-    switch (member) {
+  /** @param claim the provider's safety signal, already turned into a claim; it can only raise risk. */
+  async run(action: ComputerAction, claim?: ActionClaim): Promise<ComputerResult> {
+    const result = await this.perform(action, claim);
+    if (this.screenshotAfterEach && action.kind !== "screenshot") {
+      const shot = await this.capture();
+      return { ...result, image: shot.image, app: shot.app };
+    }
+    return result;
+  }
+
+  private async perform(action: ComputerAction, claim?: ActionClaim): Promise<ComputerResult> {
+    switch (action.kind) {
       case "screenshot":
-        return this.screenshot();
-      case "cursor_position":
-        return {
-          kind: "text",
-          text: "Cursor position is not tracked; take a screenshot instead.",
-          isError: true,
-        };
+        return this.capture();
       case "wait": {
-        const seconds = Math.min(10, Math.max(0, Number(input.duration ?? 1)));
+        const seconds = Math.min(10, Math.max(0, action.seconds));
         await new Promise((r) => setTimeout(r, seconds * 1000));
-        return { kind: "text", text: "OK" };
+        return { text: "OK" };
       }
-      case "mouse_move":
-        return { kind: "text", text: "OK" };
-      case "left_click":
-      case "right_click":
-      case "double_click":
-        return this.click(member, input);
-      case "type":
-        return this.fromOutcome(
+      case "move":
+        return { text: "OK" };
+      case "click":
+        return this.click(action, claim);
+      case "type": {
+        const typed = this.fromOutcome(
           await this.tools.runAction(
             async () => ({
               tier: "computer",
               op: "computer.type",
-              input: { text: String(input.text ?? "") },
+              input: { text: action.text },
               target: await this.frontTarget(),
+              claim,
             }),
             async () => {
-              const r = await this.native.call("input.type", { text: String(input.text ?? "") });
+              const r = await this.native.call("input.type", { text: action.text });
               if (!r.ok)
                 throw new ToolError(r.error ?? "Typing was refused (the field may be a password field).");
               return "OK";
             },
           ),
         );
+        if (typed.isError || !action.pressEnter) return typed;
+        return this.perform({ kind: "key", combo: "Return", repeat: 1 }, claim);
+      }
       case "key": {
-        const combo = String(input.text ?? "");
-        const repeat = Math.min(20, Math.max(1, Number(input.repeat ?? 1)));
-        const { key, modifiers } = parseCombo(combo);
+        const repeat = Math.min(20, Math.max(1, action.repeat));
+        const { key, modifiers } = parseCombo(action.combo);
         return this.fromOutcome(
           await this.tools.runAction(
             async () => ({
               tier: "computer",
               op: "computer.key",
-              input: { key: combo.toLowerCase(), repeat },
+              input: { key: action.combo.toLowerCase(), repeat },
               target: await this.frontTarget(),
+              claim,
             }),
             async () => {
               for (let i = 0; i < repeat; i++) await this.native.call("input.key", { key, modifiers });
@@ -102,11 +126,11 @@ export class ComputerTier {
         );
       }
       case "scroll": {
-        const [x, y] = this.toPoint(input.coordinate);
-        const amount = Math.min(20, Math.max(1, Number(input.scroll_amount ?? 3))) * 40;
-        const dir = String(input.scroll_direction ?? "down");
-        const dx = dir === "left" ? -amount : dir === "right" ? amount : 0;
-        const dy = dir === "up" ? -amount : dir === "down" ? amount : 0;
+        const [x, y] = action.at ? await this.toPoint(action.at) : await this.center();
+        const amount = Math.min(2000, Math.max(10, action.amount));
+        const dx = action.direction === "left" ? -amount : action.direction === "right" ? amount : 0;
+        // CGEvent convention (contracts/native.ts): positive dy shows content above, so "down" is negative.
+        const dy = action.direction === "up" ? amount : action.direction === "down" ? -amount : 0;
         return this.fromOutcome(
           await this.tools.runAction(
             async () => ({ tier: "computer", op: "computer.scroll", target: { point: [x, y] } }),
@@ -117,29 +141,40 @@ export class ComputerTier {
           ),
         );
       }
-      default:
-        return { kind: "text", text: `The ${member} action is not available here.`, isError: true };
+      case "unsupported":
+        return {
+          text: `The ${action.name} action is not available here. Use a click, typing or keys instead.`,
+          isError: true,
+        };
     }
   }
 
-  private async screenshot(): Promise<ComputerResult> {
-    const shot = await this.native.call("screen.capture", { maxWidth: MAX_WIDTH, format: "jpeg" });
+  private async capture(): Promise<ComputerResult> {
+    const shot = await this.native.call("screen.capture", { maxWidth: MAX_WIDTH, format: "png" });
     this.pxPerPoint = shot.scale > 0 ? shot.scale : 1;
-    this.hasScreenshot = true;
-    return { kind: "image", data: shot.data, mediaType: shot.format === "png" ? "image/png" : "image/jpeg" };
+    this.screen = { width: shot.width / this.pxPerPoint, height: shot.height / this.pxPerPoint };
+    const front = await this.native.call("apps.frontmost", {});
+    return {
+      text: "OK",
+      image: { data: shot.data, mediaType: shot.format === "png" ? "image/png" : "image/jpeg" },
+      app: front.app?.bundleId,
+    };
   }
 
   private async click(
-    member: "left_click" | "right_click" | "double_click",
-    input: Record<string, unknown>,
+    action: Extract<ComputerAction, { kind: "click" }>,
+    claim?: ActionClaim,
   ): Promise<ComputerResult> {
-    if (!this.hasScreenshot)
-      return {
-        kind: "text",
-        text: "Take a screenshot first so coordinates match the screen.",
-        isError: true,
-      };
-    const [x, y] = this.toPoint(input.coordinate);
+    if (action.at.space === "pixels" && !this.screen) {
+      return { text: "Take a screenshot first so coordinates match the screen.", isError: true };
+    }
+    const [x, y] = await this.toPoint(action.at);
+    const op =
+      action.button === "right"
+        ? "computer.right_click"
+        : action.count === 2
+          ? "computer.double_click"
+          : "computer.left_click";
     return this.fromOutcome(
       await this.tools.runAction(
         async () => {
@@ -148,7 +183,7 @@ export class ComputerTier {
           const owner = hit?.owner ?? snap.owner ?? undefined;
           return {
             tier: "computer",
-            op: `computer.${member}`,
+            op,
             target: {
               point: [x, y],
               ref: hit?.id,
@@ -158,16 +193,11 @@ export class ComputerTier {
               origin: owner,
               simulated: isSimulatedApp(owner),
             },
-            input: { modifiers: input.text ?? null },
+            claim,
           };
         },
         async () => {
-          await this.native.call("input.click", {
-            x,
-            y,
-            button: member === "right_click" ? "right" : "left",
-            count: member === "double_click" ? 2 : 1,
-          });
+          await this.native.call("input.click", { x, y, button: action.button, count: action.count });
           return "OK";
         },
       ),
@@ -180,18 +210,28 @@ export class ComputerTier {
     return { origin: id, label: front.app?.name, simulated: isSimulatedApp(id) };
   }
 
-  private toPoint(coordinate: unknown): [number, number] {
-    if (!Array.isArray(coordinate) || coordinate.length !== 2)
-      throw new ToolError("A coordinate [x, y] is needed.");
-    const [px, py] = coordinate.map(Number) as [number, number];
-    return [Math.round(px / this.pxPerPoint), Math.round(py / this.pxPerPoint)];
+  /** Global screen point for a coordinate in any space. Normalized coordinates need the screen size. */
+  private async toPoint(p: ScreenPoint): Promise<[number, number]> {
+    if (!Number.isFinite(p.x) || !Number.isFinite(p.y)) throw new ToolError("A coordinate [x, y] is needed.");
+    if (p.space === "points") return [Math.round(p.x), Math.round(p.y)];
+    if (p.space === "pixels") return [Math.round(p.x / this.pxPerPoint), Math.round(p.y / this.pxPerPoint)];
+    if (!this.screen) await this.capture();
+    const s = this.screen!;
+    const nx = Math.min(999, Math.max(0, p.x));
+    const ny = Math.min(999, Math.max(0, p.y));
+    return [Math.floor((nx / 1000) * s.width), Math.floor((ny / 1000) * s.height)];
+  }
+
+  private async center(): Promise<[number, number]> {
+    if (!this.screen) await this.capture();
+    return [Math.round(this.screen!.width / 2), Math.round(this.screen!.height / 2)];
   }
 
   private fromOutcome(o: GuardOutcome<string>): ComputerResult {
-    if (o.status === "done") return { kind: "text", text: o.value };
+    if (o.status === "done") return { text: o.value };
     if (o.status === "change")
-      return { kind: "text", text: `The person wants a change before this: ${o.change}`, isError: true };
-    return { kind: "text", text: `Not done: ${o.reason}`, isError: true };
+      return { text: `The person wants a change before this: ${o.change}`, isError: true };
+    return { text: `Not done: ${o.reason}`, isError: true };
   }
 }
 

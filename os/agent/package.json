@@ -21,7 +21,9 @@
     "check": "npm run lint && npm run format:check && npm run typecheck && npm test && npm run build"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "0.133.0"
+    "@agency/contracts": "0.0.0",
+    "@anthropic-ai/sdk": "0.133.0",
+    "@google/genai": "2.28.0"
   },
   "devDependencies": {
     "@eslint/js": "9.39.5",

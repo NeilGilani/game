@@ -1,6 +1,6 @@
 /**
  * AgentRuntime: AgentCommand in, AgentEvent out (os/contracts/src/agent.ts). Chooses the most structured way
- * to do a task (a matching task pack, else Claude with bridge, native and computer-use tools), and wires every
+ * to do a task (a matching task pack, else the AI model (Gemini by default) with bridge, native and computer-use tools), and wires every
  * effect through the ActionGuard.
  */
 
@@ -16,42 +16,25 @@ import { ApprovalGate } from "../approvals";
 import { AuditLog } from "../audit";
 import { ActionGuard, SpendLedger } from "../guard";
 import { rankWithMemory, safeLog, safeSuggestions, surfaceFor, type MemoryClient } from "../memory";
-import type { ModelClient } from "../model/client";
+import type { AgentModel } from "../model/types";
 import { DEFAULT_SETTINGS, type SafetySettings } from "../policy/settings";
 import { GuardedTools } from "../tools/guarded";
 import type { BrowserBridge, NativeClient, TaskPack } from "../types";
-import { runClaude } from "./claudeRunner";
+import { runModel } from "./modelRunner";
 import { runPack } from "./packRunner";
 import { BudgetExceeded, DEFAULT_BUDGETS, TaskRun, TaskStopped, type Budgets } from "./task";
 
-export interface ModelSettings {
-  model: string;
-  effort: "low" | "medium" | "high" | "xhigh" | "max";
-  /** Server-side refusal fallbacks (fallbacks: "default"). */
-  fallbacks: boolean;
-  /** Offer the computer-use toolset when agency-native is connected. */
-  computerUse: boolean;
-  /** Dollars per million tokens, for the cost budget. */
-  prices: { input: number; output: number; cacheRead: number; cacheWrite: number };
-}
-
-export const DEFAULT_MODEL_SETTINGS: ModelSettings = {
-  model: "claude-opus-5-5",
-  effort: "high",
-  fallbacks: true,
-  computerUse: true,
-  prices: { input: 4, output: 20, cacheRead: 0.2, cacheWrite: 5 },
-};
-
 export interface RuntimeDeps {
-  model: ModelClient | null;
+  /** Gemini by default, Claude optionally; null when no API key is set up (task packs only). */
+  model: AgentModel | null;
   bridge: BrowserBridge | null;
   native: NativeClient | null;
   memory: MemoryClient | null;
   packs: TaskPack[];
   audit?: AuditLog;
   settings?: () => SafetySettings;
-  modelSettings?: Partial<ModelSettings>;
+  /** Offer computer use when agency-native is connected (default true). */
+  computerUse?: boolean;
   budgets?: Partial<Budgets>;
 }
 
@@ -68,7 +51,6 @@ export class AgentRuntime {
   private readonly guard: ActionGuard;
   private readonly tasks = new Map<string, TaskRun>();
   private readonly listeners = new Set<(e: AgentEvent) => void>();
-  private readonly modelSettings: ModelSettings;
   private readonly budgets: Budgets;
   private readonly settings: () => SafetySettings;
 
@@ -76,7 +58,6 @@ export class AgentRuntime {
     this.audit = deps.audit ?? new AuditLog();
     this.settings = deps.settings ?? (() => DEFAULT_SETTINGS);
     this.guard = new ActionGuard(this.gate, this.audit, this.settings, new SpendLedger());
-    this.modelSettings = { ...DEFAULT_MODEL_SETTINGS, ...deps.modelSettings };
     this.budgets = { ...DEFAULT_BUDGETS, ...deps.budgets };
   }
 
@@ -86,16 +67,27 @@ export class AgentRuntime {
   }
 
   /** Plain-language status for the person: what this agent can do right now. */
-  capabilities(): { model: boolean; bridge: boolean; native: boolean; packs: string[]; note: string } {
-    const model = this.deps.model !== null;
+  capabilities(): {
+    model: boolean;
+    provider: string | null;
+    modelName: string | null;
+    bridge: boolean;
+    native: boolean;
+    packs: string[];
+    note: string;
+  } {
+    const m = this.deps.model;
+    const model = m !== null;
     return {
       model,
+      provider: m?.provider ?? null,
+      modelName: m?.model ?? null,
       bridge: this.deps.bridge !== null,
       native: this.deps.native !== null,
       packs: this.deps.packs.map((p) => p.title),
       note: model
-        ? `Claude (${this.modelSettings.model}) is set up.`
-        : "No Claude API key is set up, so I can only do the built-in tasks.",
+        ? `${m.provider === "gemini" ? "Gemini" : m.provider === "anthropic" ? "Claude" : "A scripted model"} (${m.model}) is set up.`
+        : "No AI model API key is set up, so I can only do the built-in tasks.",
     };
   }
 
@@ -212,12 +204,12 @@ export class AgentRuntime {
       if (pack) {
         result = await runPack(task, pack, tools, ask);
       } else if (this.deps.model) {
-        result = await runClaude({
+        result = await runModel({
           task,
           tools,
           ask,
           model: this.deps.model,
-          settings: this.modelSettings,
+          computerUse: this.deps.computerUse ?? true,
           audit: this.audit,
           suggestions: suggestions as Suggestion[],
           safety: this.settings(),
@@ -226,7 +218,7 @@ export class AgentRuntime {
         const names = this.deps.packs.map((p) => p.title).join(", ") || "none installed";
         result = {
           kind: "failed",
-          reason: `I can't do this one: no Claude API key is set up, so I can only do built-in tasks (${names}).`,
+          reason: `I can't do this one: no AI model API key is set up, so I can only do built-in tasks (${names}).`,
           recoverable: false,
         };
       }

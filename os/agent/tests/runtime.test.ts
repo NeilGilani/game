@@ -1,26 +1,25 @@
 import type { AgentEvent } from "@agency/contracts";
 import { describe, expect, it } from "vitest";
-import { SandboxWeb, SITES } from "../evals/world/sandboxWeb";
+import { CONS, cu, REV, turn } from "../evals/harness";
 import { FakeNative } from "../evals/world/fakeNative";
-import { CONS, REV, ScriptedModel, turn } from "../evals/harness";
+import { SandboxWeb, SITES } from "../evals/world/sandboxWeb";
 import { FakeMemoryClient, rankWithMemory, surfaceFor } from "../src/memory";
-import { assistant, ReplayModelClient, text, toolUse, type ModelRequest } from "../src/model/client";
-import { AgentRuntime } from "../src/runtime/runtime";
-import { TaskRun, DEFAULT_BUDGETS, TaskStopped } from "../src/runtime/task";
+import { ScriptedModel, type ScriptTurn } from "../src/model/scripted";
+import type { AgentModel, ToolOutput } from "../src/model/types";
+import { AgentRuntime, type RuntimeDeps } from "../src/runtime/runtime";
+import { DEFAULT_BUDGETS, TaskRun, TaskStopped } from "../src/runtime/task";
 
 const tick = () => new Promise((r) => setTimeout(r, 0));
 
-function runtimeWith(
-  model: ConstructorParameters<typeof AgentRuntime>[0]["model"],
-  extra: Partial<ConstructorParameters<typeof AgentRuntime>[0]> = {},
-) {
+function runtimeWith(model: AgentModel | null, extra: Partial<RuntimeDeps> = {}) {
   const web = new SandboxWeb();
-  const native = new FakeNative();
   const rt = new AgentRuntime({ model, bridge: web, native: null, memory: null, packs: [], ...extra });
   const events: AgentEvent[] = [];
   rt.onEvent((e) => events.push(e));
-  return { rt, web, native, events };
+  return { rt, web, events };
 }
+
+const script = (...turns: ScriptTurn[]) => new ScriptedModel(turns);
 
 describe("TaskRun", () => {
   it("waits at the checkpoint while paused and throws once stopped", async () => {
@@ -72,15 +71,15 @@ describe("TaskRun", () => {
 
 describe("AgentRuntime", () => {
   it("emits the contract's event sequence for a full task", async () => {
-    const model = new ScriptedModel([
+    const model = script(
       turn(["show_plan", { steps: [{ title: "Ask for refill", risk: "consequential" }] }]),
       turn(
         ["open_url", { url: `${SITES.PHARMACY}/refills` }],
-        ["click", { ref: "rx1", ...REV }],
-        ["click", { ref: "req", ...CONS("submit", "Refill") }],
+        ["click_element", { ref: "rx1", ...REV }],
+        ["click_element", { ref: "req", ...CONS("submit", "Refill") }],
       ),
       turn(["finish", { outcome: "Done", expect_text: "Refill request received" }]),
-    ]);
+    );
     const { rt, events } = runtimeWith(model);
     rt.onEvent((e) => {
       if (e.type === "approval.required")
@@ -110,14 +109,14 @@ describe("AgentRuntime", () => {
   });
 
   it("stop during an approval wait ends the task, revokes the request and does nothing", async () => {
-    const model = new ScriptedModel([
+    const model = script(
       turn(["show_plan", { steps: [{ title: "Refill", risk: "consequential" }] }]),
       turn(
         ["open_url", { url: `${SITES.PHARMACY}/refills` }],
-        ["click", { ref: "rx1", ...REV }],
-        ["click", { ref: "req", ...CONS("submit", "Refill") }],
+        ["click_element", { ref: "rx1", ...REV }],
+        ["click_element", { ref: "req", ...CONS("submit", "Refill") }],
       ),
-    ]);
+    );
     const native = new FakeNative();
     const { rt, web, events } = runtimeWith(model, { native });
     let approval: { id: string; fingerprint: string } | null = null;
@@ -141,50 +140,27 @@ describe("AgentRuntime", () => {
   });
 
   it("pause holds the task before the next step until resume", async () => {
-    let calls = 0;
-    const script = [
+    const model = script(
       turn(["show_plan", { steps: [{ title: "Look", risk: "read" }] }]),
       turn(["open_url", { url: `${SITES.STORE}/menu` }]),
       turn(["finish", { outcome: "ok", expect_text: "Thai Basil — Menu" }]),
-    ];
-    const model = {
-      kind: "replay" as const,
-      create: async (r: ModelRequest) => script[calls++]!({ req: r, last: () => "" }),
-    };
+    );
     const { rt, events } = runtimeWith(model);
     rt.onEvent((e) => {
       if (e.type === "task.plan") void rt.handle({ type: "task.pause", taskId: "t3" });
     });
     const done = rt.handle({ type: "task.start", request: { id: "t3", goal: "Look", origin: "home" } });
     await new Promise((r) => setTimeout(r, 20));
-    expect(calls).toBe(1);
+    expect(model.turns).toBe(1);
     expect(events.some((e) => e.type === "task.done")).toBe(false);
     await rt.handle({ type: "task.resume", taskId: "t3" });
     await done;
-    expect(calls).toBe(3);
+    expect(model.turns).toBe(3);
     expect(events.at(-1)).toMatchObject({ type: "task.done", verified: true });
   });
 
-  it("builds requests for the current API: model, adaptive thinking, effort, cache, fallbacks, computer toolset", async () => {
-    const replay = new ReplayModelClient([assistant([toolUse("give_up", { reason: "test" })])]);
-    const { rt } = runtimeWith(replay, { native: new FakeNative(), modelSettings: { effort: "medium" } });
-    await rt.handle({ type: "task.start", request: { id: "t4", goal: "Something", origin: "home" } });
-    const req = replay.requests[0]!;
-    expect(req.model).toBe("claude-opus-5-5");
-    expect(req.thinking).toEqual({ type: "adaptive" });
-    expect(req.output_config).toEqual({ effort: "medium" });
-    expect(req.cache_control).toEqual({ type: "ephemeral" });
-    expect(req.betas).toEqual(["server-side-fallback-2026-07-01"]);
-    expect(req.fallbacks).toBe("default");
-    expect(req.tool_choice).toBeUndefined();
-    const toolset = req.tools!.find((t) => "type" in t && t.type === "computer_toolset_20260801");
-    expect(toolset).toBeDefined();
-    expect(toolset && "name" in toolset).toBe(false);
-    for (const t of req.tools!) if ("strict" in t) expect(t.strict).toBe(true);
-  });
-
-  it("puts goal and selections in the first message, not the system prompt, and only a few memory suggestions", async () => {
-    const replay = new ReplayModelClient([assistant([toolUse("give_up", { reason: "test" })])]);
+  it("puts goal and selections in the first message, and only a few memory suggestions", async () => {
+    const model = script(turn(["give_up", { reason: "test" }]));
     const memory = new FakeMemoryClient({
       food: Array.from({ length: 10 }, (_, i) => ({
         nodeId: `n${i}`,
@@ -194,79 +170,142 @@ describe("AgentRuntime", () => {
         reason: `reason ${i}`,
       })),
     });
-    const { rt } = runtimeWith(replay, { memory });
+    const { rt } = runtimeWith(model, { memory });
     await rt.handle({
       type: "task.start",
-      request: { id: "t5", goal: "Order dinner", origin: "home", selections: { restaurant: "Thai Basil" } },
+      request: { id: "t5", goal: "Order dinner", origin: "home", selections: { restaurant: "Golden Lotus" } },
     });
-    const req = replay.requests[0]!;
-    expect(JSON.stringify(req.system)).not.toContain("Thai Basil");
-    const first = req.messages[0]!.content as string;
+    const first = model.inputs[0] as string;
     expect(first).toContain("Goal: Order dinner");
-    expect(first).toContain("restaurant: Thai Basil");
+    expect(first).toContain("restaurant: Golden Lotus");
     expect(first).toContain("Dish 5");
     expect(first).not.toContain("Dish 6");
     expect(first).toContain("SIMULATED");
   });
 
   it("reports a refusal plainly and stops", async () => {
-    const res = assistant([text("")], "refusal");
-    const { rt, events } = runtimeWith(new ReplayModelClient([res]));
+    const { rt, events } = runtimeWith(script({ stop: "refusal" }));
     await rt.handle({ type: "task.start", request: { id: "t6", goal: "x", origin: "home" } });
     expect(events.at(-1)).toMatchObject({ type: "task.failed", recoverable: false });
   });
 
   it("requires a plan before acting", async () => {
-    const model = new ScriptedModel([
-      turn(["open_url", { url: `${SITES.STORE}/menu` }]),
-      turn(["give_up", { reason: "x" }]),
-    ]);
-    const { rt, web } = runtimeWith(model);
+    const { rt, web } = runtimeWith(
+      script(turn(["open_url", { url: `${SITES.STORE}/menu` }]), turn(["give_up", { reason: "x" }])),
+    );
     await rt.handle({ type: "task.start", request: { id: "t7", goal: "x", origin: "home" } });
     expect(web.visits).toHaveLength(0);
   });
 
-  it("sends computer-use results back with toolset_name and redirects Chrome to the bridge", async () => {
+  it("rejects calls with invalid arguments before anything runs", async () => {
+    const model = script(
+      turn(["show_plan", { steps: [{ title: "x", risk: "read" }] }]),
+      turn(
+        ["click_element", { ref: "place", risk: "nope", kind: "none", summary: "", amount: 0 }],
+        ["open_url", {}],
+      ),
+      turn(["give_up", { reason: "x" }]),
+    );
+    const { rt, web } = runtimeWith(model);
+    await rt.handle({ type: "task.start", request: { id: "t7b", goal: "x", origin: "home" } });
+    const outs = model.inputs[2] as ToolOutput[];
+    expect(outs.map((o) => o.isError)).toEqual([true, true]);
+    expect(outs[0]!.text).toMatch(/risk/);
+    expect(outs[1]!.text).toMatch(/Missing "url"/);
+    expect(web.visits).toHaveLength(0);
+  });
+
+  it("redirects computer use in Chrome to the bridge and never clicks", async () => {
     const native = new FakeNative();
     native.frontmost = "com.google.Chrome";
-    const replay = new ReplayModelClient([
-      assistant([toolUse("show_plan", { steps: [{ title: "x", risk: "read" }] })]),
-      assistant([
-        toolUse("screenshot", {}, { toolset: "computer" }),
-        toolUse("left_click", { coordinate: [10, 10] }, { toolset: "computer" }),
-      ]),
-      assistant([toolUse("give_up", { reason: "x" })]),
-    ]);
-    const { rt } = runtimeWith(replay, { native });
+    const model = script(
+      turn(["show_plan", { steps: [{ title: "x", risk: "read" }] }]),
+      turn(cu.screenshot(), cu.click(10, 10)),
+      turn(["give_up", { reason: "x" }]),
+    );
+    const { rt } = runtimeWith(model, { native });
     await rt.handle({ type: "task.start", request: { id: "t8", goal: "x", origin: "home" } });
-    const results = replay.requests[2]!.messages.at(-1)!.content as {
-      type: string;
-      toolset_name?: string;
-      is_error?: boolean;
-      content: unknown;
-    }[];
-    expect(results).toHaveLength(2);
-    expect(results.every((r) => r.toolset_name === "computer")).toBe(true);
-    expect(Array.isArray(results[0]!.content)).toBe(true); // the screenshot image
-    expect(results[1]!.is_error).toBe(true);
-    expect(JSON.stringify(results[1]!.content)).toMatch(/AGENCY Bridge/);
+    const outs = model.inputs[2] as ToolOutput[];
+    expect(outs.every((o) => o.computer)).toBe(true);
+    expect(outs[0]!.image?.mediaType).toBe("image/png");
+    expect(outs[1]!.isError).toBe(true);
+    expect(outs[1]!.text).toMatch(/AGENCY Bridge/);
     expect(native.calls.some((c) => c.method === "input.click")).toBe(false);
   });
 
-  it("stops at the cost budget", async () => {
-    const big = () => {
-      const m = assistant([toolUse("read_page", {})]);
-      m.usage.output_tokens = 200_000; // $4 at $20/M
-      return m;
+  it("a provider require_confirmation makes a harmless-looking action need approval, acknowledged only after approval", async () => {
+    const native = new FakeNative();
+    native.frontmost = "test.agency.messages";
+    const flagged = {
+      ...turn(cu.click(100, 70))[0]!,
+      safety: { decision: "require_confirmation", explanation: "Accepting terms" },
     };
-    const { rt, events } = runtimeWith(
-      new ReplayModelClient([
-        assistant([toolUse("show_plan", { steps: [{ title: "x", risk: "read" }] })]),
-        big,
-        big,
-        big,
-      ]),
+    const model = new ScriptedModel(
+      [
+        turn(["show_plan", { steps: [{ title: "x", risk: "read" }] }]),
+        turn(cu.screenshot()),
+        [flagged],
+        [flagged],
+        turn(["give_up", { reason: "x" }]),
+      ],
+      {
+        screenshotEveryComputerAction: true,
+      },
     );
+    const { rt, events } = runtimeWith(model, { native, bridge: null });
+    let n = 0;
+    rt.onEvent((e) => {
+      if (e.type === "approval.required") {
+        const decision = ++n === 1 ? "decline" : "approve";
+        queueMicrotask(
+          () =>
+            void rt.handle({
+              type: "approval.decide",
+              taskId: "t11",
+              decision: { approvalId: e.approval.id, fingerprint: e.approval.fingerprint, decision },
+            }),
+        );
+      }
+    });
+    await rt.handle({ type: "task.start", request: { id: "t11", goal: "x", origin: "home" } });
+    expect(events.filter((e) => e.type === "approval.required")).toHaveLength(2);
+    const declined = (model.inputs[3] as ToolOutput[])[0]!;
+    const approved = (model.inputs[4] as ToolOutput[])[0]!;
+    expect(declined.safetyAcknowledged).toBeUndefined();
+    expect(approved.safetyAcknowledged).toBe(true);
+    expect(approved.image).toBeDefined(); // a fresh screenshot with every result for this provider
+  });
+
+  it("a provider 'blocked' safety decision is refused without running", async () => {
+    const native = new FakeNative();
+    const blocked = { ...turn(cu.click(100, 70))[0]!, safety: { decision: "blocked", explanation: "No" } };
+    const model = script(
+      turn(["show_plan", { steps: [{ title: "x", risk: "read" }] }]),
+      [blocked],
+      turn(["give_up", { reason: "x" }]),
+    );
+    const { rt } = runtimeWith(model, { native, bridge: null });
+    await rt.handle({ type: "task.start", request: { id: "t12", goal: "x", origin: "home" } });
+    expect(native.calls.some((c) => c.method === "input.click")).toBe(false);
+    expect((model.inputs[2] as ToolOutput[])[0]!.isError).toBe(true);
+  });
+
+  it("stops at the cost budget", async () => {
+    const expensive: AgentModel = {
+      provider: "scripted",
+      model: "x",
+      screenshotEveryComputerAction: false,
+      start: () => ({
+        next: async () => ({
+          calls: [{ id: "c", name: "read_page", args: {} }],
+          text: "",
+          stop: "tools",
+          usage: { inputTokens: 0, outputTokens: 0, cachedTokens: 0, costUsd: 1.5 },
+          model: "x",
+        }),
+      }),
+    };
+    const { rt, events } = runtimeWith(expensive);
     await rt.handle({ type: "task.start", request: { id: "t9", goal: "x", origin: "home" } });
     expect(events.at(-1)).toMatchObject({ type: "task.failed", reason: expect.stringMatching(/cost limit/) });
   });
@@ -283,7 +322,7 @@ describe("AgentRuntime", () => {
         },
       ],
     });
-    const model = new ScriptedModel([
+    const model = script(
       turn(["show_plan", { steps: [{ title: "Pick", risk: "read" }] }]),
       turn([
         "ask_person",
@@ -297,7 +336,7 @@ describe("AgentRuntime", () => {
         },
       ]),
       turn(["give_up", { reason: "done testing" }]),
-    ]);
+    );
     const { rt, events } = runtimeWith(model, { memory });
     rt.onEvent((e) => {
       if (e.type === "task.question")
@@ -319,6 +358,11 @@ describe("AgentRuntime", () => {
     });
     expect(memory.logged.map((e) => e.outcome)).toEqual(["chosen", "abandoned"]);
     expect(memory.logged[0]!.path).toEqual(["food", "What would you like?", "Green curry"]);
+  });
+
+  it("says which model is set up, or that only built-in tasks work", () => {
+    expect(runtimeWith(script()).rt.capabilities()).toMatchObject({ model: true, provider: "scripted" });
+    expect(runtimeWith(null).rt.capabilities().note).toMatch(/only do the built-in tasks/);
   });
 });
 
@@ -346,11 +390,11 @@ describe("injection pause", () => {
   it("asks the person directly and does not log the safety answer to memory", async () => {
     const memory = new FakeMemoryClient();
     const web = new SandboxWeb({ storeInjection: true });
-    const model = new ScriptedModel([
+    const model = script(
       turn(["show_plan", { steps: [{ title: "Look", risk: "read" }] }]),
       turn(["open_url", { url: `${SITES.STORE}/menu` }], ["read_page", {}]),
       turn(["give_up", { reason: "x" }]),
-    ]);
+    );
     const rt = new AgentRuntime({ model, bridge: web, native: null, memory, packs: [] });
     const questions: string[] = [];
     rt.onEvent((e) => {
