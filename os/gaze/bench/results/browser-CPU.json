@@ -1,0 +1,26 @@
+{
+  "delegate": "CPU",
+  "scheduler": "auto",
+  "videoPausedAtEnd": false,
+  "loadMs": 157.60000000149012,
+  "seconds": 15.000699999999254,
+  "fps": 29.998600065331775,
+  "faceFraction": 1,
+  "detectMsMean": 21.36877777785891,
+  "detectMsP50": 21.223333332811794,
+  "cameraFpsP50": 31,
+  "webgl": "ANGLE (Apple, ANGLE Metal Renderer: Apple M5 Pro, Unspecified Version)",
+  "engineMsP50": 0,
+  "engineMsP95": 0.10000000149011612,
+  "latencyMsP50": 24.39999999925476,
+  "latencyMsP95": 28.400000000745422,
+  "latencySamples": 450,
+  "blinkEvents": 509,
+  "video": {
+    "width": 640,
+    "height": 480
+  },
+  "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/153.0.0.0 Safari/537.36",
+  "ranAt": "2026-10-10T20:27:24.347Z",
+  "host": "darwin arm64"
+}

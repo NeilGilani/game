@@ -1,0 +1,12 @@
+{
+  "extends": "../tsconfig.json",
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "react": ["../../../frontend/node_modules/@types/react"],
+      "react/*": ["../../../frontend/node_modules/@types/react/*"],
+      "react-dom/*": ["../../../frontend/node_modules/@types/react-dom/*"]
+    }
+  },
+  "include": ["."]
+}

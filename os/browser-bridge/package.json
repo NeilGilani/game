@@ -1,0 +1,38 @@
+{
+  "name": "@agency/browser-bridge",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "AGENCY Bridge: a Chrome MV3 extension, its native messaging host and the AGENCY-side client, so the person and the agent can use the person's own signed-in Chrome with their eyes. Owned by Instance 5.",
+  "main": "src/app/index.ts",
+  "types": "src/app/index.ts",
+  "exports": {
+    ".": "./src/app/index.ts",
+    "./fake": "./src/fake/fake-bridge.ts",
+    "./protocol": "./src/protocol.ts"
+  },
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "lint": "eslint . && prettier --check \"src/**/*.ts\" \"test/**/*.ts\" \"e2e/**/*.ts\" \"scripts/**/*.mjs\"",
+    "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\" \"e2e/**/*.ts\" \"scripts/**/*.mjs\"",
+    "test": "vitest run",
+    "e2e": "npm run build && playwright test",
+    "check": "npm run lint && npm run typecheck && npm test && npm run build",
+    "install-host": "npm run build && node dist/install.mjs"
+  },
+  "devDependencies": {
+    "@eslint/js": "9.39.5",
+    "@playwright/test": "1.63.0",
+    "@types/chrome": "0.3.5",
+    "@types/node": "22.20.5",
+    "esbuild": "0.25.12",
+    "eslint": "9.39.5",
+    "globals": "17.13.0",
+    "prettier": "3.9.9",
+    "tsx": "4.20.6",
+    "typescript": "5.9.3",
+    "typescript-eslint": "8.71.1",
+    "vitest": "4.1.11"
+  }
+}

@@ -20,19 +20,15 @@ import { Errands } from "./screens/Errands";
 import { FlowScreen } from "./screens/Flow";
 import { Home } from "./screens/Home";
 import { Onboarding } from "./screens/Onboarding";
-import {
-  HelperSettings,
-  MemorySettings,
-  SettingsHub,
-  TalkPlaceholder,
-  VoiceSettings,
-} from "./screens/OsSettings";
+import { HelperSettings, MemorySettings, SettingsHub, VoiceSettings } from "./screens/OsSettings";
 import { TaskScreen } from "./screens/Task";
 import { LifelineAlertView, LifelineHome, LifelineSetup } from "./screens/Lifeline";
 import { PhoneSimulator } from "./screens/PhoneSimulator";
 import { NewTask, Phrases } from "./screens/NewTask";
 import { PreferencesView, SettingsView, StatusView } from "./screens/SettingsViews";
 import { ONBOARDED_KEY, Welcome } from "./screens/Welcome";
+import { MemoryExplorer } from "./memory";
+import { TalkRoute } from "./talk/TalkRoute";
 
 function onboarded(): boolean {
   try {
@@ -48,7 +44,8 @@ function Screen({ route }: { route: Route }) {
   if (a === "flow" && b) return <FlowScreen key={b} id={b} />;
   if (a === "task" && b) return <TaskScreen key={b} id={b} />;
   if (a === "apps") return <AppsScreen key={route.query.toString()} route={route} />;
-  if (a === "talk") return <TalkPlaceholder />;
+  if (a === "talk") return <TalkRoute segments={route.segments.slice(1)} />;
+  if (a === "memory") return <MemoryExplorer segments={route.segments.slice(1)} />;
   if (a === "errands") return <Errands />;
   if (a === "onboarding") return <Onboarding />;
   if (a === "settings" && !b) return <SettingsHub />;

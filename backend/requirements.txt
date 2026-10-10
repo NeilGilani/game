@@ -7,3 +7,5 @@ pydantic>=2.7,<3
 # (GEMINI_API_KEY for Google Gemini, ANTHROPIC_API_KEY for Claude).
 google-genai>=2.29,<3
 anthropic>=1.10,<2
+# Memory encryption at rest (AES-256-GCM). Versions pinned in constraints.txt, incl. the Intel-Mac line.
+cryptography>=45

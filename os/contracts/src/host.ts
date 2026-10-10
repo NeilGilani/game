@@ -13,7 +13,7 @@ import type { NativeEvent, NativeMethod, NativeMethods, PermissionKind, Permissi
 import type { SelectionEvent, Suggestion, Surface } from "./memory";
 import type { ScreenRect, Target, TargetSnapshot } from "./targets";
 
-export type WindowRole = "shell" | "overlay" | "gaze" | "onboarding";
+export type WindowRole = "shell" | "overlay" | "gaze" | "onboarding" | "about";
 
 /** Native methods each renderer role may call through `window.agency.native.call`. Everything else is main-only. */
 export const NATIVE_ALLOWED: Record<WindowRole, readonly NativeMethod[]> = {
@@ -42,6 +42,7 @@ export const NATIVE_ALLOWED: Record<WindowRole, readonly NativeMethod[]> = {
   ],
   gaze: [],
   onboarding: ["permissions.status"],
+  about: [],
 };
 
 export type Unsubscribe = () => void;

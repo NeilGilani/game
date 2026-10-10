@@ -1,0 +1,41 @@
+{
+  "name": "@agency/tasks",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "AGENCY OS task packs: Talk, calls, documents and signatures, ordering. Declarative tools, policies, approvals and verification run by the agent (os/agent). Owned by Instance 8.",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./pdf": "./src/documents/pdf/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit && tsc --noEmit -p harness",
+    "test": "vitest run",
+    "lint": "eslint .",
+    "format:check": "prettier --check \"src/**/*.ts\" \"tests/**/*.ts\" \"harness/**/*.{ts,tsx}\"",
+    "format": "prettier --write \"src/**/*.ts\" \"tests/**/*.ts\" \"harness/**/*.{ts,tsx}\"",
+    "harness": "vite --config harness/vite.config.ts",
+    "e2e": "playwright test -c harness/playwright.config.ts",
+    "check": "npm run typecheck && npm run lint && npm run format:check && npm test"
+  },
+  "dependencies": {
+    "pdf-lib": "1.17.1",
+    "pdfjs-dist": "5.7.284"
+  },
+  "devDependencies": {
+    "@eslint/js": "9.39.5",
+    "@playwright/test": "1.56.1",
+    "@types/node": "22.20.5",
+    "@vitejs/plugin-react": "5.2.0",
+    "eslint": "9.39.5",
+    "eslint-plugin-react-hooks": "7.1.1",
+    "globals": "17.13.0",
+    "prettier": "3.9.9",
+    "typescript": "5.9.3",
+    "typescript-eslint": "8.71.1",
+    "vite": "7.3.7",
+    "vitest": "4.1.11"
+  }
+}

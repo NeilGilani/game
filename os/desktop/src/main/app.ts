@@ -3,9 +3,11 @@
  * agency-native, the agent and the coordinator; routes gaze, targets, agent events, Lifeline and Stop.
  */
 
+import { existsSync } from "node:fs";
 import { join } from "node:path";
 import {
   BrowserWindow,
+  Menu,
   app,
   globalShortcut,
   ipcMain,
@@ -46,6 +48,7 @@ import {
   type TargetSnapshot,
   type WindowRole,
 } from "@agency/contracts";
+import { BridgeHost } from "./bridge";
 import { CoordinatorClient } from "./coordinator";
 import { LifelineHost, type HeartbeatBody } from "./lifeline";
 import { createLogger, setLogDir } from "./log";
@@ -105,6 +108,7 @@ export class AgencyApp {
   native: NativeHost | null = null;
   agent: AgentHost | null = null;
   sidecar: Sidecar | null = null;
+  bridge: BridgeHost | null = null;
   readonly supervisors: Supervisor[] = [];
   lifeline: LifelineHost;
   permissions: Permissions;
@@ -182,7 +186,7 @@ export class AgencyApp {
         () => ({
           shell: paths.shellDir,
           overlay: paths.overlayDir.dir,
-          gaze: paths.gazeDir,
+          gaze: paths.gazeDir.dir,
           host: paths.hostRenderer,
         }),
         this.client,
@@ -191,6 +195,7 @@ export class AgencyApp {
     if (this.opts.shellDevUrl) this.injectDevToken(this.opts.shellDevUrl);
 
     this.registerIpc();
+    this.setupMacChrome();
 
     // Lifeline-critical pieces first: coordinator, then windows, then the heartbeat.
     const coordinatorReady = this.startCoordinator();
@@ -201,6 +206,7 @@ export class AgencyApp {
     this.createShell();
     this.startGaze();
     this.startNative();
+    this.startBridge();
     this.registerHotkeys();
     // The agent needs the coordinator's address (memory API); start it once that is known, either way.
     void coordinatorReady.finally(() => this.startAgent());
@@ -217,7 +223,7 @@ export class AgencyApp {
     if (this.axTimer) clearInterval(this.axTimer);
     if (this.statusTimer) clearInterval(this.statusTimer);
     if (this.regionTimer) clearInterval(this.regionTimer);
-    await Promise.allSettled(this.supervisors.map((s) => s.stop()));
+    await Promise.allSettled([...this.supervisors.map((s) => s.stop()), this.bridge?.stop()]);
   }
 
   private setState(name: ProcessName, state: ProcessState): void {
@@ -294,6 +300,25 @@ export class AgencyApp {
     this.axTimer = setInterval(() => void this.refreshAxTargets(), 1_500);
   }
 
+  private startBridge(): void {
+    if (process.env.AGENCY_BRIDGE === "0") return;
+    const blog = createLogger("bridge");
+    const bridge = new BridgeHost({
+      dir: join(this.opts.userData, "bridge"),
+      hostScript: this.opts.paths.bridgeHost,
+      runtime: process.execPath,
+      install: !this.opts.test || process.env.AGENCY_BRIDGE_INSTALL === "1",
+      log: blog,
+      onTargets: (snap) => {
+        this.merger.update("web", snap);
+        this.scheduleTargets();
+      },
+      onStopped: () => void this.stopAll("chrome"),
+    });
+    this.bridge = bridge;
+    bridge.start().catch((err: Error) => blog.error(`bridge did not start: ${err.message}`));
+  }
+
   private startAgent(): void {
     const spec = this.opts.paths.agent;
     if (!spec) {
@@ -340,8 +365,7 @@ export class AgencyApp {
   }
 
   private startGaze(): void {
-    const dir = this.opts.paths.gazeDir;
-    if (dir && process.env.AGENCY_GAZE !== "mouse") {
+    if (process.env.AGENCY_GAZE !== "mouse") {
       const win = new BrowserWindow({
         show: false,
         width: 320,
@@ -350,13 +374,16 @@ export class AgencyApp {
       });
       this.gazeWin = win;
       this.track(win, "gaze");
-      void win.loadURL(`${SCHEME}://gaze/engine.html`);
+      void win.loadURL(`${SCHEME}://gaze/${this.opts.paths.gazeDir.entry}`);
       this.setState("gaze", "starting");
       win.webContents.on("render-process-gone", () => {
         this.setState("gaze", "restarting");
         log.error("gaze engine crashed; using the mouse until it is back");
         this.useMouseGaze();
-        setTimeout(() => !win.isDestroyed() && void win.loadURL(`${SCHEME}://gaze/engine.html`), 1_000);
+        setTimeout(
+          () => !win.isDestroyed() && void win.loadURL(`${SCHEME}://gaze/${this.opts.paths.gazeDir.entry}`),
+          1_000,
+        );
       });
       // Until the engine sends its first event, the mouse keeps working.
       this.useMouseGaze();
@@ -413,7 +440,16 @@ export class AgencyApp {
       fullscreen: !this.opts.windowed,
       width: 1440,
       height: 900,
-      backgroundColor: "#f7f5f0",
+      // macOS: an inset title bar over a vibrant window background; the interface's own background sits on top.
+      ...(process.platform === "darwin"
+        ? {
+            titleBarStyle: "hiddenInset" as const,
+            trafficLightPosition: { x: 20, y: 22 },
+            vibrancy: "under-window" as const,
+            visualEffectState: "active" as const,
+            backgroundColor: "#00000000",
+          }
+        : { backgroundColor: "#f7f5f0" }),
       webPreferences: this.webPreferences("shell"),
     });
     this.shell = win;
@@ -494,6 +530,73 @@ export class AgencyApp {
   }
 
   // ------------------------------------------------------------------------------------------------------
+  // Mac chrome: dock icon in development, the app menu, About
+
+  private about: BrowserWindow | null = null;
+
+  showAbout(): void {
+    if (this.about && !this.about.isDestroyed()) {
+      this.about.show();
+      return;
+    }
+    const win = new BrowserWindow({
+      title: "About AGENCY",
+      width: 420,
+      height: 470,
+      resizable: false,
+      minimizable: false,
+      maximizable: false,
+      fullscreenable: false,
+      show: false,
+      ...(process.platform === "darwin"
+        ? {
+            titleBarStyle: "hiddenInset" as const,
+            vibrancy: "under-window" as const,
+            visualEffectState: "active" as const,
+            backgroundColor: "#00000000",
+          }
+        : {}),
+      webPreferences: this.webPreferences("about"),
+    });
+    this.about = win;
+    const q = new URLSearchParams({ v: app.getVersion(), b: process.env.AGENCY_BUILD ?? "" });
+    void win.loadURL(`${SCHEME}://host/about/index.html?${q}`);
+    win.once("ready-to-show", () => win.show());
+  }
+
+  private setupMacChrome(): void {
+    if (process.platform !== "darwin") return;
+    if (!this.opts.paths.packaged) {
+      const icon = join(this.opts.paths.appDir, "build", "icon.png");
+      if (existsSync(icon)) app.dock?.setIcon(icon);
+    }
+    Menu.setApplicationMenu(
+      Menu.buildFromTemplate([
+        {
+          label: "AGENCY",
+          submenu: [
+            { label: "About AGENCY", click: () => this.showAbout() },
+            { type: "separator" },
+            {
+              label: "Stop everything",
+              accelerator: this.settings.stopHotkey || undefined,
+              click: () => void this.stopAll("menu"),
+            },
+            { label: "Call for help", click: () => void this.help("help_button") },
+            { type: "separator" },
+            { role: "hide" },
+            { role: "hideOthers" },
+            { type: "separator" },
+            { role: "quit" },
+          ],
+        },
+        { role: "editMenu" },
+        { role: "windowMenu" },
+      ]),
+    );
+  }
+
+  // ------------------------------------------------------------------------------------------------------
   // Lifeline and Stop
 
   surfaceEmergency(): void {
@@ -548,11 +651,23 @@ export class AgencyApp {
     return this.lifeline.help(source, test);
   }
 
-  async stopAll(origin: string): Promise<StopAllResult> {
+  private stopping: Promise<StopAllResult> | null = null;
+
+  /** Requests that arrive while a Stop is in progress join it, so a window answering the broadcast can't loop. */
+  stopAll(origin: string): Promise<StopAllResult> {
     this.record("stop.request", { origin });
+    if (this.stopping) return this.stopping;
+    this.stopping = this.runStop().finally(() => setTimeout(() => (this.stopping = null), 300));
+    return this.stopping;
+  }
+
+  private async runStop(): Promise<StopAllResult> {
     const result = await stopAll(
       {
-        agent: () => this.agent?.send({ type: "stop.all" }) ?? false,
+        agent: () => {
+          this.bridge?.stopAll();
+          return this.agent?.send({ type: "stop.all" }) ?? false;
+        },
         native: () =>
           this.native?.rpc.connected ? this.native.call("input.stopAll", {}, 1_000).then((r) => r.ok) : null,
         notify: (r) => {
@@ -657,7 +772,8 @@ export class AgencyApp {
       }
       return this.callNative(method as NativeMethod, params);
     }
-    return Promise.reject(new Error("The AGENCY Bridge is not connected."));
+    if (!this.bridge) return Promise.reject(new Error("The AGENCY Bridge is not connected."));
+    return this.bridge.agentCall(method, params);
   }
 
   private callNative(method: NativeMethod, params: unknown): Promise<unknown> {

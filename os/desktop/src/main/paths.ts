@@ -19,10 +19,13 @@ export interface Paths {
   shellDir: string | null;
   /** `entry` is the page path inside `dir`, served as agency://overlay/<entry>. */
   overlayDir: { dir: string; entry: string; builtin: boolean };
-  gazeDir: string | null;
+  /** `entry` is the engine page inside `dir`, served as agency://gaze/<entry>. */
+  gazeDir: { dir: string; entry: string };
   agent: { entry: string; fake: boolean } | null;
   native: { command: string; args: string[]; fake: boolean } | null;
   sidecar: { command: string; args: string[]; cwd: string } | null;
+  /** The AGENCY Bridge's native-messaging host script (os/browser-bridge/dist/host.cjs). */
+  bridgeHost: string | null;
 }
 
 const env = (name: string): string | undefined => process.env[name] || undefined;
@@ -50,7 +53,7 @@ export function resolvePaths(opts: {
     packaged ? res("shell/index.html") : repo(HOST_ENTRIES.shell),
   );
 
-  const overlayIndex = firstExisting(
+  const overlayIndex = env("AGENCY_OVERLAY_BUILTIN") === "1" ? null : firstExisting(
     env("AGENCY_OVERLAY_DIR") && join(env("AGENCY_OVERLAY_DIR")!, "index.html"),
     packaged ? res("overlay/index.html") : repo(HOST_ENTRIES.overlay),
   );
@@ -100,9 +103,13 @@ export function resolvePaths(opts: {
     overlayDir: overlayIndex
       ? { dir: resolve(overlayIndex, ".."), entry: "index.html", builtin: false }
       : { dir: join(out, "renderer"), entry: "overlay/index.html", builtin: true },
-    gazeDir: gazeIndex ? resolve(gazeIndex, "..") : null,
+    // A package-built engine page wins; otherwise the built-in page that hosts @agency/gaze.
+    gazeDir: gazeIndex
+      ? { dir: resolve(gazeIndex, ".."), entry: "engine.html" }
+      : { dir: join(out, "renderer"), entry: "gaze/engine.html" },
     agent,
     native,
     sidecar,
+    bridgeHost: firstExisting(packaged ? res("bridge/host.cjs") : repo("os/browser-bridge/dist/host.cjs")),
   };
 }

@@ -137,6 +137,31 @@ function TaskBody({ t }: { t: TaskView }) {
         <section className="task-now" aria-live="polite">
           {t.phase === "question" && t.question ? (
             <Question q={t.question} onPick={(optionId) => agent.answer(t.id, t.question!.id, optionId)} />
+          ) : t.phase === "approval" && t.approval?.kind === "sign" ? (
+            // Signing always goes through Talk's signing ceremony (read, then a deliberate confirmation).
+            <div className="stack" data-testid="sign-handoff">
+              <h2>{t.approval.simulated ? "Sign (simulated)" : "Sign"}</h2>
+              <p>{t.approval.summary}</p>
+              <div className="btn-row">
+                <button
+                  className="btn"
+                  data-dwell
+                  onClick={() =>
+                    agent.decide(t.id, {
+                      approvalId: t.approval!.id,
+                      fingerprint: t.approval!.fingerprint,
+                      decision: "decline",
+                    })
+                  }
+                >
+                  Don't sign
+                </button>
+                <span className="spacer" />
+                <button className="btn btn-primary" data-dwell onClick={() => navigate("/talk/papers")}>
+                  Read and sign
+                </button>
+              </div>
+            </div>
           ) : t.phase === "approval" && t.approval ? (
             <Approval
               key={t.approval.id}

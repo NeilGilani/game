@@ -7,6 +7,7 @@
 #   make os-dev    run the AGENCY OS desktop app (Electron) from source
 #   make os-build  build the desktop app; make os-dist packages a .dmg (macOS)
 #   make os-test   desktop unit tests + Electron smoke tests (needs a display)
+#   make sandbox   the simulated web stores (food, shopping...) for the agent and the Chrome bridge
 # Raspberry Pi: see DEPLOY_PI.md (make pi-setup on the Pi, make dev-pi PI=<address> on the Mac).
 
 SHELL := /bin/bash
@@ -15,10 +16,10 @@ PI ?= agency-pi.local
 
 .PHONY: help setup setup-backend setup-frontend dev demo backend frontend dev-pi test test-backend test-frontend \
         lint typecheck build check e2e e2e-fixtures reset-demo pi-setup pi-start pi-stop pi-status pi-logs clean \
-        os-check os-dev os-build os-dist os-test os-e2e sidecar
+        os-check os-dev os-build os-dist os-test os-e2e sidecar sandbox
 
 help:
-	@grep -E '^#' Makefile | head -10 | sed 's/^# \{0,1\}//'
+	@grep -E '^#' Makefile | head -11 | sed 's/^# \{0,1\}//'
 
 setup: setup-backend setup-frontend
 	@echo "Setup complete. Next: make demo  (then open http://localhost:8000)"
@@ -109,7 +110,14 @@ os-build: build
 	  if node -e "process.exit(require('./$$ws/package.json').scripts?.build ? 0 : 1)"; then \
 	    echo "== $$name: npm run build"; npm run build -w "$$name" || exit 1; fi; \
 	done
+	@if [ "$$(uname)" = "Darwin" ] && command -v swift >/dev/null && [ -f os/native-macos/Package.swift ]; then \
+	  echo "== agency-native: swift build -c release"; \
+	  (cd os/native-macos && swift build -c release --product agency-native) || exit 1; fi
 	npm run build -w @agency/desktop
+
+# The simulated web world (food, shopping, pharmacy...) the agent and the bridge practise on.
+sandbox:
+	npm start -w @agency/sandbox-web
 
 os-dev: os-build
 	cd os/desktop && AGENCY_WINDOWED=1 npx electron .
