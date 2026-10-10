@@ -20,6 +20,20 @@ export const DEFAULT_PREFERENCES: Preferences = {
 };
 
 const STORAGE_KEY = "agency.preferences";
+const EASY_READ_KEY = "agency.easyRead";
+
+/** The "Easy-read font" setting (Atkinson Hyperlegible), kept on this device. */
+export function applyEasyRead(on?: boolean): void {
+  try {
+    if (on === undefined) on = localStorage.getItem(EASY_READ_KEY) === "1";
+    else localStorage.setItem(EASY_READ_KEY, on ? "1" : "0");
+  } catch {
+    /* ignore */
+  }
+  if (on) document.documentElement.dataset.font = "easy-read";
+  else delete document.documentElement.dataset.font;
+}
+applyEasyRead();
 
 function loadLocal(): Preferences {
   try {

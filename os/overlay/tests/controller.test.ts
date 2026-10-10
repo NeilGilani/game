@@ -434,7 +434,10 @@ describe("over AGENCY's own window", () => {
     expect(ctrl.standingDown()).toBe(true);
     expect(ctrl.buttons()).toEqual([]);
     for (let t = 2000; t < 4000; t += 16) {
-      ctrl.handleGaze({ type: "sample", sample: { t, x: 700, y: 450, confidence: 0.9, fixation: true, source: "mouse" } });
+      ctrl.handleGaze({
+        type: "sample",
+        sample: { t, x: 700, y: 450, confidence: 0.9, fixation: true, source: "mouse" },
+      });
       ctrl.tick(t);
     }
     const view = ctrl.view();

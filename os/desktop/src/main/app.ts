@@ -756,7 +756,8 @@ export class AgencyApp {
       };
       this.takeEngine();
       this.lastTracking.face = true;
-      for (const o of this.overlays.values()) if (!o.win.isDestroyed()) o.win.webContents.send(IPC.gaze, global);
+      for (const o of this.overlays.values())
+        if (!o.win.isDestroyed()) o.win.webContents.send(IPC.gaze, global);
       return;
     }
     this.lastTracking = { ...this.lastTracking, state: ev.state, face: ev.state !== "lost" };

@@ -11,7 +11,14 @@ import { Permissions, SETTINGS_PANES, mapMediaStatus } from "../src/main/permiss
 import { CSP, createHandler, safeJoin } from "../src/main/protocol";
 import { decidePermission, isAllowedNavigation } from "../src/main/security";
 import { DEFAULT_SETTINGS, loadSettings, saveSettings } from "../src/main/settings";
-import { SHELL_OWNER, TargetMerger, overlapRatio, readBundleId, sanitizeTargets, toGlobal } from "../src/main/targets";
+import {
+  SHELL_OWNER,
+  TargetMerger,
+  overlapRatio,
+  readBundleId,
+  sanitizeTargets,
+  toGlobal,
+} from "../src/main/targets";
 import { DwellTracker, hitTest } from "../src/renderer/shared/dwell";
 
 const t = (id: string, x: number, y: number, w = 100, h = 100, extra: Partial<Target> = {}): Target => ({
@@ -141,7 +148,12 @@ describe("targets", () => {
   it("never shows AGENCY's own window as an accessibility pile while the shell is in front", () => {
     // The bug: the shell published nothing, so its Electron accessibility tree ("Unlabelled row") was used.
     const m = new TargetMerger();
-    m.update("ax", { t: 0, owner: "com.github.Electron", truncated: false, targets: [t("row1", 0, 0), t("row2", 0, 120)] });
+    m.update("ax", {
+      t: 0,
+      owner: "com.github.Electron",
+      truncated: false,
+      targets: [t("row1", 0, 0), t("row2", 0, 120)],
+    });
     const merged = m.merged(1, true, "com.github.Electron");
     expect(merged.targets).toEqual([]);
     expect(merged.owner).toBe(SHELL_OWNER);

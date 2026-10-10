@@ -187,8 +187,8 @@ export function LifelineHome() {
             <li>
               <Icon name="bell" size={20} />
               <span>
-                <strong>Look at Help</strong>, top left on every screen. When scanning, it's always the first
-                choice.
+                <strong>Look at Help</strong>, the red button at the left of the dock on every screen. When
+                scanning, it's always the first choice.
               </span>
             </li>
             <li>

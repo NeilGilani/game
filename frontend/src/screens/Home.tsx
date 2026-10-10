@@ -141,67 +141,64 @@ export function Home() {
 
   // Up to 3 usuals and one Continue card share the first row: 4 fixed slots.
   const fixed = (resume ? 1 : 0) + (needsEyeSetup(input) ? 1 : 0);
-  const slots = (usuals ?? []).slice(0, Math.max(0, USUALS + 1 - fixed));
+  const slots = (usuals ?? []).slice(0, Math.max(0, USUALS - fixed));
 
   return (
     <div className="home" aria-label="Home">
-      <div className="home-head">
-        <h1>{greeting()}.</h1>
-        <p className="muted">
-          {new Date().toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" })}
-          {memory().kind() === "demo" && usuals?.length ? " · Your usuals here are demo examples" : ""}
-        </p>
+      <section className="widget home-widget" aria-labelledby="home-greeting">
+        <h1 id="home-greeting">{greeting()}.</h1>
         <p className="home-howto">
           {howToChoose(input.mode)} <strong>Help</strong> is always at the top left.
         </p>
-      </div>
-
-      <section className="home-usuals" aria-label="Your usuals">
-        <EyeControlCard />
-        {resume && (
-          <button
-            className="usual usual-continue"
-            onClick={() => navigate(`/task/${resume.id}`)}
-            data-dwell
-            aria-label={`Continue: ${resume.goal}. ${continueText(resume)}`}
-          >
-            <span className="usual-icon">
-              <Icon name="resume" size={30} />
-            </span>
-            <span className="usual-text">
-              <span className="usual-kicker">Continue</span>
-              <span className="usual-title">{resume.goal}</span>
-              <span className="usual-why">{continueText(resume)}</span>
-            </span>
-          </button>
-        )}
-        {usuals === null
-          ? Array.from({ length: USUALS }, (_, i) => (
-              <div key={i} className="usual usual-placeholder" aria-hidden />
-            ))
-          : slots.map((s) => (
-              <button
-                key={s.nodeId}
-                className="usual"
-                onClick={() => startUsual(s)}
-                data-dwell
-                aria-label={`Your usual: ${s.label}. ${s.reason}`}
-              >
-                <span className="usual-icon">
-                  <Icon name="sparkle" size={30} />
-                </span>
-                <span className="usual-text">
-                  <span className="usual-kicker">Your usual</span>
-                  <span className="usual-title">{s.label}</span>
-                  <span className="usual-why">{s.reason}</span>
-                </span>
-              </button>
-            ))}
-        {usuals?.length === 0 && !resume && !needsEyeSetup(input) && (
-          <p className="usual-empty muted">
-            As you use AGENCY, the things you choose most will appear here, with the reason.
-          </p>
-        )}
+        <p className="widget-sub">
+          {memory().kind() === "demo" && usuals?.length ? "Your usuals (demo examples)" : "Your usuals"}
+        </p>
+        <div className="home-usuals" aria-label="Your usuals">
+          <EyeControlCard />
+          {resume && (
+            <button
+              className="usual usual-continue"
+              onClick={() => navigate(`/task/${resume.id}`)}
+              data-dwell
+              aria-label={`Continue: ${resume.goal}. ${continueText(resume)}`}
+            >
+              <span className="usual-icon">
+                <Icon name="resume" size={28} />
+              </span>
+              <span className="usual-text">
+                <span className="usual-kicker">Continue</span>
+                <span className="usual-title">{resume.goal}</span>
+                <span className="usual-why">{continueText(resume)}</span>
+              </span>
+            </button>
+          )}
+          {usuals === null
+            ? Array.from({ length: USUALS }, (_, i) => (
+                <div key={i} className="usual usual-placeholder" aria-hidden />
+              ))
+            : slots.map((s) => (
+                <button
+                  key={s.nodeId}
+                  className="usual"
+                  onClick={() => startUsual(s)}
+                  data-dwell
+                  aria-label={`Your usual: ${s.label}. ${s.reason}`}
+                >
+                  <span className="usual-icon">
+                    <Icon name="sparkle" size={28} />
+                  </span>
+                  <span className="usual-text">
+                    <span className="usual-title">{s.label}</span>
+                    <span className="usual-why">{s.reason}</span>
+                  </span>
+                </button>
+              ))}
+          {usuals?.length === 0 && !resume && !needsEyeSetup(input) && (
+            <p className="usual-empty muted">
+              As you use AGENCY, the things you choose most will appear here, with the reason.
+            </p>
+          )}
+        </div>
       </section>
 
       <nav className="home-tiles" aria-label="Everything you can do">
@@ -210,17 +207,15 @@ export function Home() {
             key={tile.id}
             className="home-tile"
             data-tone={tile.tone}
+            data-tile={tile.id}
             onClick={() => open(tile)}
             data-dwell
             aria-label={`${tile.label}: ${tile.id === "lifeline" && watching ? "Watch over me is on" : tile.sub}`}
           >
-            <span className="home-tile-icon">
-              <Icon name={tile.icon} size={34} />
+            <span className="home-tile-icon" aria-hidden>
+              <Icon name={tile.icon} size={52} />
             </span>
             <span className="home-tile-label">{tile.label}</span>
-            <span className="home-tile-sub">
-              {tile.id === "lifeline" && watching ? "Watch over me is on" : tile.sub}
-            </span>
           </button>
         ))}
       </nav>
