@@ -198,6 +198,7 @@ export const api = {
     request<{
       paragraphs: string[];
       source: "deterministic" | "cloud";
+      label?: string | null;
       model: string | null;
       facts?: string[];
     }>(`/api/approvals/${encodeURIComponent(approvalId)}/explain`, { timeoutMs: 60000 }),

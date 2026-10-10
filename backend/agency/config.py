@@ -1,7 +1,7 @@
 """Runtime configuration, read from environment variables (and an optional .env file).
 
-Nothing here is a secret except ANTHROPIC_API_KEY and AGENCY_API_TOKEN, which are read
-from the environment only and never returned by any endpoint.
+Nothing here is a secret except GEMINI_API_KEY, ANTHROPIC_API_KEY and AGENCY_API_TOKEN, which
+are read from the environment only and never returned by any endpoint.
 """
 
 from __future__ import annotations
@@ -58,20 +58,17 @@ class Settings:
     demo_controls: bool
     step_delay_ms: int
     reasoning: str
+    gemini_model: str
     anthropic_model: str
-    anthropic_effort: str
+    reasoning_effort: str
     anthropic_fallbacks: bool
-    anthropic_timeout_s: float
+    reasoning_timeout_s: float
     frontend_dist: Path | None
     public_url: str | None = None
     lifeline_loop: bool = True
     lifeline_tick_s: float = 1.0
     inline_runner: bool = False
     extra: dict[str, str] = field(default_factory=dict)
-
-    @property
-    def anthropic_key_present(self) -> bool:
-        return bool(os.environ.get("ANTHROPIC_API_KEY"))
 
     def response_base_url(self) -> str:
         """Where contacts' phones open response links (AGENCY_PUBLIC_URL wins)."""
@@ -113,10 +110,15 @@ def load_settings(**overrides: object) -> Settings:
         demo_controls=_bool("AGENCY_DEMO_CONTROLS", True),
         step_delay_ms=_int("AGENCY_STEP_DELAY_MS", 650),
         reasoning=os.environ.get("AGENCY_REASONING", "auto").lower(),
-        anthropic_model=os.environ.get("AGENCY_ANTHROPIC_MODEL", "claude-opus-5-5"),
-        anthropic_effort=os.environ.get("AGENCY_ANTHROPIC_EFFORT", "medium"),
+        gemini_model=os.environ.get("AGENCY_GEMINI_MODEL") or "gemini-3.8-flash",
+        anthropic_model=os.environ.get("AGENCY_ANTHROPIC_MODEL") or "claude-opus-5-5",
+        reasoning_effort=(
+            os.environ.get("AGENCY_REASONING_EFFORT") or os.environ.get("AGENCY_ANTHROPIC_EFFORT") or "medium"
+        ).lower(),
         anthropic_fallbacks=_bool("AGENCY_ANTHROPIC_FALLBACKS", True),
-        anthropic_timeout_s=float(os.environ.get("AGENCY_ANTHROPIC_TIMEOUT_S", "45")),
+        reasoning_timeout_s=float(
+            os.environ.get("AGENCY_REASONING_TIMEOUT_S") or os.environ.get("AGENCY_ANTHROPIC_TIMEOUT_S") or "45"
+        ),
         frontend_dist=frontend_dist,
         public_url=os.environ.get("AGENCY_PUBLIC_URL") or None,
     )

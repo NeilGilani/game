@@ -17,7 +17,7 @@ coordinator, ideally a Raspberry Pi separate from the laptop, owns every alert, 
 the laptop dies. See [LIFELINE.md](LIFELINE.md) for the design and safety case.
 
 Built for the UCSC AI Hackathon (Cloud AI track). Hardware: a MacBook (webcam, browser, interface) and an optional
-Raspberry Pi 4 (coordinator, SQLite). Cloud reasoning with Claude is optional; everything works without it.
+Raspberry Pi 4 (coordinator, SQLite). Cloud reasoning with Google Gemini is optional; everything works without it.
 
 > AGENCY is a demonstration, not a medical device, a ventilator alarm or an emergency service. Webcam gaze
 > estimation is approximate. All integrations are simulated demo services, and Lifeline contacts are simulated
@@ -67,8 +67,11 @@ How Lifeline works and why it's designed this way: see [LIFELINE.md](LIFELINE.md
 coordinator: see [DEPLOY_PI.md](DEPLOY_PI.md). Running the 5-minute demo:
 see [DEMO_SCRIPT.md](DEMO_SCRIPT.md). How it's built: see [ARCHITECTURE.md](ARCHITECTURE.md).
 
-To enable cloud reasoning, put an Anthropic API key in `.env` (copy `.env.example`). A Claude Max chat subscription
-does not include API access. Without a key the status bar says **Demo mode: built-in plans**.
+To enable cloud reasoning, put a Gemini API key from [Google AI Studio](https://aistudio.google.com/apikey) in `.env`
+as `GEMINI_API_KEY=...` (copy `.env.example`; the default model is `gemini-3.8-flash`). The status bar then shows
+**Gemini · gemini-3.8-flash**. Without a key it says **Demo mode: built-in plans**. An Anthropic key
+(`ANTHROPIC_API_KEY`) still works as an alternative; when both are set, Gemini is used unless
+`AGENCY_REASONING=anthropic`. The key stays on the coordinator and is never sent to the browser.
 
 ---
 
@@ -97,7 +100,7 @@ does not include API access. Without a key the status bar says **Demo mode: buil
 **Agent and workflow engine (coordinator)**
 - Structured, validated goals from goal cards, a phrase board, or typed text (cloud interpretation when configured).
 - Dependency-aware plans with typed tool calls, approval levels, verification descriptions and retry policies.
-  Built-in plans for four goals; optional Claude-adapted plans that must pass the same validator.
+  Built-in plans for four goals; optional Gemini-adapted plans that must pass the same validator.
 - A tool registry over four simulated services (Demo Repair Provider, Demo Funding Service, Demo Calendar, Demo
   Messaging Service), each with its own tables and HTTP endpoints. No shell, SQL, browser or arbitrary HTTP tools.
 - Approvals bound to a fingerprint of the exact inputs; changing anything requires a fresh approval.
@@ -155,15 +158,17 @@ All of the following were run for this commit; results are from real runs, not e
 
 | Suite | Count | What it covers |
 |---|---|---|
-| Backend `pytest` | 83 | **Workflow engine (45):** case creation, plan contents, allowed and refused tools, input validation, approval creation, refusing unapproved or stale-approved actions, verification pass/fail, retries, idempotent services, timeout reconciliation (no double booking), recovery planning, rejection blocking dependents, edits rebinding approvals, global and per-case pause, crash mid-step + restart reconciliation, persistence across restarts, audit events, auth token, CORS, preferences validation, the other three goals, and the cloud provider with a fake client. **Lifeline (38), on a fake clock:** countdown, cancel, call now, escalation timing and repeating rounds, immediate fail-over, never giving up, acknowledgement and stand-down, withdrawn acknowledgement, all-clear, consent and alarm-only mode, the responder page (escaping, security headers, token uniqueness, confirmation), watchdog, check-ins (including turning Watch over me off), signal-unavailable, restart persistence, reporting, demo reset, and Twilio text + call with a fake transport |
+| Backend `pytest` | 132 | **Workflow engine (45):** case creation, plan contents, allowed and refused tools, input validation, approval creation, refusing unapproved or stale-approved actions, verification pass/fail, retries, idempotent services, timeout reconciliation (no double booking), recovery planning, rejection blocking dependents, edits rebinding approvals, global and per-case pause, crash mid-step + restart reconciliation, persistence across restarts, audit events, auth token, CORS, preferences validation, the other three goals, and the Claude provider with a fake client. **Lifeline (38), on a fake clock:** countdown, cancel, call now, escalation timing and repeating rounds, immediate fail-over, never giving up, acknowledgement and stand-down, withdrawn acknowledgement, all-clear, consent and alarm-only mode, the responder page (escaping, security headers, token uniqueness, confirmation), watchdog, check-ins (including turning Watch over me off), signal-unavailable, restart persistence, reporting, demo reset, and Twilio text + call with a fake transport. **Rescue (29):** what's wrong and urgency (critical alerts reach everyone at once), helpers' yes/no questions answered with the eyes, care-plan steps, arrival, simulated dispatch with its own consent, the demo smart home and power watch, and the handoff summary. **Gemini (20):** the real google-genai SDK against a fake HTTP transport: endpoint, key in a header and never in the URL, structured-output schema and thinking level, a valid plan used and a plan with a forbidden tool rejected, each error class falling back to built-in plans and reported, blocked, truncated and non-JSON responses, the credential check, provider selection, and the key never returned by the API |
 | Frontend Vitest | 56 | Landmark indices checked against the installed MediaPipe package; feature extraction on synthetic landmark fixtures; head pose; calibration fitting, outlier rejection and honest quality grading; dwell stability, no repeat, refractory, blink tolerance and tracking-loss cancel; scanning; long-blink switch; camera error classification; target snapping; smoothing; **the three-long-blink help signal** (ordinary blinks, resting, face loss, spacing, refractory, hysteresis) |
 | Playwright e2e | 14 | The full repair scenario in a real browser (plan, approvals, injected slot failure, recovery, browser refresh, verified outcome, timeline, service records); editing and declining; coordinator loss and restart; Stop agent; key-switch scanning; dwell selection through the real DOM with synthetic gaze frames; the **real camera pipeline** with a fake webcam; camera permission denied. **Lifeline:** cancel in the countdown; caregiver unreachable, fail-over, the neighbour answering on the real response page in another window, ending the alert; three long blinks (synthetic blink frames) vs ordinary blinks; check-in and watchdog; offline queueing across a reload and recovery |
-| Python 3.11 / arm64 | 83 | The backend suite on Python 3.11, and on Debian Bookworm arm64 (emulated with QEMU), plus `deploy/pi/setup.sh` end to end in that container, including a Lifeline alert, a response through the response page, and a watchdog alert from the supervisor loop |
+| Python 3.11 / arm64 | 132 / 83 | The backend suite on Python 3.11 (132, this commit); on an earlier commit (83 tests), the suite on Debian Bookworm arm64 (emulated with QEMU), plus `deploy/pi/setup.sh` end to end in that container, including a Lifeline alert, a response through the response page, and a watchdog alert from the supervisor loop |
 
 What was **not** tested here, and why: live gaze accuracy and the blink help signal with real people (needs people
 in front of a webcam, ideally the target users; the automated camera test uses a still image), real Raspberry Pi
-hardware (no Pi in this environment; tested on emulated arm64 Debian Bookworm), Safari, the real Anthropic API (no
-API key in this environment; the adapter is tested with a fake client that mirrors the SDK's response shapes), real
+hardware (no Pi in this environment; tested on emulated arm64 Debian Bookworm), Safari, a successful call to the real Gemini
+or Anthropic API (no API key in this environment; the Gemini adapter is tested through the real google-genai SDK
+against a fake HTTP transport, and a live request with a deliberately invalid key was correctly reported as "the API
+key was rejected"; the Anthropic adapter is tested with a fake client that mirrors the SDK's response shapes), real
 Twilio messages and calls (no account; tested with a fake transport), and heartbeats from a tab hidden for hours.
 The simulated phones' QR codes were checked by decoding a rendered code with an independent decoder.
 
@@ -228,7 +233,7 @@ backend/            FastAPI coordinator (Python 3.11+)
   agency/planning/  goal interpretation, built-in plans, plan validator
   agency/tools/     permitted tool registry
   agency/services/  simulated integrations + seed data
-  agency/reasoning/ optional Anthropic provider
+  agency/reasoning/ optional cloud model (Gemini, or Claude)
   agency/lifeline/  emergency alerts: escalation, watchdog, check-ins, channels, response page
   tests/            pytest suite
 frontend/           React + TypeScript + Vite interface
