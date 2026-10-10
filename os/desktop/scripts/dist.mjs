@@ -66,6 +66,7 @@ const config = {
   extraMetadata: { main: "out/main/index.cjs" },
   mac: {
     category: "public.app-category.productivity",
+    icon: "build/icon.icns",
     minimumSystemVersion: "13.0",
     target: [{ target: dirOnly ? "dir" : "dmg", arch: [archArg] }],
     identity: signing ? undefined : "-",
@@ -86,6 +87,15 @@ const config = {
   },
   dmg: {
     title: "AGENCY ${version}",
+    icon: "build/icon.icns",
+    // background.png plus background@2x.png (Retina) from build/, made by scripts/make-assets.mjs.
+    background: "build/background.png",
+    window: { width: 660, height: 420 },
+    iconSize: 112,
+    contents: [
+      { x: 170, y: 210, type: "file" },
+      { x: 490, y: 210, type: "link", path: "/Applications" },
+    ],
     artifactName: "AGENCY-${version}-${arch}.dmg",
   },
   publish: null,

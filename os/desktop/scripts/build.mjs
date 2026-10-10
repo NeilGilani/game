@@ -68,6 +68,7 @@ await build({
         onboarding: resolve(root, "src/renderer/onboarding/index.html"),
         "shell-missing": resolve(root, "src/renderer/shell-missing/index.html"),
         gaze: resolve(root, "src/renderer/gaze/engine.html"),
+        about: resolve(root, "src/renderer/about/index.html"),
       },
     },
   },

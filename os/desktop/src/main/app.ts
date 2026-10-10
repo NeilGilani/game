@@ -3,9 +3,11 @@
  * agency-native, the agent and the coordinator; routes gaze, targets, agent events, Lifeline and Stop.
  */
 
+import { existsSync } from "node:fs";
 import { join } from "node:path";
 import {
   BrowserWindow,
+  Menu,
   app,
   globalShortcut,
   ipcMain,
@@ -193,6 +195,7 @@ export class AgencyApp {
     if (this.opts.shellDevUrl) this.injectDevToken(this.opts.shellDevUrl);
 
     this.registerIpc();
+    this.setupMacChrome();
 
     // Lifeline-critical pieces first: coordinator, then windows, then the heartbeat.
     const coordinatorReady = this.startCoordinator();
@@ -437,7 +440,16 @@ export class AgencyApp {
       fullscreen: !this.opts.windowed,
       width: 1440,
       height: 900,
-      backgroundColor: "#f7f5f0",
+      // macOS: an inset title bar over a vibrant window background; the interface's own background sits on top.
+      ...(process.platform === "darwin"
+        ? {
+            titleBarStyle: "hiddenInset" as const,
+            trafficLightPosition: { x: 20, y: 22 },
+            vibrancy: "under-window" as const,
+            visualEffectState: "active" as const,
+            backgroundColor: "#00000000",
+          }
+        : { backgroundColor: "#f7f5f0" }),
       webPreferences: this.webPreferences("shell"),
     });
     this.shell = win;
@@ -518,6 +530,73 @@ export class AgencyApp {
   }
 
   // ------------------------------------------------------------------------------------------------------
+  // Mac chrome: dock icon in development, the app menu, About
+
+  private about: BrowserWindow | null = null;
+
+  showAbout(): void {
+    if (this.about && !this.about.isDestroyed()) {
+      this.about.show();
+      return;
+    }
+    const win = new BrowserWindow({
+      title: "About AGENCY",
+      width: 420,
+      height: 470,
+      resizable: false,
+      minimizable: false,
+      maximizable: false,
+      fullscreenable: false,
+      show: false,
+      ...(process.platform === "darwin"
+        ? {
+            titleBarStyle: "hiddenInset" as const,
+            vibrancy: "under-window" as const,
+            visualEffectState: "active" as const,
+            backgroundColor: "#00000000",
+          }
+        : {}),
+      webPreferences: this.webPreferences("about"),
+    });
+    this.about = win;
+    const q = new URLSearchParams({ v: app.getVersion(), b: process.env.AGENCY_BUILD ?? "" });
+    void win.loadURL(`${SCHEME}://host/about/index.html?${q}`);
+    win.once("ready-to-show", () => win.show());
+  }
+
+  private setupMacChrome(): void {
+    if (process.platform !== "darwin") return;
+    if (!this.opts.paths.packaged) {
+      const icon = join(this.opts.paths.appDir, "build", "icon.png");
+      if (existsSync(icon)) app.dock?.setIcon(icon);
+    }
+    Menu.setApplicationMenu(
+      Menu.buildFromTemplate([
+        {
+          label: "AGENCY",
+          submenu: [
+            { label: "About AGENCY", click: () => this.showAbout() },
+            { type: "separator" },
+            {
+              label: "Stop everything",
+              accelerator: this.settings.stopHotkey || undefined,
+              click: () => void this.stopAll("menu"),
+            },
+            { label: "Call for help", click: () => void this.help("help_button") },
+            { type: "separator" },
+            { role: "hide" },
+            { role: "hideOthers" },
+            { type: "separator" },
+            { role: "quit" },
+          ],
+        },
+        { role: "editMenu" },
+        { role: "windowMenu" },
+      ]),
+    );
+  }
+
+  // ------------------------------------------------------------------------------------------------------
   // Lifeline and Stop
 
   surfaceEmergency(): void {
@@ -572,8 +651,17 @@ export class AgencyApp {
     return this.lifeline.help(source, test);
   }
 
-  async stopAll(origin: string): Promise<StopAllResult> {
+  private stopping: Promise<StopAllResult> | null = null;
+
+  /** Requests that arrive while a Stop is in progress join it, so a window answering the broadcast can't loop. */
+  stopAll(origin: string): Promise<StopAllResult> {
     this.record("stop.request", { origin });
+    if (this.stopping) return this.stopping;
+    this.stopping = this.runStop().finally(() => setTimeout(() => (this.stopping = null), 300));
+    return this.stopping;
+  }
+
+  private async runStop(): Promise<StopAllResult> {
     const result = await stopAll(
       {
         agent: () => {
