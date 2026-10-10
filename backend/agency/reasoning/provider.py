@@ -210,6 +210,8 @@ class CloudProvider:
     last_error_at: str | None = None
     state: str = "configured"
     history: list[dict[str, Any]] = field(default_factory=list)
+    # Set per request by the Synapse layer (agency/synapse.py): the weighted expert lenses for this request.
+    expert_brief: str = ""
 
     name: ClassVar[str] = "cloud"
     label: ClassVar[str] = "Cloud model"
@@ -248,6 +250,9 @@ class CloudProvider:
             self.last_error = error
             self.last_error_at = utcnow()
         self.history = (self.history + [{"at": utcnow(), "purpose": purpose, "ok": ok, "error": error}])[-20:]
+
+    def system_prompt(self) -> str:
+        return f"{SYSTEM_PROMPT}\n{self.expert_brief}\n" if self.expert_brief else SYSTEM_PROMPT
 
     def _parse_object(self, purpose: str, text: str | None) -> dict[str, Any] | None:
         if not text:
@@ -373,7 +378,7 @@ class AnthropicProvider(CloudProvider):
         kwargs: dict[str, Any] = {
             "model": self.model,
             "max_tokens": max_tokens,
-            "system": SYSTEM_PROMPT,
+            "system": self.system_prompt(),
             "messages": [{"role": "user", "content": user}],
             "output_config": {"effort": effort or self.effort, "format": {"type": "json_schema", "schema": schema}},
             "cache_control": {"type": "ephemeral"},
@@ -465,7 +470,7 @@ class GeminiProvider(CloudProvider):
         from google.genai import types
 
         config = types.GenerateContentConfig(
-            system_instruction=SYSTEM_PROMPT,
+            system_instruction=self.system_prompt(),
             response_mime_type="application/json",
             response_json_schema=schema,
             # Gemini counts thinking tokens against this limit, so leave room beyond the answer itself.

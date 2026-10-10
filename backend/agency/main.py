@@ -16,12 +16,13 @@ import socket
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 from fastapi import APIRouter, FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
+from pydantic import BaseModel, Field
 
 from . import __version__
 from .config import Settings, load_settings
@@ -46,12 +47,30 @@ from .models import (
     Preferences,
     StepStatus,
 )
+from .network import NetworkMonitor, monitor_from_env
 from .planning.planner import GOAL_CARDS, PHRASES, case_title, interpret, make_plan
 from .reasoning.local import with_local_model
 from .reasoning.provider import ReasoningProvider, build_provider
 from .services.common import INTEGRATIONS, ServiceError
 from .services.seed import ensure_seeded, seed_demo_data
+from .synapse import SynapseLayer, SynapseRouter, synapse_url_from_env
 from .tools.catalog import ASK_TOOL, TOOLS
+
+
+class SynapseRouteRequest(BaseModel):
+    text: str = Field(min_length=1, max_length=8000)
+    purpose: str = Field(default="task", max_length=40)
+
+
+class NetworkDemoRequest(BaseModel):
+    state: Literal["good", "slow", "critical", "offline"] | None = None
+
+
+def _route_summary(route: Any) -> dict[str, Any] | None:
+    if not isinstance(route, dict):
+        return None
+    return {k: route.get(k) for k in ("mode", "router", "network", "mixture", "decision", "note", "at", "purpose")}
+
 
 log = logging.getLogger("agency")
 
@@ -116,6 +135,7 @@ class AppState:
         runner: CaseRunner,
         provider: ReasoningProvider,
         lifeline: LifelineService,
+        network: NetworkMonitor | None = None,
     ) -> None:
         self.settings = settings
         self.db = db
@@ -123,6 +143,9 @@ class AppState:
         self.runner = runner
         self.provider = provider
         self.lifeline = lifeline
+        layer = provider if isinstance(provider, SynapseLayer) else None
+        self.network: NetworkMonitor = layer.monitor if layer else network or NetworkMonitor()
+        self.synapse: SynapseRouter = layer.router if layer else SynapseRouter(monitor=self.network)
         self.started_at = utcnow()
         self.held_on_start: list[str] = []
 
@@ -151,17 +174,33 @@ def create_app(
         local_model = getattr(chosen, "local", None)
         if local_model is not None and hasattr(local_model, "probe"):
             await local_model.probe()  # where it generates (this Mac or a cloud kernel); fine if it isn't up yet
+        if provider is None:
+            # Ray's Synapse-Mesh routes every AI request (experts + Cisco network budget); Gemini answers.
+            env = dict(os.environ)
+            monitor = monitor_from_env(env, cloud_configured=chosen.available)
+            chosen = SynapseLayer(chosen, SynapseRouter(monitor=monitor, url=synapse_url_from_env(env)))
+        layer = chosen if isinstance(chosen, SynapseLayer) else None
+        network = layer.monitor if layer else NetworkMonitor()
         lifeline = LifelineService(
             db,
             ChannelRouter(engine.faults, TwilioChannel.from_env()),
             public_url=settings.response_base_url(),
             home=HomeAssistantHome.from_env(),
+            network=network,
         )
         lifeline.on_startup()
-        state = AppState(settings, db, engine, CaseRunner(engine, inline=inline_runner), chosen, lifeline)
+        state = AppState(settings, db, engine, CaseRunner(engine, inline=inline_runner), chosen, lifeline, network)
         state.held_on_start = engine.reconcile_on_startup()
         app.state.agency = state
         supervisor = asyncio.create_task(lifeline.run(settings.lifeline_tick_s)) if settings.lifeline_loop else None
+
+        def on_network(old: str, new: str) -> None:
+            # Back online after an outage: Lifeline retries at once instead of waiting for its next tick.
+            if old in {"offline", "critical"} and new in {"good", "slow"}:
+                asyncio.get_running_loop().create_task(lifeline.tick())
+
+        state.network.on_change(on_network)
+        watcher = asyncio.create_task(state.network.run()) if settings.lifeline_loop and state.network.configured else None
         log.info(
             "AGENCY coordinator ready (db=%s, reasoning=%s, lifeline links=%s, twilio=%s)",
             settings.db_path,
@@ -172,10 +211,11 @@ def create_app(
         try:
             yield
         finally:
-            if supervisor:
-                supervisor.cancel()
-                with contextlib.suppress(asyncio.CancelledError):
-                    await supervisor
+            for task in (supervisor, watcher):
+                if task:
+                    task.cancel()
+                    with contextlib.suppress(asyncio.CancelledError):
+                        await task
             await state.runner.shutdown()
             db.close()
 
@@ -236,10 +276,24 @@ def create_app(
                 for k, v in s.provider.status().items()
                 if k in {"mode", "provider", "label", "model", "state", "description", "local", "private_explanations"}
             },
+            "network": s.network.snapshot(),
+            "synapse": {k: v for k, v in s.synapse.status().items() if k != "last_route"}
+            | {"last_route": _route_summary(s.synapse.status().get("last_route"))},
             "automation_paused": s.engine.automation_paused(),
             "auth_required": bool(settings.api_token),
             "demo_controls": settings.demo_controls,
         }
+
+    @api.get("/synapse")
+    async def synapse_status(request: Request) -> dict[str, Any]:
+        s = st(request)
+        return {**s.synapse.status(), "network": s.network.snapshot(), "recent": s.synapse.recent(10)}
+
+    @api.post("/synapse/route")
+    async def synapse_route(body: SynapseRouteRequest, request: Request) -> dict[str, Any]:
+        """Route a request through Synapse-Mesh (experts + network budget). Used by the agent before each task."""
+        route = await st(request).synapse.route(body.text, body.purpose)
+        return {**route.to_dict(), "brief": route.brief()}
 
     @api.get("/runtime")
     async def runtime(request: Request) -> dict[str, Any]:
@@ -547,12 +601,22 @@ def create_app(
                     "on_device": bool(status.get("on_device")),
                     "facts": paragraphs,
                 }
+            result["route"] = s.provider.status().get("route")
         return result
 
     # -- demo controls (presenter only) ---------------------------------------------------
     def require_demo(s: AppState) -> None:
         if not settings.demo_controls:
             raise HTTPException(403, "Demo controls are disabled on this coordinator.")
+
+    @api.put("/demo/network")
+    async def put_network(body: NetworkDemoRequest, request: Request) -> dict[str, Any]:
+        """Presenter: simulate the network (also moves Synapse-Mesh's mock telemetry); null returns to live."""
+        s = st(request)
+        require_demo(s)
+        snapshot = await s.network.set_demo(body.state)
+        s.engine.store.audit(None, "demo_network", f"Presenter set the network to {body.state or 'live'}", actor="presenter")
+        return snapshot
 
     @api.get("/demo/faults")
     async def get_faults(request: Request) -> dict[str, Any]:
