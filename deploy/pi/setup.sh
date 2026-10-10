@@ -61,7 +61,7 @@ AGENCY_ALLOWED_ORIGINS=http://localhost:5173,http://127.0.0.1:5173,http://localh
 # Presenter controls for the hackathon demo (fault injection, reset). Set to 0 for everyday use.
 AGENCY_DEMO_CONTROLS=1
 AGENCY_REASONING=auto
-# ANTHROPIC_API_KEY=   # optional: enables cloud reasoning; AGENCY works fully without it
+# GEMINI_API_KEY=   # optional: enables cloud reasoning (Google Gemini); AGENCY works fully without it
 ENV
   sudo chmod 600 "$ENV_FILE"
   sudo chown "$SERVICE_USER" "$ENV_FILE"

@@ -17,7 +17,7 @@ It is not a kernel operating system; it runs on macOS and takes over the experie
 2. **It knows them**: a personal memory tree learns what the person usually chooses (Friday pad thai, the
    pharmacy they use, the phrases they say most) and offers it first, with a plain reason ("4 of your last 5
    Fridays"). They can see, change or erase everything it knows.
-3. **It can do any task**: an AI agent (Claude) carries out the task in the person's real browser and apps:
+3. **It can do any task**: an AI agent (Google Gemini) carries out the task in the person's real browser and apps:
    ordering food, filling and signing forms, booking appointments, sending messages, placing calls in which the
    person speaks through text-to-speech. It asks before anything consequential and checks that it worked.
 4. **Their eyes work everywhere**: the eye-control layer floats over every app, snaps the gaze to real buttons
@@ -43,7 +43,7 @@ speak, and who can't quickly undo a mistake?**
 │  │                                                                     ← os/overlay/       │
 │  ├─ Gaze engine (hidden window with the camera): webcam → MediaPipe → gaze, blink,         │
 │  │   help signal                                                       ← os/gaze/          │
-│  ├─ Agent runtime (Electron utility process): Claude, tools, approvals ← os/agent/         │
+│  ├─ Agent runtime (Electron utility process): Gemini, tools, approvals ← os/agent/         │
 │  ├─ agency-native (Swift helper, JSON-RPC over stdio): accessibility tree targets,         │
 │  │   clicks/typing, apps, screen capture, speech                       ← os/native-macos/  │
 │  └─ Coordinator sidecar (Python FastAPI, existing): cases, approvals, audit, memory,       │
@@ -51,7 +51,7 @@ speak, and who can't quickly undo a mistake?**
 │ Chrome + "AGENCY Bridge" extension ⇄ native messaging                  ← os/browser-bridge/│
 └────────────────────────────────────────────────────────────────────────────────────────────┘
   Optional Raspberry Pi coordinator: Lifeline keeps watching even if the Mac dies (DEPLOY_PI.md).
-  Anthropic API: only for tasks the person starts. Camera frames never leave the Mac.
+  Gemini API: only for tasks the person starts. Camera frames never leave the Mac.
 ```
 
 ### How the parts talk
