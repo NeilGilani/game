@@ -35,6 +35,7 @@ async function launch(extraEnv: Record<string, string> = {}): Promise<Ctx> {
       AGENCY_FAKE_NATIVE_LOG: nativeLog,
       AGENCY_FAKE_AGENT_LOG: agentLog,
       AGENCY_LOG_ECHO: "0",
+      AGENCY_GAZE: "mouse",
       ...extraEnv,
     },
   });

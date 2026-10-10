@@ -1,6 +1,7 @@
 // Builds the main process, the preload script and the built-in pages with Vite into out/.
 //   node scripts/build.mjs [--production]
 // Renderers owned by other packages (frontend, os/overlay, os/gaze) are built by those packages.
+import { cpSync, existsSync } from "node:fs";
 import { builtinModules } from "node:module";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -66,9 +67,18 @@ await build({
         overlay: resolve(root, "src/renderer/overlay/index.html"),
         onboarding: resolve(root, "src/renderer/onboarding/index.html"),
         "shell-missing": resolve(root, "src/renderer/shell-missing/index.html"),
+        gaze: resolve(root, "src/renderer/gaze/engine.html"),
       },
     },
   },
 });
+
+// MediaPipe runtime and face model for the gaze engine, served locally (never from a CDN).
+const frontendPublic = resolve(root, "..", "..", "frontend", "public");
+for (const dir of ["mediapipe", "models"]) {
+  const from = resolve(frontendPublic, dir);
+  if (existsSync(from)) cpSync(from, resolve(root, "out", "renderer", dir), { recursive: true });
+  else console.warn(`Missing ${from}: run npm run vendor -w frontend (the gaze engine needs it)`);
+}
 
 console.log(`Built AGENCY desktop (${production ? "production" : "development"}) into os/desktop/out`);

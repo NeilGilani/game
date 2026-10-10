@@ -182,7 +182,7 @@ export class AgencyApp {
         () => ({
           shell: paths.shellDir,
           overlay: paths.overlayDir.dir,
-          gaze: paths.gazeDir,
+          gaze: paths.gazeDir.dir,
           host: paths.hostRenderer,
         }),
         this.client,
@@ -340,8 +340,7 @@ export class AgencyApp {
   }
 
   private startGaze(): void {
-    const dir = this.opts.paths.gazeDir;
-    if (dir && process.env.AGENCY_GAZE !== "mouse") {
+    if (process.env.AGENCY_GAZE !== "mouse") {
       const win = new BrowserWindow({
         show: false,
         width: 320,
@@ -350,13 +349,13 @@ export class AgencyApp {
       });
       this.gazeWin = win;
       this.track(win, "gaze");
-      void win.loadURL(`${SCHEME}://gaze/engine.html`);
+      void win.loadURL(`${SCHEME}://gaze/${this.opts.paths.gazeDir.entry}`);
       this.setState("gaze", "starting");
       win.webContents.on("render-process-gone", () => {
         this.setState("gaze", "restarting");
         log.error("gaze engine crashed; using the mouse until it is back");
         this.useMouseGaze();
-        setTimeout(() => !win.isDestroyed() && void win.loadURL(`${SCHEME}://gaze/engine.html`), 1_000);
+        setTimeout(() => !win.isDestroyed() && void win.loadURL(`${SCHEME}://gaze/${this.opts.paths.gazeDir.entry}`), 1_000);
       });
       // Until the engine sends its first event, the mouse keeps working.
       this.useMouseGaze();

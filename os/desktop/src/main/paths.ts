@@ -19,7 +19,8 @@ export interface Paths {
   shellDir: string | null;
   /** `entry` is the page path inside `dir`, served as agency://overlay/<entry>. */
   overlayDir: { dir: string; entry: string; builtin: boolean };
-  gazeDir: string | null;
+  /** `entry` is the engine page inside `dir`, served as agency://gaze/<entry>. */
+  gazeDir: { dir: string; entry: string };
   agent: { entry: string; fake: boolean } | null;
   native: { command: string; args: string[]; fake: boolean } | null;
   sidecar: { command: string; args: string[]; cwd: string } | null;
@@ -100,7 +101,10 @@ export function resolvePaths(opts: {
     overlayDir: overlayIndex
       ? { dir: resolve(overlayIndex, ".."), entry: "index.html", builtin: false }
       : { dir: join(out, "renderer"), entry: "overlay/index.html", builtin: true },
-    gazeDir: gazeIndex ? resolve(gazeIndex, "..") : null,
+    // A package-built engine page wins; otherwise the built-in page that hosts @agency/gaze.
+    gazeDir: gazeIndex
+      ? { dir: resolve(gazeIndex, ".."), entry: "engine.html" }
+      : { dir: join(out, "renderer"), entry: "gaze/engine.html" },
     agent,
     native,
     sidecar,
