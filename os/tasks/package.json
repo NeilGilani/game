@@ -11,7 +11,7 @@
     "./pdf": "./src/documents/pdf/index.ts"
   },
   "scripts": {
-    "typecheck": "tsc --noEmit",
+    "typecheck": "tsc --noEmit && tsc --noEmit -p harness",
     "test": "vitest run",
     "lint": "eslint .",
     "format:check": "prettier --check \"src/**/*.ts\" \"tests/**/*.ts\" \"harness/**/*.{ts,tsx}\"",
