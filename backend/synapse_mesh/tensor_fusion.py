@@ -5,6 +5,7 @@ form B @ A, not A @ B. alpha/r (or alpha/sqrt(r)) is part of the trained delta.
 """
 from collections import OrderedDict
 from contextlib import ExitStack
+from contextlib import contextmanager
 from dataclasses import dataclass
 import json
 import math
@@ -136,6 +137,168 @@ class AdapterTensorStore:
         return a.to(device=device), b.to(device=device)
 
 
+class ResidentFusion:
+    """Prepared, immutable adapter vault on the SAME device as a plain base.
+
+    Metadata is validated once. Factors load lazily, then remain resident until
+    shutdown; warm() loads the entire configured vault before readiness. There
+    is no CPU cache, eviction, disk access, or device transfer on a warm request.
+    The caller must serialize the entire fused forward-pass transaction.
+    """
+
+    @torch.no_grad()
+    def __init__(self, model, adapter_paths, *, adapter_names, base_model_id,
+                 base_revision=None, cache_bytes=512 * 1024 * 1024,
+                 reserve_bytes=1024 * 1024 * 1024, compute_dtype=None):
+        self.model = model.eval().requires_grad_(False)
+        self.names = tuple(adapter_names)
+        if not self.names or len(set(self.names)) != len(self.names) or len(self.names) != len(adapter_paths):
+            raise ValueError('Distinct adapter names must match the configured paths')
+        parameters = list(model.parameters())
+        devices = {p.device for p in parameters}
+        if len(devices) != 1 or not all(p.is_floating_point() for p in parameters):
+            raise ValueError('Resident fusion requires a floating base on one device')
+        if getattr(model, 'is_loaded_in_4bit', False) or getattr(model, 'is_loaded_in_8bit', False):
+            raise ValueError('Packed quantized base weights cannot be modified with add_')
+        if any(hasattr(m, 'lora_A') for m in model.modules()):
+            raise ValueError('Resident fusion requires a plain base without PEFT forward branches')
+        self.device = next(iter(devices))
+        self.dtype = compute_dtype or parameters[0].dtype
+        if self.dtype not in (torch.float16, torch.bfloat16):
+            raise ValueError('Resident LoRA products must use FP16 or BF16')
+        self.modules = dict(model.named_modules())
+        self.plans = dict(zip(self.names, (
+            _adapter_plan(path, model, base_model_id, base_revision) for path in adapter_paths)))
+        target_names = sorted({pair.module for _, pairs in self.plans.values() for pair in pairs})
+        self.factor_bytes = 0
+        for filename, pairs in self.plans.values():
+            with safe_open(filename, framework='pt', device='cpu') as reader:
+                self.factor_bytes += sum(math.prod(reader.get_slice(key).get_shape()) * 2
+                                         for pair in pairs for key in (pair.a_key, pair.b_key))
+        if cache_bytes < 0 or reserve_bytes < 0 or self.factor_bytes > cache_bytes:
+            raise MemoryError('Configured adapter vault exceeds the resident factor cache budget')
+        snapshot_bytes = sum(self.modules[name].weight.numel() * self.modules[name].weight.element_size()
+                             for name in target_names)
+        workspace_elements = max(self.modules[name].weight.numel() for name in target_names)
+        self.workspace_bytes = workspace_elements * 2
+        if self.device.type == 'cuda':
+            free, _ = torch.cuda.mem_get_info(self.device)
+            if snapshot_bytes + self.workspace_bytes + self.factor_bytes + reserve_bytes > free:
+                raise MemoryError('Insufficient VRAM for vault, snapshots, workspace, and generation reserve')
+        self.pristine = {name: self.modules[name].weight.detach().clone() for name in target_names}
+        self.workspace = torch.empty(workspace_elements, device=self.device, dtype=self.dtype)
+        self.factors = {}
+        self.norms = {}
+        self.loads = 0
+        self.hits = 0
+        self.is_fused = False
+
+    @torch.no_grad()
+    def load_adapter(self, name):
+        if name in self.factors:
+            self.hits += 1
+            return self.factors[name]
+        filename, pairs = self.plans[name]
+        loaded = []
+        norms = []
+        with safe_open(filename, framework='pt', device='cpu') as reader:
+            for pair in pairs:
+                a = reader.get_tensor(pair.a_key).to(device=self.device, dtype=self.dtype)
+                b = reader.get_tensor(pair.b_key).to(device=self.device, dtype=self.dtype)
+                if not torch.isfinite(a).all() or not torch.isfinite(b).all():
+                    raise ValueError('Adapter factors must be finite in the compute precision')
+                loaded.append((pair, a, b))
+                target = self.modules[pair.module].weight
+                delta = self.workspace[:target.numel()].view(target.shape)
+                torch.matmul(b, a, out=delta)
+                norms.append(torch.linalg.vector_norm(delta, dtype=torch.float32))
+        self.norms[name] = dict(zip((pair.module for pair in pairs), torch.stack(norms).cpu().tolist()))
+        self.factors[name] = tuple(loaded)
+        self.loads += 1
+        return self.factors[name]
+
+    def warm(self):
+        for name in self.names:
+            self.load_adapter(name)
+        synchronize(self.device)
+
+    def get_matrices(self, name):
+        """Return module -> (A:[rank,in], B:[out,rank], trained scaling)."""
+        return {pair.module: (a, b, pair.scale) for pair, a, b in self.load_adapter(name)}
+
+    @property
+    def resident_bytes(self):
+        return sum(t.numel() * t.element_size() for factors in self.factors.values()
+                   for _, a, b in factors for t in (a, b))
+
+    @torch.no_grad()
+    def restore(self):
+        for name, pristine in self.pristine.items():
+            self.modules[name].weight.copy_(pristine)
+        self.is_fused = False
+
+    @torch.no_grad()
+    def apply(self, weight_vector):
+        """Modify real base matrices before forward; coefficients are never normalized."""
+        coefficients = _weights(self.names, weight_vector)
+        if self.is_fused:
+            self.restore()
+        synchronize(self.device)
+        started = time.perf_counter()
+        loads, hits = self.loads, self.hits
+        sample = None
+        layer_names = set()
+        rows = {}
+        try:
+            # Resolve every active adapter before touching a base matrix.
+            active = [(name, weight, self.load_adapter(name))
+                      for name, weight in zip(self.names, coefficients) if weight > 0]
+            self.is_fused = bool(active)  # Roll back even if a later matmul fails.
+            for name, weight, factors in active:
+                for pair, a, b in factors:
+                    target = self.modules[pair.module].weight
+                    delta = self.workspace[:target.numel()].view(target.shape)
+                    torch.matmul(b, a, out=delta)
+                    scale = weight * pair.scale
+                    target.add_(delta, alpha=scale)
+                    layer_names.add(pair.module)
+                    row = rows.setdefault(pair.module, {'module': pair.module, 'shape': list(target.shape),
+                                                         'delta_norms': {}})
+                    row['delta_norms'][name] = self.norms[name][pair.module] * scale
+                    if sample is None:
+                        sample = {'module': pair.module,
+                                  'base': self.pristine[pair.module][:6, :6].float().cpu().tolist(),
+                                  'contributions': {}}
+                    if pair.module == sample['module']:
+                        sample['contributions'][name] = (delta[:6, :6].float() * scale).cpu().tolist()
+            if sample:
+                sample['fused'] = self.modules[sample['module']].weight[:6, :6].float().cpu().tolist()
+            synchronize(self.device)
+            return {'weights': dict(zip(self.names, coefficients)), 'device': str(self.device),
+                    'compute_dtype': str(self.dtype).removeprefix('torch.'),
+                    'base_dtype': str(next(self.model.parameters()).dtype).removeprefix('torch.'),
+                    'fusion_ms': (time.perf_counter() - started) * 1000,
+                    'layer_count': len(layer_names), 'layers': list(rows.values()),
+                    'resident_adapter_bytes': self.resident_bytes,
+                    'snapshot_bytes': sum(t.numel() * t.element_size() for t in self.pristine.values()),
+                    'workspace_bytes': self.workspace_bytes, 'adapters_loaded': self.loads - loads,
+                    'adapter_cache_hits': self.hits - hits, 'matrix_sample': sample,
+                    'loaded_adapters': [name for name, _, _ in active],
+                    'gpu_resident_factors': self.device.type == 'cuda',
+                    'adapter_forward_branches': 0, 'disk_writes': 0,
+                    'equation': 'W_base + sum(w_i * scale_i * (B_i @ A_i))'}
+        except BaseException:
+            self.restore()
+            raise
+
+    @contextmanager
+    def fused(self, weight_vector):
+        try:
+            yield self.apply(weight_vector)
+        finally:
+            self.restore()
+
+
 def _pattern_value(pattern, module, default):
     for name, value in pattern.items():
         if re.match(rf'(.*\.)?({name})$', module):
@@ -189,7 +352,7 @@ def _weights(adapter_paths, weight_vector):
     values = [float(value) for value in weight_vector]
     if len(adapter_paths) != len(values) or not values:
         raise ValueError('Provide one coefficient per adapter path')
-    if any(not math.isfinite(w) or w < 0 for w in values) or math.fsum(values) > 1 + 1e-5:
+    if any(not math.isfinite(w) or w < 0 or w > 1 + 1e-5 for w in values) or math.fsum(values) > 1 + 1e-5:
         raise ValueError('Coefficients must be finite, nonnegative, and sum to at most one')
     return values
 

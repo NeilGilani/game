@@ -1,14 +1,184 @@
-"""Legacy PEFT comparison reference, used only by regression tests.
+"""Resident cloud kernel plus the legacy PEFT regression reference.
 
-The production engine is tensor_fusion.fuse_weights on an ordinary base model.
+CloudKernel owns one plain GPU base and a VRAM-resident ResidentFusion vault.
+FusionKernel is retained only for compatibility with the PEFT reference tests.
 """
 from contextlib import contextmanager
 import math
 import time
+from threading import Event, Lock
 from typing import Mapping
 
 import torch
 from peft.tuners.lora.layer import LoraLayer
+
+from .tensor_fusion import ResidentFusion, _weights
+
+
+class CloudKernel:
+    """One model per process; fusion, decoding, and restoration are atomic.
+
+    Production construction is CUDA-only. CPU injection exists solely for tiny
+    deterministic tests; it is never selected by the service's model loader.
+    """
+
+    def __init__(self, model, tokenizer, vault, *, max_input_tokens=4096,
+                 max_new_tokens=512, allow_cpu_for_tests=False):
+        if vault.model is not model:
+            raise ValueError('Vault and kernel must share the exact base model')
+        if vault.device.type != 'cuda' and not allow_cpu_for_tests:
+            raise RuntimeError('The cloud kernel requires a CUDA GPU; no laptop fallback')
+        self.model = model.eval().requires_grad_(False)
+        self.tokenizer = tokenizer
+        self.vault = vault
+        self.lock = Lock()
+        self.max_input_tokens = max_input_tokens
+        self.max_new_tokens = max_new_tokens
+        self.context_limit = getattr(model.config, 'max_position_embeddings', max_input_tokens + max_new_tokens)
+
+    @classmethod
+    def load(cls, config):
+        import os
+        from pathlib import Path
+        from transformers import AutoModelForCausalLM, AutoTokenizer
+        from .vault_manager import VaultManager, SharedVolumeFusion
+        if not torch.cuda.is_available():
+            raise RuntimeError('CUDA unavailable: deploy this service on the Outshift GPU host')
+        device = torch.device(config.device)
+        if device.type != 'cuda':
+            raise ValueError('CLOUD_DEVICE must be a CUDA device')
+        with torch.cuda.device(device):
+            dtype = torch.bfloat16 if torch.cuda.is_bf16_supported() else torch.float16
+            if config.dtype == 'float16':
+                dtype = torch.float16
+            elif config.dtype == 'bfloat16':
+                if not torch.cuda.is_bf16_supported():
+                    raise RuntimeError('This GPU does not support requested BF16')
+                dtype = torch.bfloat16
+            # Files download only at startup. No model/API routing during requests.
+            tokenizer = AutoTokenizer.from_pretrained(
+                config.base_model, revision=config.base_revision,
+                trust_remote_code=False, local_files_only=config.local_files_only)
+            model = AutoModelForCausalLM.from_pretrained(
+                config.base_model, revision=config.base_revision,
+                torch_dtype=dtype, device_map={'': str(device)},
+                trust_remote_code=False, local_files_only=config.local_files_only)
+            if config.vault_mode == 'resident':
+                vault = ResidentFusion(model, list(config.adapters.values()),
+                                       adapter_names=list(config.adapters), base_model_id=config.base_model,
+                                       base_revision=config.base_revision, compute_dtype=dtype,
+                                       cache_bytes=config.adapter_cache_bytes,
+                                       reserve_bytes=config.generation_reserve_bytes)
+            else:
+                root = config.vault_root or Path(os.path.commonpath([str(path.parent) for path in config.adapters.values()]))
+                manager = VaultManager(root, base_model_id=config.base_model, base_revision=config.base_revision,
+                                       device=device, dtype=dtype, cache_bytes=config.adapter_cache_bytes,
+                                       adapter_paths=config.adapters, reserve_bytes=config.generation_reserve_bytes)
+                vault = SharedVolumeFusion(model, manager)
+            try:
+                vault.warm()
+            except BaseException:
+                if hasattr(vault, 'close'):
+                    vault.close()
+                raise
+        return cls(model, tokenizer, vault, max_input_tokens=config.max_input_tokens,
+                   max_new_tokens=config.max_new_tokens)
+
+    def validate(self, prompt, weight_vector, max_new_tokens):
+        if not isinstance(prompt, str) or not prompt.strip():
+            raise ValueError('Prompt must not be empty')
+        if len(prompt) > self.max_input_tokens * 16:
+            raise ValueError('Prompt exceeds the character limit')
+        if isinstance(max_new_tokens, bool) or not isinstance(max_new_tokens, int) or not 1 <= max_new_tokens <= self.max_new_tokens:
+            raise ValueError(f'max_new_tokens must be between 1 and {self.max_new_tokens}')
+        return _weights(self.vault.names, weight_vector)
+
+    @torch.no_grad()
+    def _inputs(self, prompt, max_new_tokens):
+        # The unchanged user prompt is the ONLY message; no specialist roles.
+        if getattr(self.tokenizer, 'chat_template', None):
+            inputs = self.tokenizer.apply_chat_template(
+                [{'role': 'user', 'content': prompt}], add_generation_prompt=True,
+                tokenize=True, return_dict=True, return_tensors='pt')
+        else:
+            inputs = self.tokenizer(prompt, return_tensors='pt')
+        length = inputs['input_ids'].shape[1]
+        if length > self.max_input_tokens or length + max_new_tokens > self.context_limit:
+            raise ValueError('Tokenized prompt plus output exceeds the configured context limit')
+        return {name: value.to(self.vault.device) for name, value in inputs.items()
+                if name in ('input_ids', 'attention_mask')}
+
+    def events(self, prompt, weight_vector, max_new_tokens=192, *, stop=None, prefix_token_ids=None):
+        weights = self.validate(prompt, weight_vector, max_new_tokens)
+        stop = stop if stop is not None else Event()
+        started = time.perf_counter()
+        # Poll rather than block forever when a queued HTTP request disconnects.
+        while not self.lock.acquire(timeout=.05):
+            if stop.is_set():
+                return
+        try:
+            if stop.is_set():
+                return
+            inputs = self._inputs(prompt, max_new_tokens)
+            input_length = inputs['input_ids'].shape[1]
+            ids = list(prefix_token_ids or [])
+            if (len(ids) > max_new_tokens or any(isinstance(t, bool) or not isinstance(t, int)
+                    or not 0 <= t < self.model.config.vocab_size for t in ids)):
+                raise ValueError('Invalid cached generation prefix')
+            text = self.tokenizer.decode(ids, skip_special_tokens=True) if ids else ''
+            eos = getattr(self.model.generation_config, 'eos_token_id', None)
+            eos = {eos} if isinstance(eos, int) else set(eos or [])
+            reason = 'length'
+            with torch.inference_mode(), self.vault.fused(weights) as audit:
+                yield {'event': 'fusion', **audit, 'audit': audit,
+                       'execution': {'location': 'cloud', 'device': str(self.vault.device)}}
+                generation_started = time.perf_counter()
+                past = None
+                next_input = inputs['input_ids']
+                mask = inputs.get('attention_mask', torch.ones_like(next_input))
+                if ids:
+                    prefix = torch.tensor([ids], device=self.vault.device, dtype=next_input.dtype)
+                    next_input = torch.cat((next_input, prefix), dim=1)
+                    mask = torch.cat((mask, torch.ones_like(prefix)), dim=1)
+                remaining = max_new_tokens - len(ids)
+                if ids and ids[-1] in eos:
+                    remaining, reason = 0, 'eos'
+                for index in range(len(ids), len(ids) + remaining):
+                    if stop.is_set():
+                        return
+                    output = self.model(input_ids=next_input, attention_mask=mask,
+                                        past_key_values=past, use_cache=True, return_dict=True)
+                    token = output.logits[:, -1, :].argmax(dim=-1, keepdim=True)
+                    token_id = int(token.item())
+                    ids.append(token_id)
+                    new_text = self.tokenizer.decode(ids, skip_special_tokens=True)
+                    delta = new_text[len(text):] if new_text.startswith(text) else ''
+                    text = new_text
+                    past = output.past_key_values
+                    del output
+                    yield {'event': 'token', 'index': index, 'token_id': token_id,
+                           'delta': delta, 'text': text}
+                    if token_id in eos:
+                        reason = 'eos'
+                        break
+                    next_input = token
+                    mask = torch.cat((mask, torch.ones_like(token)), dim=1)
+                synchronize(self.vault.device)
+                generation_ms = (time.perf_counter() - generation_started) * 1000
+                # Release KV cache before accepting the next transaction.
+                del past
+                restore_started = time.perf_counter()
+            synchronize(self.vault.device)
+            restore_ms = (time.perf_counter() - restore_started) * 1000
+            yield {'event': 'complete', 'text': text, 'token_ids': ids,
+                   'input_tokens': input_length, 'output_tokens': len(ids),
+                   'finish_reason': reason, 'weights': audit['weights'], 'audit': audit,
+                   'base_restored': True,
+                   'timing': {'fusion_ms': audit['fusion_ms'], 'generation_ms': generation_ms,
+                              'restore_ms': restore_ms,
+                              'total_ms': (time.perf_counter() - started) * 1000}}
+        finally:
+            self.lock.release()
 
 
 def synchronize(device: torch.device) -> None:

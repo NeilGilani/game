@@ -1,4 +1,4 @@
-"""Read-only IOS XE RESTCONF telemetry, with explicitly simulated demo states."""
+"""Cloud-Kernel RTT and read-only IOS XE telemetry, with simulated demo states."""
 from dataclasses import asdict, dataclass, replace
 from enum import StrEnum
 import math
@@ -48,15 +48,20 @@ class CiscoSentinel:
     """
     def __init__(self, host=None, username=None, password=None, *, mock_mode=True,
                  verify_tls=True, interface_names=(), utilization_threshold=.7,
-                 latency_threshold_ms=250, poll_interval=2, timeout=3,
+                 latency_threshold_ms=150, poll_interval=2, timeout=3,
                  restconf_path='/restconf/data/ietf-interfaces:interfaces-state',
                  transport=None, clock=time.monotonic, critical_utilization_threshold=.95,
-                 critical_latency_threshold_ms=1000):
+                 critical_latency_threshold_ms=1000, cloud_kernel_url=None):
         if not 0 < utilization_threshold <= 1 or not all(math.isfinite(x) and x > 0 for x in (latency_threshold_ms, poll_interval, timeout)):
             raise ValueError('Telemetry thresholds, interval, and timeout must be finite and positive')
         if not utilization_threshold < critical_utilization_threshold <= 1 or not math.isfinite(critical_latency_threshold_ms) or critical_latency_threshold_ms <= latency_threshold_ms:
             raise ValueError('Critical thresholds must exceed the congestion thresholds')
         self.host = host.rstrip('/') if host else None
+        self.cloud_kernel_url = cloud_kernel_url
+        if cloud_kernel_url:
+            parts = urlsplit(cloud_kernel_url)
+            if parts.scheme not in ('http', 'https') or not parts.hostname or parts.username or parts.password or parts.fragment:
+                raise ValueError('Cloud-Kernel probe must be an HTTP(S) URL without embedded credentials')
         if self.host:
             parts = urlsplit(self.host)
             if parts.scheme != 'https' or not parts.hostname or parts.username or parts.password or parts.query or parts.fragment or parts.path:
@@ -74,28 +79,42 @@ class CiscoSentinel:
         self._lock = RLock()
         self._previous = {}
         self._last_poll = clock()
-        self._snapshot = NetworkSnapshot(NetworkState.OFFLINE, 'mock' if mock_mode else 'restconf', 0, time.time(), detail='No telemetry sample yet')
+        source = 'mock' if mock_mode else 'cloud-rtt' if cloud_kernel_url else 'restconf'
+        kind = 'Edge-to-Cloud-Kernel HTTP round-trip time' if cloud_kernel_url else 'RESTCONF management response time'
+        self._snapshot = NetworkSnapshot(NetworkState.OFFLINE, source, 0, time.time(),
+                                         detail='No telemetry sample yet', latency_kind=kind)
         if mock_mode:
             self.set_mock_state(NetworkState.OPTIMAL)
 
     @classmethod
     def from_env(cls):
         mode = os.getenv('CISCO_MODE', 'mock').lower()
-        if mode not in ('mock', 'restconf'):
-            raise ValueError('CISCO_MODE must be mock or restconf')
+        if mode not in ('mock', 'restconf', 'cloud'):
+            raise ValueError('CISCO_MODE must be mock, restconf, or cloud')
+        cloud_url = (os.getenv('SYNAPSE_CLOUD_KERNEL_HEALTH_URL') or os.getenv('SYNAPSE_CLOUD_KERNEL_URL')) if mode == 'cloud' else None
+        if mode == 'cloud' and not cloud_url:
+            raise ValueError('Cloud monitoring requires SYNAPSE_CLOUD_KERNEL_URL (a lightweight health endpoint)')
+        if mode == 'cloud' and not os.getenv('SYNAPSE_CLOUD_KERNEL_HEALTH_URL'):
+            parts = urlsplit(cloud_url)
+            if not parts.path.endswith('/health'):
+                cloud_url = f'{parts.scheme}://{parts.netloc}/health'
         return cls(os.getenv('CISCO_HOST'), os.getenv('CISCO_USERNAME'), os.getenv('CISCO_PASSWORD'),
                    mock_mode=mode == 'mock', verify_tls=os.getenv('CISCO_VERIFY_TLS', 'true').lower() != 'false',
                    interface_names=filter(None, os.getenv('CISCO_INTERFACES', '').split(',')),
                    utilization_threshold=float(os.getenv('CISCO_UTILIZATION_THRESHOLD', '.7')),
-                   latency_threshold_ms=float(os.getenv('CISCO_LATENCY_THRESHOLD_MS', '250')),
+                   latency_threshold_ms=float(os.getenv('CISCO_LATENCY_THRESHOLD_MS', '150')),
                    poll_interval=float(os.getenv('CISCO_POLL_INTERVAL', '2')),
                    critical_utilization_threshold=float(os.getenv('CISCO_CRITICAL_UTILIZATION_THRESHOLD', '.95')),
                    critical_latency_threshold_ms=float(os.getenv('CISCO_CRITICAL_LATENCY_THRESHOLD_MS', '1000')),
-                   restconf_path=os.getenv('CISCO_RESTCONF_PATH', '/restconf/data/ietf-interfaces:interfaces-state'))
+                   restconf_path=os.getenv('CISCO_RESTCONF_PATH', '/restconf/data/ietf-interfaces:interfaces-state'),
+                   cloud_kernel_url=cloud_url)
 
     def _publish(self, state, **metrics):
         revision = self._snapshot.revision + (state != self._snapshot.state)
-        self._snapshot = NetworkSnapshot(state, 'mock' if self.mock_mode else 'restconf', revision, time.time(), **metrics)
+        source = 'mock' if self.mock_mode else 'cloud-rtt' if self.cloud_kernel_url else 'restconf'
+        if self.cloud_kernel_url and not self.mock_mode:
+            metrics.setdefault('latency_kind', 'Edge-to-Cloud-Kernel HTTP round-trip time')
+        self._snapshot = NetworkSnapshot(state, source, revision, time.time(), **metrics)
         self._last_poll = self.clock()
         return self._snapshot
 
@@ -117,6 +136,8 @@ class CiscoSentinel:
     def poll(self):
         if self.mock_mode:
             return self.snapshot()
+        if self.cloud_kernel_url:
+            return self._poll_cloud()
         with self._lock:
             if not all((self.host, self.username, self.password)):
                 return self._publish(NetworkState.OFFLINE, detail='Configure CISCO_HOST, CISCO_USERNAME, and CISCO_PASSWORD')
@@ -173,3 +194,23 @@ class CiscoSentinel:
             except (httpx.HTTPError, ValueError, TypeError, AttributeError, KeyError):
                 self._previous.clear()
                 return self._publish(NetworkState.OFFLINE, detail='RESTCONF transport failed or telemetry was invalid')
+
+    def _poll_cloud(self):
+        # Do not hold the snapshot lock across network I/O: inference and UI
+        # readers must remain responsive while a probe waits or times out.
+        try:
+            started = self.clock()
+            with httpx.Client(verify=self.verify_tls, timeout=self.timeout,
+                              transport=self.transport, trust_env=False) as client:
+                with client.stream('GET', self.cloud_kernel_url) as response:
+                    response.raise_for_status()
+                    # Measure through response headers, without downloading a
+                    # large body. Use the Cloud-Kernel's lightweight health URL.
+                    latency = max(0, (self.clock() - started) * 1000)
+            state = (NetworkState.CRITICAL if latency >= self.critical_latency_threshold_ms else
+                     NetworkState.CONGESTED if latency > self.latency_threshold_ms else NetworkState.OPTIMAL)
+            with self._lock:
+                return self._publish(state, latency_ms=latency, detail='Measured Cloud-Kernel health round trip')
+        except (httpx.HTTPError, ValueError):
+            with self._lock:
+                return self._publish(NetworkState.OFFLINE, detail='Cloud-Kernel probe failed or timed out')

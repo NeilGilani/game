@@ -1,0 +1,74 @@
+{
+  "validation_root": "/var/folders/yw/06f2439d7hd96fbys_rwdszw0000gn/T/synapse-shared-vault-validation-0k0jld8_",
+  "cluster_mount_present": false,
+  "adapters_verified": [
+    "coding",
+    "medical",
+    "legal",
+    "hub_7855779392a3",
+    "hub_6a3f9e02cc1f",
+    "generalist"
+  ],
+  "idempotent": true,
+  "original_files_preserved": true,
+  "manifest": {
+    "base_model": "Qwen/Qwen2.5-1.5B-Instruct",
+    "base_revision": "989aa7980e4cf806f80c7fef2b1adb7bc71aa306",
+    "adapters": {
+      "coding": {
+        "path": "adapters/coding/30b32087a85f9f49e90754d7b94bf3bf647cd8d682d9056e6922b4f712761185",
+        "sha256": {
+          "adapter_config.json": "f4a077a0c55be0e188809969893c99e66b19ada642fb6825880babec6b1395f0",
+          "adapter_model.safetensors": "3416de2cbaea973eed871ae8a94451ce7281118f85aca71c860cfee49260ee57"
+        },
+        "rank": 8,
+        "expertise": ""
+      },
+      "medical": {
+        "path": "adapters/medical/0e25ada3d6ad4ae39f40ab6c864c73b6048fdeb82b0d4bd1cb1c2c886eb2f3a8",
+        "sha256": {
+          "adapter_config.json": "f4a077a0c55be0e188809969893c99e66b19ada642fb6825880babec6b1395f0",
+          "adapter_model.safetensors": "f49221f632027cd7dcca3ffceba1617afc80f0dfd42c33b614e261e20b27aa99"
+        },
+        "rank": 8,
+        "expertise": ""
+      },
+      "legal": {
+        "path": "adapters/legal/8b831f105f9ca725dfde67c4d43ffa98e74a1f01cf719dec04867895768af5a3",
+        "sha256": {
+          "adapter_config.json": "f4a077a0c55be0e188809969893c99e66b19ada642fb6825880babec6b1395f0",
+          "adapter_model.safetensors": "bab319d571e31ced79489fdf93ddcaebb5c75ebbdcc5a0cae70148bb6438e94b"
+        },
+        "rank": 8,
+        "expertise": ""
+      },
+      "hub_7855779392a3": {
+        "path": "adapters/hub_7855779392a3/541a28ee535e1a51ed6792675e7533570e6f4356105a4d66cf55ba3c11ce95d4",
+        "sha256": {
+          "adapter_config.json": "a23db6d0840ea505174bdbd619824892b4e94ff3d6ff5fd89dfd2f00ab3c9291",
+          "adapter_model.safetensors": "f58b88dae768f1cd84e25f2853f776d8d15d44c47ad4eb68a06f4fcfe636a0ba"
+        },
+        "rank": 16,
+        "expertise": "coding python software function algorithm implementation"
+      },
+      "hub_6a3f9e02cc1f": {
+        "path": "adapters/hub_6a3f9e02cc1f/1f01e9f9d0a48789e400ebf2f2a4f04601709a7f0a31b4c6bbd6f4dbc4005b5c",
+        "sha256": {
+          "adapter_config.json": "4e344387359e30d80740d2a614cda2b8c7a24dbcd870ccb7c77ee5a74d4b92ee",
+          "adapter_model.safetensors": "05c1993e98764b6ed0590f4fbc3deca84640bbab4ec655686e05e0628dd10971"
+        },
+        "rank": 8,
+        "expertise": "Chinese language text correction spelling grammar translation"
+      },
+      "generalist": {
+        "path": "adapters/generalist/01be5a872b2b082544575a007a42a81dca7bf47ef1dfcfed646b46a009a43cd9",
+        "sha256": {
+          "adapter_config.json": "825053abf6841a5d18973550c8ed267f20493c6d1137fb00e09b003464ebfd7b",
+          "adapter_model.safetensors": "78bc53ce33a1458c4bddd864ad6ada8b16fdd76bbdd0b1c5525a869984d68dd3"
+        },
+        "rank": 8,
+        "expertise": ""
+      }
+    }
+  }
+}

@@ -1,0 +1,7 @@
+{
+  "passed": true,
+  "null_cloud_timing": true,
+  "lean_reconnect_rendered": true,
+  "javascript_errors": [],
+  "stream": "fixture replay; live TCP verified by backend test"
+}

@@ -9,7 +9,7 @@ import torch
 
 from synapse_mesh.cisco_sentinel import CiscoSentinel, NetworkState
 from synapse_mesh.intent_orchestrator import IntentOrchestrator
-from synapse_mesh.orchestrator import Orchestrator
+from synapse_mesh.local_orchestrator import LocalOrchestrator as Orchestrator
 from test_tensor_fusion import runtime_fixture, SURGICAL_PROMPT
 
 

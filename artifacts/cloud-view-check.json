@@ -1,0 +1,12 @@
+{
+  "status": "passed",
+  "cluster": "isolated HTTP stub, not real Outshift",
+  "comparison": "saved inference fixture",
+  "measured_transport_rtt_ms": 87.7,
+  "exact_200_online": true,
+  "disconnect_recovery": true,
+  "honest_local_fallback": true,
+  "mobile_overflow": false,
+  "reduced_motion": true,
+  "javascript_errors": []
+}

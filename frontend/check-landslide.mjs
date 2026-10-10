@@ -41,7 +41,7 @@ try {
   const animation = await page.locator('.fusion-beam').first().evaluate(element => getComputedStyle(element).animationName);
   expect(animation).toBe('neural-flow');
   await page.getByRole('combobox', { name: 'Generation token limit' }).selectOption('512');
-  const compared = page.waitForResponse(response => response.url().endsWith('/kernel/compare'));
+  const compared = page.waitForResponse(response => response.url().endsWith('/api/compare'));
   await page.locator('button.run').click();
   await expect(page.locator('.audit')).toHaveCount(1, { timeout: 180000 });
   await expect(page.locator('.neural-core')).toHaveClass(/processing/);

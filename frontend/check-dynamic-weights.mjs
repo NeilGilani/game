@@ -43,7 +43,7 @@ try {
   assert.ok(Math.abs(total - 1) < 1e-6);
   // Verify the UI forwards the slider mixture. Generation is mocked here.
   let submitted;
-  await page.route('**/kernel/compare', async route => {
+  await page.route('**/api/compare', async route => {
     submitted = route.request().postDataJSON();
     await route.fulfill({ contentType: 'application/x-ndjson',
       body: JSON.stringify({ event: 'error', message: 'Browser payload check complete' }) + '\n' });
@@ -52,7 +52,7 @@ try {
   await page.getByText('Browser payload check complete', { exact: true }).waitFor();
   assert.equal(submitted.weights.coding, .7);
   assert.ok(Math.abs(Object.values(submitted.weights).reduce((a, b) => a + b, 0) - 1) < 1e-6);
-  await page.unroute('**/kernel/compare');
+  await page.unroute('**/api/compare');
   await manual.uncheck();
   // Exercise the HTTP fallback and surface classifier failures.
   await page.routeWebSocket('**/ws/weights', ws => ws.close());

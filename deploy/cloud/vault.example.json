@@ -1,0 +1,10 @@
+{
+  "base_model": "Qwen/Qwen2.5-1.5B-Instruct",
+  "base_revision": "989aa7980e4cf806f80c7fef2b1adb7bc71aa306",
+  "adapters": {
+    "coding": "coding",
+    "medical": "medical",
+    "legal": "legal",
+    "generalist": "generalist"
+  }
+}

@@ -34,7 +34,7 @@ try {
     new MutationObserver(() => window.recordPhase(document.querySelector('.phase')?.textContent))
       .observe(document.querySelector('.phase'), { childList: true, characterData: true, subtree: true });
   });
-  const streamResponse = page.waitForResponse(response => response.url().endsWith('/kernel/compare'));
+  const streamResponse = page.waitForResponse(response => response.url().endsWith('/api/compare'));
   await page.getByRole('button', { name: 'Fuse & compare' }).click();
   await page.waitForFunction(() => document.body.textContent.includes('✓ BASE WEIGHTS RESTORED') || document.querySelector('.error[role="alert"]'), null, { timeout: 240000 });
   if (await page.locator('.error[role="alert"]').count()) throw new Error(await page.locator('.error[role="alert"]').innerText());
@@ -42,7 +42,7 @@ try {
   assert.ok(observed.some(p => p.includes('Generating with fused weights')));
   await page.getByText('Inspect the actual matrix changes').click();
   const events = (await (await streamResponse).text()).trim().split('\n').map(line => JSON.parse(line));
-  assert.deepEqual(events.map(e => e.event), ['intent', 'loading', 'baseline', 'fusion', 'fused', 'complete']);
+  assert.deepEqual(events.filter(e => !['execution', 'cloud_probe'].includes(e.event)).map(e => e.event), ['intent', 'loading', 'baseline', 'fusion', 'fused', 'complete']);
   const audit = events.find(e => e.event === 'fusion');
   const matrixRows = await page.locator('tbody tr').count();
   assert.equal(matrixRows, audit.layer_count);

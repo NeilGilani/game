@@ -14,18 +14,12 @@ from .intent_orchestrator import IntentOrchestrator
 
 runtime = Runtime()
 sentinel = CiscoSentinel.from_env()
-reasoner = IntentOrchestrator(runtime, sentinel)
+reasoner = IntentOrchestrator(runtime, sentinel, remote_execution=True)
 orchestrator = Orchestrator(runtime, intent_orchestrator=reasoner)
 
 
 @asynccontextmanager
 async def lifespan(app):
-    try:
-        await asyncio.to_thread(runtime.pre_cache_generalist)
-    except (RuntimeError, ValueError, OSError):
-        # Health reports missing files; Ultra/Lean remain usable while the
-        # generalist is prepared. Safe-Mode fails explicitly rather than faking it.
-        pass
     await asyncio.to_thread(sentinel.poll)
     async def poll_network():
         while True:
@@ -38,9 +32,11 @@ async def lifespan(app):
         task.cancel()
         with suppress(asyncio.CancelledError):
             await task
+        if hasattr(orchestrator, 'aclose'):
+            await orchestrator.aclose()
 
 
-app = FastAPI(title="Synapse-Mesh Network-Aware Fusion Kernel", lifespan=lifespan)
+app = FastAPI(title="Synapse-Mesh Edge Controller", lifespan=lifespan)
 
 
 class CompareRequest(BaseModel):
@@ -76,7 +72,8 @@ async def weight_stream(socket: WebSocket):
 @app.get("/health")
 def health():
     return {"status": "ready" if runtime.model else "cold", "base_model": runtime.base_model,
-            "device": runtime.device, "vault": runtime.vault_status(), "engine": "raw-tensor-fusion", "automatic_selection": True,
+            "device": "edge", "vault": runtime.vault_status(), "engine": "cloud-edge-client", "automatic_selection": True,
+            "cloud_configured": bool(getattr(getattr(orchestrator, 'cloud', None), 'endpoint', '')),
             "network": sentinel.snapshot().to_dict(), "safe_mode_ready": runtime.generalist_ready,
             "fusion_layer_count": runtime.last_audit['layer_count'] if runtime.last_audit else None}
 

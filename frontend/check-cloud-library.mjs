@@ -33,7 +33,7 @@ try {
   const sum = await page.getByRole('slider').evaluateAll(inputs => inputs.reduce((n, input) => n + Number(input.value), 0));
   if (Math.abs(sum - 1) > .02) throw new Error('Generalized sliders are not normalized');
   await page.waitForTimeout(500);
-  const comparisonResponse = page.waitForResponse(r => r.url().endsWith('/kernel/compare'));
+  const comparisonResponse = page.waitForResponse(r => r.url().endsWith('/api/compare'));
   await page.getByRole('button', { name: 'Fuse & compare' }).click();
   await page.waitForFunction(() => document.querySelector('.status-tag')?.textContent.includes('RESTORED'), null, { timeout: 240000 });
   const response = await comparisonResponse;

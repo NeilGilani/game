@@ -24,7 +24,7 @@ try {
   offline = false;
   await expect(status).toContainText('LOCAL KERNEL', { timeout: 15000 });
   await expect(run).toBeEnabled({ timeout: 15000 });
-  await page.route('**/kernel/compare', route => route.fulfill({ status: 500, body: 'Simulated inference failure' }));
+  await page.route('**/api/compare', route => route.fulfill({ status: 500, body: 'Simulated inference failure' }));
   await run.click();
   await expect(page.locator('.error[role="alert"]')).toContainText('Kernel request failed (500).');
   await page.getByRole('button', { name: 'Refresh kernel status' }).click();

@@ -28,8 +28,12 @@ def budget_weights(ideal_weights, network_cap, *, strongest_only=False):
 
 
 class IntentOrchestrator:
-    def __init__(self, runtime, sentinel):
+    def __init__(self, runtime, sentinel, *, lean_cloud_limit=1, remote_execution=False):
+        if isinstance(lean_cloud_limit, bool) or not isinstance(lean_cloud_limit, int) or lean_cloud_limit < 1:
+            raise ValueError('Lean cloud adapter limit must be a positive integer')
         self.runtime, self.sentinel = runtime, sentinel
+        self.lean_cloud_limit = lean_cloud_limit
+        self.remote_execution = remote_execution
 
     def plan(self, prompt, weights=None, experts=None, *, generated_text=''):
         started = time.perf_counter()
@@ -37,6 +41,8 @@ class IntentOrchestrator:
             raise ValueError('Use a nonempty prompt of at most 8000 characters')
         network = self.sentinel.snapshot()
         if network.state == NetworkState.OFFLINE:
+            if self.remote_execution:
+                raise RuntimeError('Cloud-Kernel is unreachable while offline; the edge client does not run local inference')
             self.runtime.pre_cache_generalist()
             order = [name for name in self.runtime.adapter_paths() if name != 'generalist'] + ['generalist']
             ideal = {name: float(name == 'generalist') for name in order}
@@ -57,7 +63,17 @@ class IntentOrchestrator:
             order = list(result['adapter_order'])
             mode = {NetworkState.OPTIMAL: 'Ultra-Fusion', NetworkState.CONGESTED: 'Lean-Fusion',
                     NetworkState.CRITICAL: 'Critical-Fusion'}[network.state]
-        applied = budget_weights(ideal, network.network_cap, strongest_only=network.state == NetworkState.CRITICAL)
+        catalog = getattr(self.runtime, 'catalog', None)
+        cloud_names = set(catalog.installed()) if catalog is not None else set()
+        candidates = {name: value for name, value in ideal.items()}
+        pruned_cloud = []
+        if network.state == NetworkState.CONGESTED:
+            ranked = sorted((name for name in order if name in cloud_names and ideal[name] > 0),
+                            key=lambda name: ideal[name], reverse=True)
+            pruned_cloud = ranked[self.lean_cloud_limit:]
+            for name in pruned_cloud:
+                candidates[name] = 0.0
+        applied = budget_weights(candidates, network.network_cap, strongest_only=network.state == NetworkState.CRITICAL)
         validate_coefficients(applied, order, network.network_cap)
         result.update(weights=applied, ideal_weights=ideal, intent_weights=ideal, adapter_order=order,
                       weight_vector=[applied[name] for name in order],
@@ -67,6 +83,8 @@ class IntentOrchestrator:
                       budget_spent=math.fsum(applied.values()), fusion_mode=mode,
                       intent_context='prompt + generated prefix' if generated_text and weights is None else 'manual' if weights is not None else 'prompt',
                       token_level=True)
+        result.update(cloud_adapters_requested=[name for name in order if name in cloud_names and applied[name] > 0],
+                      cloud_adapters_pruned=pruned_cloud, lean_cloud_limit=self.lean_cloud_limit)
         excluded = dict(result.get('excluded', {}))
         if network.state != NetworkState.OFFLINE:
             excluded['generalist'] = 'Reserved for offline Safe-Mode'
@@ -78,5 +96,7 @@ class IntentOrchestrator:
             elif name == 'generalist':
                 excluded[name] = 'Reserved for offline Safe-Mode'
         result['excluded'] = excluded
+        for name in pruned_cloud:
+            excluded[name] = 'Lean-Fusion cloud adapter limit'
         result['reason_ms'] = (time.perf_counter() - started) * 1000
         return result

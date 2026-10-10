@@ -43,7 +43,7 @@ try {
   const vector = await page.locator('.weight-controls input').evaluateAll(sliders => sliders.reduce((sum, el) => sum + Number(el.value), 0));
   assert.ok(Math.abs(vector - 1) < .015);
   await page.getByRole('checkbox', { name: 'Manual weights', exact: true }).uncheck();
-  await page.route('**/kernel/compare', route => route.fulfill({
+  await page.route('**/api/compare', route => route.fulfill({
     contentType: 'application/x-ndjson', body: events.map(e => JSON.stringify(e)).join('\n') + '\n',
   }));
   await page.getByRole('button', { name: 'Fuse & compare' }).click();

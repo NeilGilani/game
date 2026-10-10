@@ -4,15 +4,32 @@ import type { CSSProperties } from 'react';
 
 export const expertColors = ['#78a7ff', '#67f2ba', '#ffc77b', '#be95ff', '#ff89ba', '#7ae4f5', '#d6ed83', '#eda797'];
 
-export default function FusionCore({ weights, labels, names, busy, cells, layers }: {
+export default function FusionCore({ weights, labels, names, busy, cells, layers, cloudConnected = false, cloudRttMs, cloudExecution = false }: {
   weights: Record<string, number>; labels: Record<string, string>; names: string[];
   busy: boolean; cells?: number[]; layers?: number;
+  cloudConnected?: boolean; cloudRttMs?: number | null; cloudExecution?: boolean;
 }) {
   const height = Math.max(240, names.length * 54);
   const peak = Math.max(...(cells || []).map(Math.abs), .000001);
   return <div className={`neural-core ${busy ? 'processing' : ''}`} role="img"
-    aria-label={`Fusion Core: ${names.filter(name => weights[name] > 0).map(name => `${labels[name]} ${((weights[name] || 0) * 100).toFixed(1)} percent`).join(', ')} merging into the base model`}>
+    aria-label={`Fusion Core: Edge laptop to Outshift cloud server and back. ${cloudConnected ? 'Cloud connected' : 'Cloud unavailable'}. ${names.filter(name => weights[name] > 0).map(name => `${labels[name]} ${((weights[name] || 0) * 100).toFixed(1)} percent`).join(', ')} merging into the base model`}>
     <div className="core-topline flex items-center justify-between gap-3"><span>NEURAL FUSION CORE</span><span>{busy ? 'COMPUTING' : layers ? 'FUSION VERIFIED' : 'WEIGHT PREVIEW'}</span></div>
+    <div className={`distributed-flow ${cloudConnected ? 'cloud-link-up' : 'cloud-link-down'} ${busy ? 'flow-busy' : ''}`}>
+      <svg viewBox="0 0 620 150" className="distributed-canvas" aria-hidden="true">
+        <rect x="8" y="36" width="146" height="80" rx="8" fill="#111f25" stroke="#78a7ff" strokeOpacity=".65"/>
+        <rect x="35" y="50" width="27" height="19" rx="2" fill="none" stroke="#78a7ff"/><path d="M31 73 H66" stroke="#78a7ff"/>
+        <text x="80" y="65" fill="#a8c8ff" fontSize="13">EDGE</text><text x="81" y="94" textAnchor="middle" fill="#9caeb6" fontSize="11">Laptop / orchestration</text>
+        <rect x="466" y="36" width="146" height="80" rx="8" fill="#12241e" stroke={cloudConnected ? '#67f2ba' : '#65796b'} strokeOpacity=".65"/>
+        <rect x="486" y="50" width="25" height="22" rx="2" fill="none" stroke="#67f2ba"/><path d="M490 57 H507 M490 64 H507" stroke="#67f2ba"/>
+        <text x="525" y="65" fill="#c4fce0" fontSize="13">CLOUD</text><text x="539" y="94" textAnchor="middle" fill="#9bb9a7" fontSize="11">Outshift / server</text>
+        <path d="M155 60 C265 22 350 22 465 60" className="packet-track" stroke="#78a7ff"/>
+        <path d="M465 92 C350 130 265 130 155 92" className="packet-track" stroke="#67f2ba"/>
+        {cloudConnected && <><path d="M155 60 C265 22 350 22 465 60" className="data-packet packet-outbound" stroke="#78a7ff"/><path d="M465 92 C350 130 265 130 155 92" className="data-packet packet-inbound" stroke="#67f2ba"/></>}
+        <text x="310" y="21" textAnchor="middle" fill="#a8c8ff" fontSize="10" letterSpacing="1">PROMPT + WEIGHT VECTOR →</text>
+        <text x="310" y="144" textAnchor="middle" fill="#a5eac7" fontSize="10" letterSpacing="1">← FUSED OUTPUT + AUDIT</text>
+      </svg>
+      <div className="flow-caption"><span>{cloudExecution ? 'CLOUD EXECUTION CONFIRMED' : 'ARCHITECTURE SCHEMATIC'} · {cloudConnected ? 'LINK AVAILABLE' : 'LINK UNAVAILABLE'}</span><span>{cloudRttMs !== null && cloudRttMs !== undefined ? `Health RTT ${cloudRttMs.toFixed(1)} ms` : 'Health RTT —'}</span></div>
+    </div>
     <svg viewBox={`0 0 620 ${height}`} className="fusion-canvas" aria-hidden="true">
       <defs><radialGradient id="core-aura"><stop stopColor="#67f2ba" stopOpacity=".2"/><stop offset="1" stopColor="#67f2ba" stopOpacity="0"/></radialGradient></defs>
       <circle cx="465" cy={height / 2} r="115" fill="url(#core-aura)" />

@@ -1,0 +1,31 @@
+services:
+  kernel:
+    build:
+      context: ../..
+      dockerfile: deploy/cloud/Dockerfile
+    image: synapse-mesh-cloud-kernel:local
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      CLOUD_VAULT_MANIFEST: /adapters/vault.json
+      HF_HOME: /cache/huggingface
+    ports:
+      - "${CLOUD_BIND_ADDRESS:-127.0.0.1}:8001:8001"
+    volumes:
+      - type: bind
+        source: ${CLOUD_ADAPTER_DIR:-../../vault-1.5b}
+        target: /adapters
+        read_only: true
+      - model-cache:/cache
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    stop_grace_period: 60s
+
+volumes:
+  model-cache:

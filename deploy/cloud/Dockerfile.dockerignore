@@ -1,0 +1,5 @@
+*
+!backend/
+!backend/pyproject.toml
+!backend/synapse_mesh/
+!backend/synapse_mesh/*.py

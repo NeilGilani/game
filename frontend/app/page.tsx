@@ -10,6 +10,7 @@ export default async function Page() {
     kernelRequest<Intent>(`${api}/intent`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ prompt: defaultPrompt }) }),
   ]);
   return <Dashboard
+    kernelLocation="edge"
     initialHealth={healthResult.status === 'fulfilled' ? healthResult.value : null}
     initialIntent={intentResult.status === 'fulfilled' ? intentResult.value : null}
     initialHealthError={healthResult.status === 'rejected' ? 'Cannot reach the Python kernel. Retrying automatically in the browser.' : ''}

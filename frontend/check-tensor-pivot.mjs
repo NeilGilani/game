@@ -14,7 +14,7 @@ try {
   assert.equal(await chineseCheckbox.isChecked(), false);
   assert.equal(await chineseCheckbox.isDisabled(), true);
   await page.getByLabel('Generation token limit').selectOption('512');
-  const request = page.waitForResponse(r => r.url().endsWith('/kernel/compare'));
+  const request = page.waitForResponse(r => r.url().endsWith('/api/compare'));
   const wallStart = performance.now();
   await page.getByRole('button', { name: 'Fuse & compare' }).click();
   await page.waitForFunction(() => document.querySelector('.status-tag')?.textContent.includes('RESTORED') || document.querySelector('.error[role=alert]'), null, { timeout: 240000 });

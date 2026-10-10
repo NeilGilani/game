@@ -16,7 +16,7 @@ try {
   await page.getByRole('combobox', { name: 'Generation token limit' }).selectOption('32');
   await expect(page.locator('.fusion-mode')).toHaveText('Ultra-Fusion');
   await expect(page.locator('button.run')).toBeEnabled();
-  const responsePromise = page.waitForResponse(response => response.url().endsWith('/kernel/compare'));
+  const responsePromise = page.waitForResponse(response => response.url().endsWith('/api/compare'));
   await page.locator('button.run').click();
   await expect(page.locator('.fusion-budget>.subtle')).toContainText('Token', { timeout: 90000 });
   for (const [state, mode, cap, button] of [

@@ -1,6 +1,161 @@
 # Synapse-Mesh
 
-A local proof of concept for prompt-dependent, direct tensor-level LoRA fusion. The Python kernel mutates model matrices on the accelerator, runs inference, and restores the base. The Next.js dashboard shows the expert vault, intent mixture, actual per-layer delta norms, and baseline/fused responses.
+The standalone CUDA kernel, container setup, native generation API, and edge
+JSON-RPC endpoint are documented in [deploy/cloud/README.md](deploy/cloud/README.md).
+
+## Shared-volume Cloud Vault
+
+`VaultManager` in `backend/synapse_mesh/vault_manager.py` reads PEFT configs and
+`.safetensors` directly from the cluster mount `/mnt/synapse_vault`. It creates no
+local staging copies. Cloud-Kernel's production loader uses `SharedVolumeFusion`,
+which leases these factors for the full fusion/generation/restoration transaction.
+Startup checks adapter headers and shapes; factor tensors are loaded lazily only
+for positive coefficients. Blocking reads and GPU uploads run in worker threads.
+Concurrent requests for the same directory/version share one in-flight future and
+the same device tensor allocations. Cache hits do not re-materialize factor data
+or transfer it to the GPU. Header validation and file-stat checks still read the
+shared filesystem.
+
+The cache has a byte budget, protects leased tensors from LRU eviction, verifies
+manifest checksums, rejects incompatible bases/shapes and nonfinite factors, and
+cleans up leases after cancellation or failed loads. Retrying a failed load is
+supported. The no-duplicate-load guarantee applies within **one Cloud-Kernel
+process on one GPU**; separate pods cannot share a GPU tensor allocation. Run
+one Uvicorn worker per GPU and route requests to that persistent worker. Reloads
+after eviction or publishing a new adapter version are intentional.
+
+On a machine where the cluster volume is already mounted, publish the adapters:
+
+```sh
+.venv/bin/python scripts/migrate_shared_vault.py \
+  --source vault-1.5b --destination /mnt/synapse_vault
+```
+
+The command copies built-in adapters, installed cloud adapters and the generalist
+when present, verifies SHA-256 checksums, publishes content-addressed directories,
+then atomically replaces `/mnt/synapse_vault/vault.json`. Re-running is idempotent.
+Original local files remain intact. The destination must already exist as a real
+mount; the command does not create a directory that could mask a missing volume.
+Give the kernel a read-only mount; give the migration job write access. Restart
+the kernel after publishing a new manifest so every request uses its pinned paths.
+
+Configure the CUDA service (set `CLOUD_API_KEY` through your existing secret
+configuration):
+
+```sh
+export CLOUD_VAULT_MANIFEST=/mnt/synapse_vault/vault.json
+export CLOUD_DEVICE=cuda:0
+export CLOUD_ADAPTER_CACHE_MB=512
+cd backend
+../.venv/bin/python -m uvicorn synapse_mesh.cloud_api:app \
+  --host 0.0.0.0 --port 8000 --workers 1
+```
+
+`CLOUD_VAULT_MANIFEST` can point to another lab mount. Generated manifests map each
+name to `{ "path": "adapters/name/content-hash", "sha256": {...}, "rank": 8 }`;
+legacy name-to-directory string entries remain supported. The authenticated
+`GET /adapters` endpoint reports resident bytes, adapter loads and cache hits.
+For the legacy local runtime, `SYNAPSE_SHARED_VAULT=/mnt/synapse_vault` enables
+the same store, with `SYNAPSE_VAULT_GPU_BYTES` controlling its byte budget.
+
+Direct asynchronous use:
+
+```python
+from synapse_mesh.vault_manager import VaultManager
+
+vault = VaultManager('/mnt/synapse_vault', base_model_id=base_id,
+                     base_revision=base_revision, device='cuda:0')
+async with vault.lease('coding', model) as adapter:
+    # adapter.factors maps PEFT tensor keys to resident FP16 tensors.
+    # The lease prevents eviction; use these tensors without modifying them.
+    pass
+vault.close()  # After all requests and leases have completed.
+```
+
+Migration of the actual six-adapter library was verified in a temporary directory
+on this Mac; evidence is `artifacts/shared-vault-migration-check.json`. The Outshift
+mount is not available here, so that check is not a cluster migration or CUDA
+deployment. Tests cover concurrent single loads, pointer reuse, cancellation,
+memory budgets, checksums, migration, real HTTP generation, and Metal residency;
+CUDA checks run only on CUDA hosts.
+
+The Edge Controller classifies prompts with the local Sifter, sends ordered coefficients to a remote Cloud-Kernel, and streams returned tokens to the dashboard. Fusion and generation run remotely. The former local implementation remains explicit kernel test tooling.
+
+## Edge Controller (current execution path)
+
+Configure the real endpoint before starting the Python API:
+
+```sh
+export SYNAPSE_CLOUD_KERNEL_URL=http://YOUR_CLUSTER_IP:8000
+export SYNAPSE_CLOUD_LEAN_TIMEOUT=10
+# Optional: SYNAPSE_CLOUD_KERNEL_API_KEY for Bearer authentication.
+cd backend
+../.venv/bin/python -m uvicorn synapse_mesh.api:app --host 127.0.0.1 --port 8000
+```
+
+The URL is the exact POST endpoint; append `/rpc` if your server uses it. The
+placeholder is rejected. `CISCO_MODE=cloud` enables RTT monitoring; optionally
+set `SYNAPSE_CLOUD_KERNEL_HEALTH_URL=https://your-cluster/health`. Otherwise the
+sentinel derives `/health` from the RPC origin. Keep the browser connected to
+the edge API with `SYNAPSE_API_URL`. Set `SYNAPSE_CLOUD_API_URL` in Next.js to
+the cluster API base URL for the Live View health/latency probe. This variable
+does not change the Sifter or comparison destination; the edge controller
+continues to dispatch inference through `SYNAPSE_CLOUD_KERNEL_URL`.
+
+`orchestrator.py` performs no local fusion or language-model generation.
+A pooled async HTTP client sends compact JSON-RPC requests:
+
+```json
+{"jsonrpc":"2.0","id":"stable-id","method":"fuse_and_generate","params":{"prompt":"Write a Python validator","weights":[0.7,0.2,0.1],"adapter_order":["coding","medical","legal"],"max_new_tokens":64,"stream":true,"compare":false,"request_id":"stable-id","resume_from":0}}
+```
+
+The server uses `adapter_order` to interpret `weights` and streams UTF-8 NDJSON
+(one object per line), or single-line SSE data:
+
+```json
+{"token":"Hello","index":1,"done":false}
+{"token":" world","index":2,"done":false}
+{"token":"","index":2,"done":true}
+```
+
+Indices start at **1** and must be contiguous. A final nonempty token can carry
+`done: true`; an empty completion uses the last index (zero for no tokens).
+The edge forwards cumulative `token` events immediately, then `response` (or
+`fused` for comparison) and `complete`. Optional cloud `baseline`, `fusion`, and
+`token_fusion` event objects pass through. A comparison-capable server may
+return these for `compare: true`; the edge never invents a baseline.
+The last chunk may include `usage`, `timing`, and `base_restored`. Missing cloud
+timings and restoration evidence stay unverified. Edge elapsed time includes
+classification, transport, and remote execution, and is labeled accordingly.
+
+Disconnects retry at most twice with exponential backoff, the same request ID,
+and `resume_from` equal to the last emitted index. **The server must implement
+request identity and resume**, retaining the generated prefix and applying
+updated weights to subsequent tokens. Identical replay tokens are suppressed;
+conflicts, gaps, malformed JSON, and auth failures abort. Transient 502/503/504
+responses retry. Credentials go only to the configured endpoint; TLS remains
+verified and redirects are disabled.
+
+A read timeout (`SYNAPSE_CLOUD_LEAN_TIMEOUT`, default 10 seconds) requests
+**Lean-Fusion** on reconnect, preserving coefficient ratios while reducing the
+total to at most **0.4**, without increasing an existing smaller budget. The UI
+receives a `cloud_status` update immediately. The cloud must apply these weights
+for this request to affect its computation. A 300-second total network deadline,
+bounded frames, and stream cancellation prevent abandoned requests from hanging
+indefinitely. Offline telemetry fails explicitly; the edge does not preload a
+generalist or fall back to local inference.
+
+CLI: `PYTHONPATH=backend .venv/bin/python -m synapse_mesh.cli "Python license validator" --response-only`.
+Tests in `backend/tests/test_edge_orchestrator.py` cover live delivery, payloads,
+reconnect/resume, Lean-Fusion, replay validation, deadlines, and cancellation.
+`local_orchestrator.py` preserves the explicit local kernel test harness; the
+edge API and CLI never invoke it.
+
+## Historical local demo and kernel tooling
+
+The remaining sections describe the earlier local execution flow. Local fallback
+and per-token local replanning described there do not apply to the current Edge
+Controller; direct tensor tests still use those tools.
 
 ## Run the existing demo
 
@@ -36,6 +191,31 @@ Run `node check-landslide.mjs` from `frontend` for the actual 512-token surgical
 
 ## Network-aware Sense → Reason → Fuse
 
+To monitor the Edge backend's Cloud-Kernel link, set `CISCO_MODE=cloud` and
+`SYNAPSE_CLOUD_KERNEL_HEALTH_URL=https://your-cloud-kernel/health`, then restart the
+backend. The sentinel probes this lightweight endpoint every two seconds using
+the API's async background task. HTTP round-trip time through response headers
+includes connection/TLS setup and server processing. An RTT **above 150 ms**
+signals CONGESTED; exactly 150 ms stays OPTIMAL. Timeout or HTTP failure signals
+OFFLINE, and the existing 1,000 ms Critical policy remains available. Snapshot
+readers do not wait for the cloud probe's network I/O.
+
+Lean-Fusion keeps only the strongest positive cloud adapter (stable adapter-order
+tie breaking), zeros other cloud coefficients, and redistributes the 0.4 budget
+across the retained mixture. Local adapters remain eligible. Plans report
+`cloud_adapters_requested` and `cloud_adapters_pruned`; every token boundary
+rechecks the sentinel, and recovery restores the original ideal mixture.
+`LocalOrchestrator(runtime, sentinel=sentinel, lean_cloud_limit=1)` wires this policy
+directly for Python callers. The API uses the same sentinel via its
+IntentOrchestrator. Python callers must poll the sentinel, for example with
+`await asyncio.to_thread(sentinel.poll)`, or run a background polling task.
+
+The current vault stores downloaded cloud adapters locally; inference does not
+request their weights from a remote kernel. Pruning skips their factor reads,
+device transfers, and fusion products, and exposes the smaller adapter selection
+for a cloud fetcher. Savings in network bytes or UI latency depend on a
+deployment that fetches uncached adapters over that link.
+
 `cisco_sentinel.py` polls IOS XE using read-only HTTPS RESTCONF, Basic authentication, and `Accept: application/yang-data+json`. Its default operational endpoint is `/restconf/data/ietf-interfaces:interfaces-state`, following [Cisco's interface telemetry tutorial](https://blogs.cisco.com/developer/coding-essentials-netdevops-part-4). Counter deltas produce RX/TX bit rates; IETF interface speed is in bits per second. Management latency is the measured RESTCONF request time, **not** surgical-device or data-plane latency. A first/reset counter sample conservatively selects CONGESTED until a rate is available. Authentication errors, timeouts, unusable/down interfaces, invalid payloads, and stale samples select OFFLINE.
 
 `intent_orchestrator.py` now plans **before every next-token forward pass**, using the local MiniLM classifier on the original task plus the generated prefix (manual ideal weights stay fixed):
@@ -43,7 +223,7 @@ Run `node check-landslide.mjs` from `frontend` for the actual 512-token surgical
 | Network state | Policy | Cap | Applied tensor coefficients |
 | --- | --- | --- | --- |
 | OPTIMAL | Ultra-Fusion | 1.0 | Proportional normalized intent mixture |
-| CONGESTED | Lean-Fusion | 0.4 | Keep the mixture, proportionally shrink its total to 0.4 |
+| CONGESTED | Lean-Fusion | 0.4 | Keep local adapters and the strongest cloud adapter; redistribute the budget |
 | CRITICAL | Critical-Fusion | 0.1 | Strongest ideal adapter gets 0.1; others get zero |
 | OFFLINE | Safe-Mode | 0.1 | Cached generalist gets 0.1; skip the classifier |
 
@@ -53,17 +233,31 @@ The baseline and fused generations use the same base checkpoint and unmodified u
 
 **Cache correctness:** changing any coefficient invalidates `past_key_values`; the next forward pass recomputes the complete prefix under the new weights. Identical vectors reuse both the fused weights and the valid attention cache. This follows from the fact that [Transformer caches contain model-computed key/value states](https://huggingface.co/docs/transformers/main/kv_cache). Keeping old states after changing the weights would mix two different parameter settings. Cancellation, failure, and normal completion restore pristine base matrices.
 
-**Performance:** a smaller scalar coefficient changes adapter influence; it does not change matrix size, precision, or dense FLOPs. Congested mode still computes the nonzero adapters. Critical mode avoids other adapters' products; changed weights add fusion and prefix-recomputation work. Actual token reasoning, total fusion, forward time, cache rebuilds, and wall time are measured. Unweighted delta norms are cached for audits; actual dense products and additions still run when coefficients change, without storing dense deltas. This does not guarantee faster generation, shorter answers, or improved correctness. The demo defaults to 64 tokens; longer runs are available.
+**Performance:** a smaller scalar coefficient changes adapter influence; it does not change matrix size, precision, or dense FLOPs. Congested mode skips pruned cloud adapters and computes only the retained nonzero adapters. Critical mode avoids other adapters' products; changed weights add fusion and prefix-recomputation work. Actual token reasoning, total fusion, forward time, cache rebuilds, and wall time are measured. Unweighted delta norms are cached for audits; actual dense products and additions still run when coefficients change, without storing dense deltas. This does not guarantee faster generation, shorter answers, or improved correctness. The demo defaults to 64 tokens; longer runs are available.
 
 The demo defaults to **MOCK TELEMETRY**. Use **Trigger congestion**, **Trigger critical**, **Disconnect network**, and **Restore network**, including during an active fused generation. These simulate telemetry; they do not change router traffic. The next token boundary sees the latest snapshot; an already-running device operation finishes under its captured vector. Manual ideal mixtures survive all overrides and return when OPTIMAL.
 
-For an actual reserved sandbox, configure the variables documented in [.env.network.example](.env.network.example), set `CISCO_MODE=restconf`, and restart both services. Use your reservation's HTTPS origin and credentials. TLS verification defaults to enabled; set `CISCO_VERIFY_TLS=false` only for a sandbox requiring a self-signed certificate. `CISCO_INTERFACES` optionally limits monitoring to named uplinks. Congestion defaults are 70% utilization or 250 ms management latency; Critical defaults are 95% or 1,000 ms. Polling uses a two-second interval. Live mode rejects mock controls. Transport/authentication behavior is tested with mocked HTTP transports; a live Cisco session has not been tested without credentials.
+For an actual reserved sandbox, configure the variables documented in [.env.network.example](.env.network.example), set `CISCO_MODE=restconf`, and restart both services. Use your reservation's HTTPS origin and credentials. TLS verification defaults to enabled; set `CISCO_VERIFY_TLS=false` only for a sandbox requiring a self-signed certificate. `CISCO_INTERFACES` optionally limits monitoring to named uplinks. Congestion defaults are 70% utilization or 150 ms management latency; Critical defaults are 95% or 1,000 ms. Polling uses a two-second interval. Live mode rejects mock controls. Transport/authentication behavior is tested with mocked HTTP transports; a live Cisco session has not been tested without credentials.
 
 The included `vault-1.5b/generalist` is a **separately trained rank-8 LoRA**, using 93 mixed Code/Clinical/Legal examples for 70 steps. It is a small synthetic demonstration adapter, not a validated safety model. Its configuration, actual tensors, dataset hash, losses, and pinned base revision are recorded locally. The backend preloads its half-precision factors into the bounded RAM cache at startup. Prepare it again with `.venv/bin/python scripts/train_generalist.py`; no training or download occurs per inference. If these local files are missing, Safe-Mode raises an error instead of falling back to a different model. Cloud discovery/downloads are paused while offline.
 
 `GET /network` returns the current snapshot and `network_cap`; `POST /network/mock` accepts `OPTIMAL`, `CONGESTED`, `CRITICAL`, or `OFFLINE`. HTTP `/intent` and `/ws/weights` return `ideal_weights`, `weights`, `network_cap`, `budget_spent`, `fusion_mode`, and `network`. `/compare` and `/generate` emit `token_fusion` before each forward, streamed `token` text afterward, matrix `fusion` audits when coefficients change, and a final result containing the complete `token_schedule` and cache/update counts.
 
 Run `node check-token-budget.mjs` from `frontend` to switch network states during real GPU generation and verify token coefficients, caps, kernel/UI symmetry, streamed baseline/fused output, restoration, source HTML, and mobile layout. `node check-network-fusion.mjs` checks all four states individually; `node check-network-controls.mjs` checks manual-mixture preservation. Backend tests in `test_token_budget.py` independently rebuild expected matrices from safetensors at every forward across live state transitions, inspect cache reuse/rebuilds, verify the classifier sees the generated prefix, and check cancellation/failure rollback. Results are saved in `artifacts/token-budget-*` and `artifacts/network-*`.
+
+## Distributed Cloud-to-Edge Live View
+
+Set `SYNAPSE_CLOUD_API_URL=http://YOUR_CLUSTER_IP:8000` in the Next.js server environment to connect the frontend to the Outshift cluster. Replace the placeholder with the actual reachable cluster address. Configure this in the Next.js server environment when starting production or development. `SYNAPSE_API_URL` continues to point at the laptop edge controller (default port 8000), preserving local Sifter routing. Set it at build time too if changing the production Next external rewrite. The edge controller owns inference dispatch through its separately configured `SYNAPSE_CLOUD_KERNEL_URL`.
+
+The header displays **ONLINE · OUTSHIFT CLUSTER** only after the cluster `/health` endpoint returns exactly **200 OK**. It polls every five seconds, shows disconnected states on failed/non-200 responses, and clears stale latency. The separate compute status preserves local/remote kernel health. No configured endpoint means **Not configured**, with no simulated cloud connection. `SYNAPSE_CLOUD_HEALTH_PATH` can override the default health path.
+
+The Fusion Core shows the Edge laptop → Outshift server → Edge return path with outbound prompt/weight packets and inbound output/audit packets. The diagram is labeled as an architecture schematic; packet animation runs only while cluster health is connected and respects reduced-motion preferences.
+
+`POST /api/compare` forwards the original comparison request and NDJSON stream to the laptop controller. It prepends a separate `cloud_probe` measurement and an initial edge transport event; the controller's subsequent `execution` metadata identifies the actual inference location. The Fused AI badge shows **Cloud-Accelerated** for cloud outputs and **EDGE / LOCAL FALLBACK** for local outputs. It preserves both arms' text, token events, matrix audits, and backend timings.
+
+The displayed **Network latency (health RTT)** is a real HTTP health round trip from the Next.js edge gateway to the cluster, sampled immediately before each cloud comparison. It includes health response handling, not just wire transit, and is distinct from generation/pipeline time and Cisco management latency. A missing/failed measurement displays a dash. The Cloud Status panel separately reports the latest periodic health RTT. Backend-provided `execution.network_latency_ms` and `execution.latency_kind` can supply a more specific per-run measurement.
+
+Run `node check-cloud-view.mjs` in `frontend` for isolated transport/UI checks. The check starts its own delayed HTTP cluster stub and temporary Next.js preview, verifies measured latency, exact-200 online gating, disconnect/recovery, comparison provenance, bidirectional packets, mobile layout, and reduced motion, then stops its servers. Its saved comparison events are historical model evidence, not fresh Outshift inference. Results are in `artifacts/cloud-view-check.json` and `cloud-view-*.png`.
 
 ## Neural Fusion Dashboard (Visualizer)
 

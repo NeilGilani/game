@@ -5,7 +5,7 @@ from threading import Event
 import pytest
 import torch
 
-from synapse_mesh.orchestrator import Orchestrator
+from synapse_mesh.local_orchestrator import LocalOrchestrator as Orchestrator
 from test_tensor_fusion import SURGICAL_PROMPT, runtime_fixture
 
 

@@ -2,6 +2,7 @@ import json
 import os
 from pathlib import Path
 from threading import Lock, RLock
+from contextlib import ExitStack
 import time
 
 import torch
@@ -14,6 +15,7 @@ from .tensor_fusion import AdapterTensorStore, fuse_weights, restore_weights
 from .tensor_fusion import Pair
 from .catalog import validate_config
 from safetensors import safe_open
+from .vault_manager import VaultManager, DEFAULT_SHARED_ROOT
 
 ROOT = Path(__file__).resolve().parents[2]
 BASE_MODEL = 'Qwen/Qwen2.5-1.5B-Instruct'
@@ -30,7 +32,7 @@ def select_device(requested='auto'):
 
 
 class Runtime:
-    def __init__(self, vault=None, base_model=None, device='auto'):
+    def __init__(self, vault=None, base_model=None, device='auto', *, vault_manager=None, shared_vault=None):
         self.vault = Path(vault or os.getenv('SYNAPSE_VAULT', DEFAULT_VAULT)).expanduser().resolve()
         self.base_model = base_model or os.getenv('SYNAPSE_BASE_MODEL', BASE_MODEL)
         self.device = select_device(device)
@@ -39,18 +41,55 @@ class Runtime:
         self.lock = Lock()
         self.model = self.tokenizer = None
         self.tensor_store = AdapterTensorStore()
+        self.vault_manager = vault_manager
+        shared_root = shared_vault or os.getenv('SYNAPSE_SHARED_VAULT')
+        if shared_root is None and vault is None and Path(DEFAULT_SHARED_ROOT).is_dir():
+            shared_root = DEFAULT_SHARED_ROOT
+        if self.vault_manager is None and shared_root:
+            root = Path(shared_root).expanduser().resolve()
+            manifest = root / 'vault.json'
+            revision = (json.loads(manifest.read_text()).get('base_revision') if manifest.is_file()
+                        else json.loads((root / 'coding/adapter_config.json').read_text()).get('revision'))
+            dtype = torch.bfloat16 if self.device == 'cuda' and torch.cuda.is_bf16_supported() else torch.float16
+            self.vault_manager = VaultManager(root, base_model_id=self.base_model, base_revision=revision,
+                                             device=self.device, dtype=dtype,
+                                             cache_bytes=int(os.getenv('SYNAPSE_VAULT_GPU_BYTES', 512 * 1024 * 1024)))
         self.loaded_experts = ()
         self.last_audit = None
         self.revision = None
         self.generalist_path = Path(os.getenv('SYNAPSE_GENERALIST_PATH', self.vault / 'generalist')).expanduser().resolve()
+        if self.vault_manager is not None and 'generalist' in self.vault_manager.paths:
+            self.generalist_path = self.vault_manager.paths['generalist']
         self.generalist_ready = False
         self._generalist_lock = RLock()
         self._generalist_factors = ()
 
     def adapter_paths(self):
-        return {**self.catalog.adapter_paths(EXPERTS), 'generalist': str(self.generalist_path)}
+        paths = {**self.catalog.adapter_paths(EXPERTS), 'generalist': str(self.generalist_path)}
+        if self.vault_manager is not None:
+            paths.update({name: str(path) for name, path in self.vault_manager.paths.items()})
+        return paths
+
+    def fuse_adapters(self, names, vector):
+        """Lease shared device factors for the complete fusion transaction."""
+        paths = self.adapter_paths()
+        with ExitStack() as leases:
+            if self.vault_manager is not None:
+                for name, weight in zip(names, vector):
+                    if float(weight) > 0 and name in self.vault_manager.paths:
+                        leases.enter_context(self.vault_manager.lease_sync(name, self.model))
+            fused = fuse_weights(self.model, [paths[name] for name in names], vector,
+                                 adapter_names=names, base_model_id=self.base_model,
+                                 base_revision=self.revision,
+                                 tensor_store=self.vault_manager.tensor_store if self.vault_manager else self.tensor_store)
+            if self.vault_manager is not None:
+                fused._synapse_fusion_audit['shared_vault'] = self.vault_manager.status()
+                fused._synapse_fusion_audit['gpu_resident_factors'] = self.vault_manager.device.type in ('cuda', 'mps')
+            return fused
 
     def base_adapter_config(self):
+        if self.vault_manager is not None and 'coding' in self.vault_manager.paths:
+            return self.vault_manager.config('coding')
         for path in (self.vault / 'coding/adapter_config.json', self.generalist_path / 'adapter_config.json'):
             if path.is_file():
                 return json.loads(path.read_text())
@@ -101,7 +140,8 @@ class Runtime:
             if training.is_file():
                 metadata = {**(metadata or {}), **json.loads(training.read_text())}
             local.append({'name': name, 'label': {'coding': 'Code', 'medical': 'Clinical', 'legal': 'Legal'}[name],
-                          'source': 'local', **status, 'loaded': name in self.loaded_experts,
+                          'source': 'shared' if self.vault_manager is not None and name in self.vault_manager.paths else 'local',
+                          **status, 'loaded': name in self.loaded_experts,
                           'metadata': metadata})
         generalist = {'name': 'generalist', 'label': 'Generalist', 'source': 'local',
                       **self.catalog.file_status(self.generalist_path), 'loaded': self.generalist_ready,
@@ -126,6 +166,9 @@ class Runtime:
         if 'generalist' in selected:
             raise ValueError('Generalist is reserved for network-controlled Safe-Mode')
         descriptions = {name: item['expertise'] for name, item in self.catalog.installed().items()}
+        if self.vault_manager is not None:
+            descriptions.update({name: item['expertise'] for name, item in self.vault_manager.metadata.items()
+                                 if item.get('expertise')})
         return self.classifier.classify(prompt, selected, descriptions)
 
     def resolve_intent(self, prompt, weights=None, experts=None):
@@ -222,10 +265,7 @@ class Runtime:
             vector = tuple((name, plan['weights'][name]) for name in order)
             changed = vector != previous_vector
             if changed:
-                fused_model = fuse_weights(self.model, [paths[name] for name in order],
-                                           plan['weight_vector'], adapter_names=order,
-                                           base_model_id=self.base_model, base_revision=self.revision,
-                                           tensor_store=self.tensor_store)
+                fused_model = self.fuse_adapters(order, plan['weight_vector'])
                 audit = fused_model._synapse_fusion_audit
                 fusion_ms += audit['fusion_ms']
                 kernel_updates += 1
@@ -237,6 +277,10 @@ class Runtime:
                          intent_weights=plan['ideal_weights'], ideal_weights=plan['ideal_weights'],
                          network_cap=plan['network_cap'], budget_spent=plan['budget_spent'],
                          token_index=index, token_level=True)
+            cloud_selection = {key: plan[key] for key in
+                               ('cloud_adapters_requested', 'cloud_adapters_pruned', 'lean_cloud_limit')
+                               if key in plan}
+            audit.update(cloud_selection)
             self.last_audit = audit
             self.loaded_experts = tuple(audit['loaded_adapters'])
             if changed:
@@ -248,6 +292,7 @@ class Runtime:
                     'active_experts': plan['active_experts'], 'adapter_order': list(order),
                     'excluded': plan['excluded'], 'evidence': plan['evidence'], 'intent_context': plan['intent_context'],
                     'kernel_updated': changed, 'cache_action': cache_action}
+            step.update(cloud_selection)
             schedule.append(step)
             yield {'event': 'token_fusion', **step}
             synchronize(torch.device(self.device))
@@ -319,10 +364,7 @@ class Runtime:
                     intent_ms += fused['reason_ms']
                     total_fusion_ms = fused['fusion_ms']
                 else:
-                    fused_model = fuse_weights(self.model, [paths[name] for name in selected],
-                                           torch.tensor(intent['weight_vector'], dtype=torch.float32),
-                                           adapter_names=selected, base_model_id=self.base_model,
-                                           base_revision=self.revision, tensor_store=self.tensor_store)
+                    fused_model = self.fuse_adapters(selected, torch.tensor(intent['weight_vector'], dtype=torch.float32))
                     audit = fused_model._synapse_fusion_audit
                     if 'network' in intent:
                         audit.update(network=intent['network'], fusion_mode=intent['fusion_mode'], intent_weights=intent['intent_weights'])

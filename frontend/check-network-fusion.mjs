@@ -46,7 +46,7 @@ try {
       const card = page.locator(`.expert-card.${name}`);
       await expect(card.locator('.expert-relevance')).toContainText(`${(intent.weights[name] * 100).toFixed(1)}% contribution`);
     }
-    const responsePromise = page.waitForResponse(response => response.url().endsWith('/kernel/compare'));
+    const responsePromise = page.waitForResponse(response => response.url().endsWith('/api/compare'));
     await expect(page.locator('button.run')).toBeEnabled();
     await page.locator('button.run').click();
     await expect(page.getByRole('button', { name: 'Trigger congestion', exact: true })).toBeEnabled();

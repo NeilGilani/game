@@ -12,7 +12,7 @@ import torch
 
 from synapse_mesh.cisco_sentinel import CiscoSentinel
 from synapse_mesh.intent_orchestrator import IntentOrchestrator, budget_weights
-from synapse_mesh.orchestrator import Orchestrator
+from synapse_mesh.local_orchestrator import LocalOrchestrator as Orchestrator
 from synapse_mesh.tensor_fusion import AdapterTensorStore, fuse_weights, restore_weights
 from test_network_fusion import Clock, telemetry
 from test_tensor_fusion import fixture, runtime_fixture, SURGICAL_PROMPT
