@@ -1,0 +1,372 @@
+/* AGENCY overlay. Tokens are copied from frontend/src/styles/app.css (the AGENCY design system) so the
+   overlay looks like the shell; keep them in sync. The window is transparent: only the overlay's own
+   buttons and panels are painted, and nothing is ever drawn over what the person is looking at except a
+   thin outline and the dwell ring around it. */
+
+:root {
+  --text-scale: 1;
+  --font: "Atkinson Hyperlegible", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --radius: 16px;
+  --radius-lg: 22px;
+  --gap: 20px;
+  --target: 76px;
+  --topbar: 84px;
+
+  --bg: #f3f1eb;
+  --surface: #ffffff;
+  --surface-2: #e9e6dd;
+  --ink: #111a26;
+  --ink-2: #3c4655;
+  --line: #cfc9bc;
+  --line-strong: #8f887a;
+  --accent: #0b6b5c;
+  --accent-hover: #095a4d;
+  --accent-ink: #ffffff;
+  --accent-soft: #d9eee8;
+  --focus: #f2b400;
+  --ok: #1b6a36;
+  --ok-soft: #dcf0e2;
+  --warn: #8a5200;
+  --warn-soft: #fff0cc;
+  --danger: #a3241a;
+  --danger-soft: #fbe2de;
+  --info: #1d4f99;
+  --info-soft: #e0eafa;
+  --sim: #5b3f99;
+  --sim-soft: #ece6f7;
+  --shadow: 0 1px 2px rgb(17 26 38 / 6%), 0 8px 24px rgb(17 26 38 / 6%);
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]):not([data-theme="contrast"]) {
+    --bg: #0b111a;
+    --surface: #131b27;
+    --surface-2: #1b2533;
+    --ink: #eef2f7;
+    --ink-2: #a9b4c3;
+    --line: #2b3749;
+    --line-strong: #4b5a70;
+    --accent: #4fc9b0;
+    --accent-hover: #6fd8c2;
+    --accent-ink: #052823;
+    --accent-soft: #10362f;
+    --focus: #ffd54a;
+    --ok: #7bd69a;
+    --ok-soft: #11301c;
+    --warn: #f6c56a;
+    --warn-soft: #36280d;
+    --danger: #ff8f84;
+    --danger-soft: #3b1714;
+    --info: #8db9ff;
+    --info-soft: #13294b;
+    --sim: #c3a9ff;
+    --sim-soft: #271d40;
+    --shadow: 0 1px 2px rgb(0 0 0 / 30%), 0 8px 24px rgb(0 0 0 / 25%);
+    color-scheme: dark;
+  }
+}
+
+:root[data-theme="dark"] {
+  --bg: #0b111a;
+  --surface: #131b27;
+  --surface-2: #1b2533;
+  --ink: #eef2f7;
+  --ink-2: #a9b4c3;
+  --line: #2b3749;
+  --line-strong: #4b5a70;
+  --accent: #4fc9b0;
+  --accent-hover: #6fd8c2;
+  --accent-ink: #052823;
+  --accent-soft: #10362f;
+  --focus: #ffd54a;
+  --ok: #7bd69a;
+  --ok-soft: #11301c;
+  --warn: #f6c56a;
+  --warn-soft: #36280d;
+  --danger: #ff8f84;
+  --danger-soft: #3b1714;
+  --info: #8db9ff;
+  --info-soft: #13294b;
+  --sim: #c3a9ff;
+  --sim-soft: #271d40;
+  --shadow: 0 1px 2px rgb(0 0 0 / 30%), 0 8px 24px rgb(0 0 0 / 25%);
+  color-scheme: dark;
+}
+
+:root[data-theme="contrast"] {
+  --bg: #000000;
+  --surface: #000000;
+  --surface-2: #141414;
+  --ink: #ffffff;
+  --ink-2: #ffffff;
+  --line: #ffffff;
+  --line-strong: #ffffff;
+  --accent: #ffe600;
+  --accent-hover: #fff27a;
+  --accent-ink: #000000;
+  --accent-soft: #2b2700;
+  --focus: #00e5ff;
+  --ok: #7dff9e;
+  --ok-soft: #002b0e;
+  --warn: #ffd166;
+  --warn-soft: #2e2200;
+  --danger: #ff7b7b;
+  --danger-soft: #330000;
+  --info: #9cc8ff;
+  --info-soft: #001a33;
+  --sim: #e0ccff;
+  --sim-soft: #1c0f33;
+  --shadow: none;
+  color-scheme: dark;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  margin: 0;
+  height: 100%;
+  background: transparent;
+  overflow: hidden;
+  font-family: var(--font);
+  font-size: calc(18px * var(--text-scale));
+  color: var(--ink);
+  -webkit-font-smoothing: antialiased;
+}
+
+.ov {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+}
+
+.ov-btn {
+  position: absolute;
+  pointer-events: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 6px 10px;
+  border-radius: var(--radius);
+  border: 2px solid var(--line-strong);
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+  font-weight: 700;
+  font-size: 1rem;
+  line-height: 1.15;
+  text-align: center;
+  cursor: pointer;
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+.ov-btn:focus-visible {
+  outline: 6px solid var(--focus);
+  outline-offset: 3px;
+}
+.ov-btn .ov-detail {
+  font-weight: 400;
+  font-size: 0.82rem;
+  color: var(--ink-2);
+}
+.ov-btn .ov-n {
+  position: absolute;
+  top: 6px;
+  left: 8px;
+  min-width: 34px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--ink);
+  color: var(--bg);
+  font-size: 0.95rem;
+}
+.ov-btn svg {
+  width: 32px;
+  height: 32px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.ov-btn img {
+  width: 48px;
+  height: 48px;
+}
+.ov-btn[data-tone="help"] {
+  background: var(--danger);
+  border-color: var(--danger);
+  color: var(--surface);
+}
+.ov-btn[data-tone="stop"] {
+  border-color: var(--danger);
+  color: var(--danger);
+}
+.ov-btn[data-tone="accent"] {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+}
+.ov-btn[data-tone="quiet"] {
+  border-color: var(--line);
+  color: var(--ink-2);
+}
+.ov-btn[data-active="true"] {
+  outline: 4px solid var(--accent);
+  outline-offset: 2px;
+}
+.ov-btn[data-kind="zone"] {
+  background: color-mix(in srgb, var(--surface) 72%, transparent);
+  border-style: dashed;
+  box-shadow: none;
+}
+.ov-btn[data-kind="key"] {
+  font-size: 1.35rem;
+  box-shadow: none;
+}
+.ov-btn[data-kind="key"] .ov-detail {
+  display: none;
+}
+.ov-btn[data-scan="true"] {
+  outline: 6px solid var(--focus);
+  outline-offset: 4px;
+}
+.ov.paused .ov-btn:not([data-protected="true"]) {
+  display: none;
+}
+
+.ov-panel {
+  position: absolute;
+  background: var(--surface);
+  border: 2px solid var(--line);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow);
+}
+.ov-panel h2 {
+  margin: 0;
+  padding: 18px 24px 0;
+  font-size: 1.2rem;
+}
+.ov-panel[data-kind="scroll"] {
+  display: none;
+}
+.ov-keyboard {
+  position: absolute;
+  background: var(--surface-2);
+  border: 2px solid var(--line);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow);
+}
+.ov-secure {
+  position: absolute;
+  inset: 24px 24px auto 24px;
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: var(--warn);
+}
+
+.ov-map {
+  position: absolute;
+  background: var(--surface);
+  border: 2px solid var(--line-strong);
+  border-radius: var(--radius);
+}
+.ov-map .box {
+  position: absolute;
+  border: 2px solid var(--accent);
+  border-radius: 6px;
+}
+.ov-map .box span,
+.ov-badge {
+  position: absolute;
+  top: -12px;
+  left: -12px;
+  min-width: 28px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: var(--ink);
+  color: var(--bg);
+  font-weight: 700;
+  font-size: 0.9rem;
+  text-align: center;
+}
+.ov-badge {
+  top: auto;
+  left: auto;
+  transform: translate(-40%, -40%);
+}
+
+/* The gaze cursor and dwell ring: outlines only, never a fill over the content. */
+.ov-cursor {
+  position: absolute;
+  width: 28px;
+  height: 28px;
+  margin: -14px 0 0 -14px;
+  border-radius: 999px;
+  border: 3px solid var(--accent);
+  box-shadow: 0 0 0 2px var(--surface);
+}
+.ov-cursor[data-weak="true"] {
+  border-style: dashed;
+  opacity: 0.6;
+}
+.ov.paused .ov-cursor {
+  border-color: var(--line-strong);
+  opacity: 0.5;
+}
+.ov-focus {
+  position: absolute;
+  overflow: visible;
+}
+.ov-focus rect {
+  fill: none;
+}
+.ov-focus .track {
+  stroke: color-mix(in srgb, var(--surface) 80%, transparent);
+  stroke-width: 6;
+}
+.ov-focus .progress {
+  stroke: var(--accent);
+  stroke-width: 6;
+  stroke-linecap: round;
+}
+.ov-focus[data-kind="cluster"] .progress {
+  stroke: var(--info);
+}
+
+.ov-notice {
+  position: absolute;
+  max-width: 420px;
+  padding: 14px 20px;
+  border-radius: var(--radius);
+  background: var(--ink);
+  color: var(--bg);
+  font-weight: 700;
+  box-shadow: var(--shadow);
+}
+.ov-notice[data-tone="warn"] {
+  background: var(--warn-soft);
+  color: var(--ink);
+  border: 2px solid var(--warn);
+}
+.ov-status {
+  position: absolute;
+  padding: 8px 16px;
+  border-radius: 999px;
+  background: var(--ink);
+  color: var(--bg);
+  font-weight: 700;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .ov-cursor {
+    transition: transform 60ms linear;
+  }
+}
