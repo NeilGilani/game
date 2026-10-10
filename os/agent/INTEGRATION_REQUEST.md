@@ -2,6 +2,11 @@
 
 For Instance 1 unless noted. Nothing here is blocking the fake agent; items 1 to 3 are needed for the real agent.
 
+> Status 2026-10-10: items 1 and 2 are done on main (STATUS.md). The agent now answers `ping` with `pong`.
+> The host already passes its whole environment to the agent, so `GEMINI_API_KEY` needs no host change.
+> **PLAN.md still says "Anthropic API" in the architecture diagram and Claude in "What we are building"; the owner
+> switched the agent to Google Gemini (Claude optional). Please update PLAN.md (root doc, Instance 1).**
+
 ## 1. Run os/agent in `make check` and CI
 
 `os/agent` is a standalone npm package (its own `package.json` and lockfile, pinned versions). Please add to the root
@@ -40,8 +45,12 @@ Environment variables the entry reads:
 | Variable | Meaning |
 |---|---|
 | `AGENCY_AGENT_FAKE=1` | run the scripted FakeAgent instead (for UI work) |
-| `ANTHROPIC_API_KEY` | optional; otherwise the macOS keychain item service `AGENCY`, account `anthropic-api-key` |
-| `AGENCY_AGENT_MODEL`, `AGENCY_AGENT_EFFORT` | default `claude-opus-5-5`, `high` |
+| `AGENCY_AGENT_PROVIDER` | `gemini` (default) or `anthropic` |
+| `GEMINI_API_KEY` | optional; otherwise the macOS keychain item service `AGENCY`, account `gemini-api-key` |
+| `ANTHROPIC_API_KEY` | only with `AGENCY_AGENT_PROVIDER=anthropic`; or keychain account `anthropic-api-key` |
+| `AGENCY_AGENT_MODEL` | default `gemini-3.8-flash` (or `claude-opus-5-5` for Claude) |
+| `AGENCY_AGENT_THINKING` / `AGENCY_AGENT_EFFORT` | Gemini thinking level (default medium) / Claude effort (default high) |
+| `AGENCY_COMPUTER_USE=0` | turn the computer-use tier off |
 | `AGENCY_COORDINATOR_URL`, `AGENCY_COORDINATOR_TOKEN` | memory API (`/api/memory/*`) |
 | `AGENCY_AUDIT_FILE` | e.g. `~/Library/Application Support/AGENCY/agent-audit.jsonl` (written 0600, secrets redacted) |
 | `AGENCY_AGENT_SETTINGS` | JSON file with the caregiver's `SafetySettings` (limits, allowlist); re-read on every check, never written by the agent |
