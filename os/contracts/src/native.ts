@@ -1,6 +1,8 @@
 /**
  * agency-native: the Swift helper (os/native-macos). Newline-delimited JSON-RPC 2.0 over stdio.
  * Only the Electron main process talks to it. Methods map 1:1 to the entries below.
+ * Events are JSON-RPC notifications: {"jsonrpc":"2.0","method":"event","params":<NativeEvent>}.
+ * Logs go to stderr (the host writes them to ~/Library/Logs/AGENCY/native.log), never stdout.
  */
 
 import type { TargetSnapshot } from "./targets";
