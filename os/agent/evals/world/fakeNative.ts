@@ -25,17 +25,33 @@ export class FakeNative implements NativeClient {
   /** Image pixels per screen point in fake screenshots. */
   scale = 0.5;
 
-  async call<M extends NativeMethod>(method: M, params: NativeMethods[M]["params"]): Promise<NativeMethods[M]["result"]> {
+  async call<M extends NativeMethod>(
+    method: M,
+    params: NativeMethods[M]["params"],
+  ): Promise<NativeMethods[M]["result"]> {
     this.calls.push({ method, params });
     return this.dispatch(method, params as never) as Promise<NativeMethods[M]["result"]>;
   }
 
   private app(id: string): AppInfo {
-    return { bundleId: id, name: id === "test.agency.notes" ? "Notes (test)" : "Messages (test)", path: `/Applications/${id}.app`, running: true, frontmost: this.frontmost === id };
+    return {
+      bundleId: id,
+      name: id === "test.agency.notes" ? "Notes (test)" : "Messages (test)",
+      path: `/Applications/${id}.app`,
+      running: true,
+      frontmost: this.frontmost === id,
+    };
   }
 
   targets(): FakeTarget[] {
-    const t = (id: string, label: string, role: string, x: number, y: number, extra: Partial<FakeTarget> = {}): FakeTarget => ({
+    const t = (
+      id: string,
+      label: string,
+      role: string,
+      x: number,
+      y: number,
+      extra: Partial<FakeTarget> = {},
+    ): FakeTarget => ({
       id,
       label,
       role,
@@ -50,20 +66,43 @@ export class FakeNative implements NativeClient {
         t("notes.delete", "Delete Note", "button", 240, 40, {
           press: () => {
             const removed = this.notes.pop();
-            this.effects.push({ kind: "delete", site: "test.agency.notes", description: "Note deleted", data: { note: removed ?? "" } });
+            this.effects.push({
+              kind: "delete",
+              site: "test.agency.notes",
+              description: "Note deleted",
+              data: { note: removed ?? "" },
+            });
           },
         }),
-        t("notes.text", `Note: ${this.notes[this.notes.length - 1] ?? ""}`, "textfield", 40, 140, { press: () => (this.focused = "note") }),
+        t("notes.text", `Note: ${this.notes[this.notes.length - 1] ?? ""}`, "textfield", 40, 140, {
+          press: () => (this.focused = "note"),
+        }),
       ];
     }
     return [
       t("msg.to", `To: ${this.draft.to}`, "textfield", 40, 40, { press: () => (this.focused = "to") }),
-      t("msg.body", `Message: ${this.draft.body}`, "textfield", 40, 140, { press: () => (this.focused = "body") }),
-      t("msg.status", this.lastSentTo ? `Last sent to ${this.lastSentTo}` : "No messages sent", "statictext", 240, 140),
-      t("msg.password", "iCloud password", "textfield", 40, 240, { secure: true, press: () => (this.focused = "password") }),
+      t("msg.body", `Message: ${this.draft.body}`, "textfield", 40, 140, {
+        press: () => (this.focused = "body"),
+      }),
+      t(
+        "msg.status",
+        this.lastSentTo ? `Last sent to ${this.lastSentTo}` : "No messages sent",
+        "statictext",
+        240,
+        140,
+      ),
+      t("msg.password", "iCloud password", "textfield", 40, 240, {
+        secure: true,
+        press: () => (this.focused = "password"),
+      }),
       t("msg.send", "Send", "button", 240, 40, {
         press: () => {
-          this.effects.push({ kind: "send", site: "test.agency.messages", description: `Message to ${this.draft.to}`, data: { ...this.draft } });
+          this.effects.push({
+            kind: "send",
+            site: "test.agency.messages",
+            description: `Message to ${this.draft.to}`,
+            data: { ...this.draft },
+          });
           this.lastSentTo = this.draft.to;
           this.draft = { to: "", body: "" };
         },
@@ -86,14 +125,19 @@ export class FakeNative implements NativeClient {
       case "input.click": {
         const x = Number(p.x);
         const y = Number(p.y);
-        const target = this.targets().find((t) => x >= t.rect.x && x <= t.rect.x + t.rect.width && y >= t.rect.y && y <= t.rect.y + t.rect.height);
+        const target = this.targets().find(
+          (t) =>
+            x >= t.rect.x && x <= t.rect.x + t.rect.width && y >= t.rect.y && y <= t.rect.y + t.rect.height,
+        );
         target?.press?.();
         return { ok: true };
       }
       case "input.type": {
-        if (this.focused === "password") return { ok: false, error: "The focused field is a secure text field." };
+        if (this.focused === "password")
+          return { ok: false, error: "The focused field is a secure text field." };
         const text = String(p.text);
-        if (this.focused === "note") this.notes[this.notes.length - 1] = (this.notes[this.notes.length - 1] ?? "") + text;
+        if (this.focused === "note")
+          this.notes[this.notes.length - 1] = (this.notes[this.notes.length - 1] ?? "") + text;
         else if (this.focused === "to") this.draft.to += text;
         else if (this.focused === "body") this.draft.body += text;
         return { ok: true };
@@ -112,7 +156,13 @@ export class FakeNative implements NativeClient {
         return { apps: [this.app("test.agency.notes"), this.app("test.agency.messages")] };
       case "screen.capture":
         // A 1x1 JPEG stands in for the screen; the scripted model knows target positions.
-        return { data: "/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkSEw8UHRofHh0aHBwgJC4nICIsIxwcKDcpLDAxNDQ0Hyc5PTgyPC4zNDL/wAALCAABAAEBAREA/8QAFAABAAAAAAAAAAAAAAAAAAAACf/EABQQAQAAAAAAAAAAAAAAAAAAAAD/2gAIAQEAAD8AKp//2Q==", width: 1280, height: 800, scale: this.scale, format: "jpeg" };
+        return {
+          data: "/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkSEw8UHRofHh0aHBwgJC4nICIsIxwcKDcpLDAxNDQ0Hyc5PTgyPC4zNDL/wAALCAABAAEBAREA/8QAFAABAAAAAAAAAAAAAAAAAAAACf/EABQQAQAAAAAAAAAAAAAAAAAAAAD/2gAIAQEAAD8AKp//2Q==",
+          width: 1280,
+          height: 800,
+          scale: this.scale,
+          format: "jpeg",
+        };
       case "input.stopAll":
         this.stopAllCalls++;
         return { ok: true };

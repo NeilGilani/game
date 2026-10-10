@@ -29,8 +29,13 @@ export async function findApiKey(
 
 function keychainLookup(): Promise<string | null> {
   return new Promise((resolve) => {
-    execFile("/usr/bin/security", ["find-generic-password", "-s", KEYCHAIN_SERVICE, "-a", KEYCHAIN_ACCOUNT, "-w"], { timeout: 5000 }, (err, stdout) => {
-      resolve(err ? null : stdout.trim() || null);
-    });
+    execFile(
+      "/usr/bin/security",
+      ["find-generic-password", "-s", KEYCHAIN_SERVICE, "-a", KEYCHAIN_ACCOUNT, "-w"],
+      { timeout: 5000 },
+      (err, stdout) => {
+        resolve(err ? null : stdout.trim() || null);
+      },
+    );
   });
 }

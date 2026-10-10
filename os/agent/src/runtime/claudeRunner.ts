@@ -6,7 +6,14 @@
 import type { ConsequentialKind, RiskLevel, Suggestion } from "@agency/contracts";
 import type { AuditLog } from "../audit";
 import type { GuardOutcome } from "../guard";
-import type { ModelClient, ModelContentBlock, ModelMessage, ModelParam, ModelRequest, ToolResultParam } from "../model/client";
+import type {
+  ModelClient,
+  ModelContentBlock,
+  ModelMessage,
+  ModelParam,
+  ModelRequest,
+  ToolResultParam,
+} from "../model/client";
 import { ModelUnavailable } from "../model/client";
 import { BRIDGE_TOOLS, NATIVE_TOOLS, PLAN_TOOLS, SYSTEM_PROMPT } from "../model/prompt";
 import { asUntrusted, detectInjection } from "../policy/injection";
@@ -37,7 +44,11 @@ type Terminal = { result: RunResult } | null;
 export async function runClaude(input: ClaudeRunInput): Promise<RunResult> {
   const { task, tools, model, settings, audit } = input;
   const computer = settings.computerUse && tools.native ? new ComputerTier(tools.native, tools) : null;
-  const toolDefs = [...PLAN_TOOLS, ...(tools.bridge ? BRIDGE_TOOLS : []), ...(tools.native ? NATIVE_TOOLS : [])];
+  const toolDefs = [
+    ...PLAN_TOOLS,
+    ...(tools.bridge ? BRIDGE_TOOLS : []),
+    ...(tools.native ? NATIVE_TOOLS : []),
+  ];
   const messages: ModelParam[] = [{ role: "user", content: brief(input) }];
   const shownInjections = new Set<string>();
   const stepAttempts = new Map<string, number>();
@@ -56,7 +67,9 @@ export async function runClaude(input: ClaudeRunInput): Promise<RunResult> {
       thinking: { type: "adaptive" },
       output_config: { effort: settings.effort },
       cache_control: { type: "ephemeral" },
-      ...(settings.fallbacks ? { betas: ["server-side-fallback-2026-07-01"], fallbacks: "default" as const } : {}),
+      ...(settings.fallbacks
+        ? { betas: ["server-side-fallback-2026-07-01"], fallbacks: "default" as const }
+        : {}),
     };
 
     let res: ModelMessage;
@@ -64,26 +77,50 @@ export async function runClaude(input: ClaudeRunInput): Promise<RunResult> {
       res = await model.create(request, task.abort.signal);
     } catch (e) {
       if (task.stopped) throw new TaskStopped(task.stopped);
-      if (e instanceof ModelUnavailable) return { kind: "failed", reason: e.message, recoverable: e.retryable };
+      if (e instanceof ModelUnavailable)
+        return { kind: "failed", reason: e.message, recoverable: e.retryable };
       throw e;
     }
     account(task, res, settings);
-    audit.record({ taskId: task.id, kind: "model", message: `Claude replied (${res.stop_reason ?? "unknown"}).`, data: { model: res.model, in: res.usage.input_tokens, out: res.usage.output_tokens } });
+    audit.record({
+      taskId: task.id,
+      kind: "model",
+      message: `Claude replied (${res.stop_reason ?? "unknown"}).`,
+      data: { model: res.model, in: res.usage.input_tokens, out: res.usage.output_tokens },
+    });
 
     if (res.stop_reason === "refusal") {
-      return { kind: "failed", reason: "Claude declined to help with this task, so nothing more was done.", recoverable: false };
+      return {
+        kind: "failed",
+        reason: "Claude declined to help with this task, so nothing more was done.",
+        recoverable: false,
+      };
     }
     messages.push({ role: "assistant", content: res.content as ModelParam["content"] });
     if (res.stop_reason === "max_tokens") {
-      messages.push({ role: "user", content: "Your reply was cut off. Continue with one tool call at a time." });
+      messages.push({
+        role: "user",
+        content: "Your reply was cut off. Continue with one tool call at a time.",
+      });
       continue;
     }
 
-    const uses = res.content.filter((b): b is Extract<ModelContentBlock, { type: "tool_use" }> => b.type === "tool_use");
+    const uses = res.content.filter(
+      (b): b is Extract<ModelContentBlock, { type: "tool_use" }> => b.type === "tool_use",
+    );
     if (uses.length === 0) {
-      if (nudged) return { kind: "failed", reason: "Claude stopped without finishing or explaining.", recoverable: true };
+      if (nudged)
+        return {
+          kind: "failed",
+          reason: "Claude stopped without finishing or explaining.",
+          recoverable: true,
+        };
       nudged = true;
-      messages.push({ role: "user", content: "Use the tools: call finish if the task is done (with proof), give_up if it can't be done, or keep working." });
+      messages.push({
+        role: "user",
+        content:
+          "Use the tools: call finish if the task is done (with proof), give_up if it can't be done, or keep working.",
+      });
       continue;
     }
 
@@ -95,19 +132,41 @@ export async function runClaude(input: ClaudeRunInput): Promise<RunResult> {
         continue;
       }
       const isComputer = use.toolset_name === "computer";
-      if (!planShown && !isComputer && use.name !== "show_plan" && use.name !== "give_up" && use.name !== "ask_person" && use.name !== "read_page" && use.name !== "read_app") {
+      if (
+        !planShown &&
+        !isComputer &&
+        use.name !== "show_plan" &&
+        use.name !== "give_up" &&
+        use.name !== "ask_person" &&
+        use.name !== "read_page" &&
+        use.name !== "read_app"
+      ) {
         results.push(result(use, "Call show_plan first so the person can see the plan.", true));
         continue;
       }
       try {
-        const out = await withTimeout(dispatch(use.name, (use.input ?? {}) as Record<string, unknown>, isComputer), task.budgets.toolTimeoutMs, use.name);
-        results.push({ ...out.param, tool_use_id: use.id } as ToolResultParam);
+        const out = await withTimeout(
+          dispatch(use.name, (use.input ?? {}) as Record<string, unknown>, isComputer),
+          task.budgets.toolTimeoutMs,
+          use.name,
+        );
+        results.push({
+          ...out.param,
+          tool_use_id: use.id,
+          ...(use.toolset_name ? { toolset_name: use.toolset_name } : {}),
+        } as ToolResultParam);
         if (out.terminal) terminal = out.terminal;
       } catch (e) {
         if (e instanceof TaskStopped) throw e;
         if (task.stopped) throw new TaskStopped(task.stopped);
         if (e instanceof BudgetExceeded || !(e instanceof Error)) throw e;
-        results.push(result(use, `That did not work: ${e instanceof ToolError ? e.message : redactSecrets(e.message)}`, true));
+        results.push(
+          result(
+            use,
+            `That did not work: ${e instanceof ToolError ? e.message : redactSecrets(e.message)}`,
+            true,
+          ),
+        );
       }
     }
     messages.push({ role: "user", content: results });
@@ -116,19 +175,32 @@ export async function runClaude(input: ClaudeRunInput): Promise<RunResult> {
 
   // --- Tool dispatch --------------------------------------------------------------------------------
 
-  async function dispatch(name: string, args: Record<string, unknown>, isComputer: boolean): Promise<{ param: Omit<ToolResultParam, "tool_use_id">; terminal?: Terminal }> {
+  async function dispatch(
+    name: string,
+    args: Record<string, unknown>,
+    isComputer: boolean,
+  ): Promise<{ param: Omit<ToolResultParam, "tool_use_id">; terminal?: Terminal }> {
     if (isComputer) {
       if (!computer) return { param: plain("Computer use is not available.", true) };
       if (tools.bridge && name !== "screenshot" && name !== "wait") {
         const front = await tools.native!.call("apps.frontmost", {});
         if (CHROME.test(front.app?.bundleId ?? "")) {
-          return { param: plain("Chrome is connected through the AGENCY Bridge. Use read_page, click and type_text for web pages.", true) };
+          return {
+            param: plain(
+              "Chrome is connected through the AGENCY Bridge. Use read_page, click and type_text for web pages.",
+              true,
+            ),
+          };
         }
       }
       const r = await computer.run(name, args);
       const param: Omit<ToolResultParam, "tool_use_id"> =
         r.kind === "image"
-          ? { type: "tool_result", toolset_name: "computer", content: [{ type: "image", source: { type: "base64", media_type: r.mediaType, data: r.data } }] }
+          ? {
+              type: "tool_result",
+              toolset_name: "computer",
+              content: [{ type: "image", source: { type: "base64", media_type: r.mediaType, data: r.data } }],
+            }
           : { type: "tool_result", toolset_name: "computer", content: r.text, is_error: r.isError ?? false };
       return { param };
     }
@@ -137,8 +209,14 @@ export async function runClaude(input: ClaudeRunInput): Promise<RunResult> {
       case "show_plan": {
         const steps = (args.steps as { title: string; risk: RiskLevel }[] | undefined) ?? [];
         if (steps.length < 1 || steps.length > 8) return { param: plain("A plan needs 1 to 8 steps.", true) };
-        task.setPlan(steps.map((s, i) => ({ id: `s${i + 1}`, title: String(s.title).slice(0, 80), risk: s.risk })));
-        audit.record({ taskId: task.id, kind: "plan", message: `Plan: ${steps.map((s) => s.title).join(" → ")}` });
+        task.setPlan(
+          steps.map((s, i) => ({ id: `s${i + 1}`, title: String(s.title).slice(0, 80), risk: s.risk })),
+        );
+        audit.record({
+          taskId: task.id,
+          kind: "plan",
+          message: `Plan: ${steps.map((s) => s.title).join(" → ")}`,
+        });
         planShown = true;
         return { param: plain(`Plan shown. Step ids: ${steps.map((_, i) => `s${i + 1}`).join(", ")}.`) };
       }
@@ -155,7 +233,12 @@ export async function runClaude(input: ClaudeRunInput): Promise<RunResult> {
         const step = task.steps.find((s) => s.id === id);
         if (!step) return { param: plain(`There is no step ${id}.`, true) };
         const v = await verifyVisible(tools, String(args.expect_text ?? ""));
-        audit.record({ taskId: task.id, kind: "verify", message: `${step.title}: ${v.evidence}`, result: v.ok ? "ok" : "failed" });
+        audit.record({
+          taskId: task.id,
+          kind: "verify",
+          message: `${step.title}: ${v.evidence}`,
+          result: v.ok ? "ok" : "failed",
+        });
         if (v.ok) {
           task.stepStatus(id, "done", String(args.summary ?? step.title), v.evidence);
           return { param: plain(`Checked: ${v.evidence}`) };
@@ -164,15 +247,24 @@ export async function runClaude(input: ClaudeRunInput): Promise<RunResult> {
         stepAttempts.set(id, n);
         if (n >= task.budgets.maxStepAttempts) {
           task.stepStatus(id, "failed", `${step.title}: I couldn't confirm it worked. ${v.evidence}`);
-          return { param: plain(`Could not confirm this step after ${n} tries. Call give_up with what went wrong, or try a different way.`, true) };
+          return {
+            param: plain(
+              `Could not confirm this step after ${n} tries. Call give_up with what went wrong, or try a different way.`,
+              true,
+            ),
+          };
         }
-        return { param: plain(`Not confirmed: ${v.evidence} Look at the page again and fix the step.`, true) };
+        return {
+          param: plain(`Not confirmed: ${v.evidence} Look at the page again and fix the step.`, true),
+        };
       }
       case "ask_person": {
-        const opts = ((args.options as { label: string; description: string }[] | undefined) ?? []).map((o) => ({
-          label: String(o.label).slice(0, 60),
-          description: o.description ? String(o.description).slice(0, 140) : undefined,
-        }));
+        const opts = ((args.options as { label: string; description: string }[] | undefined) ?? []).map(
+          (o) => ({
+            label: String(o.label).slice(0, 60),
+            description: o.description ? String(o.description).slice(0, 140) : undefined,
+          }),
+        );
         if (opts.length < 2 || opts.length > 6) return { param: plain("Give 2 to 6 options.", true) };
         const prompt = String(args.prompt ?? "").slice(0, 160);
         const allowOther = args.allow_other === true;
@@ -192,34 +284,89 @@ export async function runClaude(input: ClaudeRunInput): Promise<RunResult> {
       case "click":
         return { param: fromOutcome(await tools.click(String(args.ref), claimOf(args))) };
       case "type_text":
-        return { param: fromOutcome(await tools.type(String(args.ref), String(args.text ?? ""), claimOf(args))) };
+        return {
+          param: fromOutcome(await tools.type(String(args.ref), String(args.text ?? ""), claimOf(args))),
+        };
       case "read_app": {
         const app = await tools.readApp();
-        const lines = app.targets.map((t) => `[${t.id}] ${t.role} "${t.label}"${t.secure ? " (password field)" : ""}`).join("\n");
-        return { param: plain(await screenUntrusted(`app ${app.owner ?? "unknown"}`, `App: ${app.owner}\n${lines}`)) };
+        const lines = app.targets
+          .map((t) => `[${t.id}] ${t.role} "${t.label}"${t.secure ? " (password field)" : ""}`)
+          .join("\n");
+        return {
+          param: plain(await screenUntrusted(`app ${app.owner ?? "unknown"}`, `App: ${app.owner}\n${lines}`)),
+        };
       }
       case "press":
         return { param: fromOutcome(await tools.press(String(args.target_id), claimOf(args))) };
       case "app_type":
         return { param: fromOutcome(await tools.typeText(String(args.text ?? ""), claimOf(args))) };
       case "app_key":
-        return { param: fromOutcome(await tools.key(String(args.key), (args.modifiers as ("cmd" | "ctrl" | "alt" | "shift" | "fn")[]) ?? [], claimOf(args))) };
+        return {
+          param: fromOutcome(
+            await tools.key(
+              String(args.key),
+              (args.modifiers as ("cmd" | "ctrl" | "alt" | "shift" | "fn")[]) ?? [],
+              claimOf(args),
+            ),
+          ),
+        };
       case "open_app":
         return { param: fromOutcome(await tools.openApp(String(args.bundle_id))) };
       case "finish": {
         const v = await verifyVisible(tools, String(args.expect_text ?? ""), tools.lastConsequentialBefore);
-        audit.record({ taskId: task.id, kind: "verify", message: `Finish check: ${v.evidence}`, result: v.ok ? "ok" : "failed" });
+        audit.record({
+          taskId: task.id,
+          kind: "verify",
+          message: `Finish check: ${v.evidence}`,
+          result: v.ok ? "ok" : "failed",
+        });
         if (!v.ok) {
           const n = (stepAttempts.get("finish") ?? 0) + 1;
           stepAttempts.set("finish", n);
-          if (n < task.budgets.maxStepAttempts) return { param: plain(`Not confirmed: ${v.evidence} Check the page and call finish again with text that proves it, or give_up.`, true) };
-          return { param: plain("Not confirmed."), terminal: { result: { kind: "done", outcome: String(args.outcome ?? ""), verified: false, evidence: v.evidence } } };
+          if (n < task.budgets.maxStepAttempts)
+            return {
+              param: plain(
+                `Not confirmed: ${v.evidence} Check the page and call finish again with text that proves it, or give_up.`,
+                true,
+              ),
+            };
+          return {
+            param: plain("Not confirmed."),
+            terminal: {
+              result: {
+                kind: "done",
+                outcome: String(args.outcome ?? ""),
+                verified: false,
+                evidence: v.evidence,
+              },
+            },
+          };
         }
-        for (const s of task.steps) if (s.status === "pending" || s.status === "running") task.stepStatus(s.id, "done", s.title);
-        return { param: plain("Confirmed."), terminal: { result: { kind: "done", outcome: String(args.outcome ?? "Done."), verified: true, evidence: v.evidence } } };
+        for (const s of task.steps)
+          if (s.status === "pending" || s.status === "running") task.stepStatus(s.id, "done", s.title);
+        return {
+          param: plain("Confirmed."),
+          terminal: {
+            result: {
+              kind: "done",
+              outcome: String(args.outcome ?? "Done."),
+              verified: true,
+              evidence: v.evidence,
+            },
+          },
+        };
       }
       case "give_up":
-        return { param: plain("OK"), terminal: { result: { kind: "failed", reason: String(args.reason ?? "The task could not be done."), recoverable: true } } };
+        return {
+          param: plain("OK"),
+          terminal: {
+            result: {
+              kind: "failed",
+              reason: String(args.reason ?? "The task could not be done."),
+              recoverable: true,
+            },
+          },
+        };
       default:
         return { param: plain(`Unknown tool ${name}.`, true) };
     }
@@ -232,8 +379,14 @@ export async function runClaude(input: ClaudeRunInput): Promise<RunResult> {
     if (findings.length) {
       const f = findings[0]!;
       findings.forEach((x) => shownInjections.add(x.excerpt));
-      audit.record({ taskId: task.id, kind: "injection", message: `The ${source} contains text that tries to instruct me: "${f.excerpt}"`, data: { pattern: f.pattern } });
-      const answer = await input.ask({
+      audit.record({
+        taskId: task.id,
+        kind: "injection",
+        message: `The ${source} contains text that tries to instruct me: "${f.excerpt}"`,
+        data: { pattern: f.pattern },
+      });
+      // Asked directly, not through the memory-ranked asker: this is a safety check, not a preference.
+      const answer = await task.ask({
         prompt: "This page has text that tries to tell me what to do. I won't follow it. What now?",
         options: options([
           { label: "Keep going safely", description: `I'll ignore it: "${f.excerpt.slice(0, 100)}"` },
@@ -259,14 +412,26 @@ function brief(input: ClaudeRunInput): string {
     .slice(0, 6)
     .map((s) => `- ${s.label} (${s.reason})`)
     .join("\n");
-  const connected = [tools.bridge ? "Chrome through the AGENCY Bridge" : null, tools.native ? "Mac apps through agency-native" : null].filter(Boolean).join(" and ") || "nothing";
+  const connected =
+    [
+      tools.bridge ? "Chrome through the AGENCY Bridge" : null,
+      tools.native ? "Mac apps through agency-native" : null,
+    ]
+      .filter(Boolean)
+      .join(" and ") || "nothing";
   return [
     `Goal: ${task.request.goal}`,
     sel ? `Choices the person already made:\n${sel}` : "",
-    mem ? `What the person usually chooses (from their memory tree; use it to rank options, never to skip asking for consequential choices):\n${mem}` : "",
+    mem
+      ? `What the person usually chooses (from their memory tree; use it to rank options, never to skip asking for consequential choices):\n${mem}`
+      : "",
     `Connected: ${connected}.`,
-    task.dryRun || safety.simulatedOnly ? "Mode: SIMULATED. Only sandbox sites and simulated apps can be acted on for real; say so if asked." : "Mode: real.",
-    safety.maxPurchase === null ? "Purchases are turned off." : `Spending limit: $${safety.maxPurchase.toFixed(2)} per purchase.`,
+    task.dryRun || safety.simulatedOnly
+      ? "Mode: SIMULATED. Only sandbox sites and simulated apps can be acted on for real; say so if asked."
+      : "Mode: real.",
+    safety.maxPurchase === null
+      ? "Purchases are turned off."
+      : `Spending limit: $${safety.maxPurchase.toFixed(2)} per purchase.`,
   ]
     .filter(Boolean)
     .join("\n\n");
@@ -276,7 +441,13 @@ export function formatPage(snap: PageSnapshot): string {
   const nodes = snap.nodes
     .slice(0, 300)
     .map((n) => {
-      const flags = [n.secure ? "secret field: never type" : "", n.disabled ? "disabled" : "", n.submits ? "submits form" : ""].filter(Boolean).join(", ");
+      const flags = [
+        n.secure ? "secret field: never type" : "",
+        n.disabled ? "disabled" : "",
+        n.submits ? "submits form" : "",
+      ]
+        .filter(Boolean)
+        .join(", ");
       const value = n.secure ? "" : n.value ? ` value="${n.value.slice(0, 80)}"` : "";
       return `[${n.ref}] ${n.role} "${n.name.slice(0, 120)}"${value}${flags ? ` (${flags})` : ""}`;
     })
@@ -285,7 +456,8 @@ export function formatPage(snap: PageSnapshot): string {
 }
 
 function claimOf(args: Record<string, unknown>): ActionClaim {
-  const kind = typeof args.kind === "string" && args.kind !== "none" ? (args.kind as ConsequentialKind) : undefined;
+  const kind =
+    typeof args.kind === "string" && args.kind !== "none" ? (args.kind as ConsequentialKind) : undefined;
   return {
     risk: (["read", "reversible", "consequential"] as const).find((r) => r === args.risk),
     kind,
@@ -298,8 +470,16 @@ function plain(text: string, isError = false): Omit<ToolResultParam, "tool_use_i
   return { type: "tool_result", content: text, ...(isError ? { is_error: true } : {}) };
 }
 
-function result(use: { id: string; toolset_name?: string | null }, text: string, isError = false): ToolResultParam {
-  return { ...plain(text, isError), tool_use_id: use.id, ...(use.toolset_name ? { toolset_name: use.toolset_name } : {}) };
+function result(
+  use: { id: string; toolset_name?: string | null },
+  text: string,
+  isError = false,
+): ToolResultParam {
+  return {
+    ...plain(text, isError),
+    tool_use_id: use.id,
+    ...(use.toolset_name ? { toolset_name: use.toolset_name } : {}),
+  };
 }
 
 function fromOutcome(o: GuardOutcome<string>): Omit<ToolResultParam, "tool_use_id"> {
@@ -307,7 +487,10 @@ function fromOutcome(o: GuardOutcome<string>): Omit<ToolResultParam, "tool_use_i
     case "done":
       return plain(o.approvalId ? `${o.value} (approved by the person)` : o.value);
     case "declined":
-      return plain(`Not done: the person declined. ${o.reason} Do not try this again; ask what they want instead, or give_up.`, true);
+      return plain(
+        `Not done: the person declined. ${o.reason} Do not try this again; ask what they want instead, or give_up.`,
+        true,
+      );
     case "change":
       return plain(`Not done: the person wants a change first: ${o.change}`, true);
     case "refused":
@@ -323,5 +506,10 @@ function account(task: TaskRun, res: ModelMessage, s: ModelSettings): void {
   task.usage.outputTokens += u.output_tokens;
   task.usage.cacheReadTokens += cacheRead;
   task.usage.cacheWriteTokens += cacheWrite;
-  task.usage.costUsd += (u.input_tokens * s.prices.input + u.output_tokens * s.prices.output + cacheRead * s.prices.cacheRead + cacheWrite * s.prices.cacheWrite) / 1e6;
+  task.usage.costUsd +=
+    (u.input_tokens * s.prices.input +
+      u.output_tokens * s.prices.output +
+      cacheRead * s.prices.cacheRead +
+      cacheWrite * s.prices.cacheWrite) /
+    1e6;
 }

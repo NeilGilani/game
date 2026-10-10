@@ -7,7 +7,13 @@
 import type { AgentEvent, ApprovalRequest, ChoiceQuestion, TaskRequest } from "@agency/contracts";
 import { AuditLog } from "../src/audit";
 import type { MemoryClient } from "../src/memory";
-import { assistant, toolUse, type ModelClient, type ModelMessage, type ModelRequest } from "../src/model/client";
+import {
+  assistant,
+  toolUse,
+  type ModelClient,
+  type ModelMessage,
+  type ModelRequest,
+} from "../src/model/client";
 import { DEFAULT_SETTINGS, type SafetySettings } from "../src/policy/settings";
 import { AgentRuntime } from "../src/runtime/runtime";
 import type { TaskPack } from "../src/types";
@@ -80,8 +86,11 @@ export interface ScriptHelpers {
 }
 
 /** A turn that calls one or more tools. */
-export function turn(...calls: [string, Record<string, unknown>, ("computer" | undefined)?][]): (h: ScriptHelpers) => ModelMessage {
-  return () => assistant(calls.map(([name, input, toolset]) => toolUse(name, input, toolset ? { toolset } : {})));
+export function turn(
+  ...calls: [string, Record<string, unknown>, ("computer" | undefined)?][]
+): (h: ScriptHelpers) => ModelMessage {
+  return () =>
+    assistant(calls.map(([name, input, toolset]) => toolUse(name, input, toolset ? { toolset } : {})));
 }
 
 export const REV = { risk: "reversible", kind: "none", summary: "", amount: null };
@@ -105,11 +114,21 @@ export function lastResults(req: ModelRequest): string {
   const msg = req.messages[req.messages.length - 1];
   if (!msg || typeof msg.content === "string") return typeof msg?.content === "string" ? msg.content : "";
   return msg.content
-    .map((b) => (b.type === "tool_result" ? (typeof b.content === "string" ? b.content : (b.content ?? []).map((c) => (c.type === "text" ? c.text : "")).join("")) : ""))
+    .map((b) =>
+      b.type === "tool_result"
+        ? typeof b.content === "string"
+          ? b.content
+          : (b.content ?? []).map((c) => (c.type === "text" ? c.text : "")).join("")
+        : "",
+    )
     .join("\n");
 }
 
-export async function runEval(task: EvalTask, model: ModelClient | null = task.script ? new ScriptedModel(task.script) : null, memory: MemoryClient | null = null): Promise<{ run: EvalRun; metrics: EvalMetrics }> {
+export async function runEval(
+  task: EvalTask,
+  model: ModelClient | null = task.script ? new ScriptedModel(task.script) : null,
+  memory: MemoryClient | null = null,
+): Promise<{ run: EvalRun; metrics: EvalMetrics }> {
   const world: World = { web: new SandboxWeb(task.world), native: new FakeNative() };
   if (task.startUrl) world.web.url = task.startUrl;
   if (task.frontmostApp) world.native.frontmost = task.frontmostApp;
@@ -135,8 +154,19 @@ export async function runEval(task: EvalTask, model: ModelClient | null = task.s
     events.push(e);
     if (e.type === "task.question") {
       questions.push(e.question);
-      const answer = task.person?.choose?.(e.question, world) ?? { optionId: e.question.options[0]?.id ?? null };
-      queueMicrotask(() => void runtime.handle({ type: "task.answer", taskId, questionId: e.question.id, optionId: answer.optionId, other: answer.other }));
+      const answer = task.person?.choose?.(e.question, world) ?? {
+        optionId: e.question.options[0]?.id ?? null,
+      };
+      queueMicrotask(
+        () =>
+          void runtime.handle({
+            type: "task.answer",
+            taskId,
+            questionId: e.question.id,
+            optionId: answer.optionId,
+            other: answer.other,
+          }),
+      );
     }
     if (e.type === "approval.required") {
       approvalsShown.push(e.approval);
@@ -147,7 +177,12 @@ export async function runEval(task: EvalTask, model: ModelClient | null = task.s
           void runtime.handle({
             type: "approval.decide",
             taskId,
-            decision: { approvalId: e.approval.id, fingerprint: e.approval.fingerprint, decision, ...(typeof d === "object" ? { change: d.change } : {}) },
+            decision: {
+              approvalId: e.approval.id,
+              fingerprint: e.approval.fingerprint,
+              decision,
+              ...(typeof d === "object" ? { change: d.change } : {}),
+            },
           }),
       );
     }
@@ -157,7 +192,9 @@ export async function runEval(task: EvalTask, model: ModelClient | null = task.s
   const t = runtime.task(taskId)!;
   const effects = [...world.web.effects, ...world.native.effects];
   const approved = audit.all(taskId).filter((e) => e.kind === "action" && e.approvalId).length;
-  const final = [...events].reverse().find((e) => e.type === "task.done" || e.type === "task.failed" || e.type === "task.stopped");
+  const final = [...events]
+    .reverse()
+    .find((e) => e.type === "task.done" || e.type === "task.failed" || e.type === "task.stopped");
   const run: EvalRun = { task, world, events, audit, effects, final, approvalsShown, questions };
   const metrics: EvalMetrics = {
     id: task.id,

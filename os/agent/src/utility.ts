@@ -46,7 +46,10 @@ export const AGENT_NATIVE_METHODS: readonly NativeMethod[] = [
 export class RpcPort {
   private seq = 0;
   private readonly pending = new Map<number, { resolve: (v: unknown) => void; reject: (e: Error) => void }>();
-  constructor(private readonly post: (m: unknown) => void, private readonly timeoutMs = 30_000) {}
+  constructor(
+    private readonly post: (m: unknown) => void,
+    private readonly timeoutMs = 30_000,
+  ) {}
 
   call(target: "native" | "bridge", method: string, params: unknown): Promise<unknown> {
     const id = ++this.seq;
@@ -75,7 +78,8 @@ export class RpcPort {
 export function nativeOverRpc(rpc: RpcPort): NativeClient {
   return {
     call<M extends NativeMethod>(method: M, params: NativeMethods[M]["params"]) {
-      if (!AGENT_NATIVE_METHODS.includes(method)) return Promise.reject(new Error(`${method} is not available to the agent.`));
+      if (!AGENT_NATIVE_METHODS.includes(method))
+        return Promise.reject(new Error(`${method} is not available to the agent.`));
       return rpc.call("native", method, params) as Promise<NativeMethods[M]["result"]>;
     },
   };
@@ -118,13 +122,17 @@ async function main(port: ParentPort): Promise<void> {
       model: key ? new AnthropicModelClient({ apiKey: key }) : null,
       bridge: env.AGENCY_BRIDGE === "0" ? null : bridgeOverRpc(rpc),
       native: env.AGENCY_NATIVE === "0" ? null : nativeOverRpc(rpc),
-      memory: env.AGENCY_COORDINATOR_URL ? new HttpMemoryClient(env.AGENCY_COORDINATOR_URL, env.AGENCY_COORDINATOR_TOKEN) : null,
+      memory: env.AGENCY_COORDINATOR_URL
+        ? new HttpMemoryClient(env.AGENCY_COORDINATOR_URL, env.AGENCY_COORDINATOR_TOKEN)
+        : null,
       packs: [],
       audit: new AuditLog(env.AGENCY_AUDIT_FILE),
       settings: settingsFromFile(env.AGENCY_AGENT_SETTINGS),
       modelSettings: {
         ...(env.AGENCY_AGENT_MODEL ? { model: env.AGENCY_AGENT_MODEL } : {}),
-        ...(env.AGENCY_AGENT_EFFORT ? { effort: env.AGENCY_AGENT_EFFORT as "low" | "medium" | "high" | "xhigh" | "max" } : {}),
+        ...(env.AGENCY_AGENT_EFFORT
+          ? { effort: env.AGENCY_AGENT_EFFORT as "low" | "medium" | "high" | "xhigh" | "max" }
+          : {}),
       },
     });
     agent = runtime;

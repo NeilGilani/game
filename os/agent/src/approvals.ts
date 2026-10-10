@@ -42,7 +42,10 @@ export class ApprovalGate {
   private readonly entries = new Map<string, Entry>();
   private counter = 0;
 
-  constructor(private readonly newId: () => string = () => `apr_${Date.now().toString(36)}_${(++this.counter).toString(36)}`) {}
+  constructor(
+    private readonly newId: () => string = () =>
+      `apr_${Date.now().toString(36)}_${(++this.counter).toString(36)}`,
+  ) {}
 
   /** Record a new pending request. Any older pending request for the same task is superseded. */
   open(taskId: string, request: Omit<ApprovalRequest, "id">): ApprovalRequest {
@@ -55,9 +58,13 @@ export class ApprovalGate {
   }
 
   /** Apply the person's decision. Rejects unknown ids, decided requests and mismatched fingerprints. */
-  decide(taskId: string, decision: ApprovalDecision): { ok: true; status: Status; change?: string } | { ok: false; error: string } {
+  decide(
+    taskId: string,
+    decision: ApprovalDecision,
+  ): { ok: true; status: Status; change?: string } | { ok: false; error: string } {
     const e = this.entries.get(decision.approvalId);
-    if (!e || e.taskId !== taskId) return { ok: false, error: "There is no such approval request for this task." };
+    if (!e || e.taskId !== taskId)
+      return { ok: false, error: "There is no such approval request for this task." };
     if (e.status !== "pending") return { ok: false, error: `This request is already ${e.status}.` };
     if (decision.fingerprint !== e.request.fingerprint) {
       return { ok: false, error: "The approval does not match the action that was shown. Nothing was done." };
@@ -88,7 +95,9 @@ export class ApprovalGate {
 
   /** True when the task has an approved-but-unused approval whose fingerprint differs (the action changed). */
   hasStaleApproval(taskId: string, fingerprint: string): boolean {
-    return [...this.entries.values()].some((e) => e.taskId === taskId && e.status === "approved" && e.request.fingerprint !== fingerprint);
+    return [...this.entries.values()].some(
+      (e) => e.taskId === taskId && e.status === "approved" && e.request.fingerprint !== fingerprint,
+    );
   }
 
   /** Drop approvals that were not used, e.g. when the task stops. */
@@ -103,7 +112,8 @@ export class ApprovalGate {
   }
 
   pending(taskId: string): ApprovalRequest | undefined {
-    for (const e of this.entries.values()) if (e.taskId === taskId && e.status === "pending") return e.request;
+    for (const e of this.entries.values())
+      if (e.taskId === taskId && e.status === "pending") return e.request;
     return undefined;
   }
 }

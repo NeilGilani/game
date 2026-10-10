@@ -18,7 +18,10 @@ export interface ModelClient {
 
 /** A plain-language reason the model could not be used, for the person and the audit trail. */
 export class ModelUnavailable extends Error {
-  constructor(message: string, readonly retryable: boolean) {
+  constructor(
+    message: string,
+    readonly retryable: boolean,
+  ) {
     super(message);
   }
 }
@@ -49,13 +52,23 @@ export class AnthropicModelClient implements ModelClient {
 
 function toUnavailable(error: unknown): Error {
   if (error instanceof Anthropic.APIUserAbortError) return error;
-  if (error instanceof Anthropic.AuthenticationError) return new ModelUnavailable("The API key was not accepted.", false);
-  if (error instanceof Anthropic.PermissionDeniedError) return new ModelUnavailable("The API key may not use this model.", false);
-  if (error instanceof Anthropic.NotFoundError) return new ModelUnavailable("The configured model was not found.", false);
-  if (error instanceof Anthropic.RateLimitError) return new ModelUnavailable("Claude is busy right now (rate limit).", true);
-  if (error instanceof Anthropic.BadRequestError) return new ModelUnavailable(`Claude could not take this request: ${error.message}`, false);
-  if (error instanceof Anthropic.APIConnectionError) return new ModelUnavailable("Can't reach Claude (no connection).", true);
-  if (error instanceof Anthropic.APIError) return new ModelUnavailable(`Claude returned an error (${error.status ?? "unknown"}).`, (error.status ?? 500) >= 500);
+  if (error instanceof Anthropic.AuthenticationError)
+    return new ModelUnavailable("The API key was not accepted.", false);
+  if (error instanceof Anthropic.PermissionDeniedError)
+    return new ModelUnavailable("The API key may not use this model.", false);
+  if (error instanceof Anthropic.NotFoundError)
+    return new ModelUnavailable("The configured model was not found.", false);
+  if (error instanceof Anthropic.RateLimitError)
+    return new ModelUnavailable("Claude is busy right now (rate limit).", true);
+  if (error instanceof Anthropic.BadRequestError)
+    return new ModelUnavailable(`Claude could not take this request: ${error.message}`, false);
+  if (error instanceof Anthropic.APIConnectionError)
+    return new ModelUnavailable("Can't reach Claude (no connection).", true);
+  if (error instanceof Anthropic.APIError)
+    return new ModelUnavailable(
+      `Claude returned an error (${error.status ?? "unknown"}).`,
+      (error.status ?? 500) >= 500,
+    );
   return error instanceof Error ? error : new Error(String(error));
 }
 
@@ -98,13 +111,25 @@ export class RecordingModelClient implements ModelClient {
 
 let seq = 0;
 
-export function toolUse(name: string, input: Record<string, unknown>, extra: { toolset?: "computer" } = {}): ModelContentBlock {
-  const block = { type: "tool_use", id: `toolu_${(++seq).toString().padStart(6, "0")}`, name, input } as Anthropic.Beta.Messages.BetaToolUseBlock;
+export function toolUse(
+  name: string,
+  input: Record<string, unknown>,
+  extra: { toolset?: "computer" } = {},
+): ModelContentBlock {
+  const block = {
+    type: "tool_use",
+    id: `toolu_${(++seq).toString().padStart(6, "0")}`,
+    name,
+    input,
+  } as Anthropic.Beta.Messages.BetaToolUseBlock;
   if (extra.toolset) block.toolset_name = extra.toolset;
   return block;
 }
 
-export function assistant(content: ModelContentBlock[], stop: ModelMessage["stop_reason"] = "tool_use"): ModelMessage {
+export function assistant(
+  content: ModelContentBlock[],
+  stop: ModelMessage["stop_reason"] = "tool_use",
+): ModelMessage {
   return {
     id: `msg_${(++seq).toString().padStart(6, "0")}`,
     type: "message",

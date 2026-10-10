@@ -9,7 +9,8 @@ import type { ActionClaim, AgentAction, BrowserBridge, NativeClient, PageNode, P
 
 export class ToolError extends Error {}
 
-const DISCLOSURE = /\b(AI|artificial intelligence|AGENCY assistant|assistant helped|sent with (help from )?AGENCY|synthetic voice)\b/i;
+const DISCLOSURE =
+  /\b(AI|artificial intelligence|AGENCY assistant|assistant helped|sent with (help from )?AGENCY|synthetic voice)\b/i;
 
 export class GuardedTools {
   /** Text typed per origin during this task, for the AI-disclosure check on send and call. */
@@ -35,7 +36,10 @@ export class GuardedTools {
   }
 
   findByName(snapshot: PageSnapshot, name: RegExp | string, role?: string): PageNode | undefined {
-    const match = (n: PageNode) => (typeof name === "string" ? n.name.trim().toLowerCase() === name.trim().toLowerCase() : name.test(n.name));
+    const match = (n: PageNode) =>
+      typeof name === "string"
+        ? n.name.trim().toLowerCase() === name.trim().toLowerCase()
+        : name.test(n.name);
     return snapshot.nodes.find((n) => match(n) && (!role || n.role === role) && !n.disabled);
   }
 
@@ -48,7 +52,10 @@ export class GuardedTools {
         const snap = await bridge.snapshot();
         before = snap.text;
         const node = nodeOrThrow(snap, ref);
-        return { ...this.webAction("bridge.click", snap, node, claim), input: { submits: node.submits === true } };
+        return {
+          ...this.webAction("bridge.click", snap, node, claim),
+          input: { submits: node.submits === true },
+        };
       },
       async (action) => {
         const r = await bridge.click(ref);
@@ -67,7 +74,10 @@ export class GuardedTools {
       async () => {
         const snap = await bridge.snapshot();
         const node = nodeOrThrow(snap, ref);
-        return { ...this.webAction("bridge.type", snap, node, claim), input: { text, autocomplete: node.autocomplete } };
+        return {
+          ...this.webAction("bridge.type", snap, node, claim),
+          input: { text, autocomplete: node.autocomplete },
+        };
       },
       async (action) => {
         const r = await bridge.type(ref, text);
@@ -92,7 +102,12 @@ export class GuardedTools {
         } catch {
           throw new ToolError(`"${url}" is not a web address.`);
         }
-        return { tier: "bridge", op: "bridge.navigate", input: { url: parsed.href }, target: { origin: parsed.origin, url: parsed.href } };
+        return {
+          tier: "bridge",
+          op: "bridge.navigate",
+          input: { url: parsed.href },
+          target: { origin: parsed.origin, url: parsed.href },
+        };
       },
       async () => {
         const r = await bridge.navigate(url);
@@ -104,9 +119,15 @@ export class GuardedTools {
 
   // --- Native tier (agency-native through the main process) ---------------------------------------
 
-  async readApp(maxCount = 200): Promise<{ owner: string | null; targets: { id: string; role: string; label: string; secure?: boolean }[] }> {
+  async readApp(maxCount = 200): Promise<{
+    owner: string | null;
+    targets: { id: string; role: string; label: string; secure?: boolean }[];
+  }> {
     const snap = await this.requireNative().call("ax.targets", { maxCount });
-    return { owner: snap.owner, targets: snap.targets.map((t) => ({ id: t.id, role: t.role, label: t.label, secure: t.secure })) };
+    return {
+      owner: snap.owner,
+      targets: snap.targets.map((t) => ({ id: t.id, role: t.role, label: t.label, secure: t.secure })),
+    };
   }
 
   press(targetId: string, claim?: ActionClaim): Promise<GuardOutcome<string>> {
@@ -117,7 +138,19 @@ export class GuardedTools {
         const snap = await native.call("ax.targets", { maxCount: 500 });
         const t = snap.targets.find((x) => x.id === targetId);
         if (!t) throw new ToolError("That control is no longer on screen. Read the app again.");
-        return { tier: "native", op: "native.press", target: { ref: t.id, label: t.label, role: t.role, origin: t.owner ?? snap.owner ?? undefined, secure: t.secure, simulated: isSimulatedApp(t.owner ?? snap.owner) }, claim };
+        return {
+          tier: "native",
+          op: "native.press",
+          target: {
+            ref: t.id,
+            label: t.label,
+            role: t.role,
+            origin: t.owner ?? snap.owner ?? undefined,
+            secure: t.secure,
+            simulated: isSimulatedApp(t.owner ?? snap.owner),
+          },
+          claim,
+        };
       },
       async (action) => {
         const r = await native.call("ax.press", { targetId });
@@ -133,7 +166,13 @@ export class GuardedTools {
       this.ctx,
       async () => {
         const front = await native.call("apps.frontmost", {});
-        return { tier: "native", op: "native.type", input: { text }, target: { origin: front.app?.bundleId, simulated: isSimulatedApp(front.app?.bundleId) }, claim };
+        return {
+          tier: "native",
+          op: "native.type",
+          input: { text },
+          target: { origin: front.app?.bundleId, simulated: isSimulatedApp(front.app?.bundleId) },
+          claim,
+        };
       },
       async () => {
         const r = await native.call("input.type", { text });
@@ -143,14 +182,24 @@ export class GuardedTools {
     );
   }
 
-  key(key: string, modifiers: ("cmd" | "ctrl" | "alt" | "shift" | "fn")[] = [], claim?: ActionClaim): Promise<GuardOutcome<string>> {
+  key(
+    key: string,
+    modifiers: ("cmd" | "ctrl" | "alt" | "shift" | "fn")[] = [],
+    claim?: ActionClaim,
+  ): Promise<GuardOutcome<string>> {
     const native = this.requireNative();
     const combo = [...modifiers, key].join("+");
     return this.guard.run(
       this.ctx,
       async () => {
         const front = await native.call("apps.frontmost", {});
-        return { tier: "native", op: "native.key", input: { key: combo }, target: { origin: front.app?.bundleId, simulated: isSimulatedApp(front.app?.bundleId) }, claim };
+        return {
+          tier: "native",
+          op: "native.key",
+          input: { key: combo },
+          target: { origin: front.app?.bundleId, simulated: isSimulatedApp(front.app?.bundleId) },
+          claim,
+        };
       },
       async () => {
         await native.call("input.key", { key, modifiers });
@@ -163,7 +212,12 @@ export class GuardedTools {
     const native = this.requireNative();
     return this.guard.run(
       this.ctx,
-      async () => ({ tier: "native", op: "native.launch", input: { bundleId }, target: { origin: bundleId, simulated: isSimulatedApp(bundleId) } }),
+      async () => ({
+        tier: "native",
+        op: "native.launch",
+        input: { bundleId },
+        target: { origin: bundleId, simulated: isSimulatedApp(bundleId) },
+      }),
       async () => {
         const r = await native.call("apps.launch", { bundleId });
         if (!r.ok) throw new ToolError(r.error ?? `Could not open ${bundleId}.`);
@@ -173,7 +227,10 @@ export class GuardedTools {
   }
 
   /** Run an arbitrary already-resolved action through the guard (computer-use tier). */
-  runAction<T>(resolve: () => Promise<AgentAction>, exec: (a: AgentAction) => Promise<T>): Promise<GuardOutcome<T>> {
+  runAction<T>(
+    resolve: () => Promise<AgentAction>,
+    exec: (a: AgentAction) => Promise<T>,
+  ): Promise<GuardOutcome<T>> {
     return this.guard.run(this.ctx, resolve, exec);
   }
 
@@ -182,7 +239,8 @@ export class GuardedTools {
     const total = /\$\s?\d/.test(snap.text) ? pageTotal(snap.text) : null;
     if (total !== null && op === "bridge.click") facts["Total"] = `$${total.toFixed(2)}`;
     const typed = this.typed.get(snap.origin);
-    if (op === "bridge.click" && typed?.size) facts["AI disclosure"] = [...typed.values()].some((t) => DISCLOSURE.test(t)) ? "included" : "missing";
+    if (op === "bridge.click" && typed?.size)
+      facts["AI disclosure"] = [...typed.values()].some((t) => DISCLOSURE.test(t)) ? "included" : "missing";
     return {
       tier: "bridge",
       op,

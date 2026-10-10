@@ -42,7 +42,10 @@ export class AuditLog {
   private readonly entries: AuditEntry[] = [];
 
   /** @param file optional JSONL file (e.g. ~/Library/Application Support/AGENCY/agent-audit.jsonl). */
-  constructor(private readonly file?: string, private readonly clock: () => Date = () => new Date()) {
+  constructor(
+    private readonly file?: string,
+    private readonly clock: () => Date = () => new Date(),
+  ) {
     if (file) mkdirSync(dirname(file), { recursive: true });
   }
 

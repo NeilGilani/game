@@ -38,7 +38,13 @@ export const thaiBasilUsualPack: TaskPack = {
       async run({ tools, values, ask }) {
         let dish = values.dish;
         if (!dish) {
-          const a = await ask({ prompt: "What would you like?", options: [{ id: "o1", label: "Pad thai" }, { id: "o2", label: "Green curry" }] });
+          const a = await ask({
+            prompt: "What would you like?",
+            options: [
+              { id: "o1", label: "Pad thai" },
+              { id: "o2", label: "Green curry" },
+            ],
+          });
           dish = a.optionId === "o2" ? "Green curry" : "Pad thai";
           values.dish = dish;
         }
@@ -50,7 +56,11 @@ export const thaiBasilUsualPack: TaskPack = {
         if (!cart) throw new ToolError("The cart link is missing.");
         must(await tools.click(cart.ref));
         page = await tools.readPage();
-        return { verified: page.text.includes(dish), summary: `${dish} is in the cart`, evidence: page.text.split("\n").find((l) => /total/i.test(l)) };
+        return {
+          verified: page.text.includes(dish),
+          summary: `${dish} is in the cart`,
+          evidence: page.text.split("\n").find((l) => /total/i.test(l)),
+        };
       },
     },
     {
@@ -62,13 +72,22 @@ export const thaiBasilUsualPack: TaskPack = {
         const place = tools.findByName(page, "Place order", "button");
         if (!place) throw new ToolError("There is no Place order button.");
         try {
-          must(await tools.click(place.ref, { kind: "purchase", summary: "Place the order and pay with the saved card." }));
+          must(
+            await tools.click(place.ref, {
+              kind: "purchase",
+              summary: "Place the order and pay with the saved card.",
+            }),
+          );
         } catch (e) {
           if (e instanceof Declined) return { verified: false, summary: `Declined: ${e.message}` };
           throw e;
         }
         const after = await tools.readPage();
-        return { verified: /confirmed/i.test(after.text), summary: "Order placed (simulated)", evidence: after.text.split("\n")[0] };
+        return {
+          verified: /confirmed/i.test(after.text),
+          summary: "Order placed (simulated)",
+          evidence: after.text.split("\n")[0],
+        };
       },
     },
   ],

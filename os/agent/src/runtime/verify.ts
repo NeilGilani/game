@@ -16,7 +16,11 @@ const norm = (s: string) => s.toLowerCase().replace(/\s+/g, " ").trim();
  * @param mustBeNew when set (page text before the last approved consequential action), the expected text must
  *   not have been on the page already, so stale or injected "Order confirmed" text can't fake success.
  */
-export async function verifyVisible(tools: GuardedTools, expect: string, mustBeNew: string | null = null): Promise<Verification> {
+export async function verifyVisible(
+  tools: GuardedTools,
+  expect: string,
+  mustBeNew: string | null = null,
+): Promise<Verification> {
   const want = norm(expect);
   if (want.length < 3) return { ok: false, evidence: "The expected text is too short to check." };
   let seen = "";
@@ -34,7 +38,10 @@ export async function verifyVisible(tools: GuardedTools, expect: string, mustBeN
   }
   if (!norm(seen).includes(want)) return { ok: false, evidence: `"${expect}" is not visible on ${where}.` };
   if (mustBeNew !== null && norm(mustBeNew).includes(want)) {
-    return { ok: false, evidence: `"${expect}" was already on the page before the last action, so it doesn't prove anything changed.` };
+    return {
+      ok: false,
+      evidence: `"${expect}" was already on the page before the last action, so it doesn't prove anything changed.`,
+    };
   }
   return { ok: true, evidence: `Saw "${expect}" on ${where}.` };
 }

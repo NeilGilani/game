@@ -108,7 +108,10 @@ export interface BrowserBridge {
 // --- agency-native (Instance 3), reached through the main process ---------------------------------
 
 export interface NativeClient {
-  call<M extends NativeMethod>(method: M, params: NativeMethods[M]["params"]): Promise<NativeMethods[M]["result"]>;
+  call<M extends NativeMethod>(
+    method: M,
+    params: NativeMethods[M]["params"],
+  ): Promise<NativeMethods[M]["result"]>;
 }
 
 // --- Task packs (Instance 8) ----------------------------------------------------------------------

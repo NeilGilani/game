@@ -18,12 +18,24 @@ import { runEval, type EvalMetrics } from "./harness";
 import { TASKS } from "./tasks";
 
 /** Tasks a live model can be scored on: the ordinary tasks and the injection pages. */
-export const LIVE_TASKS = new Set(["food-order", "pharmacy-refill", "email-reply", "benefits-form", "notes-native", "injection-store-review", "injection-email-exfiltration"]);
+export const LIVE_TASKS = new Set([
+  "food-order",
+  "pharmacy-refill",
+  "email-reply",
+  "benefits-form",
+  "notes-native",
+  "injection-store-review",
+  "injection-email-exfiltration",
+]);
 
 async function main(): Promise<void> {
   const args = process.argv.slice(2);
   const live = args.includes("--live");
-  const only = args.find((a) => a.startsWith("--only="))?.slice(7).split(",") ?? (args.includes("--only") ? args[args.indexOf("--only") + 1]?.split(",") : undefined);
+  const only =
+    args
+      .find((a) => a.startsWith("--only="))
+      ?.slice(7)
+      .split(",") ?? (args.includes("--only") ? args[args.indexOf("--only") + 1]?.split(",") : undefined);
   let client: ModelClient | null = null;
   if (live) {
     const { key } = await findApiKey();
@@ -57,7 +69,8 @@ async function main(): Promise<void> {
 export function summarize(results: EvalMetrics[]) {
   const n = results.length;
   const ok = results.filter((r) => r.success).length;
-  const avg = (f: (r: EvalMetrics) => number) => (n ? Math.round((results.reduce((a, r) => a + f(r), 0) / n) * 10) / 10 : 0);
+  const avg = (f: (r: EvalMetrics) => number) =>
+    n ? Math.round((results.reduce((a, r) => a + f(r), 0) / n) * 10) / 10 : 0;
   return {
     tasks: n,
     succeeded: ok,
@@ -73,10 +86,15 @@ export function summarize(results: EvalMetrics[]) {
 }
 
 export function table(results: EvalMetrics[]): string {
-  const rows = results.map((r) =>
-    `| ${r.id} | ${r.category} | ${r.success ? "pass" : "FAIL"} | ${r.modelTurns} | ${r.actions} | ${r.questionsAsked} | ${r.approvalsRequested} | ${r.consequentialEffects} | ${r.consequentialWithoutApproval} | ${r.agentMs} | ${r.outcome.replace(/\|/g, "/").slice(0, 90)} |`,
+  const rows = results.map(
+    (r) =>
+      `| ${r.id} | ${r.category} | ${r.success ? "pass" : "FAIL"} | ${r.modelTurns} | ${r.actions} | ${r.questionsAsked} | ${r.approvalsRequested} | ${r.consequentialEffects} | ${r.consequentialWithoutApproval} | ${r.agentMs} | ${r.outcome.replace(/\|/g, "/").slice(0, 90)} |`,
   );
-  return ["| Task | Category | Result | Model turns | Actions | Questions | Approvals | Effects | Effects without approval | Agent ms | Outcome |", "|---|---|---|---|---|---|---|---|---|---|---|", ...rows].join("\n");
+  return [
+    "| Task | Category | Result | Model turns | Actions | Questions | Approvals | Effects | Effects without approval | Agent ms | Outcome |",
+    "|---|---|---|---|---|---|---|---|---|---|---|",
+    ...rows,
+  ].join("\n");
 }
 
 if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) void main();

@@ -78,7 +78,11 @@ export class ActionGuard {
    *   checked against what is on screen now, not what was there when the person was asked.
    * @param exec performs the action. Only called when every check passed.
    */
-  async run<T>(ctx: GuardContext, resolve: () => Promise<AgentAction>, exec: (action: AgentAction) => Promise<T>): Promise<GuardOutcome<T>> {
+  async run<T>(
+    ctx: GuardContext,
+    resolve: () => Promise<AgentAction>,
+    exec: (action: AgentAction) => Promise<T>,
+  ): Promise<GuardOutcome<T>> {
     for (let round = 0; round <= MAX_APPROVAL_ROUNDS; round++) {
       await ctx.checkpoint();
       const action = await resolve();
@@ -90,7 +94,15 @@ export class ActionGuard {
       const c = classify(action);
       if (c.risk !== "consequential") {
         const value = await exec(action);
-        this.audit.record({ taskId: ctx.taskId, kind: "action", message: `Did: ${what}`, what, why: ctx.why, result: "ok", data: { risk: c.risk } });
+        this.audit.record({
+          taskId: ctx.taskId,
+          kind: "action",
+          message: `Did: ${what}`,
+          what,
+          why: ctx.why,
+          result: "ok",
+          data: { risk: c.risk },
+        });
         return { status: "done", value, classification: c };
       }
 
@@ -119,12 +131,27 @@ export class ActionGuard {
 
       if (this.gate.hasStaleApproval(ctx.taskId, fingerprint)) {
         this.gate.revokeTask(ctx.taskId);
-        this.audit.record({ taskId: ctx.taskId, kind: "approval.stale", message: "Something changed after you approved, so I need to ask again.", what, fingerprint });
+        this.audit.record({
+          taskId: ctx.taskId,
+          kind: "approval.stale",
+          message: "Something changed after you approved, so I need to ask again.",
+          what,
+          fingerprint,
+        });
       }
       if (round === MAX_APPROVAL_ROUNDS) break;
 
       const request = this.gate.open(ctx.taskId, this.buildRequest(action, kind, c, fingerprint));
-      this.audit.record({ taskId: ctx.taskId, kind: "approval.requested", message: `Asked you: ${request.summary}`, what, why: ctx.why, approvalId: request.id, fingerprint, result: "needs-approval" });
+      this.audit.record({
+        taskId: ctx.taskId,
+        kind: "approval.requested",
+        message: `Asked you: ${request.summary}`,
+        what,
+        why: ctx.why,
+        approvalId: request.id,
+        fingerprint,
+        result: "needs-approval",
+      });
       const decision = await ctx.requestApproval(request);
       const applied = this.gate.decide(ctx.taskId, decision);
       this.audit.record({
@@ -135,11 +162,15 @@ export class ActionGuard {
         fingerprint: decision.fingerprint,
       });
       if (!applied.ok) return this.refuse(ctx, action, applied.error);
-      if (applied.status === "declined") return { status: "declined", reason: "You said no, so I did not do it." };
+      if (applied.status === "declined")
+        return { status: "declined", reason: "You said no, so I did not do it." };
       if (applied.status === "changed") return { status: "change", change: applied.change ?? "something" };
       // Approved: loop to re-resolve from live state and consume only if the fingerprint still matches.
     }
-    return { status: "refused", reason: "The page kept changing while I asked, so I stopped instead of guessing." };
+    return {
+      status: "refused",
+      reason: "The page kept changing while I asked, so I stopped instead of guessing.",
+    };
   }
 
   private precheck(ctx: GuardContext, action: AgentAction): string | null {
@@ -154,7 +185,8 @@ export class ActionGuard {
       if (secret) return `That text looks like ${secret}. I never type those.`;
     }
     if (action.tier === "bridge" && action.op !== "bridge.read") {
-      const origin = action.op === "bridge.navigate" ? safeOrigin(String(action.input?.url ?? "")) : action.target?.origin;
+      const origin =
+        action.op === "bridge.navigate" ? safeOrigin(String(action.input?.url ?? "")) : action.target?.origin;
       if (!origin || !originAllowed(origin, this.settings().siteAllowlist)) {
         return `${origin ?? "That site"} is not on your list of allowed sites. You or your caregiver can add it in Settings.`;
       }
@@ -172,7 +204,8 @@ export class ActionGuard {
       const amount = amountOf(action);
       if (s.maxPurchase === null) return "Purchases are turned off in Settings.";
       if (amount === null) return "I couldn't read the total on the page, so I won't pay.";
-      if (amount > s.maxPurchase) return `The total, $${amount.toFixed(2)}, is over your limit of $${s.maxPurchase.toFixed(2)}.`;
+      if (amount > s.maxPurchase)
+        return `The total, $${amount.toFixed(2)}, is over your limit of $${s.maxPurchase.toFixed(2)}.`;
       if (s.maxPurchasePerDay !== null && this.ledger.last24h() + amount > s.maxPurchasePerDay) {
         return `That would go over your daily limit of $${s.maxPurchasePerDay.toFixed(2)}.`;
       }
@@ -183,7 +216,12 @@ export class ActionGuard {
     return null;
   }
 
-  private buildRequest(action: AgentAction, kind: ConsequentialKind, c: Classification, fingerprint: string): Omit<ApprovalRequest, "id"> {
+  private buildRequest(
+    action: AgentAction,
+    kind: ConsequentialKind,
+    c: Classification,
+    fingerprint: string,
+  ): Omit<ApprovalRequest, "id"> {
     const t = action.target ?? {};
     const details: Record<string, string> = {};
     if (t.origin) details["Where"] = t.origin;
@@ -206,14 +244,24 @@ export class ActionGuard {
   }
 
   private refuse(ctx: GuardContext, action: AgentAction, reason: string): GuardOutcome<never> {
-    this.audit.record({ taskId: ctx.taskId, kind: "refused", message: `Did not do: ${describe(action)}. ${reason}`, what: describe(action), why: ctx.why, result: "refused" });
+    this.audit.record({
+      taskId: ctx.taskId,
+      kind: "refused",
+      message: `Did not do: ${describe(action)}. ${reason}`,
+      what: describe(action),
+      why: ctx.why,
+      result: "refused",
+    });
     return { status: "refused", reason };
   }
 }
 
 function amountOf(action: AgentAction): number | null {
   const fromFacts = action.facts?.["Total"] ? pageTotal(`Total ${action.facts["Total"]}`) : null;
-  const claimed = typeof action.claim?.amount === "number" && Number.isFinite(action.claim.amount) ? action.claim.amount : null;
+  const claimed =
+    typeof action.claim?.amount === "number" && Number.isFinite(action.claim.amount)
+      ? action.claim.amount
+      : null;
   if (fromFacts === null) return claimed;
   return claimed === null ? fromFacts : Math.max(fromFacts, claimed);
 }

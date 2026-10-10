@@ -16,7 +16,7 @@ Who you work for
 - Use plain, short words in everything the person reads.
 
 How to work
-1. First call show_plan with 2 to 8 big, plain steps (for example "Open Thai Basil", "Pick your dish", "Pay with your saved card", "Check the order went through"). Mark each step's risk: read, reversible, or consequential.
+1. First call show_plan with 2 to 8 big, plain steps (for example "Open the store", "Pick your dish", "Pay with your saved card", "Check the order went through"). Mark each step's risk: read, reversible, or consequential.
 2. Call start_step before each step and complete_step after it. complete_step needs expect_text: a short piece of text that must now be visible on the page or screen if the step really worked (for example "Order confirmed"). AGENCY reads the page itself to check it. If the check fails, look again and fix the step, or explain.
 3. Prefer the most structured tool that works: read_page and the click/type tools for web pages (they use element refs), the app tools for Mac apps, and the computer toolset (screenshots and clicks) only when nothing else can reach the control.
 4. When the task is done, call finish with expect_text that proves it. If you can't do it, call give_up with a plain reason. Never say something happened unless you saw it happen.
@@ -34,7 +34,18 @@ type Tool = Anthropic.Beta.Messages.BetaTool;
 const RISK = { type: "string", enum: ["read", "reversible", "consequential"] } as const;
 const KIND = {
   type: "string",
-  enum: ["none", "send", "purchase", "sign", "call", "submit", "delete", "share-personal-data", "account-or-settings", "install"],
+  enum: [
+    "none",
+    "send",
+    "purchase",
+    "sign",
+    "call",
+    "submit",
+    "delete",
+    "share-personal-data",
+    "account-or-settings",
+    "install",
+  ],
 } as const;
 const CLAIM_PROPS = {
   risk: RISK,
@@ -44,8 +55,18 @@ const CLAIM_PROPS = {
 };
 const CLAIM_REQUIRED = ["risk", "kind", "summary", "amount"];
 
-function tool(name: string, description: string, properties: Record<string, unknown>, required: string[]): Tool {
-  return { name, description, strict: true, input_schema: { type: "object", properties, required, additionalProperties: false } } as Tool;
+function tool(
+  name: string,
+  description: string,
+  properties: Record<string, unknown>,
+  required: string[],
+): Tool {
+  return {
+    name,
+    description,
+    strict: true,
+    input_schema: { type: "object", properties, required, additionalProperties: false },
+  } as Tool;
 }
 
 export const PLAN_TOOLS: Tool[] = [
@@ -55,12 +76,22 @@ export const PLAN_TOOLS: Tool[] = [
     {
       steps: {
         type: "array",
-        items: { type: "object", properties: { title: { type: "string" }, risk: RISK }, required: ["title", "risk"], additionalProperties: false },
+        items: {
+          type: "object",
+          properties: { title: { type: "string" }, risk: RISK },
+          required: ["title", "risk"],
+          additionalProperties: false,
+        },
       },
     },
     ["steps"],
   ),
-  tool("start_step", "Mark a plan step as running. Step ids are s1, s2, ... in plan order.", { step_id: { type: "string" } }, ["step_id"]),
+  tool(
+    "start_step",
+    "Mark a plan step as running. Step ids are s1, s2, ... in plan order.",
+    { step_id: { type: "string" } },
+    ["step_id"],
+  ),
   tool(
     "complete_step",
     "Mark a step done. AGENCY reads the page or screen and checks expect_text is visible before accepting it.",
@@ -74,39 +105,83 @@ export const PLAN_TOOLS: Tool[] = [
       prompt: { type: "string" },
       options: {
         type: "array",
-        items: { type: "object", properties: { label: { type: "string" }, description: { type: "string" } }, required: ["label", "description"], additionalProperties: false },
+        items: {
+          type: "object",
+          properties: { label: { type: "string" }, description: { type: "string" } },
+          required: ["label", "description"],
+          additionalProperties: false,
+        },
       },
       allow_other: { type: "boolean" },
     },
     ["prompt", "options", "allow_other"],
   ),
-  tool("finish", "The task is done. AGENCY checks expect_text is visible before telling the person.", { outcome: { type: "string" }, expect_text: { type: "string" } }, [
-    "outcome",
-    "expect_text",
-  ]),
-  tool("give_up", "Stop because the task can't be done safely or at all. Say why in plain words.", { reason: { type: "string" } }, ["reason"]),
+  tool(
+    "finish",
+    "The task is done. AGENCY checks expect_text is visible before telling the person.",
+    { outcome: { type: "string" }, expect_text: { type: "string" } },
+    ["outcome", "expect_text"],
+  ),
+  tool(
+    "give_up",
+    "Stop because the task can't be done safely or at all. Say why in plain words.",
+    { reason: { type: "string" } },
+    ["reason"],
+  ),
 ];
 
 export const BRIDGE_TOOLS: Tool[] = [
-  tool("read_page", "Read the current Chrome tab: address, title, elements with refs, and visible text.", {}, []),
+  tool(
+    "read_page",
+    "Read the current Chrome tab: address, title, elements with refs, and visible text.",
+    {},
+    [],
+  ),
   tool("open_url", "Open a web address in the current tab.", { url: { type: "string" } }, ["url"]),
-  tool("click", "Click a page element by its ref from read_page.", { ref: { type: "string" }, ...CLAIM_PROPS }, ["ref", ...CLAIM_REQUIRED]),
-  tool("type_text", "Type into a page field by its ref. Never passwords, codes or card numbers.", { ref: { type: "string" }, text: { type: "string" }, ...CLAIM_PROPS }, [
-    "ref",
-    "text",
-    ...CLAIM_REQUIRED,
-  ]),
+  tool(
+    "click",
+    "Click a page element by its ref from read_page.",
+    { ref: { type: "string" }, ...CLAIM_PROPS },
+    ["ref", ...CLAIM_REQUIRED],
+  ),
+  tool(
+    "type_text",
+    "Type into a page field by its ref. Never passwords, codes or card numbers.",
+    { ref: { type: "string" }, text: { type: "string" }, ...CLAIM_PROPS },
+    ["ref", "text", ...CLAIM_REQUIRED],
+  ),
 ];
 
 export const NATIVE_TOOLS: Tool[] = [
-  tool("read_app", "List the controls of the frontmost Mac app (accessibility tree): id, role, label.", {}, []),
-  tool("press", "Press a control of the frontmost app by its id from read_app.", { target_id: { type: "string" }, ...CLAIM_PROPS }, ["target_id", ...CLAIM_REQUIRED]),
-  tool("app_type", "Type text into the focused field of the frontmost app.", { text: { type: "string" }, ...CLAIM_PROPS }, ["text", ...CLAIM_REQUIRED]),
+  tool(
+    "read_app",
+    "List the controls of the frontmost Mac app (accessibility tree): id, role, label.",
+    {},
+    [],
+  ),
+  tool(
+    "press",
+    "Press a control of the frontmost app by its id from read_app.",
+    { target_id: { type: "string" }, ...CLAIM_PROPS },
+    ["target_id", ...CLAIM_REQUIRED],
+  ),
+  tool(
+    "app_type",
+    "Type text into the focused field of the frontmost app.",
+    { text: { type: "string" }, ...CLAIM_PROPS },
+    ["text", ...CLAIM_REQUIRED],
+  ),
   tool(
     "app_key",
     "Press a key with optional modifiers in the frontmost app.",
-    { key: { type: "string" }, modifiers: { type: "array", items: { type: "string", enum: ["cmd", "ctrl", "alt", "shift", "fn"] } }, ...CLAIM_PROPS },
+    {
+      key: { type: "string" },
+      modifiers: { type: "array", items: { type: "string", enum: ["cmd", "ctrl", "alt", "shift", "fn"] } },
+      ...CLAIM_PROPS,
+    },
     ["key", "modifiers", ...CLAIM_REQUIRED],
   ),
-  tool("open_app", "Open or bring forward a Mac app by bundle id.", { bundle_id: { type: "string" } }, ["bundle_id"]),
+  tool("open_app", "Open or bring forward a Mac app by bundle id.", { bundle_id: { type: "string" } }, [
+    "bundle_id",
+  ]),
 ];

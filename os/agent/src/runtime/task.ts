@@ -1,6 +1,13 @@
 /** One running task: its plan, the person's pending question or approval, pause/stop, and budgets. */
 
-import type { AgentEvent, ApprovalDecision, ApprovalRequest, ChoiceQuestion, PlanStepView, TaskRequest } from "@agency/contracts";
+import type {
+  AgentEvent,
+  ApprovalDecision,
+  ApprovalRequest,
+  ChoiceQuestion,
+  PlanStepView,
+  TaskRequest,
+} from "@agency/contracts";
 
 export class TaskStopped extends Error {
   constructor(readonly by: "person" | "caregiver" | "system") {
@@ -23,7 +30,13 @@ export interface Budgets {
   maxStepAttempts: number;
 }
 
-export const DEFAULT_BUDGETS: Budgets = { maxModelTurns: 40, maxActions: 80, maxCostUsd: 2, toolTimeoutMs: 30_000, maxStepAttempts: 3 };
+export const DEFAULT_BUDGETS: Budgets = {
+  maxModelTurns: 40,
+  maxActions: 80,
+  maxCostUsd: 2,
+  toolTimeoutMs: 30_000,
+  maxStepAttempts: 3,
+};
 
 export interface Usage {
   modelTurns: number;
@@ -40,7 +53,15 @@ type Answer = { optionId: string | null; other?: string };
 export class TaskRun {
   readonly startedAt = Date.now();
   steps: PlanStepView[] = [];
-  readonly usage: Usage = { modelTurns: 0, actions: 0, inputTokens: 0, outputTokens: 0, cacheReadTokens: 0, cacheWriteTokens: 0, costUsd: 0 };
+  readonly usage: Usage = {
+    modelTurns: 0,
+    actions: 0,
+    inputTokens: 0,
+    outputTokens: 0,
+    cacheReadTokens: 0,
+    cacheWriteTokens: 0,
+    costUsd: 0,
+  };
   readonly abort = new AbortController();
   /** Time spent waiting for the person; excluded from timing so nobody is rushed. */
   waitingMs = 0;
@@ -49,8 +70,13 @@ export class TaskRun {
   private paused = false;
   private stoppedBy: TaskStopped["by"] | null = null;
   private resumeWaiters: (() => void)[] = [];
-  private question: { q: ChoiceQuestion; resolve: (a: Answer) => void; reject: (e: Error) => void } | null = null;
-  private approval: { r: ApprovalRequest; resolve: (d: ApprovalDecision) => void; reject: (e: Error) => void } | null = null;
+  private question: { q: ChoiceQuestion; resolve: (a: Answer) => void; reject: (e: Error) => void } | null =
+    null;
+  private approval: {
+    r: ApprovalRequest;
+    resolve: (d: ApprovalDecision) => void;
+    reject: (e: Error) => void;
+  } | null = null;
   private qSeq = 0;
 
   constructor(
@@ -121,7 +147,14 @@ export class TaskRun {
   stepStatus(stepId: string, status: PlanStepView["status"], summary: string, evidence?: string): void {
     const step = this.steps.find((s) => s.id === stepId);
     if (step) step.status = status;
-    this.emit({ type: "task.step", taskId: this.id, stepId, status, summary, ...(evidence ? { evidence } : {}) });
+    this.emit({
+      type: "task.step",
+      taskId: this.id,
+      stepId,
+      status,
+      summary,
+      ...(evidence ? { evidence } : {}),
+    });
   }
 
   // --- Waiting for the person (no time limits) ----------------------------------------------------
@@ -181,12 +214,17 @@ export class TaskRun {
   // --- Budgets ------------------------------------------------------------------------------------
 
   countAction(): void {
-    if (++this.usage.actions > this.budgets.maxActions) throw new BudgetExceeded(`I used my limit of ${this.budgets.maxActions} actions for one task.`);
+    if (++this.usage.actions > this.budgets.maxActions)
+      throw new BudgetExceeded(`I used my limit of ${this.budgets.maxActions} actions for one task.`);
   }
 
   countModelTurn(): void {
-    if (++this.usage.modelTurns > this.budgets.maxModelTurns) throw new BudgetExceeded(`I used my limit of ${this.budgets.maxModelTurns} thinking steps for one task.`);
-    if (this.usage.costUsd > this.budgets.maxCostUsd) throw new BudgetExceeded(`This task reached its cost limit of $${this.budgets.maxCostUsd.toFixed(2)}.`);
+    if (++this.usage.modelTurns > this.budgets.maxModelTurns)
+      throw new BudgetExceeded(
+        `I used my limit of ${this.budgets.maxModelTurns} thinking steps for one task.`,
+      );
+    if (this.usage.costUsd > this.budgets.maxCostUsd)
+      throw new BudgetExceeded(`This task reached its cost limit of $${this.budgets.maxCostUsd.toFixed(2)}.`);
   }
 }
 
@@ -196,7 +234,10 @@ export async function withTimeout<T>(p: Promise<T>, ms: number, what: string): P
     return await Promise.race([
       p,
       new Promise<never>((_, reject) => {
-        timer = setTimeout(() => reject(new Error(`${what} took longer than ${Math.round(ms / 1000)} seconds.`)), ms);
+        timer = setTimeout(
+          () => reject(new Error(`${what} took longer than ${Math.round(ms / 1000)} seconds.`)),
+          ms,
+        );
       }),
     ]);
   } finally {

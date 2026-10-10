@@ -11,13 +11,20 @@ export interface MemoryClient {
 }
 
 export class HttpMemoryClient implements MemoryClient {
-  constructor(private readonly baseUrl: string, private readonly token?: string, private readonly fetchImpl: typeof fetch = fetch) {}
+  constructor(
+    private readonly baseUrl: string,
+    private readonly token?: string,
+    private readonly fetchImpl: typeof fetch = fetch,
+  ) {}
 
   async suggestions(surface: Surface, limit: number): Promise<Suggestion[]> {
-    const res = await this.fetchImpl(`${this.baseUrl}/api/memory/suggestions?surface=${encodeURIComponent(surface)}&limit=${limit}`, {
-      headers: this.headers(),
-      signal: AbortSignal.timeout(3000),
-    });
+    const res = await this.fetchImpl(
+      `${this.baseUrl}/api/memory/suggestions?surface=${encodeURIComponent(surface)}&limit=${limit}`,
+      {
+        headers: this.headers(),
+        signal: AbortSignal.timeout(3000),
+      },
+    );
     if (!res.ok) return [];
     const data = (await res.json()) as unknown;
     return Array.isArray(data) ? (data as Suggestion[]) : [];
@@ -49,7 +56,11 @@ export class FakeMemoryClient implements MemoryClient {
 }
 
 /** Memory never blocks a task: failures return nothing and are ignored. */
-export async function safeSuggestions(memory: MemoryClient | null, surface: Surface, limit = 6): Promise<Suggestion[]> {
+export async function safeSuggestions(
+  memory: MemoryClient | null,
+  surface: Surface,
+  limit = 6,
+): Promise<Suggestion[]> {
   if (!memory) return [];
   try {
     return await memory.suggestions(surface, limit);
@@ -91,7 +102,9 @@ export function rankWithMemory(options: ChoiceOption[], suggestions: Suggestion[
     const label = o.label.toLowerCase();
     const s = suggestions.find((x) => {
       const l = x.label.toLowerCase();
-      return l === label || l.includes(label) || label.includes(l) || x.path.some((p) => p.toLowerCase() === label);
+      return (
+        l === label || l.includes(label) || label.includes(l) || x.path.some((p) => p.toLowerCase() === label)
+      );
     });
     return { o: s ? { ...o, suggestedBecause: s.reason } : o, score: s?.score ?? -1, index };
   });

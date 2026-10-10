@@ -59,7 +59,10 @@ export function dollarAmounts(text: string): number[] {
 
 /** The amount labelled as the total, or the largest amount on the page when none is labelled. */
 export function pageTotal(text: string): number | null {
-  const labelled = /\b(order total|grand total|total due|amount due|total to pay|you pay|total)\b[^$\n]{0,20}(\$\s?[\d,]+(?:\.\d{1,2})?)/i.exec(text);
+  const labelled =
+    /\b(order total|grand total|total due|amount due|total to pay|you pay|total)\b[^$\n]{0,20}(\$\s?[\d,]+(?:\.\d{1,2})?)/i.exec(
+      text,
+    );
   if (labelled) return dollarAmounts(labelled[2]!)[0] ?? null;
   const all = dollarAmounts(text);
   return all.length ? Math.max(...all) : null;

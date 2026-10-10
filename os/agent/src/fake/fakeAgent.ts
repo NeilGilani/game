@@ -8,7 +8,14 @@
  *   Decline → task.failed (recoverable). Change → asks again what to change. Pause/resume/stop work at any point.
  */
 
-import type { AgentCommand, AgentEvent, ApprovalRequest, ChoiceQuestion, PlanStepView, TaskRequest } from "@agency/contracts";
+import type {
+  AgentCommand,
+  AgentEvent,
+  ApprovalRequest,
+  ChoiceQuestion,
+  PlanStepView,
+  TaskRequest,
+} from "@agency/contracts";
 import { canonicalJson, sha256Hex } from "../canonical";
 
 export interface FakeAgentOptions {
@@ -22,7 +29,10 @@ interface FakeTask {
   stopped: boolean;
   wake: (() => void) | null;
   question: { q: ChoiceQuestion; resolve: (optionId: string | null, other?: string) => void } | null;
-  approval: { a: ApprovalRequest; resolve: (d: "approve" | "decline" | "change", change?: string) => void } | null;
+  approval: {
+    a: ApprovalRequest;
+    resolve: (d: "approve" | "decline" | "change", change?: string) => void;
+  } | null;
 }
 
 const STEPS: PlanStepView[] = [
@@ -59,7 +69,12 @@ export class FakeAgent {
         const t = this.tasks.get(cmd.taskId);
         const a = t?.approval?.a;
         // Same rule as the real guard: the decision must carry the exact fingerprint that was shown.
-        if (t?.approval && a && a.id === cmd.decision.approvalId && a.fingerprint === cmd.decision.fingerprint) {
+        if (
+          t?.approval &&
+          a &&
+          a.id === cmd.decision.approvalId &&
+          a.fingerprint === cmd.decision.fingerprint
+        ) {
           t.approval.resolve(cmd.decision.decision, cmd.decision.change);
         }
         return;
@@ -100,7 +115,14 @@ export class FakeAgent {
   }
 
   private async run(request: TaskRequest): Promise<void> {
-    const t: FakeTask = { request, paused: false, stopped: false, wake: null, question: null, approval: null };
+    const t: FakeTask = {
+      request,
+      paused: false,
+      stopped: false,
+      wake: null,
+      question: null,
+      approval: null,
+    };
     this.tasks.set(request.id, t);
     const id = request.id;
     try {
@@ -111,11 +133,22 @@ export class FakeAgent {
       await this.step(t, "s1", "Opening Thai Basil (sandbox store)", "Thai Basil menu is showing");
 
       await this.tick(t);
-      this.emit({ type: "task.step", taskId: id, stepId: "s2", status: "running", summary: "Choosing your dinner" });
+      this.emit({
+        type: "task.step",
+        taskId: id,
+        stepId: "s2",
+        status: "running",
+        summary: "Choosing your dinner",
+      });
       const dish = await this.ask(t, {
         prompt: "What would you like?",
         options: [
-          { id: "pad-thai", label: "Pad thai", description: "Rice noodles, egg, peanuts. $14.50", suggestedBecause: "You chose this 4 of your last 5 Fridays." },
+          {
+            id: "pad-thai",
+            label: "Pad thai",
+            description: "Rice noodles, egg, peanuts. $14.50",
+            suggestedBecause: "You chose this 4 of your last 5 Fridays.",
+          },
           { id: "green-curry", label: "Green curry", description: "With jasmine rice. $15.95" },
           { id: "drunken-noodles", label: "Drunken noodles", description: "Wide noodles, basil. $14.95" },
           { id: "something-else", label: "Something else", description: "See the whole menu" },
@@ -129,30 +162,65 @@ export class FakeAgent {
           { id: "hot", label: "Hot" },
         ],
       });
-      this.emit({ type: "task.step", taskId: id, stepId: "s2", status: "done", summary: `${dish} (${spice}) is in the cart`, evidence: "Cart shows 1 item" });
+      this.emit({
+        type: "task.step",
+        taskId: id,
+        stepId: "s2",
+        status: "done",
+        summary: `${dish} (${spice}) is in the cart`,
+        evidence: "Cart shows 1 item",
+      });
 
       for (;;) {
         await this.tick(t);
-        this.emit({ type: "task.step", taskId: id, stepId: "s3", status: "waiting", summary: "Waiting for your OK to pay" });
-        const details = { Where: "Thai Basil (sandbox)", Order: `1 × ${dish} (${spice})`, Total: "$24.80", "Pay with": "Saved card ending 4242 (simulated)", "Deliver to": "Home" };
+        this.emit({
+          type: "task.step",
+          taskId: id,
+          stepId: "s3",
+          status: "waiting",
+          summary: "Waiting for your OK to pay",
+        });
+        const details = {
+          Where: "Thai Basil (sandbox)",
+          Order: `1 × ${dish} (${spice})`,
+          Total: "$24.80",
+          "Pay with": "Saved card ending 4242 (simulated)",
+          "Deliver to": "Home",
+        };
         const approval: ApprovalRequest = {
           id: `apr_fake_${id}_${Date.now().toString(36)}`,
           kind: "purchase",
           summary: `Pay $24.80 to Thai Basil for 1 ${dish} (${spice}), delivered to home (simulated).`,
           details,
-          preview: { kind: "text", data: `Thai Basil — Order summary\n1 × ${dish} (${spice})  $14.50\nDelivery $5.99\nTax & fees $4.31\nTotal $24.80` },
+          preview: {
+            kind: "text",
+            data: `Thai Basil — Order summary\n1 × ${dish} (${spice})  $14.50\nDelivery $5.99\nTax & fees $4.31\nTotal $24.80`,
+          },
           fingerprint: sha256Hex(canonicalJson({ fake: true, id, details })),
           simulated: true,
         };
-        const decision = await new Promise<{ d: "approve" | "decline" | "change"; change?: string }>((resolve) => {
-          t.approval = { a: approval, resolve: (d, change) => resolve({ d, change }) };
-          this.emit({ type: "approval.required", taskId: id, approval });
-        });
+        const decision = await new Promise<{ d: "approve" | "decline" | "change"; change?: string }>(
+          (resolve) => {
+            t.approval = { a: approval, resolve: (d, change) => resolve({ d, change }) };
+            this.emit({ type: "approval.required", taskId: id, approval });
+          },
+        );
         t.approval = null;
         this.checkStopped(t);
         if (decision.d === "decline") {
-          this.emit({ type: "task.step", taskId: id, stepId: "s3", status: "skipped", summary: "You said no. Nothing was paid." });
-          this.emit({ type: "task.failed", taskId: id, reason: "You said no to paying, so nothing was ordered.", recoverable: true });
+          this.emit({
+            type: "task.step",
+            taskId: id,
+            stepId: "s3",
+            status: "skipped",
+            summary: "You said no. Nothing was paid.",
+          });
+          this.emit({
+            type: "task.failed",
+            taskId: id,
+            reason: "You said no to paying, so nothing was ordered.",
+            recoverable: true,
+          });
           return;
         }
         if (decision.d === "change") {
@@ -166,11 +234,29 @@ export class FakeAgent {
           });
           continue;
         }
-        this.emit({ type: "task.step", taskId: id, stepId: "s3", status: "done", summary: "Paid $24.80 (simulated)", evidence: "Store shows: Order #TB-1042 placed" });
+        this.emit({
+          type: "task.step",
+          taskId: id,
+          stepId: "s3",
+          status: "done",
+          summary: "Paid $24.80 (simulated)",
+          evidence: "Store shows: Order #TB-1042 placed",
+        });
         break;
       }
-      await this.step(t, "s4", "Checking the order", "Order #TB-1042 confirmed, arriving in about 35 minutes");
-      this.emit({ type: "task.done", taskId: id, outcome: "Your pad thai is ordered (simulated). It should arrive in about 35 minutes.", verified: true, evidence: "Store page shows Order #TB-1042 confirmed" });
+      await this.step(
+        t,
+        "s4",
+        "Checking the order",
+        "Order #TB-1042 confirmed, arriving in about 35 minutes",
+      );
+      this.emit({
+        type: "task.done",
+        taskId: id,
+        outcome: "Your pad thai is ordered (simulated). It should arrive in about 35 minutes.",
+        verified: true,
+        evidence: "Store page shows Order #TB-1042 confirmed",
+      });
     } catch (e) {
       if (e instanceof Stopped) {
         this.emit({ type: "task.stopped", taskId: id, by: "person" });
@@ -184,14 +270,28 @@ export class FakeAgent {
     await this.tick(t);
     this.emit({ type: "task.step", taskId: t.request.id, stepId, status: "running", summary: running });
     await this.tick(t);
-    this.emit({ type: "task.step", taskId: t.request.id, stepId, status: "done", summary: done, evidence: done });
+    this.emit({
+      type: "task.step",
+      taskId: t.request.id,
+      stepId,
+      status: "done",
+      summary: done,
+      evidence: done,
+    });
   }
 
   private async ask(t: FakeTask, q: Omit<ChoiceQuestion, "id">): Promise<string> {
     await this.tick(t);
-    const question: ChoiceQuestion = { ...q, id: `q_${t.request.id}_${Math.random().toString(36).slice(2, 8)}` };
+    const question: ChoiceQuestion = {
+      ...q,
+      id: `q_${t.request.id}_${Math.random().toString(36).slice(2, 8)}`,
+    };
     const answer = await new Promise<string | null>((resolve) => {
-      t.question = { q: question, resolve: (optionId, other) => resolve(optionId ? (q.options.find((o) => o.id === optionId)?.label ?? optionId) : (other ?? null)) };
+      t.question = {
+        q: question,
+        resolve: (optionId, other) =>
+          resolve(optionId ? (q.options.find((o) => o.id === optionId)?.label ?? optionId) : (other ?? null)),
+      };
       this.emit({ type: "task.question", taskId: t.request.id, question });
     });
     t.question = null;

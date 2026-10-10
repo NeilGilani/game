@@ -9,7 +9,12 @@ import type { TaskPack } from "../types";
 import type { Asker, RunResult } from "./runtime";
 import { TaskStopped, withTimeout, type TaskRun } from "./task";
 
-export async function runPack(task: TaskRun, pack: TaskPack, tools: GuardedTools, ask: Asker): Promise<RunResult> {
+export async function runPack(
+  task: TaskRun,
+  pack: TaskPack,
+  tools: GuardedTools,
+  ask: Asker,
+): Promise<RunResult> {
   const steps = pack.steps(task.request);
   task.setPlan(steps.map((s) => ({ id: s.id, title: s.title, risk: s.risk })));
   const values: Record<string, string> = { ...(task.request.selections ?? {}) };
@@ -23,7 +28,11 @@ export async function runPack(task: TaskRun, pack: TaskPack, tools: GuardedTools
       tools.setWhy(step.title);
       task.stepStatus(step.id, "running", attempt === 1 ? step.title : `${step.title} (try ${attempt})`);
       try {
-        const outcome = await withTimeout(step.run({ request: task.request, tools, ask, values }), task.budgets.toolTimeoutMs * 4, step.title);
+        const outcome = await withTimeout(
+          step.run({ request: task.request, tools, ask, values }),
+          task.budgets.toolTimeoutMs * 4,
+          step.title,
+        );
         if (outcome.verified) {
           task.stepStatus(step.id, "done", outcome.summary, outcome.evidence);
           if (outcome.evidence) evidence.push(outcome.evidence);
@@ -40,7 +49,11 @@ export async function runPack(task: TaskRun, pack: TaskPack, tools: GuardedTools
     }
     if (!done) {
       task.stepStatus(step.id, "failed", lastError || "This step did not work.");
-      return { kind: "failed", reason: `${step.title}: ${lastError || "this step did not work."}`, recoverable: true };
+      return {
+        kind: "failed",
+        reason: `${step.title}: ${lastError || "this step did not work."}`,
+        recoverable: true,
+      };
     }
   }
   return { kind: "done", outcome: `${pack.title}: done.`, verified: true, evidence: evidence.join(" ") };

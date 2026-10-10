@@ -39,14 +39,21 @@ export class ComputerTier {
   private pxPerPoint = 1;
   private hasScreenshot = false;
 
-  constructor(private readonly native: NativeClient, private readonly tools: GuardedTools) {}
+  constructor(
+    private readonly native: NativeClient,
+    private readonly tools: GuardedTools,
+  ) {}
 
   async run(member: string, input: Record<string, unknown>): Promise<ComputerResult> {
     switch (member) {
       case "screenshot":
         return this.screenshot();
       case "cursor_position":
-        return { kind: "text", text: "Cursor position is not tracked; take a screenshot instead.", isError: true };
+        return {
+          kind: "text",
+          text: "Cursor position is not tracked; take a screenshot instead.",
+          isError: true,
+        };
       case "wait": {
         const seconds = Math.min(10, Math.max(0, Number(input.duration ?? 1)));
         await new Promise((r) => setTimeout(r, seconds * 1000));
@@ -59,25 +66,40 @@ export class ComputerTier {
       case "double_click":
         return this.click(member, input);
       case "type":
-        return this.fromOutcome(await this.tools.runAction(
-          async () => ({ tier: "computer", op: "computer.type", input: { text: String(input.text ?? "") }, target: await this.frontTarget() }),
-          async () => {
-            const r = await this.native.call("input.type", { text: String(input.text ?? "") });
-            if (!r.ok) throw new ToolError(r.error ?? "Typing was refused (the field may be a password field).");
-            return "OK";
-          },
-        ));
+        return this.fromOutcome(
+          await this.tools.runAction(
+            async () => ({
+              tier: "computer",
+              op: "computer.type",
+              input: { text: String(input.text ?? "") },
+              target: await this.frontTarget(),
+            }),
+            async () => {
+              const r = await this.native.call("input.type", { text: String(input.text ?? "") });
+              if (!r.ok)
+                throw new ToolError(r.error ?? "Typing was refused (the field may be a password field).");
+              return "OK";
+            },
+          ),
+        );
       case "key": {
         const combo = String(input.text ?? "");
         const repeat = Math.min(20, Math.max(1, Number(input.repeat ?? 1)));
         const { key, modifiers } = parseCombo(combo);
-        return this.fromOutcome(await this.tools.runAction(
-          async () => ({ tier: "computer", op: "computer.key", input: { key: combo.toLowerCase(), repeat }, target: await this.frontTarget() }),
-          async () => {
-            for (let i = 0; i < repeat; i++) await this.native.call("input.key", { key, modifiers });
-            return "OK";
-          },
-        ));
+        return this.fromOutcome(
+          await this.tools.runAction(
+            async () => ({
+              tier: "computer",
+              op: "computer.key",
+              input: { key: combo.toLowerCase(), repeat },
+              target: await this.frontTarget(),
+            }),
+            async () => {
+              for (let i = 0; i < repeat; i++) await this.native.call("input.key", { key, modifiers });
+              return "OK";
+            },
+          ),
+        );
       }
       case "scroll": {
         const [x, y] = this.toPoint(input.coordinate);
@@ -85,13 +107,15 @@ export class ComputerTier {
         const dir = String(input.scroll_direction ?? "down");
         const dx = dir === "left" ? -amount : dir === "right" ? amount : 0;
         const dy = dir === "up" ? -amount : dir === "down" ? amount : 0;
-        return this.fromOutcome(await this.tools.runAction(
-          async () => ({ tier: "computer", op: "computer.scroll", target: { point: [x, y] } }),
-          async () => {
-            await this.native.call("input.scroll", { x, y, dx, dy });
-            return "OK";
-          },
-        ));
+        return this.fromOutcome(
+          await this.tools.runAction(
+            async () => ({ tier: "computer", op: "computer.scroll", target: { point: [x, y] } }),
+            async () => {
+              await this.native.call("input.scroll", { x, y, dx, dy });
+              return "OK";
+            },
+          ),
+        );
       }
       default:
         return { kind: "text", text: `The ${member} action is not available here.`, isError: true };
@@ -105,26 +129,49 @@ export class ComputerTier {
     return { kind: "image", data: shot.data, mediaType: shot.format === "png" ? "image/png" : "image/jpeg" };
   }
 
-  private async click(member: "left_click" | "right_click" | "double_click", input: Record<string, unknown>): Promise<ComputerResult> {
-    if (!this.hasScreenshot) return { kind: "text", text: "Take a screenshot first so coordinates match the screen.", isError: true };
+  private async click(
+    member: "left_click" | "right_click" | "double_click",
+    input: Record<string, unknown>,
+  ): Promise<ComputerResult> {
+    if (!this.hasScreenshot)
+      return {
+        kind: "text",
+        text: "Take a screenshot first so coordinates match the screen.",
+        isError: true,
+      };
     const [x, y] = this.toPoint(input.coordinate);
-    return this.fromOutcome(await this.tools.runAction(
-      async () => {
-        const snap = await this.native.call("ax.targets", { maxCount: 500 });
-        const hit = hitTest(snap.targets, x, y);
-        const owner = hit?.owner ?? snap.owner ?? undefined;
-        return {
-          tier: "computer",
-          op: `computer.${member}`,
-          target: { point: [x, y], ref: hit?.id, label: hit?.label, role: hit?.role, secure: hit?.secure, origin: owner, simulated: isSimulatedApp(owner) },
-          input: { modifiers: input.text ?? null },
-        };
-      },
-      async () => {
-        await this.native.call("input.click", { x, y, button: member === "right_click" ? "right" : "left", count: member === "double_click" ? 2 : 1 });
-        return "OK";
-      },
-    ));
+    return this.fromOutcome(
+      await this.tools.runAction(
+        async () => {
+          const snap = await this.native.call("ax.targets", { maxCount: 500 });
+          const hit = hitTest(snap.targets, x, y);
+          const owner = hit?.owner ?? snap.owner ?? undefined;
+          return {
+            tier: "computer",
+            op: `computer.${member}`,
+            target: {
+              point: [x, y],
+              ref: hit?.id,
+              label: hit?.label,
+              role: hit?.role,
+              secure: hit?.secure,
+              origin: owner,
+              simulated: isSimulatedApp(owner),
+            },
+            input: { modifiers: input.text ?? null },
+          };
+        },
+        async () => {
+          await this.native.call("input.click", {
+            x,
+            y,
+            button: member === "right_click" ? "right" : "left",
+            count: member === "double_click" ? 2 : 1,
+          });
+          return "OK";
+        },
+      ),
+    );
   }
 
   private async frontTarget() {
@@ -134,14 +181,16 @@ export class ComputerTier {
   }
 
   private toPoint(coordinate: unknown): [number, number] {
-    if (!Array.isArray(coordinate) || coordinate.length !== 2) throw new ToolError("A coordinate [x, y] is needed.");
+    if (!Array.isArray(coordinate) || coordinate.length !== 2)
+      throw new ToolError("A coordinate [x, y] is needed.");
     const [px, py] = coordinate.map(Number) as [number, number];
     return [Math.round(px / this.pxPerPoint), Math.round(py / this.pxPerPoint)];
   }
 
   private fromOutcome(o: GuardOutcome<string>): ComputerResult {
     if (o.status === "done") return { kind: "text", text: o.value };
-    if (o.status === "change") return { kind: "text", text: `The person wants a change before this: ${o.change}`, isError: true };
+    if (o.status === "change")
+      return { kind: "text", text: `The person wants a change before this: ${o.change}`, isError: true };
     return { kind: "text", text: `Not done: ${o.reason}`, isError: true };
   }
 }
@@ -149,13 +198,29 @@ export class ComputerTier {
 /** The smallest target whose rectangle contains the point. */
 export function hitTest(targets: Target[], x: number, y: number): Target | undefined {
   const inside = (r: ScreenRect) => x >= r.x && x <= r.x + r.width && y >= r.y && y <= r.y + r.height;
-  return targets.filter((t) => inside(t.rect)).sort((a, b) => a.rect.width * a.rect.height - b.rect.width * b.rect.height)[0];
+  return targets
+    .filter((t) => inside(t.rect))
+    .sort((a, b) => a.rect.width * a.rect.height - b.rect.width * b.rect.height)[0];
 }
 
-const MOD: Record<string, Modifier> = { ctrl: "ctrl", control: "ctrl", cmd: "cmd", command: "cmd", super: "cmd", meta: "cmd", alt: "alt", option: "alt", shift: "shift", fn: "fn" };
+const MOD: Record<string, Modifier> = {
+  ctrl: "ctrl",
+  control: "ctrl",
+  cmd: "cmd",
+  command: "cmd",
+  super: "cmd",
+  meta: "cmd",
+  alt: "alt",
+  option: "alt",
+  shift: "shift",
+  fn: "fn",
+};
 
 export function parseCombo(combo: string): { key: string; modifiers: Modifier[] } {
-  const parts = combo.split("+").map((p) => p.trim()).filter(Boolean);
+  const parts = combo
+    .split("+")
+    .map((p) => p.trim())
+    .filter(Boolean);
   const key = parts.pop() ?? "";
   const modifiers = parts.map((p) => MOD[p.toLowerCase()]).filter((m): m is Modifier => !!m);
   return { key, modifiers };
