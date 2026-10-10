@@ -1,0 +1,40 @@
+{
+  "name": "@agency/overlay",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "AGENCY OS eye-control overlay: gaze cursor, dwell on any app's controls, protected Help/Stop/Home/Keyboard/Pause, numbers, scroll zones, app switcher, on-screen keyboard. Owned by Instance 3.",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc -b --noEmit",
+    "lint": "eslint .",
+    "format": "prettier --write \"src/**/*.{ts,tsx,css}\" \"tests/**/*.ts\" \"e2e/**/*.ts\" \"../native-macos/fake/**/*.ts\"",
+    "format:check": "prettier --check \"src/**/*.{ts,tsx,css}\" \"tests/**/*.ts\" \"e2e/**/*.ts\" \"../native-macos/fake/**/*.ts\"",
+    "test": "vitest run",
+    "test:e2e": "playwright test",
+    "check": "npm run lint && npm run format:check && npm run typecheck && npm test && npm run build"
+  },
+  "dependencies": {
+    "@fontsource/atkinson-hyperlegible": "5.3.0",
+    "react": "19.3.0",
+    "react-dom": "19.3.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "9.39.5",
+    "@playwright/test": "1.56.1",
+    "@types/node": "22.20.5",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "@vitejs/plugin-react": "5.2.0",
+    "eslint": "9.39.5",
+    "eslint-plugin-react-hooks": "7.1.1",
+    "globals": "17.13.0",
+    "prettier": "3.9.9",
+    "typescript": "5.9.3",
+    "typescript-eslint": "8.71.1",
+    "vite": "7.3.7",
+    "vitest": "4.1.11"
+  }
+}

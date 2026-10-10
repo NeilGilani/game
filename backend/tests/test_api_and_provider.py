@@ -11,6 +11,7 @@ import anthropic
 import pytest
 from fastapi.testclient import TestClient
 
+from agency.db import MIGRATIONS
 from agency.planning.templates import baseline_plan
 from agency.reasoning.provider import AnthropicProvider, DisabledProvider
 from conftest import make_client, start_repair, step, tune
@@ -19,7 +20,7 @@ from conftest import make_client, start_repair, step, tune
 def test_health_reports_node_reasoning_and_database(client: TestClient) -> None:
     health = client.get("/api/health").json()
     assert health["status"] == "ok"
-    assert health["database"]["schema_version"] == 4
+    assert health["database"]["schema_version"] == MIGRATIONS[-1][0]
     assert health["reasoning"]["mode"] == "deterministic"
     assert health["reasoning"]["state"] == "not_configured"
     assert health["node"]["role"] in {"local", "raspberry-pi"}

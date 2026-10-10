@@ -21,3 +21,16 @@ frontend/playwright-report/
 *.log
 .DS_Store
 frontend/e2e/fixtures/.cache/
+
+# AGENCY OS
+os/desktop/out/
+os/desktop/dist/
+os/desktop/test-results/
+os/desktop/playwright-report/
+os/sidecar/build/
+os/sidecar/dist/
+os/sidecar/.venv/
+os/*/dist/
+os/*/.build/
+**/test-results/
+**/playwright-report/

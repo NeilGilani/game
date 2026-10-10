@@ -47,7 +47,7 @@ make pi-stop
 make pi-start
 ```
 
-To change settings (for example to add `ANTHROPIC_API_KEY` or turn off presenter controls with
+To change settings (for example to add `GEMINI_API_KEY` or turn off presenter controls with
 `AGENCY_DEMO_CONTROLS=0`), edit `/etc/agency/agency.env` and run `make pi-stop` then `make pi-start`.
 
 ## Connect the MacBook

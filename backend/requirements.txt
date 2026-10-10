@@ -3,5 +3,9 @@
 fastapi>=0.115,<1
 uvicorn>=0.30,<1
 pydantic>=2.7,<3
-# Optional cloud reasoning. Installed by default; only used when ANTHROPIC_API_KEY is set.
+# Optional cloud reasoning. Installed by default; each is only used when its key is set
+# (GEMINI_API_KEY for Google Gemini, ANTHROPIC_API_KEY for Claude).
+google-genai>=2.29,<3
 anthropic>=1.10,<2
+# Memory encryption at rest (AES-256-GCM). Versions pinned in constraints.txt, incl. the Intel-Mac line.
+cryptography>=45

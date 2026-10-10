@@ -1,8 +1,9 @@
 """Optional cloud reasoning.
 
 AGENCY works fully without a model: the deterministic planner and interpreter in
-``agency.planning`` handle every supported goal. When ANTHROPIC_API_KEY is set, the
-Anthropic provider is used for three narrow jobs:
+``agency.planning`` handle every supported goal. When a cloud model is configured (Google
+Gemini with GEMINI_API_KEY, or Anthropic Claude with ANTHROPIC_API_KEY), it is used for three
+narrow jobs:
 
 1. interpreting a typed or phrase-built goal into the structured Goal model,
 2. adapting the built-in plan to that goal (the result must pass the same validator),
@@ -20,7 +21,7 @@ import json
 import logging
 import os
 from dataclasses import dataclass, field
-from typing import Any, Protocol
+from typing import Any, ClassVar, Protocol
 
 from pydantic import ValidationError
 
@@ -158,7 +159,7 @@ class ReasoningProvider(Protocol):
 class DisabledProvider:
     """Used when no API key is configured or cloud reasoning is switched off."""
 
-    reason: str = "No cloud model is configured (ANTHROPIC_API_KEY is not set)."
+    reason: str = "No cloud model is configured (set GEMINI_API_KEY or ANTHROPIC_API_KEY to add one)."
 
     @property
     def available(self) -> bool:
@@ -168,6 +169,7 @@ class DisabledProvider:
         return {
             "mode": "deterministic",
             "provider": None,
+            "label": None,
             "model": None,
             "state": "not_configured",
             "description": "Deterministic demo mode: built-in plans and rules. " + self.reason,
@@ -192,10 +194,14 @@ class DisabledProvider:
 
 
 @dataclass
-class AnthropicProvider:
+class CloudProvider:
+    """What every cloud model shares: the prompts, the response parsing, and the status record.
+
+    Subclasses only implement ``_call_json`` (one structured-output request) and ``check``.
+    """
+
     model: str
     effort: str = "medium"
-    use_fallbacks: bool = True
     timeout_s: float = 45.0
     client: Any = None
     calls: int = 0
@@ -205,11 +211,8 @@ class AnthropicProvider:
     state: str = "configured"
     history: list[dict[str, Any]] = field(default_factory=list)
 
-    def __post_init__(self) -> None:
-        if self.client is None:
-            import anthropic
-
-            self.client = anthropic.AsyncAnthropic(timeout=self.timeout_s, max_retries=1)
+    name: ClassVar[str] = "cloud"
+    label: ClassVar[str] = "Cloud model"
 
     @property
     def available(self) -> bool:
@@ -217,14 +220,15 @@ class AnthropicProvider:
 
     def status(self) -> dict[str, Any]:
         descriptions = {
-            "configured": f"Cloud reasoning configured ({self.model}); not used yet in this session.",
-            "ok": f"Cloud reasoning active ({self.model}). Last call succeeded.",
-            "error": f"Cloud reasoning configured ({self.model}) but the last call failed, so AGENCY used its built-in "
-            f"plans: {self.last_error}",
+            "configured": f"Cloud reasoning configured ({self.label}, {self.model}); not used yet in this session.",
+            "ok": f"Cloud reasoning active ({self.label}, {self.model}). Last call succeeded.",
+            "error": f"Cloud reasoning configured ({self.label}, {self.model}) but the last call failed, so AGENCY "
+            f"used its built-in plans: {self.last_error}",
         }
         return {
             "mode": "cloud" if self.state != "error" else "cloud_degraded",
-            "provider": "anthropic",
+            "provider": self.name,
+            "label": self.label,
             "model": self.model,
             "state": self.state,
             "description": descriptions.get(self.state, self.state),
@@ -245,52 +249,7 @@ class AnthropicProvider:
             self.last_error_at = utcnow()
         self.history = (self.history + [{"at": utcnow(), "purpose": purpose, "ok": ok, "error": error}])[-20:]
 
-    async def _call_json(
-        self, purpose: str, user: str, schema: dict[str, Any], *, effort: str | None = None, max_tokens: int = 16000
-    ) -> dict[str, Any] | None:
-        import anthropic
-
-        kwargs: dict[str, Any] = {
-            "model": self.model,
-            "max_tokens": max_tokens,
-            "system": SYSTEM_PROMPT,
-            "messages": [{"role": "user", "content": user}],
-            "output_config": {"effort": effort or self.effort, "format": {"type": "json_schema", "schema": schema}},
-            "cache_control": {"type": "ephemeral"},
-        }
-        if self.use_fallbacks:
-            kwargs["betas"] = ["server-side-fallback-2026-07-01"]
-            kwargs["fallbacks"] = "default"
-        try:
-            response = await self.client.beta.messages.create(**kwargs)
-        except anthropic.AuthenticationError:
-            self._record(False, purpose, "the API key was rejected")
-            return None
-        except anthropic.PermissionDeniedError:
-            self._record(False, purpose, "the API key lacks permission for this model")
-            return None
-        except anthropic.NotFoundError:
-            self._record(False, purpose, f"model {self.model} was not found")
-            return None
-        except anthropic.RateLimitError:
-            self._record(False, purpose, "rate limited")
-            return None
-        except anthropic.BadRequestError as exc:
-            self._record(False, purpose, f"request rejected: {exc.message}"[:200])
-            return None
-        except anthropic.APIStatusError as exc:
-            self._record(False, purpose, f"service error {exc.status_code}")
-            return None
-        except anthropic.APIConnectionError:
-            self._record(False, purpose, "could not reach the API (network)")
-            return None
-        if getattr(response, "stop_reason", None) == "refusal":
-            self._record(False, purpose, "the model declined this request")
-            return None
-        if getattr(response, "stop_reason", None) == "max_tokens":
-            self._record(False, purpose, "the response was cut off")
-            return None
-        text = next((b.text for b in response.content if getattr(b, "type", None) == "text"), None)
+    def _parse_object(self, purpose: str, text: str | None) -> dict[str, Any] | None:
         if not text:
             self._record(False, purpose, "empty response")
             return None
@@ -304,6 +263,14 @@ class AnthropicProvider:
             return None
         self._record(True, purpose)
         return data
+
+    async def _call_json(
+        self, purpose: str, user: str, schema: dict[str, Any], *, effort: str | None = None, max_tokens: int = 16000
+    ) -> dict[str, Any] | None:
+        raise NotImplementedError
+
+    async def check(self) -> dict[str, Any]:
+        raise NotImplementedError
 
     async def interpret_goal(
         self, request_text: str, selections: dict[str, str], profile: dict[str, Any]
@@ -384,6 +351,68 @@ class AnthropicProvider:
         paragraphs = [str(p)[:600] for p in data.get("paragraphs", []) if str(p).strip()]
         return paragraphs[:4] or None
 
+
+@dataclass
+class AnthropicProvider(CloudProvider):
+    use_fallbacks: bool = True
+
+    name: ClassVar[str] = "anthropic"
+    label: ClassVar[str] = "Claude"
+
+    def __post_init__(self) -> None:
+        if self.client is None:
+            import anthropic
+
+            self.client = anthropic.AsyncAnthropic(timeout=self.timeout_s, max_retries=1)
+
+    async def _call_json(
+        self, purpose: str, user: str, schema: dict[str, Any], *, effort: str | None = None, max_tokens: int = 16000
+    ) -> dict[str, Any] | None:
+        import anthropic
+
+        kwargs: dict[str, Any] = {
+            "model": self.model,
+            "max_tokens": max_tokens,
+            "system": SYSTEM_PROMPT,
+            "messages": [{"role": "user", "content": user}],
+            "output_config": {"effort": effort or self.effort, "format": {"type": "json_schema", "schema": schema}},
+            "cache_control": {"type": "ephemeral"},
+        }
+        if self.use_fallbacks:
+            kwargs["betas"] = ["server-side-fallback-2026-07-01"]
+            kwargs["fallbacks"] = "default"
+        try:
+            response = await self.client.beta.messages.create(**kwargs)
+        except anthropic.AuthenticationError:
+            self._record(False, purpose, "the API key was rejected")
+            return None
+        except anthropic.PermissionDeniedError:
+            self._record(False, purpose, "the API key lacks permission for this model")
+            return None
+        except anthropic.NotFoundError:
+            self._record(False, purpose, f"model {self.model} was not found")
+            return None
+        except anthropic.RateLimitError:
+            self._record(False, purpose, "rate limited")
+            return None
+        except anthropic.BadRequestError as exc:
+            self._record(False, purpose, f"request rejected: {exc.message}"[:200])
+            return None
+        except anthropic.APIStatusError as exc:
+            self._record(False, purpose, f"service error {exc.status_code}")
+            return None
+        except anthropic.APIConnectionError:
+            self._record(False, purpose, "could not reach the API (network)")
+            return None
+        if getattr(response, "stop_reason", None) == "refusal":
+            self._record(False, purpose, "the model declined this request")
+            return None
+        if getattr(response, "stop_reason", None) == "max_tokens":
+            self._record(False, purpose, "the response was cut off")
+            return None
+        text = next((b.text for b in response.content if getattr(b, "type", None) == "text"), None)
+        return self._parse_object(purpose, text)
+
     async def check(self) -> dict[str, Any]:
         """Cheap credential check: retrieve the model's metadata (no tokens generated)."""
         import anthropic
@@ -402,13 +431,140 @@ class AnthropicProvider:
         return self.status()
 
 
-def build_provider(reasoning: str, model: str, effort: str, fallbacks: bool, timeout_s: float) -> ReasoningProvider:
+# Gemini's thinking levels (ai.google.dev/gemini-api/docs/thinking). Gemini 3 Flash models accept
+# low, medium and high; older models use a token budget instead, so no level is sent to them.
+_THINKING_LEVELS = {"low": "LOW", "medium": "MEDIUM", "high": "HIGH", "xhigh": "HIGH", "max": "HIGH"}
+_GEMINI_BLOCKED = {"SAFETY", "PROHIBITED_CONTENT", "BLOCKLIST", "SPII", "RECITATION", "IMAGE_SAFETY"}
+
+
+def gemini_api_key() -> str | None:
+    return os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY") or None
+
+
+@dataclass
+class GeminiProvider(CloudProvider):
+    """Google Gemini through the official ``google-genai`` SDK, with JSON-schema structured output."""
+
+    name: ClassVar[str] = "google"
+    label: ClassVar[str] = "Gemini"
+
+    def __post_init__(self) -> None:
+        if self.client is None:
+            from google import genai
+            from google.genai import types
+
+            self.client = genai.Client(
+                api_key=gemini_api_key(),
+                http_options=types.HttpOptions(
+                    timeout=int(self.timeout_s * 1000),  # milliseconds
+                    retry_options=types.HttpRetryOptions(attempts=2),
+                ),
+            )
+
+    def _config(self, schema: dict[str, Any] | None, effort: str | None, max_tokens: int) -> Any:
+        from google.genai import types
+
+        config = types.GenerateContentConfig(
+            system_instruction=SYSTEM_PROMPT,
+            response_mime_type="application/json",
+            response_json_schema=schema,
+            # Gemini counts thinking tokens against this limit, so leave room beyond the answer itself.
+            max_output_tokens=max_tokens * 2,
+        )
+        level = _THINKING_LEVELS.get(effort or self.effort)
+        if level and self.model.startswith("gemini-3"):
+            config.thinking_config = types.ThinkingConfig(thinking_level=types.ThinkingLevel(level))
+        return config
+
+    def _api_error(self, exc: Exception) -> str:
+        from google.genai import errors
+
+        if not isinstance(exc, errors.APIError):
+            return "could not reach the API (network)"
+        code = exc.code
+        message = str(exc.message or "")
+        if code == 401 or (code == 400 and "api key" in message.lower()):
+            return "the API key was rejected"
+        if code == 403:
+            return "the API key lacks permission for this model"
+        if code == 404:
+            return f"model {self.model} was not found"
+        if code == 429:
+            return "rate limited"
+        if code == 400:
+            return f"request rejected: {message}"[:200]
+        return f"service error {code}"
+
+    async def _call_json(
+        self, purpose: str, user: str, schema: dict[str, Any], *, effort: str | None = None, max_tokens: int = 16000
+    ) -> dict[str, Any] | None:
+        import httpx
+        from google.genai import errors
+
+        try:
+            response = await self.client.aio.models.generate_content(
+                model=self.model, contents=user, config=self._config(schema, effort, max_tokens)
+            )
+        except (errors.APIError, httpx.HTTPError, OSError, TimeoutError) as exc:
+            self._record(False, purpose, self._api_error(exc))
+            return None
+        feedback = getattr(response, "prompt_feedback", None)
+        if feedback is not None and getattr(feedback, "block_reason", None):
+            self._record(False, purpose, "the model declined this request")
+            return None
+        candidates = getattr(response, "candidates", None) or []
+        finish = getattr(getattr(candidates[0], "finish_reason", None), "name", None) if candidates else None
+        if finish in _GEMINI_BLOCKED:
+            self._record(False, purpose, "the model declined this request")
+            return None
+        if finish == "MAX_TOKENS":
+            self._record(False, purpose, "the response was cut off")
+            return None
+        return self._parse_object(purpose, response.text)
+
+    async def check(self) -> dict[str, Any]:
+        """Cheap credential check: read the model's metadata (no tokens generated)."""
+        import httpx
+        from google.genai import errors
+
+        try:
+            await self.client.aio.models.get(model=self.model)
+            self._record(True, "check")
+        except (errors.APIError, httpx.HTTPError, OSError, TimeoutError) as exc:
+            self._record(False, "check", self._api_error(exc))
+        return self.status()
+
+
+def build_provider(
+    reasoning: str,
+    *,
+    gemini_model: str,
+    anthropic_model: str,
+    effort: str = "medium",
+    fallbacks: bool = True,
+    timeout_s: float = 45.0,
+) -> ReasoningProvider:
+    """Pick the cloud model from AGENCY_REASONING and the keys present.
+
+    auto: Gemini when GEMINI_API_KEY (or GOOGLE_API_KEY) is set, else Claude when ANTHROPIC_API_KEY
+    is set, else the deterministic built-in plans. gemini / anthropic: only that provider.
+    """
     if reasoning in {"deterministic", "off", "demo"}:
         return DisabledProvider(reason="Cloud reasoning is switched off (AGENCY_REASONING=deterministic).")
-    if not os.environ.get("ANTHROPIC_API_KEY"):
-        return DisabledProvider()
+    want_gemini = reasoning in {"auto", "gemini", "google"}
+    want_anthropic = reasoning in {"auto", "anthropic", "claude"}
+    if not want_gemini and not want_anthropic:
+        return DisabledProvider(reason=f"Unknown AGENCY_REASONING value {reasoning!r}; use auto, gemini or anthropic.")
     try:
-        return AnthropicProvider(model=model, effort=effort, use_fallbacks=fallbacks, timeout_s=timeout_s)
+        if want_gemini and gemini_api_key():
+            return GeminiProvider(model=gemini_model, effort=effort, timeout_s=timeout_s)
+        if want_anthropic and os.environ.get("ANTHROPIC_API_KEY"):
+            return AnthropicProvider(model=anthropic_model, effort=effort, use_fallbacks=fallbacks, timeout_s=timeout_s)
     except Exception as exc:  # pragma: no cover - SDK import problems
-        log.warning("could not start the Anthropic client: %s", exc)
-        return DisabledProvider(reason=f"The Anthropic client could not start ({type(exc).__name__}).")
+        log.warning("could not start the cloud model client: %s", exc)
+        return DisabledProvider(reason=f"The cloud model client could not start ({type(exc).__name__}).")
+    if reasoning in {"gemini", "google"}:
+        return DisabledProvider(reason="AGENCY_REASONING=gemini but GEMINI_API_KEY is not set.")
+    if reasoning in {"anthropic", "claude"}:
+        return DisabledProvider(reason="AGENCY_REASONING=anthropic but ANTHROPIC_API_KEY is not set.")
+    return DisabledProvider()

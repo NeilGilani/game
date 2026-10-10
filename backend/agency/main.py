@@ -31,6 +31,7 @@ from .lifeline.api import build_routers as lifeline_routers
 from .lifeline.channels import ChannelRouter, TwilioChannel
 from .lifeline.home import HomeAssistantHome
 from .lifeline.service import LifelineError, LifelineService
+from .memory import memory_router
 from .models import (
     ACTIVE_CASE_STATUSES,
     AnswerRequest,
@@ -137,10 +138,11 @@ def create_app(
         engine = Engine(db, step_delay_ms=settings.step_delay_ms)
         chosen = provider or build_provider(
             settings.reasoning,
-            settings.anthropic_model,
-            settings.anthropic_effort,
-            settings.anthropic_fallbacks,
-            settings.anthropic_timeout_s,
+            gemini_model=settings.gemini_model,
+            anthropic_model=settings.anthropic_model,
+            effort=settings.reasoning_effort,
+            fallbacks=settings.anthropic_fallbacks,
+            timeout_s=settings.reasoning_timeout_s,
         )
         lifeline = LifelineService(
             db,
@@ -174,7 +176,7 @@ def create_app(
     app.add_middleware(
         CORSMiddleware,
         allow_origins=settings.allowed_origins,
-        allow_methods=["GET", "POST", "PUT"],
+        allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE"],
         allow_headers=["Content-Type", "X-Agency-Token"],
     )
 
@@ -223,7 +225,9 @@ def create_app(
             "node": node_info(settings),
             "database": {"ok": db_ok, "schema_version": schema},
             "reasoning": {
-                k: v for k, v in s.provider.status().items() if k in {"mode", "provider", "model", "state", "description"}
+                k: v
+                for k, v in s.provider.status().items()
+                if k in {"mode", "provider", "label", "model", "state", "description"}
             },
             "automation_paused": s.engine.automation_paused(),
             "auth_required": bool(settings.api_token),
@@ -527,7 +531,14 @@ def create_app(
                 }
             )
             if cloud:
-                result = {"paragraphs": cloud, "source": "cloud", "model": s.provider.status().get("model"), "facts": paragraphs}
+                status = s.provider.status()
+                result = {
+                    "paragraphs": cloud,
+                    "source": "cloud",
+                    "label": status.get("label"),
+                    "model": status.get("model"),
+                    "facts": paragraphs,
+                }
         return result
 
     # -- demo controls (presenter only) ---------------------------------------------------
@@ -624,6 +635,7 @@ def create_app(
     lifeline_api, respond_pages = lifeline_routers(demo_controls=settings.demo_controls)
     app.include_router(lifeline_api)
     app.include_router(respond_pages)
+    app.include_router(memory_router())
 
     if settings.frontend_dist and (settings.frontend_dist / "index.html").is_file():
         app.mount("/", StaticFiles(directory=settings.frontend_dist, html=True), name="frontend")

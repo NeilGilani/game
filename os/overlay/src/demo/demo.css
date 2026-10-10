@@ -1,0 +1,98 @@
+/* The pretend app behind the overlay in demo mode. Deliberately ordinary Mac-sized controls (small). */
+html,
+body {
+  background: var(--bg) !important;
+}
+#desktop {
+  position: fixed;
+  inset: 0;
+}
+.fake-window {
+  position: absolute;
+  left: 40px;
+  top: 40px;
+  right: 180px;
+  bottom: 40px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  font-family:
+    system-ui,
+    -apple-system,
+    sans-serif;
+  font-size: 14px;
+  color: var(--ink);
+  overflow: hidden;
+}
+.fake-sim {
+  padding: 6px 12px;
+  background: var(--sim-soft);
+  color: var(--sim);
+  font-weight: 700;
+}
+.fake-toolbar {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--line);
+}
+.fake-tiny {
+  display: inline-grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 4px;
+  border: 1px solid var(--line);
+}
+.fake-spacer {
+  flex: 1;
+}
+.fake-btn,
+.fake-link {
+  padding: 4px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--line-strong);
+}
+.fake-link {
+  border: 0;
+  color: var(--info);
+  text-decoration: underline;
+}
+.fake-body {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+  padding: 24px;
+}
+.fake-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.fake-list li {
+  padding: 18px 12px;
+  border-bottom: 1px solid var(--line);
+}
+.fake-compose {
+  display: grid;
+  gap: 120px;
+  align-content: start;
+}
+.fake-compose label {
+  display: grid;
+  gap: 6px;
+}
+.fake-field {
+  display: block;
+  height: 26px;
+  border: 1px solid var(--line-strong);
+  border-radius: 4px;
+}
+.fake-log {
+  position: absolute;
+  left: 24px;
+  bottom: 12px;
+  margin: 0;
+  color: var(--ink-2);
+}

@@ -1,0 +1,52 @@
+/* Tokens from frontend/src/styles (switch to docs/os/DESIGN.md when it lands). */
+:root {
+  --ink: #111a26;
+  --muted: #4a4f57;
+  --accent: #0b6b5c;
+  --font: "Atkinson Hyperlegible", -apple-system, system-ui, sans-serif;
+  color-scheme: light dark;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --ink: #eef2f7;
+    --muted: #b8c0cc;
+    --accent: #5fc7b3;
+  }
+}
+html,
+body {
+  margin: 0;
+  height: 100%;
+  /* Transparent so the window's vibrancy shows through. */
+  background: transparent;
+  color: var(--ink);
+  font-family: var(--font);
+  -webkit-user-select: none;
+  user-select: none;
+}
+body {
+  -webkit-app-region: drag;
+}
+main {
+  padding: 56px 36px 28px;
+  text-align: center;
+}
+h1 {
+  margin: 12px 0 4px;
+  font-size: 30px;
+  letter-spacing: 0.02em;
+}
+.version {
+  color: var(--accent);
+  font-weight: 700;
+  margin: 0 0 16px;
+}
+p {
+  font-size: 16px;
+  line-height: 1.45;
+  margin: 0 0 10px;
+}
+.small {
+  font-size: 13px;
+  color: var(--muted);
+}

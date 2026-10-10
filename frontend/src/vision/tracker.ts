@@ -1,22 +1,26 @@
 /**
- * The live camera pipeline. Runs MediaPipe Face Landmarker on webcam frames in this
- * browser; frames are never stored or uploaded. Each frame produces features, a blink
- * score, quality issues and (once calibrated) a smoothed on-screen pointer estimate.
+ * The live camera pipeline for the web app, built on @agency/gaze (os/gaze): its WebcamProvider
+ * runs MediaPipe Face Landmarker on webcam frames in this browser; frames are never stored or
+ * uploaded. Each frame produces features, a blink score, quality issues and (once calibrated) a
+ * smoothed on-screen pointer estimate in viewport pixels.
+ *
+ * AGENCY OS uses the package's GazeEngine instead (global screen points, calibration v2); this
+ * file keeps the web app's existing API and behaviour.
  */
 
-import type { FaceLandmarker as FaceLandmarkerType } from "@mediapipe/tasks-vision";
-import { type CameraErrorKind, cameraEnvironment, classifyCameraError, openCamera } from "./camera";
-import { type CalibrationModel, featureVector, predict } from "./calibration";
-import { OpennessBlink } from "./blink";
-import { type GazeFeatures, blinkFromBlendshapes, extractFeatures } from "./landmarks";
-import { PointFilter } from "./oneEuro";
+import { type CameraErrorKind } from "../../../os/gaze/src/camera";
+import { type CalibrationModel, featureVector, predict } from "../../../os/gaze/src/calibration/legacy";
+import { OpennessBlink } from "../../../os/gaze/src/blink";
+import { type GazeFeatures, extractFeatures } from "../../../os/gaze/src/landmarks";
+import { PointFilter } from "../../../os/gaze/src/oneEuro";
 import {
   type QualityIssue,
   assessBrightness,
   assessFace,
-  meanLuminance,
   trackingConfidence,
-} from "./quality";
+} from "../../../os/gaze/src/quality";
+import type { FaceFrame } from "../../../os/gaze/src/providers/types";
+import { type LandmarkerFactory, WebcamProvider } from "../../../os/gaze/src/providers/webcam";
 
 export type VisionStatus = "off" | "starting" | "loading-model" | "running" | "paused" | "error";
 
@@ -45,33 +49,61 @@ type StatusListener = (status: VisionStatus, error: CameraErrorKind | null) => v
 
 const BASE = import.meta.env.BASE_URL ?? "/";
 
+/** MediaPipe from the app's own vendored assets (public/mediapipe, public/models), GPU then CPU. */
+const mediapipe: LandmarkerFactory = async () => {
+  const { FaceLandmarker, FilesetResolver } = await import("@mediapipe/tasks-vision");
+  const fileset = await FilesetResolver.forVisionTasks(`${BASE}mediapipe/wasm`);
+  const options = (delegate: "GPU" | "CPU") => ({
+    baseOptions: { modelAssetPath: `${BASE}models/face_landmarker.task`, delegate },
+    runningMode: "VIDEO" as const,
+    numFaces: 1,
+    outputFaceBlendshapes: true,
+    outputFacialTransformationMatrixes: true,
+    minFaceDetectionConfidence: 0.5,
+    minFacePresenceConfidence: 0.5,
+    minTrackingConfidence: 0.5,
+  });
+  try {
+    return { landmarker: await FaceLandmarker.createFromOptions(fileset, options("GPU")), delegate: "GPU" };
+  } catch (gpuError) {
+    console.warn("GPU delegate unavailable, using CPU", gpuError);
+    return { landmarker: await FaceLandmarker.createFromOptions(fileset, options("CPU")), delegate: "CPU" };
+  }
+};
+
 export class VisionEngine {
   status: VisionStatus = "off";
   error: CameraErrorKind | null = null;
   stats: VisionStats = { fps: 0, delegate: null, modelLoadedMs: null, videoSize: null };
-  readonly video: HTMLVideoElement;
   last: VisionFrame | null = null;
 
-  private stream: MediaStream | null = null;
-  private landmarker: FaceLandmarkerType | null = null;
-  private running = false;
+  private readonly camera: WebcamProvider;
+  private paused = false;
   private listeners = new Set<Listener>();
   private statusListeners = new Set<StatusListener>();
   private model: CalibrationModel | null = null;
   private filter = new PointFilter({ minCutoff: 0.6, beta: 0.004, dCutoff: 1 });
   private opennessBlink = new OpennessBlink();
-  private lastTimestamp = 0;
-  private frameTimes: number[] = [];
-  private brightnessCanvas: HTMLCanvasElement | null = null;
-  private lastBrightnessAt = 0;
-  private brightness: number | null = null;
-  private loopHandle: number | null = null;
+  private loadStarted = 0;
 
-  constructor() {
-    this.video = document.createElement("video");
-    this.video.playsInline = true;
-    this.video.muted = true;
-    this.video.setAttribute("aria-hidden", "true");
+  constructor(factory: LandmarkerFactory = mediapipe) {
+    this.camera = new WebcamProvider(async () => {
+      this.loadStarted = performance.now();
+      const made = await factory();
+      this.stats.modelLoadedMs = Math.round(performance.now() - this.loadStarted);
+      this.stats.delegate = made.delegate;
+      return made;
+    });
+    this.camera.onStatus((s, e) => {
+      if (s === "running") {
+        this.stats.videoSize = { width: this.video.videoWidth, height: this.video.videoHeight };
+      }
+      this.setStatus(s === "running" && this.paused ? "paused" : s, e);
+    });
+  }
+
+  get video(): HTMLVideoElement {
+    return this.camera.video;
   }
 
   onFrame(listener: Listener): () => void {
@@ -106,153 +138,46 @@ export class VisionEngine {
   }
 
   async start(): Promise<void> {
+    if (this.status === "paused") return this.resume();
     if (this.status === "running" || this.status === "starting" || this.status === "loading-model") return;
-    this.setStatus("starting");
-    try {
-      this.stream = await openCamera();
-    } catch (err) {
-      this.setStatus("error", classifyCameraError(err, cameraEnvironment()));
-      return;
-    }
-    const track = this.stream.getVideoTracks()[0];
-    track?.addEventListener("ended", () => {
-      if (this.running) {
-        this.stopLoop();
-        this.setStatus("error", "stream-lost");
-      }
+    this.paused = false;
+    await this.camera.start((f) => {
+      if (f.kind === "face") this.process(f.frame);
     });
-    this.video.srcObject = this.stream;
-    try {
-      await this.video.play();
-    } catch (err) {
-      this.releaseCamera();
-      this.setStatus("error", classifyCameraError(err, cameraEnvironment()));
-      return;
-    }
-    this.stats.videoSize = { width: this.video.videoWidth, height: this.video.videoHeight };
-
-    if (!this.landmarker) {
-      this.setStatus("loading-model");
-      const started = performance.now();
-      try {
-        this.landmarker = await this.createLandmarker();
-        this.stats.modelLoadedMs = Math.round(performance.now() - started);
-      } catch (err) {
-        console.error("Face Landmarker failed to load", err);
-        this.releaseCamera();
-        this.setStatus("error", "model-failed");
-        return;
-      }
-    }
-    this.running = true;
-    this.setStatus("running");
-    this.loop();
-  }
-
-  private async createLandmarker(): Promise<FaceLandmarkerType> {
-    const { FaceLandmarker, FilesetResolver } = await import("@mediapipe/tasks-vision");
-    const fileset = await FilesetResolver.forVisionTasks(`${BASE}mediapipe/wasm`);
-    const options = (delegate: "GPU" | "CPU") => ({
-      baseOptions: { modelAssetPath: `${BASE}models/face_landmarker.task`, delegate },
-      runningMode: "VIDEO" as const,
-      numFaces: 1,
-      outputFaceBlendshapes: true,
-      outputFacialTransformationMatrixes: true,
-      minFaceDetectionConfidence: 0.5,
-      minFacePresenceConfidence: 0.5,
-      minTrackingConfidence: 0.5,
-    });
-    try {
-      const lm = await FaceLandmarker.createFromOptions(fileset, options("GPU"));
-      this.stats.delegate = "GPU";
-      return lm;
-    } catch (gpuError) {
-      console.warn("GPU delegate unavailable, using CPU", gpuError);
-      const lm = await FaceLandmarker.createFromOptions(fileset, options("CPU"));
-      this.stats.delegate = "CPU";
-      return lm;
-    }
   }
 
   /** Stop processing frames but keep the camera on (e.g. while the person rests). */
   pause(): void {
     if (this.status !== "running") return;
-    this.stopLoop();
+    this.paused = true;
+    this.camera.setTargetFps(2); // frames are ignored while paused; keep the camera nearly idle
     this.setStatus("paused");
   }
 
   resume(): void {
     if (this.status !== "paused") return;
-    this.running = true;
+    this.paused = false;
+    this.camera.setTargetFps(30);
     this.setStatus("running");
-    this.loop();
   }
 
   stop(): void {
-    this.stopLoop();
-    this.releaseCamera();
+    this.paused = false;
+    this.camera.stop();
     this.last = null;
     this.setStatus("off");
   }
 
-  private stopLoop(): void {
-    this.running = false;
-    if (this.loopHandle !== null) cancelAnimationFrame(this.loopHandle);
-    this.loopHandle = null;
-  }
-
-  private releaseCamera(): void {
-    this.stream?.getTracks().forEach((t) => t.stop());
-    this.stream = null;
-    this.video.srcObject = null;
-  }
-
-  private loop = (): void => {
-    if (!this.running) return;
-    this.process();
-    this.loopHandle = requestAnimationFrame(this.loop);
-  };
-
-  private measureBrightness(now: number): void {
-    if (now - this.lastBrightnessAt < 1000 || !this.video.videoWidth) return;
-    this.lastBrightnessAt = now;
-    this.brightnessCanvas ??= document.createElement("canvas");
-    const c = this.brightnessCanvas;
-    c.width = 32;
-    c.height = 24;
-    const ctx = c.getContext("2d", { willReadFrequently: true });
-    if (!ctx) return;
-    ctx.drawImage(this.video, 0, 0, c.width, c.height);
-    this.brightness = meanLuminance(ctx.getImageData(0, 0, c.width, c.height).data, 1);
-  }
-
-  private process(): void {
-    const lm = this.landmarker;
-    if (!lm || this.video.readyState < 2) return;
-    let now = performance.now();
-    if (now <= this.lastTimestamp) now = this.lastTimestamp + 1;
-    this.lastTimestamp = now;
-
-    let result;
-    try {
-      result = lm.detectForVideo(this.video, now);
-    } catch (err) {
-      console.error("detectForVideo failed", err);
-      return;
-    }
-    this.frameTimes.push(now);
-    this.frameTimes = this.frameTimes.filter((t) => now - t < 1000);
-    this.stats.fps = this.frameTimes.length;
-    this.measureBrightness(now);
-
-    const aspect = this.video.videoWidth / Math.max(1, this.video.videoHeight);
-    const landmarks = result.faceLandmarks[0];
-    const matrix = result.facialTransformationMatrixes?.[0]?.data;
-    const features = extractFeatures(landmarks, aspect, matrix);
-    let blink = blinkFromBlendshapes(result.faceBlendshapes?.[0]?.categories);
+  private process(f: FaceFrame): void {
+    if (this.paused) return;
+    this.stats.fps = this.camera.stats().fps;
+    const now = f.t;
+    const landmarks = f.landmarks;
+    const features = extractFeatures(landmarks ?? undefined, f.aspect, f.matrix ?? undefined);
+    let blink = f.blink ?? null;
     if (blink === null && features) blink = this.opennessBlink.score(features.openness);
     const issues = assessFace(features);
-    const light = assessBrightness(this.brightness);
+    const light = assessBrightness(f.brightness ?? null);
     if (light) issues.push(light);
     const confidence = trackingConfidence(features, blink);
 

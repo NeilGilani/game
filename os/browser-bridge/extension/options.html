@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>AGENCY Bridge</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="pages.css">
+</head>
+<body>
+  <main>
+    <h1>AGENCY Bridge</h1>
+    <p id="status" role="status">Checking…</p>
+    <p>Pairing code: <strong id="fp">none</strong>. It should match the code AGENCY shows in Settings.</p>
+    <button id="forget" type="button" class="big">Pair with AGENCY again</button>
+    <h2>Protected sites</h2>
+    <p>Banks, password managers and account security pages are always protected. AGENCY can only use them
+      after you allow it each time you open Chrome. Add more sites here, one per line (for example
+      <code>mycreditunion.org</code>).</p>
+    <label for="extra">More protected sites</label>
+    <textarea id="extra" rows="6"></textarea>
+    <button id="save" type="button" class="big">Save protected sites</button>
+  </main>
+  <script src="options.js"></script>
+</body>
+</html>

@@ -344,6 +344,70 @@ MIGRATIONS: list[tuple[int, str, str]] = [
         )
         """,
     ),
+    (
+        5,
+        "memory tree: nodes, selection events, notes, caregiver grants (Instance 6)",
+        """
+        CREATE TABLE memory_nodes (
+            id TEXT PRIMARY KEY,
+            parent_id TEXT REFERENCES memory_nodes(id) ON DELETE CASCADE,
+            label_index TEXT NOT NULL,
+            kind TEXT NOT NULL,
+            label TEXT NOT NULL,
+            original_label TEXT NOT NULL,
+            attributes TEXT NOT NULL,
+            pinned INTEGER NOT NULL DEFAULT 0,
+            hidden INTEGER NOT NULL DEFAULT 0,
+            sensitive INTEGER NOT NULL DEFAULT 0,
+            depth INTEGER NOT NULL,
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL
+        );
+        CREATE UNIQUE INDEX idx_memory_nodes_child ON memory_nodes(COALESCE(parent_id, ''), label_index);
+        CREATE TABLE memory_events (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            node_id TEXT NOT NULL REFERENCES memory_nodes(id) ON DELETE CASCADE,
+            path_ids TEXT NOT NULL,
+            surface TEXT NOT NULL,
+            outcome TEXT NOT NULL,
+            source TEXT NOT NULL,
+            at TEXT NOT NULL,
+            weekday INTEGER NOT NULL,
+            hour INTEGER NOT NULL,
+            attributes TEXT NOT NULL
+        );
+        CREATE INDEX idx_memory_events_at ON memory_events(at);
+        CREATE INDEX idx_memory_events_node ON memory_events(node_id);
+        CREATE TABLE memory_event_nodes (
+            event_id INTEGER NOT NULL REFERENCES memory_events(id) ON DELETE CASCADE,
+            node_id TEXT NOT NULL REFERENCES memory_nodes(id) ON DELETE CASCADE,
+            PRIMARY KEY (event_id, node_id)
+        );
+        CREATE INDEX idx_memory_event_nodes_node ON memory_event_nodes(node_id);
+        CREATE TABLE memory_notes (
+            id TEXT PRIMARY KEY,
+            text TEXT NOT NULL,
+            facts_hash TEXT NOT NULL,
+            created_at TEXT NOT NULL
+        );
+        CREATE TABLE memory_grants (
+            id TEXT PRIMARY KEY,
+            caregiver TEXT NOT NULL,
+            scope TEXT NOT NULL,
+            token_hash TEXT NOT NULL UNIQUE,
+            created_at TEXT NOT NULL,
+            expires_at TEXT NOT NULL,
+            revoked_at TEXT
+        );
+        CREATE TABLE memory_access_log (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            grant_id TEXT NOT NULL,
+            caregiver TEXT NOT NULL,
+            at TEXT NOT NULL,
+            what TEXT NOT NULL
+        )
+        """,
+    ),
 ]
 
 

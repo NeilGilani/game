@@ -5,7 +5,7 @@ from __future__ import annotations
 import pytest
 from fastapi.testclient import TestClient
 
-from agency.db import Database
+from agency.db import MIGRATIONS, Database
 from agency.models import Goal, InvalidTransition, PlanDraft, StepDraft, StepStatus, check_transition
 from agency.planning.planner import build_goal
 from agency.planning.templates import baseline_plan
@@ -226,7 +226,8 @@ def test_demo_services_are_idempotent(tmp_path) -> None:  # type: ignore[no-unty
 
 def test_migrations_are_versioned_and_repeatable(tmp_path) -> None:  # type: ignore[no-untyped-def]
     db = Database(tmp_path / "m.db")
-    assert db.migrate() == 4
-    assert db.migrate() == 4
+    latest = MIGRATIONS[-1][0]
+    assert db.migrate() == latest
+    assert db.migrate() == latest
     names = [r["name"] for r in db.query("SELECT name FROM schema_migrations ORDER BY version")]
-    assert len(names) == 4
+    assert len(names) == len(MIGRATIONS)

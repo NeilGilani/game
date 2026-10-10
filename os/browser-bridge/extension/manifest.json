@@ -1,0 +1,17 @@
+{
+  "manifest_version": 3,
+  "name": "AGENCY Bridge",
+  "version": "0.1.0",
+  "description": "Lets AGENCY help you use Chrome with your eyes: big targets for eye control, and an assistant that always asks before anything important.",
+  "minimum_chrome_version": "116",
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAzE8n6572Uigo1YWhQlkabz9gAxhGJh7aCclvPIYwqJLa8Fvoqe4qNYueUr8W7N6mM8Yzw2CPLG1NcWHe8S0ytjs0kII+OOx7OrQJkayjKSZcydShXzMsQFfO1seVLxgTfk3yQcD+QwjpnMPCg+PHY3WkQa2YMKCzqsJkxGKjIqTurqFC25n5+vHQ0ivmOjPEaigC/5JEBrJ7qtsGqdbJGT2q9MhwIdiKQITS7ptlrS4r8ABWQle4JBlW27a5waGG8itNgyHMu3rsbab8xgWXcc2BLNcziMl6y6f15oPaP03EOTfQEm0U9XrnOw7RRNVOpTdoPB9JNDIFSGZjD/lvKQIDAQAB",
+  "permissions": ["nativeMessaging", "tabs", "scripting", "storage"],
+  "host_permissions": ["<all_urls>"],
+  "background": { "service_worker": "background.js", "type": "module" },
+  "content_scripts": [
+    { "matches": ["http://*/*", "https://*/*"], "js": ["content.js"], "run_at": "document_idle", "all_frames": false }
+  ],
+  "action": { "default_title": "AGENCY: turn reading mode on or off" },
+  "options_ui": { "page": "options.html", "open_in_tab": true },
+  "icons": { "128": "icon128.png" }
+}
