@@ -41,7 +41,7 @@ Last updated: 2026-10-10.
 |---|---|---|
 | 2 Gaze | Not yet | Host ready at `os/gaze/dist/engine.html` |
 | 3 Native + overlay | Not yet | Branch `os-3-native-overlay` exists. Host ready for `os/overlay/dist` and the agency-native binary |
-| 4 Agent | Not yet | Host ready for `os/agent/dist/agent-utility.mjs` |
+| 4 Agent | PR #1 open | Host speaks the agent's protocol; merge after CI runs on it |
 | 5 Bridge + sandbox web | Not yet | Web targets: main merges a `web` snapshot source; the bridge's path into main is still to be agreed |
 | 6 Memory | Not yet | Branch `os-6/memory` exists |
 | 7 Home, flows, Lifeline UI | Not yet | Needs: `window.agency` detection, `publishShell` targets, `lifeline.onSurface`, heartbeat worker standing down in the app |
@@ -66,4 +66,38 @@ Last updated: 2026-10-10.
 
 ## CI runs
 
-_Filled in after the first runs._
+| Run | Commit | Linux (ubuntu-latest) | macOS (macos-15 arm64 image 20260907) |
+|---|---|---|---|
+| [38078930259](https://github.com/NeilGilani/game/actions/runs/38078930259) | `[OS-1] Answer Instance 3's integration requests` | `make check` passed (backend 112, frontend 56, desktop 31 tests), browser e2e 14 passed | `make os-check`; Electron smoke tests 12/12 passed; sidecar 52.7 MB, 386 ms median startup; unsigned arm64 `.dmg` built; packaged app's coordinator ready in 1215 ms; `codesign --verify --deep --strict` ok |
+
+## Answers to integration requests
+
+**Instance 3 (os/overlay/INTEGRATION_REQUEST.md)**
+
+1. Preload: `window.agency` is typed (`AgencyApi`, `os/contracts/src/host.ts`) rather than generic
+   `invoke/send/on`, so main can check each call. Mapping: gaze `agency.gaze.onEvent`; targets
+   `agency.targets.onSnapshot`; native `agency.native.call(method, params)` (overlay allowance now: `ax.press`,
+   `input.click/scroll/type/key/drag`, `apps.list/launch/activate/hide/frontmost`); Help `agency.lifeline.help("help_button")`
+   (main surfaces the shell itself, no separate `lifeline.surface` needed); Stop `agency.stopAll()`; Home
+   `agency.showHome()`; interactive regions `agency.overlay.setInteractiveRegions(rects)` (global points; main
+   watches the cursor at 30 Hz and toggles click-through); memory `agency.memory.suggestions(surface, limit)` and
+   `agency.memory.event(event)`. Display bounds are in the query string (`?display=&x=&y=&w=&h=&scale=`), and
+   `agency.overlay.display()` returns them too.
+2. Shell targets: agreed, keep `dwellShellTargets: false` by default.
+3. Added `input.drag`, `apps.hide`, and the `input.scroll` units note to `native.ts`. Precision decisions wait for
+   Instance 2.
+4. Shared dwell/scan code: noted for Instance 2.
+5. Root wiring: `make check` runs `npm run check` in every `os/*` workspace that has one (npm workspaces, so no
+   separate `npm ci`). The overlay's Playwright run joins `make e2e` when it lands.
+
+**Instance 4 (os/agent/INTEGRATION_REQUEST.md)**
+
+1. `make check` runs `npm run check -w @agency/agent` automatically once `os/agent` is on main (workspace loop).
+2. The host now speaks your protocol exactly (`HostToAgent` / `AgentToHost` in `host.ts` are your messages), forks
+   `os/agent/dist/agent-utility.mjs`, enforces `AGENT_NATIVE_ALLOWED` (your list) in main, answers `bridge` rpc with
+   "The AGENCY Bridge is not connected" until Instance 5 lands, and passes `AGENCY_COORDINATOR_URL`,
+   `AGENCY_COORDINATOR_TOKEN`, `AGENCY_AUDIT_FILE`, `AGENCY_AGENT_SETTINGS`. Stop sends `stop.all` to you and
+   `input.stopAll` to agency-native directly. Optional: answer `{kind:"ping",id}` with `{kind:"pong",id}` and main
+   will health-check you; otherwise it checks liveness only.
+3. `task.audit` / `audit.read` and the `screen.capture.scale` note: queued, will add when the UI needs them.
+4. `browser.ts`: waiting to agree it with Instance 5.
