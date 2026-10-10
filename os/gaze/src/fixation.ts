@@ -9,7 +9,8 @@
  * - During a fixation it outputs the trimmed mean of the fixation so far, which gets steadier the
  *   longer the person looks, with no lag because the eye isn't moving.
  * - A saccade is a statistical test, not a fixed radius: the mean of the last k samples is
- *   compared with the fixation centre, for k = 1..maxK, against max(minimum, z * noise / sqrt(k)).
+ *   compared with the fixation centre, for k = 1..maxK, against
+ *   max(minimum, z * noise * sqrt(1/k + 1/n)), where n is the number of samples in the centre.
  *   A big jump is caught on its first frame (k = 1); a small one once a few frames agree. The
  *   noise level is learned from the person's own fixations, so a steady tracker (mouse, external
  *   tracker) reacts to small moves and a noisy webcam doesn't jump at noise.
@@ -24,7 +25,7 @@ import { DEFAULT_GEOMETRY, type ViewingGeometry, degreesToPoints } from "./calib
 export interface FixationOptions {
   /** Never call a move smaller than this (degrees) a saccade, however steady the signal. */
   minSaccadeDeg: number;
-  /** z-score for the test; 3 gives about one false saccade a minute at 30 Hz on Gaussian noise. */
+  /** z-score for the test (2D, several scales tested per frame), measured in tests/fixation.test.ts. */
   z: number;
   /** Longest run of recent samples tested (frames). */
   maxK: number;
@@ -41,10 +42,10 @@ export interface FixationOptions {
 
 export const DEFAULT_FIXATION: FixationOptions = {
   minSaccadeDeg: 1,
-  z: 3,
+  z: 3.3,
   maxK: 6,
   minFixationMs: 100,
-  windowMs: 800,
+  windowMs: 1000,
   initialNoisePt: 150,
   distanceCm: 60,
   geometry: DEFAULT_GEOMETRY,
@@ -136,7 +137,8 @@ export class FixationSmoother {
       const c = trimmedMean(base);
       const mx = recent.reduce((s, q) => s + q.x, 0) / k;
       const my = recent.reduce((s, q) => s + q.y, 0) / k;
-      const threshold = Math.max(minPt, (this.o.z * this.noise) / Math.sqrt(k));
+      // Both means are uncertain: the recent k samples and the fixation centre (n - k samples).
+      const threshold = Math.max(minPt, this.o.z * this.noise * Math.sqrt(1 / k + 1 / base.length));
       if (Math.hypot(mx - c.x, my - c.y) > threshold) {
         this.points = base;
         this.learnNoise();
