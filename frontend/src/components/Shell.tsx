@@ -152,6 +152,7 @@ function HelpButton() {
 
 const NAV = [
   { path: "/", label: "Home", icon: "home", match: (r: Route) => r.path === "/" },
+  { path: "/talk", label: "Talk", icon: "speaker", match: (r: Route) => r.segments[0] === "talk" },
   {
     path: "/lifeline",
     label: "Lifeline",

@@ -19,6 +19,7 @@ import { LifelineAlertView, LifelineHome, LifelineSetup } from "./screens/Lifeli
 import { PhoneSimulator } from "./screens/PhoneSimulator";
 import { NewTask, Phrases } from "./screens/NewTask";
 import { PreferencesView, SettingsView, StatusView } from "./screens/SettingsViews";
+import { TalkHome, TalkKeyboard, TalkPain } from "./screens/Talk";
 import { ONBOARDED_KEY, Welcome } from "./screens/Welcome";
 
 function onboarded(): boolean {
@@ -32,6 +33,9 @@ function onboarded(): boolean {
 function Screen({ route }: { route: Route }) {
   const [a, b, c] = route.segments;
   if (!a) return <Home />;
+  if (a === "talk" && !b) return <TalkHome />;
+  if (a === "talk" && b === "type") return <TalkKeyboard />;
+  if (a === "talk" && b === "pain") return <TalkPain />;
   if (a === "new" && !b) return <NewTask />;
   if (a === "new" && b === "phrases") return <Phrases />;
   if (a === "new" && b === "create") return <CreateCase key={route.query.toString()} route={route} />;
