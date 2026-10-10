@@ -14,6 +14,7 @@ const q = new URLSearchParams(location.search);
 const delegate = (q.get("delegate") as "GPU" | "CPU" | null) ?? undefined;
 const seconds = Number(q.get("seconds") ?? 10);
 const targetFps = Number(q.get("fps") ?? 30);
+const scheduler = (q.get("scheduler") as "auto" | "video-frame" | "timer" | null) ?? "auto";
 const status = document.getElementById("status")!;
 
 declare global {
@@ -24,7 +25,7 @@ declare global {
 
 async function main() {
   const engine = new GazeEngine({ screen: singleDisplay(1470, 956), clock: () => performance.now() });
-  const camera = new WebcamProvider(mediapipeLandmarker("/", delegate));
+  const camera = new WebcamProvider(mediapipeLandmarker("/", delegate), scheduler);
   camera.setTargetFps(targetFps);
   let faces = 0;
   let frames = 0;
@@ -89,6 +90,7 @@ async function main() {
   };
   window.__bench = {
     delegate: camera.stats().delegate,
+    scheduler,
     loadMs,
     seconds: elapsed,
     fps: frames / elapsed,

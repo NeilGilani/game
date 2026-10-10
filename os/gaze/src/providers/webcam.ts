@@ -29,6 +29,16 @@ export type LandmarkerFactory = () => Promise<{ landmarker: Landmarker; delegate
 
 export type WebcamStatus = "off" | "starting" | "loading-model" | "running" | "error";
 
+/**
+ * How frames are scheduled. "video-frame" uses requestVideoFrameCallback (once per camera frame,
+ * with capture times). Hidden pages (AGENCY OS runs the engine in a hidden window) get no
+ * animation or video-frame callbacks, so "timer" polls with setTimeout at the target rate; the
+ * window must disable background throttling (Electron: webPreferences.backgroundThrottling =
+ * false) for timers to run at full rate. "auto" picks per frame: video-frame while the page is
+ * visible, timer while hidden.
+ */
+export type FrameScheduler = "auto" | "video-frame" | "timer";
+
 interface VideoFrameMeta {
   captureTime?: number;
   expectedDisplayTime?: number;
@@ -62,6 +72,8 @@ export class WebcamProvider implements GazeProvider {
   private running = false;
   private onFrame: ((f: ProviderFrame) => void) | null = null;
   private handle: number | null = null;
+  private timer: ReturnType<typeof setTimeout> | null = null;
+  private lastVideoTime = -1;
   private targetFps = 30;
   /** Token bucket for the governor: jittery or bunched camera frames don't cause drops. */
   private tokens = 1;
@@ -75,7 +87,10 @@ export class WebcamProvider implements GazeProvider {
   private brightness: number | null = null;
   private statusListeners = new Set<(s: WebcamStatus, e: CameraErrorKind | null) => void>();
 
-  constructor(private readonly createLandmarker: LandmarkerFactory) {
+  constructor(
+    private readonly createLandmarker: LandmarkerFactory,
+    private readonly scheduler: FrameScheduler = "auto",
+  ) {
     this.video = document.createElement("video");
     this.video.playsInline = true;
     this.video.muted = true;
@@ -157,6 +172,8 @@ export class WebcamProvider implements GazeProvider {
 
   private stopLoop(): void {
     this.running = false;
+    if (this.timer !== null) clearTimeout(this.timer);
+    this.timer = null;
     if (this.handle !== null) {
       const v = this.video as HTMLVideoElement & { cancelVideoFrameCallback?: (h: number) => void };
       if (v.cancelVideoFrameCallback) v.cancelVideoFrameCallback(this.handle);
@@ -171,10 +188,26 @@ export class WebcamProvider implements GazeProvider {
     this.video.srcObject = null;
   }
 
+  private useTimer(): boolean {
+    if (this.scheduler === "timer") return true;
+    if (this.scheduler === "video-frame") return false;
+    return typeof document !== "undefined" && document.hidden;
+  }
+
   private schedule(): void {
     if (!this.running) return;
     const rvfc = (this.video as unknown as { requestVideoFrameCallback?: RVFC }).requestVideoFrameCallback;
-    if (rvfc) {
+    if (this.useTimer()) {
+      // Poll a little faster than the camera so no frame waits long; skip frames already seen.
+      this.timer = setTimeout(() => {
+        this.timer = null;
+        if (this.video.currentTime !== this.lastVideoTime) {
+          this.lastVideoTime = this.video.currentTime;
+          this.process(undefined);
+        }
+        this.schedule();
+      }, 1000 / 60);
+    } else if (rvfc) {
       this.handle = rvfc.call(this.video, (_now, meta) => {
         this.process(meta.captureTime);
         this.schedule();

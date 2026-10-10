@@ -15,6 +15,22 @@ test.skip(
   "Fake webcam fixture missing: run `make e2e-fixtures` (needs network + Pillow).",
 );
 
+test("keeps processing frames with the timer scheduler (what a hidden engine window uses)", async ({
+  page,
+}) => {
+  await page.goto(`/?delegate=GPU&seconds=6&fps=30&scheduler=timer`);
+  const handle = await page.waitForFunction(() => window.__bench, null, { timeout: 120_000 });
+  const result = (await handle.jsonValue()) as Record<string, unknown>;
+  writeFileSync(
+    join(import.meta.dirname, "..", "bench", "results", "browser-timer.json"),
+    JSON.stringify({ ...result, ranAt: new Date().toISOString() }, null, 2),
+  );
+  console.log("timer", JSON.stringify(result));
+  expect(result.error).toBeUndefined();
+  expect(result.faceFraction as number).toBeGreaterThan(0.9);
+  expect(result.fps as number).toBeGreaterThan(15);
+});
+
 for (const delegate of ["GPU", "CPU"] as const) {
   test(`runs the engine on the fake camera with the ${delegate} delegate`, async ({ page }) => {
     const seconds = Number(process.env.BENCH_SECONDS ?? 10);

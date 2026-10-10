@@ -30,3 +30,4 @@ export * from "./providers/mouse";
 export * from "./providers/replay";
 export * from "./providers/external";
 export * from "./providers/webcam";
+export * from "./host";
