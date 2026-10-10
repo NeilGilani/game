@@ -3,6 +3,7 @@ import { api } from "../api/client";
 import type { CaseDetail, Step } from "../api/types";
 import { ConfirmSheet, ErrorNote } from "../components/common";
 import { Icon } from "../components/Icon";
+import { EvidenceReceipt } from "../components/EvidenceReceipt";
 import { Page } from "../components/Shell";
 import {
   CaseBadge,
@@ -405,6 +406,8 @@ export function CaseWorkspace({ id }: { id: string }) {
           </ol>
         </section>
       </div>
+
+      <EvidenceReceipt data={data} />
 
       {confirmCancel && (
         <ConfirmSheet

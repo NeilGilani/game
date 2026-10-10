@@ -11,6 +11,7 @@ const env = { secure: true, hasMediaDevices: true };
 
 describe("camera failures are classified for the person", () => {
   it.each([
+    ["NotSupportedError", "unsupported"],
     ["NotAllowedError", "permission-denied"],
     ["NotFoundError", "no-camera"],
     ["OverconstrainedError", "no-camera"],

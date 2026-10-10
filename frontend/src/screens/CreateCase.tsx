@@ -48,6 +48,7 @@ export function CreateCase({ route }: { route: Route }) {
   const [error, setError] = useState<string | null>(null);
   const [starting, setStarting] = useState(false);
   const [useCloud, setUseCloud] = useState(true);
+  const [retry, setRetry] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
@@ -75,9 +76,9 @@ export function CreateCase({ route }: { route: Route }) {
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [JSON.stringify(selections), goalType, text, phrases.join("|"), derived]);
+  }, [JSON.stringify(selections), goalType, text, phrases.join("|"), derived, retry]);
 
-  if (error) return <ErrorNote message={error} onRetry={() => setSelections({ ...selections })} />;
+  if (error) return <ErrorNote message={error} onRetry={() => setRetry((r) => r + 1)} />;
   if (!preview) return <Loading text="Working out what you need…" />;
 
   if (!preview.goal) {

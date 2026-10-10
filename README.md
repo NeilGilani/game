@@ -56,6 +56,15 @@ make demo
 
 Open **http://localhost:8000** in Chrome. (The camera needs `localhost` or https.)
 
+For the hackathon, open **http://localhost:8000/#/demo** or choose **Live demo** in the navigation.
+This presenter view follows real cases, approvals, recovery steps, and verification records from the running
+coordinator. Its counters start at zero; they are measured from SQLite, not sample statistics. Choose
+**Get moving again** to start the flagship repair workflow. The cloud panel reports the actual reasoning mode,
+and each case identifies whether its plan was adapted by Claude or uses the built-in fallback.
+
+Every case now offers **Download evidence**: a JSON receipt with the case, all recorded step statuses,
+approvals, tool calls, and verification checks, including unfinished work and the simulated-service disclosure.
+
 For development with live reload (interface on http://localhost:5173, coordinator on :8000):
 
 ```sh
@@ -154,7 +163,15 @@ administrative form, and send a message with a follow-up reminder. "Resume a cas
 
 ## Testing
 
-All of the following were run for this commit; results are from real runs, not estimates.
+The table below preserves validation of the original implementation, including its separate hardware and
+environment checks. Run `make check` and `make e2e` to validate the current checkout. New regression coverage
+checks live demo metrics against actual records, cloud request budgets, evidence downloads, keyboard focus in
+approval dialogs, retrying an unavailable interpreter, stale responses after case selection, and mobile layouts.
+
+The experience upgrade was validated on macOS arm64 with Node 22 and Python 3.14: **117 backend tests,
+62 frontend tests, 31 desktop unit tests, and 18 browser tests passed**. `make check` passed formatting,
+linting, strict type checks, and the production build. Browser tests included the real MediaPipe pipeline with
+the fake-camera fixture. No live cloud API call was made; an Anthropic key was not configured.
 
 | Suite | Count | What it covers |
 |---|---|---|

@@ -179,6 +179,7 @@ const NAV = [
     match: (r: Route) => ["settings", "preferences", "camera", "calibrate"].includes(r.segments[0] ?? ""),
   },
   { path: "/status", label: "Status", icon: "info", match: (r: Route) => r.segments[0] === "status" },
+  { path: "/demo", label: "Live demo", icon: "play", match: (r: Route) => r.segments[0] === "demo" },
 ];
 
 export function Nav({ route }: { route: Route }) {
@@ -210,6 +211,14 @@ export function Nav({ route }: { route: Route }) {
           )}
         </button>
       ))}
+      <div className="nav-footer">
+        <Icon name="shield" size={20} />
+        <span>
+          Your choices.
+          <br />
+          Your control.
+        </span>
+      </div>
     </nav>
   );
 }

@@ -61,6 +61,8 @@ export function classifyCameraError(error: unknown, env: CameraEnvironment): Cam
   const name =
     typeof error === "object" && error && "name" in error ? String((error as { name: unknown }).name) : "";
   switch (name) {
+    case "NotSupportedError":
+      return "unsupported";
     case "NotAllowedError":
     case "PermissionDeniedError":
     case "SecurityError":
