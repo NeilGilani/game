@@ -63,7 +63,7 @@ export function resolvePaths(opts: {
   let agent: Paths["agent"] = null;
   const agentEntry = firstExisting(
     env("AGENCY_AGENT_ENTRY"),
-    packaged ? res("agent/utility.cjs") : repo(HOST_ENTRIES.agent),
+    packaged ? res("agent/agent-utility.mjs") : repo(HOST_ENTRIES.agent),
   );
   if (agentEntry) agent = { entry: agentEntry, fake: agentEntry.includes("fake-agent") };
   else if (allowFakes && env("AGENCY_NO_FAKES") !== "1")

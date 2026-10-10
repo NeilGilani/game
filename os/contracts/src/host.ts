@@ -175,21 +175,38 @@ export interface AgencyApi {
 }
 
 /**
- * Messages between main and the agent utility process (os/agent), over `process.parentPort` / `MessagePort`.
- * Entry point: `os/agent/dist/utility.cjs` (built by the agent package), forked with `utilityProcess.fork`.
+ * Messages between main and the agent utility process (os/agent), over `process.parentPort`. The protocol is
+ * Instance 4's (os/agent/src/utility.ts). Entry: `HOST_ENTRIES.agent`, forked with `utilityProcess.fork`.
+ * `ping`/`pong` is optional: an agent that never answers a ping is checked by process liveness only.
  */
 export type HostToAgent =
   | { kind: "command"; command: AgentCommand }
-  | { kind: "ping"; id: number }
-  /** Reply to an `AgentToHost` native request. */
-  | { kind: "native.result"; id: number; result?: unknown; error?: string };
+  | { kind: "rpc.result"; id: number; result?: unknown; error?: string }
+  | { kind: "ping"; id: number };
 
 export type AgentToHost =
   | { kind: "event"; event: AgentEvent }
+  /** Once at start: what the agent can do (model, bridge, native, packs), or `{ fake: true }`. */
+  | { kind: "status"; status: Record<string, unknown> }
+  /** The agent asks main to call agency-native (allowlisted by AGENT_NATIVE_ALLOWED) or the AGENCY Bridge. */
+  | { kind: "rpc"; id: number; target: "native" | "bridge"; method: string; params: unknown }
   | { kind: "pong"; id: number }
-  /** The agent asks main to call agency-native for it (the agent may use screen.capture during a task). */
-  | { kind: "native.request"; id: number; method: NativeMethod; params: unknown }
   | { kind: "log"; level: "info" | "warn" | "error"; message: string };
+
+/** Native methods main forwards for the agent. Same list as os/agent's AGENT_NATIVE_METHODS. */
+export const AGENT_NATIVE_ALLOWED: readonly NativeMethod[] = [
+  "ax.targets",
+  "ax.press",
+  "input.click",
+  "input.scroll",
+  "input.type",
+  "input.key",
+  "apps.frontmost",
+  "apps.launch",
+  "apps.activate",
+  "screen.capture",
+  "input.stopAll",
+];
 
 /**
  * Where the main process finds the other packages. Each is optional at runtime: when one is missing the host uses
@@ -201,7 +218,7 @@ export const HOST_ENTRIES = {
   /** Built by @agency/gaze. Loaded in a hidden window that alone may use the camera. */
   gaze: "os/gaze/dist/engine.html",
   /** Built by @agency/agent. */
-  agent: "os/agent/dist/utility.cjs",
+  agent: "os/agent/dist/agent-utility.mjs",
   /** Built by os/native-macos (SwiftPM). Override with AGENCY_NATIVE_PATH. */
   native: "os/native-macos/.build/release/agency-native",
   /** Built by frontend (Vite). */

@@ -243,7 +243,8 @@ test.describe("AGENCY.app", () => {
         () =>
           jsonl(ctx.nativeLog).filter((e) => e.method === "input.stopAll" && Number(e.at) >= before).length,
       )
-      .toBe(1);
+      // Main's own call, plus the agent's (it also asks main to stop input; Stop doesn't depend on it).
+      .toBe(2);
     await expect
       .poll(
         () =>
@@ -261,6 +262,12 @@ test.describe("AGENCY.app", () => {
       )!.at,
     );
     expect(Math.abs(nativeAt - agentAt)).toBeLessThan(500);
+    // The agent's allowlisted native request went through main and was answered.
+    await expect
+      .poll(() =>
+        jsonl(ctx.agentLog).some((e) => (e.rpcResult as { result?: { ok?: boolean } })?.result?.ok === true),
+      )
+      .toBe(true);
     const last = await ctx.app.evaluate(() => (globalThis as any).__agency.lastStop);
     expect(last).toMatchObject({ agent: "sent", native: "ok" });
   });

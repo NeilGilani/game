@@ -41,7 +41,7 @@ Last updated: 2026-10-10.
 |---|---|---|
 | 2 Gaze | Not yet | Host ready at `os/gaze/dist/engine.html` |
 | 3 Native + overlay | Not yet | Branch `os-3-native-overlay` exists. Host ready for `os/overlay/dist` and the agency-native binary |
-| 4 Agent | Not yet | Host ready for `os/agent/dist/utility.cjs` |
+| 4 Agent | Not yet | Host ready for `os/agent/dist/agent-utility.mjs` |
 | 5 Bridge + sandbox web | Not yet | Web targets: main merges a `web` snapshot source; the bridge's path into main is still to be agreed |
 | 6 Memory | Not yet | Branch `os-6/memory` exists |
 | 7 Home, flows, Lifeline UI | Not yet | Needs: `window.agency` detection, `publishShell` targets, `lifeline.onSurface`, heartbeat worker standing down in the app |

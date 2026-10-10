@@ -32,7 +32,7 @@ make os-dist    # a .dmg in os/desktop/dist (needs make sidecar; signs only with
 | Overlay windows | `agency://overlay/` | One per display: transparent, frameless, `screen-saver` level, all Spaces including full-screen apps, click-through (`setIgnoreMouseEvents(true, {forward: true})`) except while the pointer is over its own targets. `os/overlay/dist` when built, else the built-in fallback (gaze cursor, dwell, Help, Stop) |
 | Gaze host | `agency://gaze/engine.html` | Hidden window, `backgroundThrottling: false`, the only window allowed the camera (video only). `os/gaze/dist` when built; until it publishes, main uses the mouse as the gaze source |
 | agency-native | child process, JSON-RPC over stdio | `os/native-macos` build, `Contents/MacOS/agency-native` when packaged, `fakes/fake-native.cjs` in development |
-| Agent | `utilityProcess` | `os/agent/dist/utility.cjs`, or `fakes/fake-agent.cjs` in development |
+| Agent | `utilityProcess` | `os/agent/dist/agent-utility.mjs`, or `fakes/fake-agent.cjs` in development |
 | Coordinator | child process | `backend/.venv` in development, the PyInstaller sidecar when packaged (`os/sidecar`), or a Raspberry Pi |
 
 All three processes run under `Supervisor` (`src/main/supervisor.ts`): health checks every 5 s, restart with
@@ -81,7 +81,7 @@ package is reported as `absent` in `window.agency.host.status()`.
   `window.agency.overlay.setInteractive(true)` while the mouse is over one of your targets, `false` after.
 - **Gaze (Instance 2)**: build to `os/gaze/dist/engine.html`; publish with `window.agency.gaze.publish(event)`.
   Main forwards to the overlay and shell, and turns `help-signal` into a Lifeline help request itself.
-- **Agent (Instance 4)**: build `os/agent/dist/utility.cjs`; speak `HostToAgent` / `AgentToHost` over
+- **Agent (Instance 4)**: build `os/agent/dist/agent-utility.mjs`; your parentPort protocol is now the contract (`HostToAgent` / `AgentToHost`) over
   `process.parentPort` (see `fakes/fake-agent.cjs`). Answer `ping` with `pong` within 2 s.
 - **Native (Instance 3)**: `os/native-macos/.build/release/agency-native`, newline-delimited JSON-RPC, events as
   `{"method":"event","params":<NativeEvent>}`, logs on stderr. `permissions.status` is the health check.

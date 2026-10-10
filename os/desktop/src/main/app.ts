@@ -22,6 +22,7 @@ import {
   type WebContents,
 } from "electron";
 import {
+  AGENT_NATIVE_ALLOWED,
   CONTRACTS_VERSION,
   IPC,
   NATIVE_ALLOWED,
@@ -200,8 +201,9 @@ export class AgencyApp {
     this.createShell();
     this.startGaze();
     this.startNative();
-    this.startAgent();
     this.registerHotkeys();
+    // The agent needs the coordinator's address (memory API); start it once that is known, either way.
+    void coordinatorReady.finally(() => this.startAgent());
     await coordinatorReady;
     this.lifeline.start();
     this.statusTimer = setInterval(() => void this.pollLifelineStatus(), 5_000);
@@ -307,12 +309,21 @@ export class AgencyApp {
           env: {
             ...process.env,
             AGENCY_AGENT_DATA: join(this.opts.userData, "agent"),
-            ...(this.client.current ? { AGENCY_COORDINATOR_URL: this.client.current.url } : {}),
+            AGENCY_AUDIT_FILE: join(this.opts.userData, "agent-audit.jsonl"),
+            AGENCY_AGENT_SETTINGS: join(this.opts.userData, "agent-settings.json"),
+            ...(this.client.current
+              ? {
+                  AGENCY_COORDINATOR_URL: this.client.current.url,
+                  ...(this.client.current.token
+                    ? { AGENCY_COORDINATOR_TOKEN: this.client.current.token }
+                    : {}),
+                }
+              : {}),
           },
         }),
       alog,
       (ev) => this.onAgentEvent(ev),
-      (method, params) => this.callNative(method, params),
+      (target, method, params) => this.agentRpc(target, method, params),
       spec.fake,
     );
     this.agent = agent;
@@ -636,6 +647,17 @@ export class AgencyApp {
       for (const o of this.overlays.values())
         if (!o.win.isDestroyed()) o.win.webContents.send(IPC.targets, snap);
     }, 50);
+  }
+
+  /** Calls from the agent: allowlisted native methods; the AGENCY Bridge once Instance 5 connects it. */
+  private agentRpc(target: "native" | "bridge", method: string, params: unknown): Promise<unknown> {
+    if (target === "native") {
+      if (!AGENT_NATIVE_ALLOWED.includes(method as NativeMethod)) {
+        return Promise.reject(new Error(`${method} is not available to the agent.`));
+      }
+      return this.callNative(method as NativeMethod, params);
+    }
+    return Promise.reject(new Error("The AGENCY Bridge is not connected."));
   }
 
   private callNative(method: NativeMethod, params: unknown): Promise<unknown> {

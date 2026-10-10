@@ -1,5 +1,7 @@
 /**
- * Fake agent for the Electron utility process (the host protocol in os/contracts/src/host.ts). Walks a scripted,
+ * Fake agent for the Electron utility process (HostToAgent / AgentToHost in os/contracts/src/host.ts, which is
+ * os/agent's protocol). os/agent ships the real FakeAgent (AGENCY_AGENT_FAKE=1); this one exists so the desktop
+ * tests don't depend on another package. Walks a scripted,
  * simulated task so the shell and overlay can be developed and tested without os/agent. It never acts on the Mac.
  *
  *   AGENCY_FAKE_AGENT_LOG=<file>   append every command received as a JSON line (tests read it)
@@ -34,6 +36,7 @@ function later(ms, fn) {
 }
 
 const tasks = new Map();
+let rpcId = 0;
 
 function start(request) {
   const taskId = request.id;
@@ -66,11 +69,17 @@ function start(request) {
   });
 }
 
+port.postMessage({ kind: "status", status: { fake: true, note: "Desktop test fake agent." } });
+
 port.on("message", (e) => {
   const msg = e.data;
   if (!msg || typeof msg !== "object") return;
   if (msg.kind === "ping") {
     port.postMessage({ kind: "pong", id: msg.id });
+    return;
+  }
+  if (msg.kind === "rpc.result") {
+    record({ rpcResult: msg });
     return;
   }
   if (msg.kind !== "command") return;
@@ -99,6 +108,8 @@ port.on("message", (e) => {
         state.stopped = true;
       }
       port.postMessage({ kind: "log", level: "info", message: "stop.all received" });
+      // Like the real agent: also ask main to stop synthetic input (Stop must not depend on this).
+      port.postMessage({ kind: "rpc", id: ++rpcId, target: "native", method: "input.stopAll", params: {} });
       break;
     default:
       break;
