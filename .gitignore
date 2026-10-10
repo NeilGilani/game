@@ -32,3 +32,5 @@ os/sidecar/dist/
 os/sidecar/.venv/
 os/*/dist/
 os/*/.build/
+**/test-results/
+**/playwright-report/
