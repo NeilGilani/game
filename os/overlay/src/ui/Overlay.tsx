@@ -150,6 +150,7 @@ function OverlayBtn({
       className="ov-btn"
       style={style}
       data-id={b.id}
+      data-testid={b.kind === "rail" ? b.id.replace(":", "-") : undefined}
       data-kind={b.kind}
       data-tone={b.tone ?? "plain"}
       data-protected={b.protected === true}
