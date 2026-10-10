@@ -1,0 +1,110 @@
+# The AGENCY OS landing page (site/), owned by Instance 9.
+# On pull requests: build and test. On main: build, test, and deploy to GitHub Pages.
+# One-time setup by the repository owner: Settings → Pages → Source: "GitHub Actions". This workflow does not
+# change repository settings itself. Optional repository variables: RELEASES_REPO (a separate public releases
+# repository), CONTACT_EMAIL (the public address for "not yet on my computer"), SITE_URL and SITE_BASE (custom domain).
+name: Landing page
+
+on:
+  push:
+    branches: [main]
+    paths: ["site/**", ".github/workflows/pages.yml"]
+  pull_request:
+    paths: ["site/**", ".github/workflows/pages.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pages-${{ github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    working-directory: site
+
+env:
+  SITE_URL: ${{ vars.SITE_URL || format('https://{0}.github.io', github.repository_owner) }}
+  SITE_BASE: ${{ vars.SITE_BASE || format('/{0}/', github.event.repository.name) }}
+  PUBLIC_RELEASES_REPO: ${{ vars.RELEASES_REPO || github.repository }}
+  PUBLIC_CONTACT_EMAIL: ${{ vars.CONTACT_EMAIL }}
+
+jobs:
+  build:
+    name: Build and test (ubuntu)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: site/package-lock.json
+      - run: npm ci --no-audit --no-fund
+      - name: Format, types, unit tests, build, internal links
+        run: npm run check
+      - name: Install Chromium for the browser tests
+        run: npx playwright install --with-deps chromium
+      - name: Accessibility (axe), keyboard, target size, download states, privacy
+        run: npm run test:e2e
+        env:
+          CI: "true"
+      - name: Lighthouse budgets (accessibility 100, performance 95+), desktop and mobile
+        run: |
+          npx lhci autorun --config=lighthouserc.json
+          npx lhci autorun --config=lighthouserc.mobile.json
+      - name: Keep test reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: site-reports
+          path: |
+            site/playwright-report
+            site/.lighthouseci
+          if-no-files-found: ignore
+      - uses: actions/upload-pages-artifact@v4
+        with:
+          path: site/dist
+
+  external-links:
+    # Other people's servers can be down; this reports broken external links without blocking a deploy.
+    name: External links
+    runs-on: ubuntu-latest
+    needs: build
+    timeout-minutes: 10
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: github-pages
+          path: artifact
+      - run: mkdir dist && tar -xf artifact/artifact.tar -C dist
+        working-directory: .
+      - uses: lycheeverse/lychee-action@v2
+        with:
+          args: >-
+            --no-progress --max-retries 3 --timeout 20
+            --exclude-path dist/404.html
+            --exclude '^https://api\.github\.com'
+            --exclude '^https://github\.com/NeilGilani/game/(blob|tree)/'
+            --exclude '^https://[a-z0-9-]+\.github\.io/'
+            --exclude '^https://github\.com/.+/releases/download/'
+            --scheme https --scheme http
+            'dist/**/*.html'
+          fail: true
+
+  deploy:
+    name: Deploy to GitHub Pages
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
