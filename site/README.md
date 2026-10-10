@@ -27,7 +27,7 @@ to host anywhere. It also resizes screenshots into AVIF/WebP at build time.
 
 ```sh
 cd site
-npm ci
+npm ci --workspace site   # from the repository root (site is an npm workspace)
 npm run dev          # http://localhost:4321/game/
 npm run check        # Prettier, astro check + tsc (strict), unit tests, build, link check
 npm run test:e2e     # browser tests (first time: npx playwright install chromium)

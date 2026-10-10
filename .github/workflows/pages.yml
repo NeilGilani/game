@@ -8,9 +8,9 @@ name: Landing page
 on:
   push:
     branches: [main]
-    paths: ["site/**", ".github/workflows/pages.yml"]
+    paths: ["site/**", "package-lock.json", ".github/workflows/pages.yml"]
   pull_request:
-    paths: ["site/**", ".github/workflows/pages.yml"]
+    paths: ["site/**", "package-lock.json", ".github/workflows/pages.yml"]
   workflow_dispatch:
 
 permissions:
@@ -41,8 +41,10 @@ jobs:
         with:
           node-version: 22
           cache: npm
-          cache-dependency-path: site/package-lock.json
-      - run: npm ci --no-audit --no-fund
+          cache-dependency-path: package-lock.json
+      - name: Install the site's dependencies (npm workspace; the lockfile is at the root)
+        run: npm ci --workspace site --no-audit --no-fund
+        working-directory: .
       - name: Format, types, unit tests, build, internal links
         run: npm run check
       - name: Install Chromium for the browser tests
