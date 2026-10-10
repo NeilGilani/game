@@ -16,7 +16,15 @@
 
 import { DwellEngine, type DwellConfig } from "../../../../frontend/src/input/dwell";
 import { ScanEngine } from "../../../../frontend/src/input/scan";
-import type { AppInfo, GazeEvent, ScreenRect, Target, TargetSnapshot, TrackingState } from "../contracts";
+import type {
+  AppInfo,
+  GazeEvent,
+  OverlayMode,
+  ScreenRect,
+  Target,
+  TargetSnapshot,
+  TrackingState,
+} from "../contracts";
 import type { OverlayHost } from "../host/host";
 import { NgramModel, currentWord } from "../keyboard/ngram";
 import {
@@ -504,13 +512,12 @@ export class OverlayController {
       }
       const from = this.dragFrom;
       this.dragFrom = null;
-      if (!this.host.drag) {
-        this.say("Dragging isn't available yet on this Mac.", "warn");
-        return;
-      }
-      void this.host.drag(from, c).then((r) => {
-        if (!r.ok) this.say("That drag didn't work.", "warn");
-      });
+      void this.host.native("input.drag", { from, to: c }).then(
+        (r) => {
+          if (!r.ok) this.say("That drag didn't work.", "warn");
+        },
+        () => this.say("That drag didn't work.", "warn"),
+      );
       return;
     }
     if (mode === "right-click") {
@@ -650,9 +657,9 @@ export class OverlayController {
     const p = this.lastContentPoint ?? center(this.display);
     const step = Math.round(this.display.height * 0.6);
     const dir = zoneId.slice(5);
-    // agency-native convention: positive dx/dy reveal content further right/down (like scrollBy).
-    const dx = dir === "left" ? -step : dir === "right" ? step : 0;
-    const dy = dir === "up" ? -step : dir === "down" ? step : 0;
+    // native.ts: positive dx/dy show content to the left/above (the CGEvent scroll-wheel convention).
+    const dx = dir === "left" ? step : dir === "right" ? -step : 0;
+    const dy = dir === "up" ? step : dir === "down" ? -step : 0;
     void this.host.native("input.scroll", { x: p.x, y: p.y, dx, dy });
   }
 
@@ -1069,6 +1076,35 @@ export class OverlayController {
     }
     this.version++;
     for (const l of this.listeners) l();
+  }
+
+  /** Stop was used elsewhere: drop everything in flight here too, without calling stop again. */
+  stoppedElsewhere(): void {
+    this.scrolling = null;
+    this.dragFrom = null;
+    this.pointer = "press";
+    this.closePanel();
+  }
+
+  /** Mode changes requested by main (os/contracts host.ts OverlayMode). */
+  applyMode(mode: OverlayMode): void {
+    switch (mode.type) {
+      case "paused":
+        if (mode.on !== this.paused) this.setPaused(mode.on);
+        return;
+      case "keyboard":
+        if (mode.on !== this.keyboardOpen) this.toggleKeyboard();
+        return;
+      case "numbers":
+        if (this.paused) return;
+        this.openPanel(mode.on ? "numbers" : null);
+        return;
+      case "zoom":
+      case "show":
+      case "hide":
+        // Showing and hiding the window is main's job; zoom waits for the gaze engine's decisions.
+        return;
+    }
   }
 
   /** For tests and the debug HUD: which id the gaze is on right now. */

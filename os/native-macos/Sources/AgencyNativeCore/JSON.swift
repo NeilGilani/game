@@ -149,6 +149,12 @@ public struct Params {
     guard let b = v.boolValue else { throw RPCError.invalidParams("\"\(key)\" must be true or false") }
     return b
   }
+  /// A `{ x, y }` point.
+  public func point(_ key: String) throws -> (x: Double, y: Double) {
+    guard let v = raw[key], case .object = v else { throw RPCError.invalidParams("\"\(key)\" must be a point { x, y }") }
+    let p = Params(v)
+    return (try p.number("x"), try p.number("y"))
+  }
   public func optionalStringArray(_ key: String) throws -> [String]? {
     guard let v = raw[key], !v.isNull else { return nil }
     guard case .array(let items) = v else { throw RPCError.invalidParams("\"\(key)\" must be a list") }

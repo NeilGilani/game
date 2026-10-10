@@ -118,6 +118,10 @@ final class MacPlatform: NativePlatform, @unchecked Sendable {
     try input.scroll(at: CGPoint(x: x, y: y), dx: dx, dy: dy)
   }
 
+  func drag(from: (x: Double, y: Double), to: (x: Double, y: Double)) throws {
+    try input.drag(from: CGPoint(x: from.x, y: from.y), to: CGPoint(x: to.x, y: to.y))
+  }
+
   func typeText(_ chunk: String) throws { try input.type(chunk) }
 
   func pressKey(code: UInt16, flags: UInt64) throws { try input.key(code: code, flags: flags) }

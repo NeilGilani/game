@@ -42,12 +42,13 @@ stdout ← {"jsonrpc":"2.0","method":"event","params":{"type":"targets-changed",
 | `ax.targets` | Frontmost app: focused window and open menus first, then the menu bar, then other windows. `maxCount` defaults to 300 (max 1000); `includeWeb` (default true) walks into `AXWebArea`s. Targets are clipped to their scroll areas, web areas, windows and displays; disabled and tiny (< 4 pt) ones are dropped. Password fields are `secure: true` and their value is never read into labels. 80 ms walk budget; a cut-short walk sets `truncated`. Cached until an `AXObserver` layout notification or 1 s. |
 | `ax.press` | `AXPress`, then `AXConfirm`. Text fields are focused instead (AXPress on a text field can report success without moving focus). Rows and cells are selected. Returns `{ ok: false, error }` when the element is gone or can't be pressed, so the overlay can fall back to a click. |
 | `input.click` | Left or right, single or double (`count`), at global screen points. Moves the pointer there first. |
-| `input.scroll` | `dx`, `dy` in points; **positive `dy` shows content further down** (like `scrollBy`). At most 5000 per call. |
+| `input.scroll` | `dx`, `dy` in points; **positive `dy` shows content above** (the CGEvent scroll-wheel convention, as `native.ts` says). At most 5000 per call. |
+| `input.drag` | Left button down at `from`, moved to `to` in small steps, released. The button is always released, and Stop releases anything still held. |
 | `input.type` | Unicode, in chunks of ≤ 20 UTF-16 units that never split a character; newline and tab are real key presses. **Refuses (`ok: false`) when the focused element is a password field or when focus can't be determined**, re-checking before every chunk. Max 2000 characters. The text is never logged. |
 | `input.key` | Key names like `a`, `return`, `escape`, `tab`, `left`, `pagedown`, `f5`; modifiers `cmd ctrl alt shift fn`. **Refuses Command-Q, log out, lock screen (Ctrl-Cmd-Q), force quit (Cmd-Opt-Esc) and Command-Delete variants** with `{ ok: false, error }`: those need the agent's approval or could lock the person out. |
 | `apps.list` | Installed apps (`/Applications`, `/System/Applications`, their `Utilities`, `~/Applications`) plus running regular apps, sorted by name; `includeIcons` adds 32 × 32 PNGs (base64). |
 | `apps.launch`, `apps.activate`, `apps.frontmost` | As in the contract. There is **no quit**: quitting goes through the agent's approval. |
-| `apps.hide` | Additive (see contract requests below). |
+| `apps.hide` | Hides a running app. Returns `ok: false` when it isn't running. |
 | `screen.capture` | ScreenCaptureKit (`SCScreenshotManager`, macOS 14+). Downscaled to `maxWidth` (default 1280, never upscaled), JPEG by default, base64 in memory, **never written to disk**. `scale` = output pixels per screen point: pixel (px, py) is at point (px / scale, py / scale) from the display's top-left. |
 | `speech.say` | AVSpeechSynthesizer. `voiceId` from `speech.voices`; `rate` is a multiplier of normal speed (1 = normal, 0.5–2). Returns when speech starts. |
 | `speech.voices` | All installed voices, Personal Voices first (`personal: true`). On macOS 14+ the first call asks for Personal Voice access. |
@@ -119,9 +120,9 @@ slice on Intel hardware; behaviour on macOS 13 and 14.
 
 Additive, recorded here and in the PR:
 
-1. `apps.hide`: `{ params: { bundleId: string }; result: { ok: boolean } }`.
+1. ~~`apps.hide`~~ and ~~`input.drag`~~: added to `native.ts` and implemented here.
 2. `input.key` result: add `error?: string` (returned when a combo is refused).
-3. Document the semantics chosen above: `input.scroll` sign, `speech.say` `rate` as a speed multiplier,
+3. Document the semantics chosen above (`input.scroll`'s sign is now in `native.ts`): `speech.say` `rate` as a speed multiplier,
    `screen.capture` `scale` as output pixels per point.
 4. Optional JSON-RPC `error.data.permission` (a `PermissionKind`) on `-32001` errors, so the shell can open the
    right onboarding step.

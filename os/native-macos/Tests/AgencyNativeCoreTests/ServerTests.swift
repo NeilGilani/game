@@ -32,6 +32,9 @@ final class FakePlatform: NativePlatform, @unchecked Sendable {
   }
   func click(x: Double, y: Double, button: MouseButton, count: Int) throws { record("click \(Int(x)),\(Int(y)) \(button.rawValue) \(count)") }
   func scroll(x: Double, y: Double, dx: Double, dy: Double) throws { record("scroll \(Int(dx)),\(Int(dy))") }
+  func drag(from: (x: Double, y: Double), to: (x: Double, y: Double)) throws {
+    record("drag \(Int(from.x)),\(Int(from.y)) -> \(Int(to.x)),\(Int(to.y))")
+  }
   func focusedElementRoles() -> (role: String?, subrole: String?) { focus }
   func typeText(_ chunk: String) throws {
     record("type \(chunk)")
@@ -111,7 +114,7 @@ final class Box: @unchecked Sendable {
   @Test func axMethodsNeedAccessibility() {
     let h = Harness()
     h.platform.permissions[.accessibility] = .denied
-    for m in ["ax.targets", "ax.press", "input.click", "input.type", "input.key", "input.scroll"] {
+    for m in ["ax.targets", "ax.press", "input.click", "input.type", "input.key", "input.scroll", "input.drag"] {
       let r = h.call(m, ["targetId": "ax-1", "x": 1, "y": 1, "dx": 0, "dy": 1, "text": "a", "key": "a"])
       #expect(r["error"]?["code"] == -32001, "\(m)")
       #expect(r["error"]?["data"]?["permission"] == "accessibility")
@@ -147,6 +150,14 @@ final class Box: @unchecked Sendable {
     #expect(h.call("input.click", ["x": 10, "y": 20, "count": 3])["error"]?["code"] == -32602)
     #expect(h.call("input.click", ["x": 10, "y": 20, "button": "middle"])["error"]?["code"] == -32602)
     #expect(h.call("input.click", ["x": "a", "y": 20])["error"]?["code"] == -32602)
+  }
+
+  @Test func dragValidation() {
+    let h = Harness()
+    #expect(h.call("input.drag", ["from": ["x": 1, "y": 2], "to": ["x": 30, "y": 40]])["result"] == ["ok": true])
+    #expect(h.platform.log == ["drag 1,2 -> 30,40"])
+    #expect(h.call("input.drag", ["from": ["x": 1], "to": ["x": 30, "y": 40]])["error"]?["code"] == -32602)
+    #expect(h.call("input.drag", ["from": 5, "to": ["x": 30, "y": 40]])["error"]?["code"] == -32602)
   }
 
   @Test func typesIntoOrdinaryFields() {

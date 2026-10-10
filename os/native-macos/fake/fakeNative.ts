@@ -78,6 +78,7 @@ const REQUIRED: Partial<Record<NativeMethod, PermissionKind[]>> = {
   "input.scroll": ["accessibility"],
   "input.type": ["accessibility"],
   "input.key": ["accessibility"],
+  "input.drag": ["accessibility"],
   "screen.capture": ["screen-recording"],
 };
 
@@ -87,6 +88,7 @@ const SYNTHETIC: ReadonlySet<NativeMethod> = new Set<NativeMethod>([
   "input.scroll",
   "input.type",
   "input.key",
+  "input.drag",
 ]);
 
 const KEY_ALIASES: Record<string, string> = {
@@ -149,7 +151,9 @@ export class FakeNative implements NativeClient {
   readonly calls: RecordedCall[] = [];
   readonly pressed: string[] = [];
   readonly clicks: { x: number; y: number; button: "left" | "right"; count: 1 | 2 }[] = [];
+  /** dx/dy as sent: positive dy shows content above (contract: CGEvent scroll-wheel convention). */
   readonly scrolls: { x: number; y: number; dx: number; dy: number }[] = [];
+  readonly drags: { from: { x: number; y: number }; to: { x: number; y: number } }[] = [];
   /** Text actually typed. Never contains anything sent while a password field had focus. */
   readonly typed: string[] = [];
   readonly keys: { key: string; modifiers: Modifier[] }[] = [];
@@ -236,6 +240,10 @@ export class FakeNative implements NativeClient {
         this.scrolls.push({ x, y, dx, dy });
         return { ok: true };
       },
+      "input.drag": ({ from, to }) => {
+        this.drags.push({ from, to });
+        return { ok: true };
+      },
       "input.type": ({ text }) => {
         const focused = this.targets.find((t) => t.id === this.focusedTargetId);
         if (!focused) return { ok: false, error: UNKNOWN_FOCUS_REFUSAL };
@@ -265,6 +273,12 @@ export class FakeNative implements NativeClient {
         const app = this.apps.find((a) => a.bundleId === bundleId && a.running);
         if (!app) return { ok: false };
         this.setFrontmost(bundleId);
+        return { ok: true };
+      },
+      "apps.hide": ({ bundleId }) => {
+        const app = this.apps.find((a) => a.bundleId === bundleId && a.running);
+        if (!app) return { ok: false };
+        app.frontmost = false;
         return { ok: true };
       },
       "apps.frontmost": () => ({ app: this.apps.find((a) => a.frontmost) ?? null }),

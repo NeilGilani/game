@@ -205,8 +205,8 @@ describe("pointer modes are one-shot", () => {
     expect(host.nativeCalls("input.click")[0]?.params).toEqual({ x: 700, y: 450, count: 2 });
   });
 
-  it("drag picks up then drops, and says when dragging is unavailable", async () => {
-    const withDrag = setup({}, { withDrag: true });
+  it("drag picks up then drops with input.drag, and says when it fails", async () => {
+    const withDrag = setup();
     withDrag.ctrl.setTargets(
       snapshot([axTarget("file", 300, 300, 200, 100), axTarget("folder", 800, 600, 200, 100)]),
     );
@@ -216,19 +216,21 @@ describe("pointer modes are one-shot", () => {
     expect(withDrag.ctrl.view().dragging).toBe(true);
     withDrag.ctrl.activate("folder");
     await withDrag.flush();
-    expect(withDrag.host.calls.find((c) => c.kind === "drag")?.params).toEqual({
+    expect(withDrag.host.nativeCalls("input.drag")[0]?.params).toEqual({
       from: { x: 400, y: 350 },
       to: { x: 900, y: 650 },
     });
 
-    const without = setup();
+    const without = setup({}, { dragFails: true });
     without.ctrl.setTargets(
       snapshot([axTarget("file", 300, 300, 200, 100), axTarget("folder", 800, 600, 200, 100)]),
     );
     without.ctrl.activate("menu:drag");
     without.ctrl.activate("file");
     without.ctrl.activate("folder");
-    expect(without.ctrl.view().notice?.text).toMatch(/isn't available/);
+    await without.flush();
+    await without.flush();
+    expect(without.ctrl.view().notice?.text).toMatch(/didn't work/);
   });
 });
 
@@ -264,7 +266,7 @@ describe("modes", () => {
     ctrl.activate("menu:scroll");
     lookAt("zone:down", 1300);
     expect(host.nativeCalls("input.scroll")).toHaveLength(1);
-    expect((host.nativeCalls("input.scroll")[0]?.params as { dy: number }).dy).toBeGreaterThan(0);
+    expect((host.nativeCalls("input.scroll")[0]?.params as { dy: number }).dy).toBeLessThan(0);
     lookAt("zone:down", 2100);
     const n = host.nativeCalls("input.scroll").length;
     expect(n).toBeGreaterThanOrEqual(3);
@@ -401,5 +403,22 @@ describe("single switch scanning", () => {
     expect(ctrl.view().scanHighlight).toBe("overlay:stop");
     ctrl.handleGaze({ type: "switch", t: 2300, source: "key" });
     expect(host.stopped).toBe(1);
+  });
+});
+
+describe("modes from main", () => {
+  it("pauses, opens the keyboard and numbers, and clears state when Stop was used elsewhere", () => {
+    const { ctrl, host } = setup();
+    ctrl.applyMode({ type: "keyboard", on: true });
+    expect(ctrl.view().keyboard).not.toBeNull();
+    ctrl.applyMode({ type: "numbers", on: true });
+    expect(ctrl.view().panel?.kind).toBe("numbers");
+    ctrl.activate("menu:drag");
+    ctrl.stoppedElsewhere();
+    expect(ctrl.view().panel).toBeNull();
+    expect(ctrl.view().pointer).toBe("press");
+    expect(host.stopped).toBe(0); // no echo back to main
+    ctrl.applyMode({ type: "paused", on: true });
+    expect(ctrl.view().paused).toBe(true);
   });
 });

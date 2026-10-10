@@ -16,8 +16,7 @@
     "verbatimModuleSyntax": true,
     "skipLibCheck": true,
     "noEmit": true,
-    "types": ["vite/client"],
-    "paths": { "vitest": ["./node_modules/vitest"] }
+    "types": ["vite/client"]
   },
   "include": ["src", "tests", "../native-macos/fake"]
 }

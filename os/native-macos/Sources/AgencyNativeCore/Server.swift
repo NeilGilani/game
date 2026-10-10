@@ -39,7 +39,10 @@ public protocol NativePlatform: AnyObject {
   /// AXPress, then AXConfirm. Throws a plain-language RPCError when neither works.
   func press(targetId: String) throws
   func click(x: Double, y: Double, button: MouseButton, count: Int) throws
+  /// dx/dy in points; positive dy shows content above (the CGEvent scroll-wheel convention, per native.ts).
   func scroll(x: Double, y: Double, dx: Double, dy: Double) throws
+  /// Press the left button at `from`, move to `to`, release.
+  func drag(from: (x: Double, y: Double), to: (x: Double, y: Double)) throws
   func focusedElementRoles() -> (role: String?, subrole: String?)
   func typeText(_ chunk: String) throws
   func pressKey(code: UInt16, flags: UInt64) throws
@@ -184,6 +187,12 @@ public final class NativeServer: @unchecked Sendable {
       let dx = try params.number("dx"), dy = try params.number("dy")
       guard abs(dx) <= 5000, abs(dy) <= 5000 else { throw RPCError.invalidParams("scroll distance is too large") }
       try self.platform.scroll(x: x, y: y, dx: dx, dy: dy)
+      return ["ok": true]
+    }
+
+    sync(.inputDrag) { [unowned self] params in
+      let from = try params.point("from"), to = try params.point("to")
+      try self.platform.drag(from: from, to: to)
       return ["ok": true]
     }
 

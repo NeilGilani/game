@@ -151,6 +151,14 @@ describe("FakeNative", () => {
     expect(e.code).toBe(NativeErrorCode.methodNotFound);
   });
 
+  it("drags and hides apps", async () => {
+    const native = new FakeNative();
+    expect((await native.call("input.drag", { from: { x: 1, y: 2 }, to: { x: 30, y: 40 } })).ok).toBe(true);
+    expect(native.drags).toEqual([{ from: { x: 1, y: 2 }, to: { x: 30, y: 40 } }]);
+    expect((await native.call("apps.hide", { bundleId: "com.apple.finder" })).ok).toBe(true);
+    expect((await native.call("apps.hide", { bundleId: "com.google.Chrome" })).ok).toBe(false); // not running
+  });
+
   it("speaks, lists voices, captures and checks listening permissions", async () => {
     const native = new FakeNative({ permissions: { microphone: "denied" } });
     await native.call("speech.say", { text: "Hi" });

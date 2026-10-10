@@ -56,7 +56,10 @@ export function startDemo(): OverlayHost & OverlayFeed {
   const desktop = document.getElementById("desktop")!;
   desktop.innerHTML = HTML;
   const log = desktop.querySelector<HTMLOListElement>(".fake-log")!;
-  const host = new FakeHost({ phrases: ["Please turn me over", "I'm thirsty", "Thank you"], withDrag: true });
+  const host = new FakeHost({
+    phrases: ["Please turn me over", "I'm thirsty", "Thank you"],
+    dragFails: false,
+  });
   const targets = () => collectTargets();
   const labelOf = (id: string) => targets().find((t) => t.id === id)?.label ?? id;
   const note = (text: string) => {

@@ -15,7 +15,7 @@ import type {
 import type { NativeCall, OverlayHost } from "./host";
 
 export interface HostCall {
-  kind: "native" | "lifeline" | "stopAll" | "home" | "pressWeb" | "drag" | "logSelection";
+  kind: "native" | "lifeline" | "stopAll" | "home" | "pressWeb" | "logSelection";
   method?: string;
   params?: unknown;
 }
@@ -27,7 +27,8 @@ export interface FakeHostOptions {
   /** input.type refuses (secure field focused natively). */
   secureFocused?: boolean;
   phrases?: string[];
-  withDrag?: boolean;
+  /** input.drag answers ok: false (to exercise the failure message). */
+  dragFails?: boolean;
 }
 
 export const DEMO_APPS: AppInfo[] = [
@@ -97,6 +98,8 @@ export class FakeHost implements OverlayHost {
       }
       case "input.type":
         return this.opts.secureFocused ? { ok: false, error: "secure text field focused" } : { ok: true };
+      case "input.drag":
+        return this.opts.dragFails ? { ok: false, error: "drag failed" } : { ok: true };
       case "apps.list":
         return { apps: this.opts.apps ?? DEMO_APPS };
       case "apps.launch":
@@ -127,14 +130,6 @@ export class FakeHost implements OverlayHost {
   async pressWeb(targetId: string): Promise<{ ok: boolean }> {
     this.calls.push({ kind: "pressWeb", params: { targetId } });
     return { ok: true };
-  }
-
-  get drag(): OverlayHost["drag"] {
-    if (!this.opts.withDrag) return undefined;
-    return async (from, to) => {
-      this.calls.push({ kind: "drag", params: { from, to } });
-      return { ok: true };
-    };
   }
 
   async memorySuggestions(): Promise<Suggestion[]> {

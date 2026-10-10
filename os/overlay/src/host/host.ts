@@ -32,11 +32,6 @@ export interface OverlayHost {
   home(): void;
   /** AGENCY Bridge press of a web target (Instance 5), when available. */
   pressWeb?(targetId: string): Promise<{ ok: boolean; error?: string }>;
-  /** Press-move-release from one point to another. Not in contracts v0 yet (INTEGRATION_REQUEST.md). */
-  drag?(
-    from: { x: number; y: number },
-    to: { x: number; y: number },
-  ): Promise<{ ok: boolean; error?: string }>;
   /** Memory tree (Instance 6), through the main process or coordinator. */
   memorySuggestions?(surface: Surface, limit: number): Promise<Suggestion[]>;
   logSelection?(event: SelectionEvent): void;

@@ -29,11 +29,28 @@ final class SyntheticInput: @unchecked Sendable {
     }
   }
 
-  /// dx, dy in points; positive dy shows content further down (like a web page's scrollBy).
+  /// dx, dy in points; positive dy shows content above (the CGEvent scroll-wheel convention, per native.ts).
   func scroll(at point: CGPoint, dx: Double, dy: Double) throws {
     try post(CGEvent(mouseEventSource: source, mouseType: .mouseMoved, mouseCursorPosition: point, mouseButton: .left))
     try post(CGEvent(scrollWheelEvent2Source: source, units: .pixel, wheelCount: 2,
-                     wheel1: Int32(clamping: Int(-dy.rounded())), wheel2: Int32(clamping: Int(-dx.rounded())), wheel3: 0))
+                     wheel1: Int32(clamping: Int(dy.rounded())), wheel2: Int32(clamping: Int(dx.rounded())), wheel3: 0))
+  }
+
+  /// Press at `from`, move there in small steps (apps only notice drags that move), release at `to`. The
+  /// button is always released, even if posting a move fails, so nothing stays held.
+  func drag(from: CGPoint, to: CGPoint) throws {
+    try post(CGEvent(mouseEventSource: source, mouseType: .mouseMoved, mouseCursorPosition: from, mouseButton: .left))
+    try post(CGEvent(mouseEventSource: source, mouseType: .leftMouseDown, mouseCursorPosition: from, mouseButton: .left))
+    defer {
+      try? post(CGEvent(mouseEventSource: source, mouseType: .leftMouseUp, mouseCursorPosition: to, mouseButton: .left))
+    }
+    let steps = 12
+    for i in 1...steps {
+      let t = Double(i) / Double(steps)
+      let p = CGPoint(x: from.x + (to.x - from.x) * t, y: from.y + (to.y - from.y) * t)
+      try post(CGEvent(mouseEventSource: source, mouseType: .leftMouseDragged, mouseCursorPosition: p, mouseButton: .left))
+      usleep(8_000)
+    }
   }
 
   func type(_ chunk: String) throws {
@@ -53,7 +70,7 @@ final class SyntheticInput: @unchecked Sendable {
     }
   }
 
-  /// Nothing is ever held between calls (no drag yet), so this only makes sure no button stays down.
+  /// A drag releases its own button; this makes sure no button stays down after Stop.
   func releaseAll() {
     let location = CGEvent(source: nil)?.location ?? .zero
     for (type, button) in [(CGEventType.leftMouseUp, CGMouseButton.left), (.rightMouseUp, .right)]

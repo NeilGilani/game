@@ -1,8 +1,7 @@
 import Foundation
 
-/// Every method in NativeMethods (os/contracts/src/native.ts), plus additive ones requested in
-/// INTEGRATION_REQUEST.md (`apps.hide`). There is deliberately no method to quit apps: quitting goes
-/// through the agent's approval.
+/// Every method in NativeMethods (os/contracts/src/native.ts). There is deliberately no method to quit apps:
+/// quitting goes through the agent's approval.
 public enum NativeMethodName: String, CaseIterable, Sendable {
   case permissionsStatus = "permissions.status"
   case permissionsRequest = "permissions.request"
@@ -21,16 +20,16 @@ public enum NativeMethodName: String, CaseIterable, Sendable {
   case speechVoices = "speech.voices"
   case speechListen = "speech.listen"
   case inputStopAll = "input.stopAll"
-  // Additive (not yet in the contract).
+  case inputDrag = "input.drag"
   case appsHide = "apps.hide"
 
-  /// Methods in os/contracts/src/native.ts as of CONTRACTS_VERSION 0.
-  public static let contractMethods: [NativeMethodName] = allCases.filter { $0 != .appsHide }
+  /// Methods in os/contracts/src/native.ts as of CONTRACTS_VERSION 0 (including the additive drag and hide).
+  public static let contractMethods: [NativeMethodName] = allCases
 
   /// Permissions that must be granted before the method can do anything.
   public var requiredPermissions: [PermissionKind] {
     switch self {
-    case .axTargets, .axPress, .inputClick, .inputScroll, .inputType, .inputKey: return [.accessibility]
+    case .axTargets, .axPress, .inputClick, .inputScroll, .inputType, .inputKey, .inputDrag: return [.accessibility]
     case .screenCapture: return [.screenRecording]
     case .speechListen: return [.microphone, .speechRecognition]
     default: return []
@@ -40,7 +39,7 @@ public enum NativeMethodName: String, CaseIterable, Sendable {
   /// Synthetic-input methods: rate-limited and cancelled by input.stopAll.
   public var isSyntheticInput: Bool {
     switch self {
-    case .axPress, .inputClick, .inputScroll, .inputType, .inputKey: return true
+    case .axPress, .inputClick, .inputScroll, .inputType, .inputKey, .inputDrag: return true
     default: return false
     }
   }
