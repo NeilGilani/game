@@ -18,6 +18,8 @@ import type { VisionFrame } from "../vision/tracker";
 const SETTLE_MS = 800;
 const COLLECT_MS = 1100;
 const MAX_COLLECT_MS = 2600;
+/** Slow cameras get up to this long per dot to collect MIN_SAMPLES frames. */
+const HARD_MAX_COLLECT_MS = 8000;
 const MIN_SAMPLES = 10;
 
 type Phase =
@@ -65,17 +67,34 @@ export function Calibrate() {
       const collected = await new Promise<number[][]>((resolve) => {
         const got: number[][] = [];
         const start = performance.now();
+        let frames = 0;
+        let done = false;
+        const finish = () => {
+          if (done) return;
+          done = true;
+          off();
+          clearTimeout(hardStop);
+          resolve(got);
+        };
+        // Never wait on a frame to end a dot: slow or stalled cameras still finish.
+        const hardStop = setTimeout(finish, HARD_MAX_COLLECT_MS);
         const off = vision.onFrame((f: VisionFrame) => {
+          frames += 1;
           if (f.features && f.confidence >= 0.5 && (f.blink ?? 0) < 0.4)
             got.push(featureVector(f.features, set));
           const elapsed = performance.now() - start;
+          // On a slow camera (or a slow computer) give each dot time for MIN_SAMPLES frames, up to the hard cap.
+          const msPerFrame = frames > 1 ? elapsed / (frames - 1) : 0;
+          const deadline = Math.max(
+            MAX_COLLECT_MS,
+            Math.min(HARD_MAX_COLLECT_MS, msPerFrame * MIN_SAMPLES * 1.5),
+          );
           if (
             (elapsed > COLLECT_MS && got.length >= MIN_SAMPLES) ||
-            elapsed > MAX_COLLECT_MS ||
+            elapsed > deadline ||
             cancelled.current
           ) {
-            off();
-            resolve(got);
+            finish();
           }
         });
       });

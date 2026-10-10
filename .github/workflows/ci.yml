@@ -6,7 +6,7 @@ name: CI
 
 on:
   push:
-    branches: [main, "os-1/**"]
+    branches: [main, "os-1/**", integrate]
   pull_request:
   workflow_dispatch:
 
@@ -45,11 +45,22 @@ jobs:
         run: cd frontend && npx playwright install --with-deps chromium
       - name: Browser end-to-end tests
         run: make e2e
+      - name: Memory end-to-end tests
+        run: cd frontend && npx playwright test -c e2e/memory/playwright.config.ts
+      - name: Task packs end-to-end tests (os/tasks harness)
+        run: npm run e2e -w @agency/tasks
+      - name: AGENCY Bridge end-to-end tests (headless Chromium, sandbox web world)
+        run: npm run e2e -w @agency/browser-bridge
+      - name: Landing page checks
+        run: npm run check -w agency-site
       - uses: actions/upload-artifact@v4
         if: failure()
         with:
           name: linux-test-results
-          path: frontend/test-results
+          path: |
+            frontend/test-results
+            os/*/test-results
+            site/test-results
           if-no-files-found: ignore
 
   macos:
@@ -69,6 +80,13 @@ jobs:
         run: make setup
       - name: OS checks (contracts, desktop types and unit tests)
         run: make os-check
+      - name: agency-native (Swift) build and tests
+        run: |
+          cd os/native-macos
+          swift build -c release --product agency-native
+          scripts/test.sh
+      - name: Memory privacy tests with a real (throwaway) keychain
+        run: cd backend && .venv/bin/python -m pytest -q tests/test_memory_privacy.py
       - name: Build the interface and OS packages
         run: make os-build
       - name: Electron smoke tests (Playwright _electron)
