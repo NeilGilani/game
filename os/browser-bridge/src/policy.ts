@@ -186,16 +186,21 @@ export function containsCardNumber(text: string): boolean {
   });
 }
 
-const PATTERNS: Array<[ConsequentialKind, RegExp]> = [
-  ["purchase", /\b(place( your)? order|order now|pay( now)?|buy( now)?|purchase|checkout and pay|confirm (and )?(order|payment|purchase)|complete (order|purchase)|subscribe|donate|add funds|transfer|send money)\b/i],
-  ["sign", /\b(sign( document| here| now)?|adopt and sign|e-?sign)\b/i],
-  ["send", /\b(send|post|reply|forward|publish|share|tweet)\b/i],
-  ["delete", /\b(delete|trash|erase|discard|cancel (order|appointment|booking|subscription|membership|refill)|close account|deactivate)\b/i],
-  ["account-or-settings", /\b(save (settings|changes|preferences)|change (password|email|address|settings)|update (account|profile|password|settings)|enable|disable|turn (on|off))\b/i],
-  ["install", /\b(install|add to chrome|download and install)\b/i],
-  ["call", /\b(call now|place call|start call|dial)\b/i],
-  ["submit", /\b(submit|apply|request( refill)?|book( appointment| now)?|confirm|finish|complete|register|sign up|enroll|schedule|reserve)\b/i],
+/** Unmistakable actions. `links` marks the ones that count even on a link (e.g. "Buy now" links). */
+const STRONG: Array<[ConsequentialKind, RegExp, { links: boolean }]> = [
+  ["purchase", /\b(place( your)? order|order now|pay( now)?|buy( now)?|purchase|checkout and pay|confirm (and )?(order|payment|purchase)|complete (order|purchase)|subscribe|donate|add funds|transfer|send money)\b/i, { links: true }],
+  ["sign", /\b(sign(?!\s*(in|up|out|on)\b)( document| here| now)?|adopt and sign|e-?sign)\b/i, { links: false }],
+  ["send", /\b(send|post|reply|forward|publish|share|tweet)\b/i, { links: false }],
+  ["delete", /\b(delete|trash|erase|discard|cancel (order|appointment|booking|subscription|membership|refill)|close account|deactivate)\b/i, { links: true }],
+  ["account-or-settings", /\b(save (settings|changes|preferences)|change (password|email|settings)|update (account|profile|password|settings)|enable|disable|turn (on|off))\b/i, { links: false }],
+  ["install", /\b(install|add to chrome|download and install)\b/i, { links: true }],
+  ["call", /\b(call now|place call|start call|dial)\b/i, { links: true }],
 ];
+
+/** Steps on the way to something, which are easy to undo: no approval for these. */
+const REVERSIBLE = /^(add\b|search|find|filter|sort|next|continue|save and continue|review|preview|update\b|back|edit|change\b|show|view|see|go\b|remove\b|open|load more|more)/i;
+
+const SUBMIT = /\b(submit|apply|request( refill)?|book( appointment| now)?|confirm|finish|complete|register|sign up|enroll|schedule|reserve)\b/i;
 
 export interface ActionFacts {
   role: string;
@@ -212,8 +217,13 @@ export interface ActionFacts {
  */
 export function classifyAction(a: ActionFacts): ConsequentialKind | null {
   const name = a.name.replace(/\s+/g, " ").trim();
-  const actsLikeButton = a.submitsForm || /^(button|link|menuitem|checkbox|switch|radio|tab|option)$/.test(a.role);
-  if (actsLikeButton) for (const [kind, re] of PATTERNS) if (re.test(name)) return kind;
-  if (a.submitsForm) return "submit";
+  const isLink = a.role === "link" && !a.submitsForm;
+  const actsLikeButton = a.submitsForm || /^(button|link|menuitem|checkbox|switch|radio|tab|option|clickable)$/.test(a.role);
+  if (!actsLikeButton) return null;
+  for (const [kind, re, { links }] of STRONG) if (re.test(name) && (links || !isLink)) return kind;
+  if (REVERSIBLE.test(name)) return null;
+  if (!isLink && SUBMIT.test(name)) return "submit";
+  // Any other form that posts data somewhere is a submission.
+  if (a.submitsForm && (a.formMethod ?? "get").toLowerCase() === "post") return "submit";
   return null;
 }

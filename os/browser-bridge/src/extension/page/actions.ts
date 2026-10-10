@@ -78,7 +78,7 @@ function formFields(form: HTMLFormElement): Array<[string, string]> {
       continue;
     }
     if (i.type === "checkbox" || i.type === "radio") {
-      if (i.checked) out.push([fieldLabel(el), i.type === "radio" ? i.value || "selected" : "checked"]);
+      if (i.checked) out.push([fieldLabel(el), i.type === "radio" && i.value && i.value !== "on" ? i.value : i.type === "radio" ? "selected" : "checked"]);
       continue;
     }
     if (i.type === "hidden") {
@@ -86,7 +86,7 @@ function formFields(form: HTMLFormElement): Array<[string, string]> {
       continue;
     }
     const v = valueOf(el);
-    if (v !== undefined) out.push([fieldLabel(el), v.slice(0, 300)]);
+    if (v !== undefined) out.push([fieldLabel(el), v ? v.slice(0, 300) : "(empty)"]);
   }
   return out.slice(0, 40);
 }

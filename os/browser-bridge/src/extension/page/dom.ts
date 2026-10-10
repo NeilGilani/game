@@ -113,7 +113,8 @@ function contrast(a: RGBA, b: RGBA): number {
   return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05);
 }
 
-const BLOCK = /^(address|article|aside|blockquote|dd|details|dialog|div|dl|dt|fieldset|figcaption|figure|footer|form|h[1-6]|header|hr|li|main|nav|ol|p|pre|section|summary|table|tr|ul|br|td|th|caption|label|option|legend)$/i;
+const BLOCK = /^(address|article|aside|blockquote|dd|details|dialog|div|dl|dt|fieldset|figcaption|figure|footer|form|h[1-6]|header|hr|li|main|nav|ol|p|pre|section|summary|table|tr|ul|br|caption|label|option|legend)$/i;
+const CELL = /^(TD|TH)$/;
 
 /** Visible, readable text under `root`, with line breaks between blocks. */
 export function visibleText(root: Node, maxChars = 100_000): { text: string; truncated: boolean } {
@@ -142,6 +143,8 @@ export function visibleText(root: Node, maxChars = 100_000): { text: string; tru
     if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
     const block = BLOCK.test(tag);
     if (block && out && !out.endsWith("\n")) out += "\n";
+    // Cells of a row stay on one line ("Total  $8.52"), separated by a tab.
+    if (CELL.test(tag) && out && !out.endsWith("\n") && !out.endsWith("\t")) out += "\t";
     const kids = el.shadowRoot ? el.shadowRoot.childNodes : el.childNodes;
     for (const k of kids) walk(k);
     if (block && out && !out.endsWith("\n")) out += "\n";
@@ -149,7 +152,13 @@ export function visibleText(root: Node, maxChars = 100_000): { text: string; tru
   walk(root);
   const text = out
     .split("\n")
-    .map((l) => l.replace(/\s+/g, " ").trim())
+    .map((l) =>
+      l
+        .split("\t")
+        .map((c) => c.replace(/\s+/g, " ").trim())
+        .filter(Boolean)
+        .join("  "),
+    )
     .filter(Boolean)
     .join("\n");
   return { text, truncated };
@@ -466,7 +475,8 @@ export function buildTree(maxNodes: number): PageTree {
       if (interactive) childInside = true;
       // The insides of a select are its options, already listed; a textbox's insides are its value.
       if (el.tagName === "SELECT" || el.tagName === "TEXTAREA") return;
-    } else if (!insideInteractive && TEXT_TAGS.test(tag)) {
+    } else if (!insideInteractive && TEXT_TAGS.test(tag) && !(tag === "LABEL" && (el as HTMLLabelElement).control)) {
+      // (A label that names a field is already the field's name.)
       const t = ownText(el);
       if (t.length >= 2 && isReadableTextIn(el)) {
         const rect = rectOf(el);
