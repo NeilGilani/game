@@ -83,13 +83,6 @@ export function AgentProvider({ children }: { children: ReactNode }) {
     [link],
   );
 
-  useEffect(() => {
-    const h = host();
-    if (!h) return;
-    // Stop from anywhere (the overlay, the hotkey, another window) reaches every task.
-    return h.onStopAll(() => link.send({ type: "stop.all" }));
-  }, [link]);
-
   const start = useCallback(
     (req: Omit<TaskRequest, "id"> & { id?: string }) => {
       const request: TaskRequest = { dryRun: true, ...req, id: req.id ?? taskId() };
@@ -133,8 +126,11 @@ export function AgentProvider({ children }: { children: ReactNode }) {
     },
     stop: (id) => link.send({ type: "task.stop", taskId: id }),
     stopAll: () => {
-      link.send({ type: "stop.all" });
-      void host()?.stopAll();
+      // In the Mac app, main stops the agent and all synthetic input itself (and tells every window); sending
+      // stop.all here too would echo every broadcast back.
+      const h = link.simulated ? null : host();
+      if (h) void h.stopAll();
+      else link.send({ type: "stop.all" });
     },
     dismiss: (id) => {
       order.current = order.current.filter((x) => x !== id);

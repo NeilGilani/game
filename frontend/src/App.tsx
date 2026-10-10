@@ -89,7 +89,7 @@ function Screen({ route }: { route: Route }) {
 function Shell() {
   const route = useRoute();
   useEffect(() => {
-    if (route.path === "/" && !onboarded()) navigate("/onboarding");
+    if (route.path === "/" && !onboarded()) navigate("/welcome");
   }, [route.path]);
   useEffect(() => {
     document.getElementById("main")?.focus({ preventScroll: true });
