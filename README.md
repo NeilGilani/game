@@ -77,7 +77,21 @@ does not include API access. Without a key the status bar says **Demo mode: buil
 - Tracking loss is visible; after 10 s it switches to key scanning automatically and switches back when tracking
   returns.
 
-**Agent and workflow engine (coordinator)**
+**Talk: the person's voice**
+- A Talk board one look from every screen: big **Yes / No / Not sure / Wait** answers, phrase groups (needs,
+  feelings, conversation, things to do), "Said today" and "My phrases". Everything is spoken with the Mac's
+  built-in voices (offline, nothing sent anywhere) and shown in large text for anyone who didn't hear it.
+  Long groups page with a "More phrases" tile instead of scrolling.
+- **Eye typing** with two layouts: six big letter groups (two choices per letter, suits weak calibration and
+  scanning) or all letters at once. Word prediction ranks completions by common usage, built-in next-word pairs
+  ("I need my" offers mask, medicine, glasses) and the person's own words and word pairs, learned on this device
+  only. The draft survives reloads and alerts, Clear can be undone, and a message can be saved as a phrase.
+- **Something hurts**: pain, itch, cramp or numbness, then where, then how bad on the 0 to 10 scale, spoken as one
+  sentence ("My back hurts. It's very bad, 8 out of 10."). Severe pain points to Help.
+- **Come here, please**: a gentle chime plus speech, a middle step between saying nothing and a Lifeline alert.
+- Speech needs one real click per page load (a browser rule); Talk says so and offers a button for a helper.
+
+
 - Structured, validated goals from goal cards, a phrase board, or typed text (cloud interpretation when configured).
 - Dependency-aware plans with typed tool calls, approval levels, verification descriptions and retry policies.
   Built-in plans for four goals; optional Claude-adapted plans that must pass the same validator.
@@ -218,6 +232,7 @@ frontend/           React + TypeScript + Vite interface
   src/vision/       camera, landmarks, calibration, blink, quality, live tracker
   src/input/        dwell and scan engines, input layer
   src/lifeline/     blink help signal, alarm, heartbeat worker, emergency screen
+  src/talk/         speech, phrases, eye-typing keyboard, word prediction, pain reports
   src/screens/      every screen
   tests/            Vitest unit tests
   e2e/              Playwright tests

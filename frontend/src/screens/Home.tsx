@@ -83,12 +83,17 @@ export function Home() {
       </section>
 
       <div className="grid grid-4">
-        <button
-          className="tile tile-primary"
-          style={{ gridColumn: "span 2" }}
-          onClick={() => navigate("/new")}
-          data-dwell
-        >
+        <button className="tile tile-primary" onClick={() => navigate("/talk")} data-dwell>
+          <span className="tile-icon">
+            <Icon name="speaker" size={30} />
+          </span>
+          <span>
+            <span className="tile-title">Talk</span>
+            <br />
+            <span className="tile-sub">Yes and no, phrases, typing, pain</span>
+          </span>
+        </button>
+        <button className="tile tile-primary" onClick={() => navigate("/new")} data-dwell>
           <span className="tile-icon">
             <Icon name="plus" size={30} />
           </span>
