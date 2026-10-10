@@ -87,6 +87,7 @@ jobs:
         with:
           args: >-
             --no-progress --max-retries 3 --timeout 20
+            --base-url https://neilgilani.github.io
             --exclude-path dist/404.html
             --exclude '^https://api\.github\.com'
             --exclude '^https://github\.com/NeilGilani/game/(blob|tree)/'
