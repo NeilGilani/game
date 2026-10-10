@@ -1,4 +1,22 @@
+# Python
+backend/.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+backend/data/*.db
+backend/data/*.db-*
+
+# Node
 node_modules/
-dist/
-.DS_Store
+frontend/dist/
+frontend/public/mediapipe/wasm/
+frontend/test-results/
+frontend/playwright-report/
+
+# Local config and secrets
+.env
+.env.local
 *.log
+.DS_Store
