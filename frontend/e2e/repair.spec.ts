@@ -26,7 +26,7 @@ interface RepairRequest {
 test("wheelchair repair: plan, approve, recover from a taken slot, survive refresh, verify", async ({
   page,
 }) => {
-  await page.goto("/#/");
+  await page.goto("/#/errands");
   await expect(page.getByText("Coordinator:")).toBeVisible();
   await expect(page.getByRole("link", { name: "Demo mode: built-in plans" })).toBeVisible();
 

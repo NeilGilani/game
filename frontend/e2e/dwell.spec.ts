@@ -40,20 +40,20 @@ async function gazeAt(page: Page, selector: ReturnType<Page["locator"]>, ms: num
 }
 
 test("holding gaze on a button selects it once; a brief glance does not", async ({ page }) => {
-  await page.goto("/#/");
+  await page.goto("/#/errands");
   const start = page.getByRole("button", { name: /Start a task/ });
   await expect(start).toBeVisible();
   await page.waitForTimeout(1500); // initial refractory after navigation
 
   await gazeAt(page, start, 400);
-  await expect(page).toHaveURL(/#\/$/);
+  await expect(page).toHaveURL(/#\/errands$/);
 
   await gazeAt(page, start, 1600);
   await expect(page).toHaveURL(/#\/new$/);
 });
 
 test("low tracking confidence pauses dwell instead of selecting", async ({ page }) => {
-  await page.goto("/#/");
+  await page.goto("/#/errands");
   const start = page.getByRole("button", { name: /Start a task/ });
   await page.waitForTimeout(1500);
   const box = (await start.boundingBox())!;
@@ -68,6 +68,6 @@ test("low tracking confidence pauses dwell instead of selecting", async ({ page 
     },
     { x: box.x + box.width / 2, y: box.y + box.height / 2 },
   );
-  await expect(page).toHaveURL(/#\/$/);
+  await expect(page).toHaveURL(/#\/errands$/);
   await expect(start).not.toHaveAttribute("data-dwell-active", "");
 });

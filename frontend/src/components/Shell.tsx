@@ -7,6 +7,7 @@ import { MODE_LABELS, useInput } from "../state/input";
 import { navigate, type Route } from "../state/router";
 import { usePoll } from "../state/usePoll";
 import { useLifeline } from "../lifeline/LifelineProvider";
+import { useAgent } from "../state/agent";
 import { BrandMark, Icon } from "./Icon";
 
 function useInputChip(): { text: string; tone: string } {
@@ -49,7 +50,10 @@ export function TopBar() {
         ? "warn"
         : "ok";
 
+  const agent = useAgent();
   const togglePause = async () => {
+    // Stop reaches the agent and all synthetic input at once, before anything else (even if the coordinator is down).
+    if (!paused) agent.stopAll();
     setBusy(true);
     try {
       if (paused) await api.resumeAll();
@@ -60,7 +64,12 @@ export function TopBar() {
       );
       await refresh();
     } catch {
-      announce("Couldn't reach the coordinator to change automation.", true);
+      announce(
+        paused
+          ? "Couldn't reach the coordinator to resume automation."
+          : "Tasks on this computer were stopped. Couldn't reach the coordinator to stop its errands too.",
+        true,
+      );
     } finally {
       setBusy(false);
     }
@@ -118,8 +127,9 @@ export function TopBar() {
         className={`btn pause-agent ${paused ? "" : "btn-danger"}`}
         data-paused={paused}
         onClick={togglePause}
-        disabled={busy || !online}
+        disabled={busy || (!online && paused)}
         data-dwell
+        data-dwell-always
         aria-pressed={paused}
       >
         <Icon name={paused ? "play" : "stop"} />
@@ -229,7 +239,7 @@ export function ConnectionBanner() {
         <button className="btn" onClick={() => void refresh()} data-dwell>
           <Icon name="refresh" /> Try again
         </button>
-        <a className="btn btn-quiet" href="#/settings" data-dwell>
+        <a className="btn btn-quiet" href="#/settings/connection" data-dwell>
           Change address
         </a>
       </div>
@@ -241,7 +251,7 @@ export function ConnectionBanner() {
         <Icon name="key" />
         <span>This coordinator needs an access token. Add it in Settings.</span>
         <span className="spacer" />
-        <a className="btn" href="#/settings" data-dwell>
+        <a className="btn" href="#/settings/connection" data-dwell>
           Open settings
         </a>
       </div>

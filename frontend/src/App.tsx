@@ -3,6 +3,7 @@ import { ConnectionBanner, Nav, TopBar } from "./components/Shell";
 import { InputLayer } from "./input/InputLayer";
 import { LifelineOverlay } from "./lifeline/LifelineOverlay";
 import { LifelineProvider } from "./lifeline/LifelineProvider";
+import { AgentProvider } from "./state/agent";
 import { AnnouncerProvider } from "./state/announcer";
 import { ConnectionProvider } from "./state/connection";
 import { InputProvider } from "./state/input";
@@ -14,7 +15,19 @@ import { CameraSetup } from "./screens/CameraSetup";
 import { ApprovalsList, CasesList, RecoveryView, TimelineView } from "./screens/CaseViews";
 import { CaseWorkspace } from "./screens/CaseWorkspace";
 import { CreateCase } from "./screens/CreateCase";
+import { AppsScreen } from "./screens/Apps";
+import { Errands } from "./screens/Errands";
+import { FlowScreen } from "./screens/Flow";
 import { Home } from "./screens/Home";
+import { Onboarding } from "./screens/Onboarding";
+import {
+  HelperSettings,
+  MemorySettings,
+  SettingsHub,
+  TalkPlaceholder,
+  VoiceSettings,
+} from "./screens/OsSettings";
+import { TaskScreen } from "./screens/Task";
 import { LifelineAlertView, LifelineHome, LifelineSetup } from "./screens/Lifeline";
 import { PhoneSimulator } from "./screens/PhoneSimulator";
 import { NewTask, Phrases } from "./screens/NewTask";
@@ -32,6 +45,17 @@ function onboarded(): boolean {
 function Screen({ route }: { route: Route }) {
   const [a, b, c] = route.segments;
   if (!a) return <Home />;
+  if (a === "flow" && b) return <FlowScreen key={b} id={b} />;
+  if (a === "task" && b) return <TaskScreen key={b} id={b} />;
+  if (a === "apps") return <AppsScreen key={route.query.toString()} route={route} />;
+  if (a === "talk") return <TalkPlaceholder />;
+  if (a === "errands") return <Errands />;
+  if (a === "onboarding") return <Onboarding />;
+  if (a === "settings" && !b) return <SettingsHub />;
+  if (a === "settings" && b === "voice") return <VoiceSettings />;
+  if (a === "settings" && b === "memory") return <MemorySettings />;
+  if (a === "settings" && b === "helper") return <HelperSettings />;
+  if (a === "settings" && b === "connection") return <SettingsView />;
   if (a === "new" && !b) return <NewTask />;
   if (a === "new" && b === "phrases") return <Phrases />;
   if (a === "new" && b === "create") return <CreateCase key={route.query.toString()} route={route} />;
@@ -46,7 +70,6 @@ function Screen({ route }: { route: Route }) {
   if (a === "lifeline" && b === "alert" && c) return <LifelineAlertView key={c} id={c} />;
   if (a === "camera") return <CameraSetup />;
   if (a === "preferences") return <PreferencesView />;
-  if (a === "settings") return <SettingsView />;
   if (a === "status") return <StatusView />;
   return (
     <div className="panel stack">
@@ -66,7 +89,7 @@ function Screen({ route }: { route: Route }) {
 function Shell() {
   const route = useRoute();
   useEffect(() => {
-    if (route.path === "/" && !onboarded()) navigate("/welcome");
+    if (route.path === "/" && !onboarded()) navigate("/onboarding");
   }, [route.path]);
   useEffect(() => {
     document.getElementById("main")?.focus({ preventScroll: true });
@@ -91,8 +114,10 @@ function Shell() {
       </>
     );
   }
+  // Caregiver tools (cases, approvals, status) keep their side navigation; everything else is the full-width OS.
+  const tools = ["new", "cases", "case", "approvals", "status", "errands"].includes(route.segments[0] ?? "");
   return (
-    <div className="shell">
+    <div className={tools ? "shell" : "shell shell-os"}>
       <a
         className="sr-only"
         href="#main"
@@ -104,10 +129,10 @@ function Shell() {
         Skip to content
       </a>
       <TopBar />
-      <Nav route={route} />
+      {tools && <Nav route={route} />}
       <main className="main" id="main" tabIndex={-1}>
         <ConnectionBanner />
-        <div style={{ height: 16 }} />
+        {tools && <div style={{ height: 16 }} />}
         <Screen route={route} />
       </main>
       <LifelineOverlay />
@@ -122,7 +147,9 @@ function WithAnnouncer() {
     <AnnouncerProvider speak={prefs.speak_feedback}>
       <InputProvider>
         <LifelineProvider>
-          <Shell />
+          <AgentProvider>
+            <Shell />
+          </AgentProvider>
         </LifelineProvider>
       </InputProvider>
     </AnnouncerProvider>

@@ -56,7 +56,7 @@ test("key-switch scanning selects without a mouse (keyboard switch, not computer
 }) => {
   await page.goto("/#/preferences");
   await page.getByRole("radio", { name: /Key switch/ }).click();
-  await page.goto("/#/");
+  await page.goto("/#/errands");
   const start = page.getByRole("button", { name: /Start a task/ });
   // Wait for the scan highlight to reach "Start a task", then press the switch.
   await expect(start).toHaveAttribute("data-scan-active", "", { timeout: 60_000 });
