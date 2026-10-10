@@ -82,7 +82,8 @@ test("call, messages (typed), papers, shopping comparison, browse and watch all 
   await page.goto("/#/flow/call");
   await pick(page, "Jordan");
   await pick(page, "Just to talk");
-  await approve(page, /Yes, call · Jordan/);
+  // Calls are a task pack: the flow hands over to Talk's call screen.
+  await expect(page).toHaveURL(/#\/talk\/call/);
 
   await page.goto("/#/flow/messages");
   await pick(page, "Mom");
@@ -95,7 +96,8 @@ test("call, messages (typed), papers, shopping comparison, browse and watch all 
   await page.goto("/#/flow/papers");
   await pick(page, "Sign a document");
   await pick(page, "Lease renewal");
-  await approve(page, /Yes, sign/);
+  // Documents are a task pack too: signing happens in Talk's papers screen.
+  await expect(page).toHaveURL(/#\/talk\/papers/);
 
   await page.goto("/#/flow/shopping");
   await pick(page, "Medical supplies");

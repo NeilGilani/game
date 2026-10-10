@@ -132,7 +132,9 @@ function Shell() {
         className="main"
         id="main"
         tabIndex={-1}
-        data-zone={route.segments[0] === "lifeline" ? "lifeline" : undefined}
+        data-zone={
+          route.segments[0] === "lifeline" || route.segments[0] === "talk" ? route.segments[0] : undefined
+        }
       >
         <ConnectionBanner />
         {tools && <div style={{ height: 16 }} />}
