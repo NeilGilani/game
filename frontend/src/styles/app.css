@@ -1635,6 +1635,10 @@ body:has(.ll-minibar) .main {
 .ll-phone .btn {
   min-height: 60px;
 }
+.ll-phone .qr {
+  align-self: center;
+  border-radius: 8px;
+}
 .phones-page {
   min-height: 100dvh;
   padding: 24px;

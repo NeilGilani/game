@@ -1,7 +1,50 @@
-# AGENCY five-minute demo
+# AGENCY demo
 
-The judges must see: a physical-input constraint, an AI-driven plan, real software execution, a recovery path, and
-a verifiable result. Everything below is live; nothing is pre-recorded.
+The judges must see: a physical-input constraint, an AI-driven plan, real software execution, a recovery path, a
+verifiable result, and why it matters. Everything below is live; nothing is pre-recorded.
+
+Two parts: **the 3 a.m. scenario (Lifeline, 90 seconds)** opens, because it's the reason this exists; then **the
+five-minute task demo**. If you only have three minutes, do Lifeline and minutes 2 and 4 of the task demo.
+
+## Lifeline prep (2 minutes, on top of the prep below)
+
+1. On the Lifeline screen, press **Test alarm sound** once with the mouse (browsers only allow sound after a real
+   click). The readiness checklist should show **Alarm sound ready**.
+2. Open a second Chrome window at **http://localhost:8000/#/phones** (the simulated phones) and put it beside the
+   main window, or on a second screen facing the judges.
+3. **Lifeline → Presenter controls → "Jordan's phone unreachable"**: on. This shows fail-over (Jordan's phone is off,
+   so AGENCY moves to Morgan at once instead of waiting 45 s).
+4. The blink signal needs the camera on. In a camera input mode it starts by itself; otherwise open **Camera setup →
+   Start camera**. The readiness checklist should show **Eye signal working**. Practise three long blinks once.
+5. If the coordinator runs on the Pi and phones can reach it (see DEPLOY_PI.md), the simulated phones show **QR
+   codes**: a judge can answer from their own phone.
+
+## The 3 a.m. scenario (90 seconds)
+
+- "It's 3 a.m. Riley has ALS and uses a ventilator mask at night. The mask has slipped. Riley can't speak, can't
+  move, can't reach a phone. A pendant or a smart speaker is useless. Riley's eyes still work."
+- **Riley closes their eyes for about a second, three times.** The bottom of the screen counts: *Help signal: 1 of
+  3, 2 of 3*, then the emergency screen appears: **Calling for help, 8 seconds**, with a soft beep each second.
+  (If the camera isn't reliable, look at **Help**, or click it, and say so.)
+  "Ordinary blinks don't do this, and there are 8 seconds to cancel with a long look if it was a mistake."
+- At zero the alarm sounds: **Help is being called.** Point at the contact list: **Jordan: couldn't reach**, and
+  straight away **Morgan: alert sent, waiting for an answer.** "It doesn't wait 45 seconds on a phone that's off."
+- In the phones window, Morgan's phone has the alert. **Open as Morgan** (or a judge scans the QR code): the response
+  page says **Riley needs help**, and the responder card says *check the mask and tubing first* and how Riley says
+  yes and no. Press **I'm on my way**.
+- Back on Riley's screen: **Morgan is on the way.** The alarm stops. "A message being sent isn't help. Help is a
+  person saying they're coming, and until someone does, AGENCY keeps going: Morgan, then the monitoring centre, then
+  everyone again, every 90 seconds, forever."
+- **I'm OK now → Yes, I'm OK.** Morgan gets an all-clear. **Lifeline → Recent alerts** shows the time to an answer.
+- One more sentence: "If Riley's laptop crashes in the night, the Raspberry Pi notices the silence and calls for
+  help by itself." To show it: turn on **Watch over me**, then **Presenter controls → Freeze this computer**. After
+  30 s (set 15 s in Lifeline setup to shorten it) the alert starts on its own.
+
+Turn **Jordan's phone unreachable** off again before the task demo.
+
+---
+
+# The five-minute task demo
 
 ## Before the judges arrive (5 minutes of prep)
 
@@ -76,7 +119,10 @@ a verifiable result. Everything below is live; nothing is pre-recorded.
 | Calibration says poor | Use **Blink switch** or **Key switch**; poor calibration is reported honestly by design. |
 | Pi unreachable (red banner) | Ctrl-C `make dev-pi`, run `make demo` on the Mac (local coordinator). |
 | Forgot to arm the failure | Status → "Repair slot gets taken" before approving, or skip minute 4. |
-| Need a clean slate | Status → Reset all demo data. |
+| Need a clean slate | Status → Reset all demo data (also clears Lifeline alerts). |
+| No alarm sound | Click anywhere on the page once (browser rule), or Lifeline → Test alarm sound. |
+| Blink signal doesn't trigger | Use the Help button; check Lifeline → "Eye signal working" in the readiness list. |
+| An alert is stuck open during the demo | I'm OK now → Yes, or Status → Reset all demo data. |
 | Something is mid-run and you need to stop | **Stop agent** (top right). Nothing runs until **Resume agent**. |
 
 ## Other things you can show if there's time

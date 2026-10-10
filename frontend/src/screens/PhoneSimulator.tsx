@@ -9,6 +9,7 @@
 import { lifelineApi, respondUrl } from "../api/client";
 import type { LifelineStatus, OutboxMessage } from "../api/types";
 import { Icon } from "../components/Icon";
+import { QrCode } from "../components/QrCode";
 import { ErrorNote } from "../components/common";
 import { SimulatedBadge } from "../components/status";
 import { clockTime, contactLabel } from "../lifeline/describe";
@@ -18,6 +19,9 @@ export function PhoneSimulator() {
   const status = usePoll<LifelineStatus>(() => lifelineApi.status(), 2000, "phones-status");
   const outbox = usePoll<{ messages: OutboxMessage[] }>(() => lifelineApi.outbox(), 1500, "phones-outbox");
   const contacts = status.data?.settings.contacts.filter((c) => c.channel === "demo") ?? [];
+  const publicUrl = status.data?.channels.public_url ?? "";
+  // Phones can only open links that point at an address on the network, not at this computer.
+  const phonesCanReach = !!publicUrl && !/\/\/(localhost|127\.|\[::1\])/.test(publicUrl);
   const byContact = new Map<string, OutboxMessage[]>();
   for (const m of outbox.data?.messages ?? []) {
     byContact.set(m.contact_id, [...(byContact.get(m.contact_id) ?? []), m]);
@@ -35,6 +39,13 @@ export function PhoneSimulator() {
         </div>
         <SimulatedBadge text="Nobody real is contacted" />
       </header>
+      {status.data && (
+        <p className="panel panel-muted small">
+          {phonesCanReach
+            ? `Scan a code with a real phone on the same network to answer from it. Links point to ${publicUrl}.`
+            : `To answer from a real phone, the coordinator must be reachable on your network (for example on the Raspberry Pi, see DEPLOY_PI.md). Response links currently point to ${publicUrl}, which only this computer can open.`}
+        </p>
+      )}
       {(outbox.error || status.error) && (
         <ErrorNote message={outbox.error ?? status.error ?? ""} onRetry={() => void outbox.reload()} />
       )}
@@ -56,14 +67,22 @@ export function PhoneSimulator() {
                       <time>{clockTime(m.created_at)}</time>
                       <p>{m.body.replace(/ Respond here: \S+$/, "")}</p>
                       {m.link && m.alert_status !== "resolved" && m.alert_status !== "cancelled" ? (
-                        <a
-                          className="btn btn-primary"
-                          href={respondUrl(m.link)}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                        >
-                          Open as {c.name}
-                        </a>
+                        <>
+                          <a
+                            className="btn btn-primary"
+                            href={respondUrl(m.link)}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                          >
+                            Open as {c.name}
+                          </a>
+                          {phonesCanReach && (
+                            <QrCode
+                              value={`${publicUrl}${m.link}`}
+                              label={`QR code: open ${c.name}'s response link on a phone`}
+                            />
+                          )}
+                        </>
                       ) : m.response ? (
                         <span className="badge" data-tone="ok">
                           Answered: {m.response === "acknowledged" ? "on the way" : m.response}

@@ -46,6 +46,8 @@ Pi).
 | `backend/agency/engine` | State machines, execution, approvals, verification, recovery, persistence, runner | Call services except through tools |
 | `backend/agency/tools` | The permitted-tool registry: typed inputs, run, verify, lookup, describe, edit | Expose shell, SQL, browser or arbitrary HTTP |
 | `backend/agency/services` | Simulated integrations with their own tables and endpoints | Be reached by the engine except via tools |
+| `backend/agency/lifeline` | Emergency alerts: lifecycle, escalation, watchdog, check-ins, channels, the responder page | Depend on the person's screen staying alive |
+| `frontend/src/lifeline` | Blink help signal (pure), alarm sounds, heartbeat worker, offline help queue, emergency screen | Decide whether help is coming |
 
 The vision module never writes application state; the language model never reaches the executor except through a
 validated plan; the interface never decides outcomes. The single source of truth for workflow state is the
@@ -173,8 +175,62 @@ engine, draws feedback through attributes (no re-render per frame), and calls `c
 | GET | `/api/activity` | Recent verified outcomes and notable events |
 | GET/PUT, POST | `/api/demo/faults`, `/api/demo/reset` | Presenter controls (disable with `AGENCY_DEMO_CONTROLS=0`) |
 | GET | `/api/demo-services/...` | Each demo service's own records (slots, requests, programs, cases, events, outbox) |
+| GET | `/api/lifeline/status` | Settings, readiness problems, Watch over me state, the open alert, recent alerts |
+| GET/PUT | `/api/lifeline/settings` | Contacts, consent (time recorded by the coordinator), timings, responder card |
+| POST | `/api/lifeline/help` | Start an alert (`source`, `test`); never opens a second one |
+| GET | `/api/lifeline/alerts`, `/api/lifeline/alerts/{id}` | History; one alert with messages, events and timings |
+| POST | `/api/lifeline/alerts/{id}/cancel` · `now` · `resolve` | Cancel in the countdown; skip the countdown; end with an all-clear |
+| POST | `/api/lifeline/heartbeat` · `monitoring` · `checkin` | Screen alive; Watch over me on/off; answer a check-in |
+| GET | `/api/lifeline/outbox`, `/api/lifeline/report` | Simulated phones; response-time report |
+| POST | `/api/lifeline/demo/checkin-now` | Presenter: ask for a check-in now |
+| GET, POST | `/respond/{token}`, `/respond/{token}/ack` · `decline` · `resolve` | The contact's response page (outside `/api`; the token is the credential) |
 
 When `AGENCY_API_TOKEN` is set, every `/api` route except `/api/health` requires `X-Agency-Token`.
+
+## Lifeline (backend/agency/lifeline, frontend/src/lifeline)
+
+Emergency alerting, documented as a safety case in [LIFELINE.md](LIFELINE.md).
+
+```
+ person's screen (MacBook)                          coordinator (ideally the Pi)                    contacts' phones
+ ┌────────────────────────────────┐                 ┌──────────────────────────────────────┐       ┌──────────────────┐
+ │ HelpPattern (3 long blinks) ─┐ │  POST /help     │ LifelineService                      │ SMS / │ /respond/{token} │
+ │ Help button / switch ────────┼─┼───────────────▶ │  alerts: pending ▸ active ▸          │ call /│ plain HTML page: │
+ │ offline queue (localStorage)─┘ │                 │          acknowledged ▸ resolved     │ demo  │ on my way /      │
+ │                                │  heartbeat 5 s  │  supervisor tick (1 s): countdowns,  │──────▶│ can't come /     │
+ │ heartbeat Web Worker ──────────┼───────────────▶ │  escalation, watchdog, check-ins     │       │ safe, end alert  │
+ │                                │                 │  SQLite: lifeline_alerts,            │◀──────│ (token = only    │
+ │ emergency screen + Web Audio ◀─┼─ GET /status ── │  _notifications, _events             │ POST  │  credential)     │
+ │ alarm (siren / countdown)      │                 │  ChannelRouter: Demo | Twilio        │       └──────────────────┘
+ └────────────────────────────────┘                 └──────────────────────────────────────┘
+```
+
+- **Ownership.** The coordinator owns every alert and every timer. `tick()` runs once a second in a supervisor task
+  started in the app lifespan (exceptions are logged, never fatal). All state changes take one `asyncio.Lock`, so
+  an acknowledgement and an escalation can't interleave. Timestamps are stored, not timers, so a restarted coordinator
+  continues exactly where it was; the clock is injectable and the tests drive `tick()` with a fake clock.
+- **Escalation.** Contacts are grouped into levels by priority. Each level gets `ack_timeout_s`; after the last
+  level every enabled contact is re-alerted every `2 × ack_timeout_s` as a new round. If every notification at the
+  current level failed or was declined, the next level is alerted in the same tick. Only a person's "I'm on my way"
+  (or the simulated monitoring service) moves an alert to acknowledged.
+- **Notifications.** One row per message with its purpose (`alert`, `stand_down`, `all_clear`), level, round,
+  delivery status (`delivered` for simulated phones, `sent` when the provider accepted it, `failed` with a reason)
+  and the contact's response. Alert messages carry a per-message `secrets.token_urlsafe(18)` token; the token is
+  never returned by `/api`.
+- **Channels.** `DemoChannel` stores the message for the simulated phones (a presenter fault can make the first
+  level unreachable). `TwilioChannel` posts to Twilio's REST API with `urllib` in a worker thread (SMS, plus a
+  `<Say>` voice call for `sms_call` contacts), and is only constructed when all three `TWILIO_*` variables exist.
+- **Responder page.** `/respond/{token}` sits outside `/api`, so it needs no coordinator token; it is server-rendered,
+  escaped HTML with no JavaScript, `Cache-Control: no-store`, `Referrer-Policy: no-referrer` and a CSP of
+  `default-src 'none'`. Actions are form POSTs with a redirect afterwards. Ending an alert goes through a
+  confirmation page. Once an alert ends the page shows only that it ended.
+- **Watch over me.** Heartbeats come from a dedicated Web Worker (main-thread timers are throttled in background
+  tabs). The watchdog fires once per silence; check-ins and the optional signal-unavailable alert use the same
+  monitor state, stored in `system_state`.
+- **The person's screen.** `LifelineProvider` polls status (every second while anything is open), runs the blink
+  detector on every vision frame regardless of input mode, keeps unsent help requests in `localStorage`, and drives
+  the alarm. `LifelineOverlay` is a `data-dwell-scope="modal"` dialog, so while it's open eye control can only select
+  its own buttons; Cancel carries `data-dwell-scale="2"`.
 
 ## Notable tradeoffs
 

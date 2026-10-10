@@ -68,6 +68,8 @@ export interface LifelineState {
 
 const LifelineContext = createContext<LifelineState | null>(null);
 
+const IDLE_PATTERN: PatternState = { counted: 0, closed: false, holdProgress: 0, fired: false };
+
 function loadQueued(): QueuedHelp | null {
   try {
     const raw = localStorage.getItem(QUEUE_KEY);
@@ -102,12 +104,7 @@ export function LifelineProvider({ children }: { children: ReactNode }) {
   const [offsetMs, setOffsetMs] = useState(0);
   const [lastOpen, setLastOpen] = useState<AlertDetail | null>(null);
   const [queued, setQueuedState] = useState<QueuedHelp | null>(loadQueued);
-  const [pattern, setPattern] = useState<PatternState>({
-    counted: 0,
-    closed: false,
-    holdProgress: 0,
-    fired: false,
-  });
+  const [pattern, setPattern] = useState<PatternState>(IDLE_PATTERN);
   const [silencedId, setSilencedId] = useState<string | null>(null);
   const [alarmReady, setAlarmReady] = useState(() => alarm().ready);
   const [frozen, setFrozen] = useState(false);
@@ -129,9 +126,14 @@ export function LifelineProvider({ children }: { children: ReactNode }) {
     setLastOpen(s.open_alert);
   }, []);
 
+  // Bumped by every change this screen makes, so a status poll that started before the change
+  // can't overwrite the newer state when it lands (the emergency screen would flicker).
+  const changes = useRef(0);
   const refresh = useCallback(async () => {
+    const seen = changes.current;
     try {
-      applyStatus(await lifelineApi.status());
+      const s = await lifelineApi.status();
+      if (seen === changes.current) applyStatus(s);
     } catch {
       // Keep showing the last known alert: the coordinator carries on without this screen.
       setOnline(false);
@@ -159,6 +161,7 @@ export function LifelineProvider({ children }: { children: ReactNode }) {
     if (!q) return;
     try {
       const out = await lifelineApi.help(q.source, q.test);
+      changes.current += 1;
       setQueued(null);
       setLastOpen(out.alert);
       setError(null);
@@ -201,6 +204,7 @@ export function LifelineProvider({ children }: { children: ReactNode }) {
       setBusy(true);
       try {
         await fn();
+        changes.current += 1;
         setError(null);
         if (done) announce(done, true);
       } catch (err) {
@@ -266,13 +270,22 @@ export function LifelineProvider({ children }: { children: ReactNode }) {
       const state = detector.update(frame.t, frame.face ? frame.blink : null);
       // Only re-render when something visible changes.
       const key = state.counted * 10 + (state.closed ? Math.round(state.holdProgress * 4) + 1 : 0);
-      if (key !== shown || state.fired) {
+      if (state.fired) {
+        // The emergency screen takes over from the meter.
+        shown = 0;
+        setPattern(IDLE_PATTERN);
+        void requestRef.current("eye_signal");
+      } else if (key !== shown) {
         shown = key;
         setPattern(state);
       }
-      if (state.fired) void requestRef.current("eye_signal");
     });
   }, [input.vision]);
+
+  // No frames, no pattern: don't leave a half-finished count on screen when the camera stops.
+  useEffect(() => {
+    if (input.status !== "running") setPattern(IDLE_PATTERN);
+  }, [input.status]);
 
   // ---- heartbeat ---------------------------------------------------------------------
   const visionStatus = input.status;

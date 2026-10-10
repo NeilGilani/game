@@ -369,6 +369,8 @@ export function LifelineHome() {
               <dd>{seconds(report.data.max_seconds_to_acknowledged)}</dd>
               <dt>Cancelled in the countdown</dt>
               <dd>{report.data.cancelled_in_countdown}</dd>
+              <dt>Alarm only (nobody could be contacted)</dt>
+              <dd>{report.data.local_only}</dd>
             </dl>
           ) : (
             <Loading />

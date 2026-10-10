@@ -589,6 +589,9 @@ class LifelineService:
                     "signal_alerted_for": None,
                 }
             )
+            if not armed:
+                # Nothing is watched while it's off, so nothing may stay waiting either.
+                state.update({"checkin_pending_since": None, "next_checkin_at": None, "signal_unready_since": None})
             self._save_monitor(state)
             if armed:
                 self._schedule_checkin(now)

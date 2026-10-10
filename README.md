@@ -9,11 +9,20 @@ dozens of small steps. AGENCY separates the two: the person expresses an intenti
 explicitly permitted tools, stops for approval before anything consequential, verifies every result against the
 service's own records, recovers from failures, and keeps the case so it can be resumed.
 
+**Lifeline** is the part that can save a life. Someone who can't speak or move can't reach a phone or press a
+pendant when their ventilator mask slips at 3 a.m. With Lifeline they close their eyes for a second, three times
+(or look at Help), and AGENCY keeps contacting people, one after another, until a human answers "I'm on my way". It
+also raises the alarm on its own when the person's computer goes silent or a check-in goes unanswered. The
+coordinator, ideally a Raspberry Pi separate from the laptop, owns every alert, so help keeps being called even if
+the laptop dies. See [LIFELINE.md](LIFELINE.md) for the design and safety case.
+
 Built for the UCSC AI Hackathon (Cloud AI track). Hardware: a MacBook (webcam, browser, interface) and an optional
 Raspberry Pi 4 (coordinator, SQLite). Cloud reasoning with Claude is optional; everything works without it.
 
-> AGENCY is a demonstration, not a medical device. Webcam gaze estimation is approximate. All integrations are
-> simulated demo services: no real company, office or person is ever contacted.
+> AGENCY is a demonstration, not a medical device, a ventilator alarm or an emergency service. Webcam gaze
+> estimation is approximate. All integrations are simulated demo services, and Lifeline contacts are simulated
+> phones: no real company, office or person is contacted unless someone deliberately configures real phone numbers
+> and Twilio.
 
 ---
 
@@ -37,7 +46,8 @@ cd ~/agency
 make dev
 ```
 
-Using a Raspberry Pi as the coordinator: see [DEPLOY_PI.md](DEPLOY_PI.md). Running the 5-minute demo:
+How Lifeline works and why it's designed this way: see [LIFELINE.md](LIFELINE.md). Using a Raspberry Pi as the
+coordinator: see [DEPLOY_PI.md](DEPLOY_PI.md). Running the 5-minute demo:
 see [DEMO_SCRIPT.md](DEMO_SCRIPT.md). How it's built: see [ARCHITECTURE.md](ARCHITECTURE.md).
 
 To enable cloud reasoning, put an Anthropic API key in `.env` (copy `.env.example`). A Claude Max chat subscription
@@ -81,6 +91,24 @@ does not include API access. Without a key the status bar says **Demo mode: buil
 - Global **Stop agent**, per-case pause/resume/cancel, skipping optional steps, editing approvals, "Explain".
 - A full audit trail: events, tool calls (with idempotency keys and timings) and verification checks.
 
+**Lifeline: calling for help** ([LIFELINE.md](LIFELINE.md))
+- Three ways to ask: **three long blinks** (watched whenever the camera is on, in every input mode, even with eye
+  control paused; ordinary blinks, resting and face loss are ignored), a **Help** button that is first in scanning
+  order on every screen, or a helper's click. An 8-second countdown with a hard-to-hit-by-accident Cancel.
+- The coordinator owns the alert: it alerts contacts in order, moves on after 45 s without an answer (or at once if a
+  message fails or someone can't come), then alerts everyone again, every 90 s, until someone presses **I'm on my
+  way**. Others are told to stand down; ending the alert sends everyone an all-clear.
+- Contacts answer from a plain web page reached by a personal link (no app, no login). While the alert is open it
+  shows the person's **responder card**: how they communicate, breathing equipment to check first, allergies,
+  medications, how to get in.
+- **Watch over me**: alerts on its own if the person's screen goes silent for 30 s (heartbeats from a Web Worker),
+  if a check-in goes unanswered, or (optionally) if the eyes can't be seen for minutes.
+- If the coordinator can't be reached, the laptop sounds a loud alarm at once and keeps retrying (the request
+  survives a reload). Alerts survive a coordinator restart.
+- Readiness checklist, monthly test alerts, response-time report, presenter fault injection, simulated phones in
+  their own window (with QR codes so a real phone can answer when the coordinator is on the network), and optional
+  real SMS and voice calls through Twilio.
+
 **Flagship scenario:** arrange a wheelchair repair before Friday, check whether funding help may be available
 (without ever claiming coverage), and notify the caregiver, including a deliberate failure and recovery.
 Three more goals work end to end: reschedule an appointment (asks which one mid-workflow), prepare/submit/track an
@@ -110,15 +138,17 @@ All of the following were run for this commit; results are from real runs, not e
 
 | Suite | Count | What it covers |
 |---|---|---|
-| Backend `pytest` | 45 | Case creation, plan contents, allowed and refused tools, input validation, approval creation, refusing unapproved or stale-approved actions, verification pass/fail, retries, idempotent services, timeout reconciliation (no double booking), recovery planning, rejection blocking dependents, edits rebinding approvals, global and per-case pause, crash mid-step + restart reconciliation, persistence across restarts, audit events, auth token, CORS, preferences validation, the other three goals, and the cloud provider with a fake client (valid plan used; plan with a forbidden tool rejected; API errors and refusals fall back and are reported) |
-| Frontend Vitest | 46 | Landmark indices checked against the installed MediaPipe package; feature extraction on synthetic landmark fixtures; head pose; calibration fitting, outlier rejection and honest quality grading; dwell stability, no repeat, refractory, blink tolerance and tracking-loss cancel; scanning; long-blink switch; camera error classification; target snapping; smoothing |
-| Playwright e2e | 9 | The full repair scenario in a real browser (plan, approvals, injected slot failure, recovery, browser refresh, verified outcome, timeline, service records); editing and declining; coordinator loss and restart; Stop agent; key-switch scanning; dwell selection through the real DOM with synthetic gaze frames; the **real camera pipeline** with a fake webcam (face and irises found; calibration on a still photo correctly graded "poor"); camera permission denied |
-| Python 3.11 / arm64 | 45 | The backend suite on Python 3.11, and on Debian Bookworm arm64 (emulated with QEMU), plus `deploy/pi/setup.sh` end to end in that container |
+| Backend `pytest` | 83 | **Workflow engine (45):** case creation, plan contents, allowed and refused tools, input validation, approval creation, refusing unapproved or stale-approved actions, verification pass/fail, retries, idempotent services, timeout reconciliation (no double booking), recovery planning, rejection blocking dependents, edits rebinding approvals, global and per-case pause, crash mid-step + restart reconciliation, persistence across restarts, audit events, auth token, CORS, preferences validation, the other three goals, and the cloud provider with a fake client. **Lifeline (38), on a fake clock:** countdown, cancel, call now, escalation timing and repeating rounds, immediate fail-over, never giving up, acknowledgement and stand-down, withdrawn acknowledgement, all-clear, consent and alarm-only mode, the responder page (escaping, security headers, token uniqueness, confirmation), watchdog, check-ins (including turning Watch over me off), signal-unavailable, restart persistence, reporting, demo reset, and Twilio text + call with a fake transport |
+| Frontend Vitest | 56 | Landmark indices checked against the installed MediaPipe package; feature extraction on synthetic landmark fixtures; head pose; calibration fitting, outlier rejection and honest quality grading; dwell stability, no repeat, refractory, blink tolerance and tracking-loss cancel; scanning; long-blink switch; camera error classification; target snapping; smoothing; **the three-long-blink help signal** (ordinary blinks, resting, face loss, spacing, refractory, hysteresis) |
+| Playwright e2e | 14 | The full repair scenario in a real browser (plan, approvals, injected slot failure, recovery, browser refresh, verified outcome, timeline, service records); editing and declining; coordinator loss and restart; Stop agent; key-switch scanning; dwell selection through the real DOM with synthetic gaze frames; the **real camera pipeline** with a fake webcam; camera permission denied. **Lifeline:** cancel in the countdown; caregiver unreachable, fail-over, the neighbour answering on the real response page in another window, ending the alert; three long blinks (synthetic blink frames) vs ordinary blinks; check-in and watchdog; offline queueing across a reload and recovery |
+| Python 3.11 / arm64 | 83 | The backend suite on Python 3.11, and on Debian Bookworm arm64 (emulated with QEMU), plus `deploy/pi/setup.sh` end to end in that container, including a Lifeline alert, a response through the response page, and a watchdog alert from the supervisor loop |
 
-What was **not** tested here, and why: live gaze accuracy with a real person (needs a human in front of a webcam;
-the automated camera test uses a still image), real Raspberry Pi hardware (no Pi in this environment; tested on
-emulated arm64 Debian Bookworm), Safari, and the real Anthropic API (no API key in this environment; the adapter is
-tested with a fake client that mirrors the SDK's response shapes).
+What was **not** tested here, and why: live gaze accuracy and the blink help signal with real people (needs people
+in front of a webcam, ideally the target users; the automated camera test uses a still image), real Raspberry Pi
+hardware (no Pi in this environment; tested on emulated arm64 Debian Bookworm), Safari, the real Anthropic API (no
+API key in this environment; the adapter is tested with a fake client that mirrors the SDK's response shapes), real
+Twilio messages and calls (no account; tested with a fake transport), and heartbeats from a tab hidden for hours.
+The simulated phones' QR codes were checked by decoding a rendered code with an independent decoder.
 
 ```sh
 cd ~/agency
@@ -139,6 +169,9 @@ make e2e
   actions, and proposed and verified outcomes, are always shown differently.
 - The coordinator refuses to listen on the network without an access token. Secrets live only in environment
   variables and never appear in the interface bundle or API responses.
+- Lifeline shares the person's name, what happened and their responder card only with their own contacts, only
+  through per-message unguessable links, and only while the alert is open. Permission to contact people without
+  asking is given once in setup and recorded with its time; without it Lifeline only sounds the local alarm.
 - All demo data is fictional ("Riley", "Jordan", demo providers).
 
 ---
@@ -152,16 +185,21 @@ make e2e
 - Integrations are simulated. Real providers would need authentication, per-integration permissions and their own
   verification rules (the adapter boundary is designed for this).
 - Cloud planning adapts the built-in plans; it doesn't invent new workflow types.
+- Lifeline is not a medical alarm and isn't connected to any medical device. Its blink thresholds are reasoned
+  defaults that need evaluation with people with ALS or locked-in syndrome. Sound needs one real click or key press
+  per page load (a browser rule). A Pi coordinator needs its own UPS to survive a power cut. See
+  [LIFELINE.md](LIFELINE.md) for the full list.
 - Single user per coordinator; no accounts.
 - The coordinator token is a shared secret over plain HTTP on the local network. Fine for a home LAN demo; use TLS
   (e.g. a reverse proxy) for anything beyond that.
 
 ## Next highest-value engineering task
 
-**A live usability and accuracy study of the gaze and blink modes with the target users**, instrumented with the
-existing calibration quality numbers and dwell events (accidental selections, time-to-select, fallbacks triggered).
-The workflow engine is solid; the biggest open risk is how reliably real users can select with a laptop webcam, and
-that data should drive dwell defaults, target sizes and whether to add a per-session drift correction.
+**A study with the target users and their caregivers**, covering both how reliably they can select with a laptop
+webcam (calibration grades, accidental selections, time to select, fallbacks triggered) and how reliably they can
+call for help: blink-signal success and false-trigger rates when tired and at night, and Lifeline drills measuring
+time to "I'm on my way". The engine and the escalation logic are solid; the open risks are human, and that data
+should drive dwell defaults, target sizes and the help-signal thresholds.
 
 ---
 
@@ -174,10 +212,12 @@ backend/            FastAPI coordinator (Python 3.11+)
   agency/tools/     permitted tool registry
   agency/services/  simulated integrations + seed data
   agency/reasoning/ optional Anthropic provider
+  agency/lifeline/  emergency alerts: escalation, watchdog, check-ins, channels, response page
   tests/            pytest suite
 frontend/           React + TypeScript + Vite interface
   src/vision/       camera, landmarks, calibration, blink, quality, live tracker
   src/input/        dwell and scan engines, input layer
+  src/lifeline/     blink help signal, alarm, heartbeat worker, emergency screen
   src/screens/      every screen
   tests/            Vitest unit tests
   e2e/              Playwright tests

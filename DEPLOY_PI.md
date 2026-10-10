@@ -67,10 +67,32 @@ database and reasoning mode, all reported by the Pi itself.
 Alternative without the Vite proxy: in Settings set the address to `http://<pi-address>:8000` and the token. The Pi
 allows requests from the origins in `AGENCY_ALLOWED_ORIGINS` (localhost on ports 5173, 4173 and 8000 by default).
 
+## Lifeline on the Pi: the independent watchdog
+
+Running the coordinator on the Pi is what makes Lifeline's **Watch over me** meaningful: the Pi notices when the
+MacBook goes silent (crash, frozen screen, flat battery) and calls for help by itself. The Lifeline screen shows
+**Independent watchdog** when the coordinator is a Pi, and a warning when it runs on the same computer.
+
+- **Power.** Give the Pi its own UPS or a power bank with pass-through charging. A Pi without power can't call
+  anyone. (Not tested here.)
+- **Response links.** Contacts open `/respond/<token>` on the coordinator. On the Pi it is reachable at
+  `http://<hostname>.local:8000` by default. If phones can't resolve `.local` names (common on Android), set
+  `AGENCY_PUBLIC_URL=http://<pi-ip-address>:8000` in `/etc/agency/agency.env`. The response page needs no
+  coordinator token; each link's own unguessable token is the credential, and it only opens that one alert.
+  `/api` still requires the token.
+- **Real texts and calls (optional).** Add `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN` and `TWILIO_FROM_NUMBER` to
+  `/etc/agency/agency.env`, restart (`make pi-stop`, `make pi-start`), then switch a contact to *Text message* or
+  *Text message and phone call* in Lifeline setup. For phones outside the home network to open the links, the
+  coordinator must be reachable from the internet over https (for example through a tunnel or reverse proxy); that
+  is outside the scope of this demo.
+- **Simulated phones with a real phone.** With the coordinator on the network, the simulated phones window shows a
+  QR code for each response link, so anyone on the same Wi-Fi can answer from their own phone.
+
 ## If the Pi drops off the network
 
 The interface shows a red banner ("Can't reach the coordinator… nothing runs until it's back") and keeps working
-locally; it doesn't queue actions. Cases are safe in the Pi's SQLite database. When the Pi comes back the banner
+locally; it doesn't queue task actions. A Lifeline help request is the exception: it is kept on the MacBook, the
+alarm sounds there at once, and it is sent as soon as the Pi is back. Cases are safe in the Pi's SQLite database. When the Pi comes back the banner
 clears on its own. If the coordinator restarted while a case was running, the case is held as **Interrupted** after
 AGENCY checks with each service what had already happened; press **Resume** to continue without repeating anything.
 
@@ -91,9 +113,16 @@ To fall back to the MacBook entirely: stop `make dev-pi` and run `make demo`.
 
 - `setup.sh` was run end to end in an **arm64 Debian Bookworm** container (emulated with QEMU), with the systemd step
   replaced by a direct start (`AGENCY_SKIP_SYSTEMD=1`): dependencies installed from aarch64 wheels on Python 3.11.2,
-  the token was generated, `/api/health` answered, requests without the token got 401 and with it 200, a repair case
-  ran to the approval step, and the full backend test suite (45 tests) passed on arm64.
+  the token was generated, `/api/health` answered, requests without the token got 401 and with it 200, and a repair
+  case ran to the approval step.
+- **Lifeline on arm64**, in the same container: a test alert was delivered to Jordan's simulated phone by the
+  supervisor loop; the response page answered without the coordinator token (200) and "I'm on my way" acknowledged
+  the alert; then, with Watch over me on and no heartbeats, the watchdog raised an alert on its own and alerted
+  Jordan.
+- The full backend test suite (83 tests, including 38 for Lifeline) passed on arm64 Python 3.11.2.
 - The rendered systemd unit passes `systemd-analyze verify`.
 - The backend suite also passes on Python 3.11 and 3.13 on x86_64.
-- **Not verified here:** physical Raspberry Pi 4 hardware, the systemd unit under a real systemd, and network
-  discovery of `*.local` names. Check `make pi-status` and `make pi-logs` on first boot.
+- **Not verified here:** physical Raspberry Pi 4 hardware, the systemd unit under a real systemd, network discovery
+  of `*.local` names, phones opening response links over Wi-Fi, and behaviour on a power cut (use a UPS).
+
+Check `make pi-status` and `make pi-logs` on first boot.

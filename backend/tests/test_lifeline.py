@@ -522,6 +522,18 @@ def test_missed_check_in_raises_an_alert(h: H) -> None:
     assert alert["status"] == "active"
 
 
+def test_turning_watch_over_me_off_clears_a_waiting_check_in(h: H) -> None:
+    h.client.post("/api/lifeline/monitoring", json={"armed": True})
+    h.client.post("/api/lifeline/demo/checkin-now")
+    assert h.status()["monitor"]["checkin_pending_since"] is not None
+    h.client.post("/api/lifeline/monitoring", json={"armed": False})
+    monitor = h.status()["monitor"]
+    assert monitor["checkin_pending_since"] is None
+    assert monitor["next_checkin_at"] is None
+    h.tick(600)
+    assert h.status()["open_alert"] is None
+
+
 def test_presenter_can_ask_for_a_check_in_now(h: H) -> None:
     assert h.client.post("/api/lifeline/demo/checkin-now").status_code == 409, "only while Watch over me is on"
     h.client.post("/api/lifeline/monitoring", json={"armed": True})
