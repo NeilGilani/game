@@ -1,6 +1,7 @@
 /**
  * Secure defaults for every web contents: no new windows, no navigation away from AGENCY, no webviews, and a
- * permission handler that grants the camera only to the gaze engine window (video only, never the microphone).
+ * permission handler that grants the camera only to the windows that track the eyes (the shell, which runs the
+ * calibrated eye-tracking pipeline, and the optional hidden engine window): video only, never the microphone.
  */
 
 import type { App, Session, WebContents } from "electron";
@@ -9,8 +10,8 @@ import type { Logger } from "./log";
 export interface SecurityPolicy {
   /** Origins a window may navigate within (agency://shell, plus the Vite dev server in development). */
   allowedOrigins: () => string[];
-  /** Is this the gaze engine's web contents? */
-  isGaze: (contents: WebContents) => boolean;
+  /** May this web contents use the camera (the shell or the gaze engine window)? */
+  mayUseCamera: (contents: WebContents) => boolean;
   log: Logger;
 }
 
@@ -27,11 +28,11 @@ export function isAllowedNavigation(target: string, allowedOrigins: string[]): b
 /** Pure decision, unit-tested: may this request get this permission? */
 export function decidePermission(
   permission: string,
-  isGaze: boolean,
+  mayUseCamera: boolean,
   mediaTypes: readonly string[] | undefined,
 ): boolean {
   if (permission !== "media") return false;
-  if (!isGaze) return false;
+  if (!mayUseCamera) return false;
   const types = mediaTypes ?? [];
   return types.length > 0 && types.every((t) => t === "video");
 }
@@ -61,7 +62,7 @@ export function applySecurity(app: App, policy: SecurityPolicy): void {
 export function applyPermissionHandlers(session: Session, policy: SecurityPolicy): void {
   session.setPermissionRequestHandler((contents, permission, callback, details) => {
     const mediaTypes = "mediaTypes" in details ? (details.mediaTypes as string[] | undefined) : undefined;
-    const ok = decidePermission(permission, policy.isGaze(contents), mediaTypes);
+    const ok = decidePermission(permission, policy.mayUseCamera(contents), mediaTypes);
     if (!ok)
       policy.log.warn(
         `denied permission ${permission} (${(mediaTypes ?? []).join(",")}) to ${contents.getURL()}`,
@@ -71,7 +72,7 @@ export function applyPermissionHandlers(session: Session, policy: SecurityPolicy
   session.setPermissionCheckHandler((contents, permission, _origin, details) => {
     if (!contents) return false;
     const mediaType = (details as { mediaType?: string }).mediaType;
-    return decidePermission(permission, policy.isGaze(contents), mediaType ? [mediaType] : undefined);
+    return decidePermission(permission, policy.mayUseCamera(contents), mediaType ? [mediaType] : undefined);
   });
   session.setDevicePermissionHandler(() => false);
 }

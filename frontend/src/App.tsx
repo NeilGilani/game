@@ -6,6 +6,7 @@ import { LifelineProvider } from "./lifeline/LifelineProvider";
 import { AgentProvider } from "./state/agent";
 import { AnnouncerProvider } from "./state/announcer";
 import { ConnectionProvider } from "./state/connection";
+import { HostBridge } from "./state/hostBridge";
 import { InputProvider } from "./state/input";
 import { PreferencesProvider, usePreferences } from "./state/preferences";
 import { navigate, useRoute, type Route } from "./state/router";
@@ -143,6 +144,7 @@ function WithAnnouncer() {
   return (
     <AnnouncerProvider speak={prefs.speak_feedback}>
       <InputProvider>
+        <HostBridge />
         <LifelineProvider>
           <AgentProvider>
             <Shell />

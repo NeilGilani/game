@@ -21,3 +21,5 @@ export type {
   PermissionState,
   PermissionStatus,
 } from "../../../os/contracts/src/native";
+export type { GazeEvent } from "../../../os/contracts/src/gaze";
+export type { Target } from "../../../os/contracts/src/targets";

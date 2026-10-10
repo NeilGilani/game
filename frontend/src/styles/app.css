@@ -1911,6 +1911,10 @@ body:has(.ll-minibar) .main {
 .home-head p {
   margin: 0;
 }
+.home-head .home-howto {
+  flex-basis: 100%;
+  font-size: 1.15rem;
+}
 .home-usuals {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
