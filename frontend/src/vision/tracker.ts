@@ -279,8 +279,33 @@ export class VisionEngine {
       pointer,
     };
     this.last = frame;
+    this.emit(frame);
+  }
+
+  emit(frame: VisionFrame): void {
     for (const l of this.listeners) l(frame);
   }
+}
+
+/**
+ * Test hook: deliver a synthetic frame to listeners, exactly as the camera loop would.
+ * Only exposed on window when localStorage "agency.testHooks" is "1" (see main.tsx), so
+ * end-to-end tests can drive dwell selection through the real DOM wiring.
+ */
+export function injectFrame(engine: VisionEngine, partial: Partial<VisionFrame>): void {
+  const frame: VisionFrame = {
+    t: performance.now(),
+    face: true,
+    features: null,
+    blink: 0,
+    confidence: 1,
+    issues: [],
+    landmarks: null,
+    pointer: null,
+    ...partial,
+  };
+  engine.last = frame;
+  engine.emit(frame);
 }
 
 let shared: VisionEngine | null = null;

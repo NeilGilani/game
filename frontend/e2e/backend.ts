@@ -16,17 +16,21 @@ export class Coordinator {
   }
 
   async start(): Promise<void> {
-    this.proc = spawn(join(backendDir, ".venv", "bin", "uvicorn"), ["agency.main:app", "--host", "127.0.0.1", "--port", "8765"], {
-      cwd: backendDir,
-      env: {
-        ...process.env,
-        AGENCY_DB_PATH: this.dbPath,
-        AGENCY_STEP_DELAY_MS: "120",
-        AGENCY_REASONING: "deterministic",
-        AGENCY_FRONTEND_DIST: "/nonexistent",
+    this.proc = spawn(
+      join(backendDir, ".venv", "bin", "uvicorn"),
+      ["agency.main:app", "--host", "127.0.0.1", "--port", "8765"],
+      {
+        cwd: backendDir,
+        env: {
+          ...process.env,
+          AGENCY_DB_PATH: this.dbPath,
+          AGENCY_STEP_DELAY_MS: "120",
+          AGENCY_REASONING: "deterministic",
+          AGENCY_FRONTEND_DIST: "/nonexistent",
+        },
+        stdio: "ignore",
       },
-      stdio: "ignore",
-    });
+    );
     const deadline = Date.now() + 20_000;
     while (Date.now() < deadline) {
       try {

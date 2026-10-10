@@ -29,7 +29,10 @@ test.use({
 });
 
 test.describe("with a fake webcam", () => {
-  test.skip(!existsSync(video), "Fake webcam fixture missing: run `make e2e-fixtures` (needs network + Pillow).");
+  test.skip(
+    !existsSync(video),
+    "Fake webcam fixture missing: run `make e2e-fixtures` (needs network + Pillow).",
+  );
 
   test("finds the face and irises, then reports honest calibration quality", async ({ page, context }) => {
     await context.addInitScript(() => localStorage.removeItem("agency.onboarded"));

@@ -13,8 +13,11 @@ export function usePaged<T>(items: T[], perPage: number, from: "start" | "end" =
   const pages = Math.max(1, Math.ceil(items.length / perPage));
   const fallback = from === "end" ? pages - 1 : 0;
   const current = Math.min(chosen ?? fallback, pages - 1);
+  // Anchored at the end, the newest page is always full and older pages hold the remainder.
+  const start = from === "end" ? Math.max(0, items.length - (pages - current) * perPage) : current * perPage;
+  const end = from === "end" ? items.length - (pages - 1 - current) * perPage : start + perPage;
   return {
-    items: items.slice(current * perPage, current * perPage + perPage),
+    items: items.slice(start, end),
     page: current,
     pages,
     next: () => setChosen(Math.min(pages - 1, current + 1)),

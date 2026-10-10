@@ -250,7 +250,8 @@ export function InputLayer() {
         if (!e.repeat) apply(s.press(performance.now()));
       }
     };
-    const keySwitch = mode === "scan_key" || fallbackActive;
+    // Space/Enter always work as a switch while scanning, including as a backup to the blink switch.
+    const keySwitch = mode === "scan_key" || mode === "scan_blink" || fallbackActive;
     if (keySwitch) window.addEventListener("keydown", onKey, true);
     const offBlink =
       mode === "scan_blink" && !fallbackActive

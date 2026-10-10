@@ -14,7 +14,9 @@ test("camera permission denied leads to guidance and a working alternative", asy
   await page.getByRole("radio", { name: /Eye gaze/ }).click();
   await page.goto("/#/camera");
   await page.getByRole("button", { name: /Start camera/ }).click();
-  await expect(page.getByRole("heading", { name: /Camera permission was not given|No camera found/ })).toBeVisible({
+  await expect(
+    page.getByRole("heading", { name: /Camera permission was not given|No camera found/ }),
+  ).toBeVisible({
     timeout: 20_000,
   });
   await page.getByRole("button", { name: /Use key-switch scanning instead/ }).click();

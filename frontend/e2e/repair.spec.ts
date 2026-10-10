@@ -23,14 +23,19 @@ interface RepairRequest {
   slot_id: string;
 }
 
-test("wheelchair repair: plan, approve, recover from a taken slot, survive refresh, verify", async ({ page }) => {
+test("wheelchair repair: plan, approve, recover from a taken slot, survive refresh, verify", async ({
+  page,
+}) => {
   await page.goto("/#/");
   await expect(page.getByText("Coordinator:")).toBeVisible();
   await expect(page.getByRole("link", { name: "Demo mode: built-in plans" })).toBeVisible();
 
   // 1. Express the intention with a few large selections.
   await page.getByRole("button", { name: /Start a task/ }).click();
-  await page.getByRole("button", { name: /Get my wheelchair repaired/ }).last().click();
+  await page
+    .getByRole("button", { name: /Get my wheelchair repaired/ })
+    .last()
+    .click();
   await expect(page.getByRole("heading", { name: /What's wrong with the wheelchair/ })).toBeVisible();
   await page.getByRole("button", { name: /Won't charge/ }).click();
   await expect(page.getByText("I'll ask before")).toBeVisible();
@@ -38,7 +43,9 @@ test("wheelchair repair: plan, approve, recover from a taken slot, survive refre
 
   // 2. The agent plans and runs the preparatory tools, then stops for approval.
   await expect(page).toHaveURL(/#\/case\/case_/);
-  await expect(page.getByRole("heading", { name: /2 actions need your approval/ })).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByRole("heading", { name: /2 actions need your approval/ })).toBeVisible({
+    timeout: 30_000,
+  });
   for (const title of [
     "Collect device and repair details",
     "Check the repair provider's available times",
@@ -61,7 +68,10 @@ test("wheelchair repair: plan, approve, recover from a taken slot, survive refre
   // 3. Presenter arms the failure: the chosen slot will be taken by someone else.
   await page.goto("/#/status");
   await page.getByRole("button", { name: /Repair slot gets taken/ }).click();
-  await expect(page.getByRole("button", { name: /Repair slot gets taken/ })).toHaveAttribute("aria-pressed", "true");
+  await expect(page.getByRole("button", { name: /Repair slot gets taken/ })).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
 
   // 4. Approve both actions with a confirmation step.
   await page.goto(`/#/case/${caseId}/approve`);
@@ -85,7 +95,9 @@ test("wheelchair repair: plan, approve, recover from a taken slot, survive refre
 
   // 6. Refresh the browser mid-case: state comes back from the coordinator.
   await page.goto(`/#/case/${caseId}`);
-  await expect(page.getByRole("heading", { name: /One action needs your approval/ })).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByRole("heading", { name: /One action needs your approval/ })).toBeVisible({
+    timeout: 30_000,
+  });
   await page.reload();
   await expect(page.getByRole("heading", { name: /One action needs your approval/ })).toBeVisible();
   await expect(stepRow(page, "Book a different repair time")).toContainText("Verified");
@@ -99,7 +111,9 @@ test("wheelchair repair: plan, approve, recover from a taken slot, survive refre
 
   // 8. Verified outcome, with evidence from the services' own records.
   await page.goto(`/#/case/${caseId}`);
-  await expect(page.getByRole("heading", { name: "Everything I did has been checked." })).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByRole("heading", { name: "Everything I did has been checked." })).toBeVisible({
+    timeout: 30_000,
+  });
   await expect(page.getByText(/Repair booked for .* \(ref DRP-\d+\)/)).toBeVisible();
   await expect(page.getByText(/No decision has been made yet/)).toBeVisible();
   await expect(page.getByText(/No real company, office or person was contacted/)).toBeVisible();
@@ -121,9 +135,13 @@ test("wheelchair repair: plan, approve, recover from a taken slot, survive refre
 });
 
 test("approval can be changed, and a declined action blocks what depends on it", async ({ page }) => {
-  await page.goto("/#/new/create?goal=equipment_repair&issue=wheel&check_funding=false&notify_caregiver=false");
+  await page.goto(
+    "/#/new/create?goal=equipment_repair&issue=wheel&check_funding=false&notify_caregiver=false",
+  );
   await page.getByRole("button", { name: /Start this task/ }).click();
-  await expect(page.getByRole("heading", { name: /One action needs your approval/ })).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByRole("heading", { name: /One action needs your approval/ })).toBeVisible({
+    timeout: 30_000,
+  });
   await page.getByRole("button", { name: /Review and decide/ }).click();
   const original = await page.getByRole("heading", { level: 1 }).last().innerText();
   await page.getByRole("button", { name: /^Change$/ }).click();

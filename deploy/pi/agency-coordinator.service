@@ -1,0 +1,23 @@
+# Installed by deploy/pi/setup.sh (placeholders @REPO@ and @USER@ are filled in).
+[Unit]
+Description=AGENCY coordinator (workflow engine, demo services, SQLite)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=@USER@
+WorkingDirectory=@REPO@/backend
+EnvironmentFile=/etc/agency/agency.env
+ExecStart=@REPO@/backend/.venv/bin/python -m agency
+Restart=on-failure
+RestartSec=3
+# Hardening: the coordinator only needs its own data directory.
+NoNewPrivileges=true
+ProtectSystem=strict
+ReadWritePaths=@REPO@/backend/data
+ProtectHome=read-only
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

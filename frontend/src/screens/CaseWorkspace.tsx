@@ -55,7 +55,15 @@ function evidenceLine(step: Step): string | null {
   return parts.length ? parts.join(" · ") : null;
 }
 
-export function StepRow({ step, steps }: { step: Step; steps: Step[] }) {
+export function StepRow({
+  step,
+  steps,
+  onSkip,
+}: {
+  step: Step;
+  steps: Step[];
+  onSkip?: (step: Step) => void;
+}) {
   const replacement = step.replaced_by ? steps.find((s) => s.id === step.replaced_by) : null;
   const label = step.status === "verified" && step.read_only ? "Done" : step.status_label;
   const evidence = evidenceLine(step);
@@ -74,6 +82,13 @@ export function StepRow({ step, steps }: { step: Step; steps: Step[] }) {
         {step.optional && <span>Optional</span>}
       </span>
       {evidence && <span className="step-evidence">{evidence}</span>}
+      {onSkip && step.optional && ["pending", "waiting_input", "awaiting_approval"].includes(step.status) && (
+        <span className="step-meta">
+          <button className="btn btn-quiet" style={{ minHeight: 56 }} onClick={() => onSkip(step)} data-dwell>
+            <Icon name="skip" size={20} /> Skip this step
+          </button>
+        </span>
+      )}
       {step.error && ["failed", "blocked", "rejected"].includes(step.status) && (
         <span className="step-error">
           {step.error.message}
@@ -373,7 +388,19 @@ export function CaseWorkspace({ id }: { id: string }) {
           </div>
           <ol className="steps">
             {data.steps.map((s) => (
-              <StepRow key={s.id} step={s} steps={data.steps} />
+              <StepRow
+                key={s.id}
+                step={s}
+                steps={data.steps}
+                onSkip={async (step) => {
+                  try {
+                    c.set(await api.skip(id, step.id));
+                    announce(`Skipped: ${step.title}`);
+                  } catch (e) {
+                    announce(e instanceof Error ? e.message : "Couldn't skip that step.", true);
+                  }
+                }}
+              />
             ))}
           </ol>
         </section>

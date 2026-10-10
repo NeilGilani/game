@@ -12,7 +12,9 @@ test.beforeEach(async ({ context }) => {
 test("losing the coordinator shows a clear state, and the case survives a restart", async ({ page }) => {
   await page.goto("/#/new/create?goal=message_followup&contact_id=c_jordan&template=please_call");
   await page.getByRole("button", { name: /Start this task/ }).click();
-  await expect(page.getByRole("heading", { name: /One action needs your approval/ })).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByRole("heading", { name: /One action needs your approval/ })).toBeVisible({
+    timeout: 30_000,
+  });
   const caseUrl = page.url();
 
   await coordinator.stop();
@@ -27,7 +29,9 @@ test("losing the coordinator shows a clear state, and the case survives a restar
   await page.getByRole("button", { name: /^Approve$/ }).click();
   await page.getByRole("button", { name: /Yes, do it/ }).click();
   await page.goto(caseUrl);
-  await expect(page.getByRole("heading", { name: "Everything I did has been checked." })).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByRole("heading", { name: "Everything I did has been checked." })).toBeVisible({
+    timeout: 30_000,
+  });
 });
 
 test("Stop agent halts automation until resumed", async ({ page }) => {
@@ -40,12 +44,16 @@ test("Stop agent halts automation until resumed", async ({ page }) => {
   const outbox = await coordinator.api<{ messages: unknown[] }>("/api/demo-services/messaging/outbox");
   const before = outbox.messages.length;
   await page.getByRole("button", { name: /Resume agent/ }).click();
-  await expect(page.getByRole("heading", { name: /One action needs your approval/ })).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByRole("heading", { name: /One action needs your approval/ })).toBeVisible({
+    timeout: 30_000,
+  });
   const after = await coordinator.api<{ messages: unknown[] }>("/api/demo-services/messaging/outbox");
   expect(after.messages.length).toBe(before + 1); // only a draft was created after resuming
 });
 
-test("key-switch scanning selects without a mouse (keyboard switch, not computer vision)", async ({ page }) => {
+test("key-switch scanning selects without a mouse (keyboard switch, not computer vision)", async ({
+  page,
+}) => {
   await page.goto("/#/preferences");
   await page.getByRole("radio", { name: /Key switch/ }).click();
   await page.goto("/#/");
