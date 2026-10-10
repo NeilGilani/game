@@ -163,7 +163,7 @@ test("settings hub, talk and onboarding are reachable by big choices", async ({ 
 
 test("every Home tile opens its flow or screen", async ({ page }) => {
   const expected: [string, RegExp, string | RegExp][] = [
-    ["Talk", /#\/talk$/, "Talk isn't in this build yet"],
+    ["Talk", /#\/talk$/, "Say something"],
     ["Call someone", /#\/flow\/call$/, "Who do you want to call?"],
     ["Food", /#\/flow\/food$/, "What would you like to eat?"],
     ["Messages", /#\/flow\/messages$/, "Who is it for?"],
