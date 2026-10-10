@@ -46,6 +46,7 @@ import {
   type TargetSnapshot,
   type WindowRole,
 } from "@agency/contracts";
+import { BridgeHost } from "./bridge";
 import { CoordinatorClient } from "./coordinator";
 import { LifelineHost, type HeartbeatBody } from "./lifeline";
 import { createLogger, setLogDir } from "./log";
@@ -105,6 +106,7 @@ export class AgencyApp {
   native: NativeHost | null = null;
   agent: AgentHost | null = null;
   sidecar: Sidecar | null = null;
+  bridge: BridgeHost | null = null;
   readonly supervisors: Supervisor[] = [];
   lifeline: LifelineHost;
   permissions: Permissions;
@@ -201,6 +203,7 @@ export class AgencyApp {
     this.createShell();
     this.startGaze();
     this.startNative();
+    this.startBridge();
     this.registerHotkeys();
     // The agent needs the coordinator's address (memory API); start it once that is known, either way.
     void coordinatorReady.finally(() => this.startAgent());
@@ -217,7 +220,7 @@ export class AgencyApp {
     if (this.axTimer) clearInterval(this.axTimer);
     if (this.statusTimer) clearInterval(this.statusTimer);
     if (this.regionTimer) clearInterval(this.regionTimer);
-    await Promise.allSettled(this.supervisors.map((s) => s.stop()));
+    await Promise.allSettled([...this.supervisors.map((s) => s.stop()), this.bridge?.stop()]);
   }
 
   private setState(name: ProcessName, state: ProcessState): void {
@@ -294,6 +297,25 @@ export class AgencyApp {
     this.axTimer = setInterval(() => void this.refreshAxTargets(), 1_500);
   }
 
+  private startBridge(): void {
+    if (process.env.AGENCY_BRIDGE === "0") return;
+    const blog = createLogger("bridge");
+    const bridge = new BridgeHost({
+      dir: join(this.opts.userData, "bridge"),
+      hostScript: this.opts.paths.bridgeHost,
+      runtime: process.execPath,
+      install: !this.opts.test || process.env.AGENCY_BRIDGE_INSTALL === "1",
+      log: blog,
+      onTargets: (snap) => {
+        this.merger.update("web", snap);
+        this.scheduleTargets();
+      },
+      onStopped: () => void this.stopAll("chrome"),
+    });
+    this.bridge = bridge;
+    bridge.start().catch((err: Error) => blog.error(`bridge did not start: ${err.message}`));
+  }
+
   private startAgent(): void {
     const spec = this.opts.paths.agent;
     if (!spec) {
@@ -355,7 +377,10 @@ export class AgencyApp {
         this.setState("gaze", "restarting");
         log.error("gaze engine crashed; using the mouse until it is back");
         this.useMouseGaze();
-        setTimeout(() => !win.isDestroyed() && void win.loadURL(`${SCHEME}://gaze/${this.opts.paths.gazeDir.entry}`), 1_000);
+        setTimeout(
+          () => !win.isDestroyed() && void win.loadURL(`${SCHEME}://gaze/${this.opts.paths.gazeDir.entry}`),
+          1_000,
+        );
       });
       // Until the engine sends its first event, the mouse keeps working.
       this.useMouseGaze();
@@ -551,7 +576,10 @@ export class AgencyApp {
     this.record("stop.request", { origin });
     const result = await stopAll(
       {
-        agent: () => this.agent?.send({ type: "stop.all" }) ?? false,
+        agent: () => {
+          this.bridge?.stopAll();
+          return this.agent?.send({ type: "stop.all" }) ?? false;
+        },
         native: () =>
           this.native?.rpc.connected ? this.native.call("input.stopAll", {}, 1_000).then((r) => r.ok) : null,
         notify: (r) => {
@@ -656,7 +684,8 @@ export class AgencyApp {
       }
       return this.callNative(method as NativeMethod, params);
     }
-    return Promise.reject(new Error("The AGENCY Bridge is not connected."));
+    if (!this.bridge) return Promise.reject(new Error("The AGENCY Bridge is not connected."));
+    return this.bridge.agentCall(method, params);
   }
 
   private callNative(method: NativeMethod, params: unknown): Promise<unknown> {

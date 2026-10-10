@@ -24,6 +24,8 @@ export interface Paths {
   agent: { entry: string; fake: boolean } | null;
   native: { command: string; args: string[]; fake: boolean } | null;
   sidecar: { command: string; args: string[]; cwd: string } | null;
+  /** The AGENCY Bridge's native-messaging host script (os/browser-bridge/dist/host.cjs). */
+  bridgeHost: string | null;
 }
 
 const env = (name: string): string | undefined => process.env[name] || undefined;
@@ -108,5 +110,6 @@ export function resolvePaths(opts: {
     agent,
     native,
     sidecar,
+    bridgeHost: firstExisting(packaged ? res("bridge/host.cjs") : repo("os/browser-bridge/dist/host.cjs")),
   };
 }

@@ -26,6 +26,7 @@ const optional = [
   { from: join(repo, "os", "overlay", "dist"), to: "overlay", what: "overlay (os/overlay)" },
   { from: join(repo, "os", "gaze", "dist"), to: "gaze", what: "gaze engine (os/gaze)" },
   { from: join(repo, "os", "agent", "dist"), to: "agent", what: "agent (os/agent)" },
+  { from: join(repo, "os", "browser-bridge", "dist"), to: "bridge", what: "AGENCY Bridge host (os/browser-bridge)" },
   {
     from: join(repo, "os", "sidecar", "dist", "agency-coordinator"),
     to: "sidecar/agency-coordinator",
