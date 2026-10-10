@@ -160,3 +160,26 @@ test("settings hub, talk and onboarding are reachable by big choices", async ({ 
   await expect(page.getByRole("heading", { name: "What AGENCY needs to work" })).toBeVisible();
   await expect(page.getByText(/Browser: not needed/).first()).toBeVisible();
 });
+
+test("every Home tile opens its flow or screen", async ({ page }) => {
+  const expected: [string, RegExp, string | RegExp][] = [
+    ["Talk", /#\/talk$/, "Talk isn't in this build yet"],
+    ["Call someone", /#\/flow\/call$/, "Who do you want to call?"],
+    ["Food", /#\/flow\/food$/, "What would you like to eat?"],
+    ["Messages", /#\/flow\/messages$/, "Who is it for?"],
+    ["Watch & listen", /#\/flow\/watch$/, "What would you like?"],
+    ["Browse", /#\/flow\/browse$/, "Where to?"],
+    ["Shopping", /#\/flow\/shopping$/, "What do you need?"],
+    ["Papers", /#\/flow\/papers$/, "What do you need to do?"],
+    ["Apps", /#\/flow\/apps$/, "Which app?"],
+    ["Errands", /#\/errands$/, "Repairs, rides and appointments"],
+    ["Lifeline", /#\/lifeline$/, /Call for help/],
+    ["Settings", /#\/settings$/, "What would you like to change?"],
+  ];
+  for (const [tile, url, heading] of expected) {
+    await page.goto("/#/");
+    await page.getByRole("button", { name: new RegExp(`^${tile}:`) }).click();
+    await expect(page).toHaveURL(url);
+    await expect(page.getByRole("heading", { level: 1, name: heading })).toBeVisible();
+  }
+});
