@@ -54,7 +54,7 @@ Everything below is outside Instance 6's area, so it is requested here rather th
    storing plaintext. Please decide whether to add it (it ships wheels for macOS and the Raspberry Pi), or
    whether you prefer whole-database encryption (SQLCipher) instead.
 
-7. **CI**: there is no `.github/workflows/` yet. When there is, please run:
+7. **CI** (`ci.yml`): please add:
    * on a **macos** runner: `pytest tests/test_memory_privacy.py` (the real-keychain test creates and
      deletes a throwaway keychain file; it is skipped on Linux),
    * `npx playwright test -c e2e/memory/playwright.config.ts` from `frontend/` (memory end-to-end tests,
