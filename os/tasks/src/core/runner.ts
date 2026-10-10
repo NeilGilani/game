@@ -136,8 +136,8 @@ export class PackRun {
           this.emit({ type: "task.question", taskId: this.taskId, question });
         });
       },
-      approve: (draft) => this.requestApproval(draft, dryRun),
-      exec: (tool, args, fn, grant) => this.exec(tool, args, fn, grant, dryRun),
+      approve: (draft) => this.requestApproval(draft, dryRun || draft.simulated === true),
+      exec: (tool, args, fn, grant) => this.exec(tool, args, fn, grant),
       note: (text) => {
         this.emit({ type: "task.step", taskId: this.taskId, stepId: "note", status: "done", summary: text });
       },
@@ -172,7 +172,6 @@ export class PackRun {
     args: unknown,
     fn: () => Promise<T>,
     grant: ApprovalGrant | undefined,
-    simulated: boolean,
   ): Promise<T> {
     this.throwIfStopped();
     if (this.paused) await this.paused.promise;
@@ -184,8 +183,8 @@ export class PackRun {
       throw new ApprovalViolation(`Tool ${tool} isn't declared by pack ${this.pack.id}`);
     }
     if (spec.risk === "consequential") {
-      const expected = actionFingerprint(spec.kind ?? "", tool, args, simulated);
       const recorded = grant ? this.granted.get(grant.approvalId) : undefined;
+      const expected = recorded ? actionFingerprint(spec.kind ?? "", tool, args, recorded.simulated) : "";
       const problem = !grant
         ? "no approval"
         : !recorded || recorded.fingerprint !== grant.fingerprint
@@ -301,6 +300,7 @@ export class PackRun {
         approvalId: pending.request.id,
         fingerprint: pending.request.fingerprint,
         kind: pending.request.kind,
+        simulated: pending.request.simulated,
       };
       this.granted.set(grant.approvalId, grant);
       pending.resolve({ approved: true, grant });

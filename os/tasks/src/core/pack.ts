@@ -61,6 +61,12 @@ export interface ApprovalDraft {
   preview?: ApprovalRequest["preview"];
   /** The exact action the approval authorises. The fingerprint is computed from this. */
   action: { tool: string; args: unknown };
+  /**
+   * Whether the effect is simulated. Defaults to the task's dryRun. A pack sets it to true
+   * when only a simulated backend is configured, so a "real" task never shows a real-looking
+   * approval for a pretend effect.
+   */
+  simulated?: boolean;
 }
 
 /** Proof the person approved one exact action. Single use. */
@@ -68,6 +74,7 @@ export interface ApprovalGrant {
   approvalId: string;
   fingerprint: string;
   kind: ConsequentialKind;
+  simulated: boolean;
 }
 
 export type ApprovalAnswer =
