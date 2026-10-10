@@ -1,124 +1,8 @@
+@import "./tokens.css";
+
 /* AGENCY design system ---------------------------------------------------------------
    Calm, high-contrast, large targets that never move while you look at them.
    Status is always icon + text, never colour alone. */
-
-:root {
-  --text-scale: 1;
-  --font: "Atkinson Hyperlegible", system-ui, -apple-system, "Segoe UI", sans-serif;
-  --radius: 16px;
-  --radius-lg: 22px;
-  --gap: 20px;
-  --target: 76px;
-  --topbar: 116px;
-
-  --bg: #f3f1eb;
-  --surface: #ffffff;
-  --surface-2: #e9e6dd;
-  --ink: #111a26;
-  --ink-2: #3c4655;
-  --line: #cfc9bc;
-  --line-strong: #8f887a;
-  --accent: #0b6b5c;
-  --accent-hover: #095a4d;
-  --accent-ink: #ffffff;
-  --accent-soft: #d9eee8;
-  --focus: #f2b400;
-  --ok: #1b6a36;
-  --ok-soft: #dcf0e2;
-  --warn: #8a5200;
-  --warn-soft: #fff0cc;
-  --danger: #a3241a;
-  --danger-soft: #fbe2de;
-  --info: #1d4f99;
-  --info-soft: #e0eafa;
-  --sim: #5b3f99;
-  --sim-soft: #ece6f7;
-  --shadow: 0 1px 2px rgb(17 26 38 / 6%), 0 8px 24px rgb(17 26 38 / 6%);
-  color-scheme: light;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]):not([data-theme="contrast"]) {
-    --bg: #0b111a;
-    --surface: #131b27;
-    --surface-2: #1b2533;
-    --ink: #eef2f7;
-    --ink-2: #a9b4c3;
-    --line: #2b3749;
-    --line-strong: #4b5a70;
-    --accent: #4fc9b0;
-    --accent-hover: #6fd8c2;
-    --accent-ink: #052823;
-    --accent-soft: #10362f;
-    --focus: #ffd54a;
-    --ok: #7bd69a;
-    --ok-soft: #11301c;
-    --warn: #f6c56a;
-    --warn-soft: #36280d;
-    --danger: #ff8f84;
-    --danger-soft: #3b1714;
-    --info: #8db9ff;
-    --info-soft: #13294b;
-    --sim: #c3a9ff;
-    --sim-soft: #271d40;
-    --shadow: 0 1px 2px rgb(0 0 0 / 30%), 0 8px 24px rgb(0 0 0 / 25%);
-    color-scheme: dark;
-  }
-}
-
-:root[data-theme="dark"] {
-  --bg: #0b111a;
-  --surface: #131b27;
-  --surface-2: #1b2533;
-  --ink: #eef2f7;
-  --ink-2: #a9b4c3;
-  --line: #2b3749;
-  --line-strong: #4b5a70;
-  --accent: #4fc9b0;
-  --accent-hover: #6fd8c2;
-  --accent-ink: #052823;
-  --accent-soft: #10362f;
-  --focus: #ffd54a;
-  --ok: #7bd69a;
-  --ok-soft: #11301c;
-  --warn: #f6c56a;
-  --warn-soft: #36280d;
-  --danger: #ff8f84;
-  --danger-soft: #3b1714;
-  --info: #8db9ff;
-  --info-soft: #13294b;
-  --sim: #c3a9ff;
-  --sim-soft: #271d40;
-  --shadow: 0 1px 2px rgb(0 0 0 / 30%), 0 8px 24px rgb(0 0 0 / 25%);
-  color-scheme: dark;
-}
-
-:root[data-theme="contrast"] {
-  --bg: #000000;
-  --surface: #000000;
-  --surface-2: #141414;
-  --ink: #ffffff;
-  --ink-2: #ffffff;
-  --line: #ffffff;
-  --line-strong: #ffffff;
-  --accent: #ffe600;
-  --accent-hover: #fff27a;
-  --accent-ink: #000000;
-  --accent-soft: #2b2700;
-  --focus: #00e5ff;
-  --ok: #7dff9e;
-  --ok-soft: #002b0e;
-  --warn: #ffd166;
-  --warn-soft: #2e2200;
-  --danger: #ff7b7b;
-  --danger-soft: #330000;
-  --info: #9cc8ff;
-  --info-soft: #001a33;
-  --sim: #e0ccff;
-  --sim-soft: #1c0f33;
-  --shadow: none;
-  color-scheme: dark;
-}
 
 *,
 *::before,
@@ -127,7 +11,7 @@
 }
 
 html {
-  font-size: calc(18px * var(--text-scale));
+  font-size: calc(20px * var(--text-scale));
   -webkit-text-size-adjust: 100%;
 }
 
@@ -2574,4 +2458,619 @@ body:has(.ll-minibar) .main {
   .home-head h1 {
     font-size: 1.7rem;
   }
+}
+
+/* ======================================================================================
+   macOS-quality materials (tokens in tokens.css, rationale in docs/os/DESIGN.md).
+   Glass everywhere except Lifeline, which stays solid red and white.
+   ====================================================================================== */
+
+html {
+  font-size: calc(20px * var(--text-scale));
+}
+body {
+  background:
+    var(--wallpaper) fixed,
+    var(--bg);
+  font-size: var(--type-body);
+  letter-spacing: -0.005em;
+}
+h1,
+h2,
+h3 {
+  font-family: var(--font-display);
+  letter-spacing: -0.015em;
+}
+h1 {
+  font-size: var(--type-large-title);
+  font-weight: 700;
+}
+h2 {
+  font-size: var(--type-headline);
+  font-weight: 650;
+}
+
+/* Glass panels */
+.panel,
+.choice,
+.tile,
+.app-tile,
+.task-plan,
+.task-now,
+.widget,
+.perm,
+.sheet {
+  background: var(--glass);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  border: var(--hairline);
+  box-shadow: var(--shadow);
+}
+.btn {
+  border: 1px solid var(--line-strong);
+  background: var(--glass-strong);
+  border-radius: 16px;
+  font-weight: 650;
+}
+.btn-primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-ink);
+}
+.btn-primary:hover {
+  background: var(--accent-hover);
+}
+.btn-solid-danger {
+  background: var(--danger);
+  border-color: var(--danger);
+  color: #fff;
+}
+.btn-xl {
+  border-radius: 20px;
+}
+.chip {
+  background: var(--glass-strong);
+  border: var(--hairline);
+  min-height: 34px;
+  padding: 4px 12px;
+  font-size: 0.8rem;
+}
+.badge {
+  border-radius: 999px;
+}
+
+/* Shell: menu bar on top, content, dock at the bottom */
+.shell {
+  grid-template-columns: 232px minmax(0, 1fr);
+  grid-template-rows: var(--menubar) minmax(0, 1fr) auto;
+  grid-template-areas: "menubar menubar" "nav main" "dock dock";
+}
+.shell-os {
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-areas: "menubar" "main" "dock";
+}
+.nav {
+  background: var(--glass);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  border-right: var(--hairline);
+}
+.menubar {
+  grid-area: menubar;
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 0 20px;
+  background: var(--glass);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  border-bottom: var(--hairline);
+  font-size: var(--type-footnote);
+  min-width: 0;
+}
+.menubar-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+}
+.menubar-brand .brand-mark {
+  width: 26px;
+  height: 26px;
+}
+.menubar-time {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.menubar .status-strip {
+  justify-content: flex-end;
+}
+.topbar.dock {
+  grid-area: dock;
+  justify-self: center;
+  height: auto;
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  margin: 4px auto 14px;
+  padding: 10px 14px;
+  border-radius: 32px;
+  background: var(--glass-strong);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  border: var(--hairline);
+  box-shadow: var(--shadow-lift);
+}
+.dock-btn {
+  flex-direction: column;
+  gap: 4px;
+  min-width: 116px;
+  min-height: 96px;
+  padding: 8px 14px;
+  border-radius: 22px;
+  border: none;
+  background: transparent;
+  font-size: var(--type-footnote);
+  font-weight: 650;
+  white-space: nowrap;
+}
+.dock-btn:hover {
+  background: var(--surface-2);
+}
+.dock-btn.help-btn,
+.dock-btn.help-btn:hover {
+  background: var(--danger);
+  color: #fff;
+  min-width: 132px;
+  filter: none;
+}
+.dock-btn.pause-agent.btn-danger {
+  color: var(--danger);
+}
+.dock-btn.pause-agent[data-paused="true"] {
+  background: var(--warn);
+  color: #fff;
+}
+:root[data-theme="contrast"] .dock-btn.help-btn {
+  color: #000;
+}
+.shell-os .main {
+  padding: 18px 32px 6px;
+}
+
+/* Home: a widget and a Launchpad grid */
+.home {
+  grid-template-columns: minmax(300px, 360px) minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr);
+  gap: 40px;
+  align-items: center;
+}
+.home-widget {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 22px;
+  border-radius: 26px;
+  align-self: center;
+}
+.home-widget h1 {
+  margin: 0;
+  font-size: var(--type-title);
+}
+.widget-sub {
+  margin: 0;
+  color: var(--ink-2);
+  font-size: var(--type-footnote);
+  font-weight: 650;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.home-usuals {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  min-height: 0;
+}
+.usual {
+  min-height: 96px;
+  padding: 12px 16px;
+  border-radius: 18px;
+  border: none;
+  background: var(--accent-soft);
+}
+.usual-continue {
+  background: var(--warn-soft);
+}
+.usual-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 30%;
+  background: linear-gradient(160deg, #3d8bfd, #0050b8);
+  color: #fff;
+}
+.usual-continue .usual-icon {
+  background: linear-gradient(160deg, #ff9f43, #c25400);
+  color: #fff;
+}
+.usual-title {
+  font-size: 1rem;
+  font-weight: 650;
+}
+.usual-why {
+  font-size: var(--type-footnote);
+}
+.home-tiles {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-auto-rows: auto;
+  gap: 24px;
+  align-content: center;
+  justify-items: center;
+}
+.home-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  min-height: 0;
+  width: 100%;
+  padding: 8px 4px 6px;
+  border: none;
+  border-radius: 28px;
+  background: transparent;
+  box-shadow: none;
+  text-align: center;
+}
+.home-tile:hover {
+  background: color-mix(in srgb, var(--glass) 60%, transparent);
+}
+.home-tile-icon {
+  width: clamp(112px, 9.2vw, 136px);
+  height: clamp(112px, 9.2vw, 136px);
+  border-radius: 30%;
+  display: grid;
+  place-items: center;
+  color: #fff;
+  background: linear-gradient(160deg, var(--g1, #4b8dfb), var(--g2, #1d4fd8));
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 35%),
+    0 2px 4px rgb(0 0 0 / 10%),
+    0 10px 24px rgb(0 0 0 / 14%);
+}
+.home-tile-label {
+  font-size: 1rem;
+  font-weight: 650;
+  color: var(--ink);
+}
+[data-tile="talk"] {
+  --g1: #34c3a8;
+  --g2: #0b7a66;
+}
+[data-tile="call"] {
+  --g1: #4cd964;
+  --g2: #178a35;
+}
+[data-tile="food"] {
+  --g1: #ffa64d;
+  --g2: #c4520a;
+}
+[data-tile="messages"] {
+  --g1: #5ac8fa;
+  --g2: #0a6fb8;
+}
+[data-tile="watch"] {
+  --g1: #ff6b8b;
+  --g2: #b3124a;
+}
+[data-tile="browse"] {
+  --g1: #6e9bff;
+  --g2: #2541c4;
+}
+[data-tile="shopping"] {
+  --g1: #e08cff;
+  --g2: #8a2fc4;
+}
+[data-tile="papers"] {
+  --g1: #8e9bb5;
+  --g2: #46516b;
+}
+[data-tile="apps"] {
+  --g1: #7a7dff;
+  --g2: #3d34c4;
+}
+[data-tile="errands"] {
+  --g1: #d9a441;
+  --g2: #8a5a00;
+}
+[data-tile="settings"] {
+  --g1: #9a9aa3;
+  --g2: #55555c;
+}
+/* Lifeline: solid red and white, never a gradient or glass. */
+.home-tile[data-tone="lifeline"] .home-tile-icon {
+  background: #c4001a;
+  box-shadow:
+    0 2px 4px rgb(0 0 0 / 12%),
+    0 10px 24px rgb(196 0 26 / 25%);
+}
+.home-tile[data-tone="lifeline"] {
+  border: none;
+}
+:root[data-theme="contrast"] .home-tile-icon {
+  background: #000;
+  border: 3px solid #fff;
+  box-shadow: none;
+}
+:root[data-theme="contrast"] .home-tile[data-tone="lifeline"] .home-tile-icon {
+  background: #ff7b7b;
+  color: #000;
+}
+
+/* Flows */
+.flow-head h1 {
+  font-size: var(--type-large-title);
+}
+.choice {
+  border-radius: 24px;
+}
+.choice-pic {
+  width: 72px;
+  height: 72px;
+  border-radius: 30%;
+  background: linear-gradient(160deg, #3d8bfd, #0050b8);
+  color: #fff;
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 30%),
+    0 6px 14px rgb(0 80 184 / 22%);
+}
+.choice-pic .ico {
+  width: 40px;
+  height: 40px;
+}
+.choice-usual {
+  background: color-mix(in srgb, var(--accent-soft) 85%, transparent);
+}
+.choice-usual .choice-pic {
+  background: linear-gradient(160deg, #ff9f43, #c25400);
+}
+.choice-danger .choice-pic {
+  background: linear-gradient(160deg, #ff6b6b, #b0001a);
+  color: #fff;
+}
+.choice-label {
+  font-size: 1.2rem;
+  font-weight: 650;
+}
+:root[data-theme="contrast"] .choice-pic {
+  background: #000;
+  border: 2px solid #fff;
+  box-shadow: none;
+}
+.app-icon-letter {
+  border-radius: 30%;
+  background: linear-gradient(160deg, #6e9bff, #2541c4);
+  color: #fff;
+}
+.task-plan,
+.task-now {
+  border-radius: 26px;
+}
+
+/* Lifeline: solid, high contrast, no glass, ever. */
+[data-zone="lifeline"] .panel,
+[data-zone="lifeline"] .tile,
+[data-zone="lifeline"] .btn,
+.ll-overlay,
+.ll-overlay * {
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+}
+[data-zone="lifeline"] .panel,
+[data-zone="lifeline"] .tile {
+  background: var(--surface);
+  border: 2px solid var(--line-strong);
+}
+[data-zone="lifeline"] .btn:not(.btn-primary):not(.btn-solid-danger) {
+  background: var(--surface);
+}
+
+/* Dwell feedback: a smooth ring that fills like an activity ring. */
+[data-dwell-active] {
+  outline: 4px solid var(--accent);
+  outline-offset: 4px;
+}
+[data-dwell-active]::after {
+  content: "";
+  position: absolute;
+  left: auto;
+  bottom: auto;
+  top: 8px;
+  right: 8px;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: conic-gradient(var(--focus) calc(var(--dwell, 0) * 360deg), rgb(128 128 128 / 28%) 0);
+  -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 8px), #000 calc(100% - 7px));
+  mask: radial-gradient(farthest-side, transparent calc(100% - 8px), #000 calc(100% - 7px));
+  pointer-events: none;
+}
+
+/* Motion: screens zoom open like Launchpad; selection "launches". Only on change, never under a steady gaze. */
+@keyframes os-zoom-in {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes os-launch {
+  0% {
+    transform: scale(1);
+  }
+  40% {
+    transform: scale(1.06);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+.main > .home,
+.main > .flow,
+.main > .task,
+.main > .page,
+.flow-options {
+  animation: os-zoom-in var(--dur) var(--spring) both;
+}
+.flow-options {
+  animation-duration: var(--dur-fast);
+}
+[data-selected-flash] {
+  animation: os-launch var(--dur-slow) var(--spring);
+}
+.btn,
+.choice,
+.home-tile,
+.dock-btn {
+  transition:
+    background-color var(--dur-fast) var(--ease-out),
+    box-shadow var(--dur-fast) var(--ease-out);
+}
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+:root[data-reduced-motion] .main > *,
+:root[data-reduced-motion] .flow-options {
+  animation: none !important;
+}
+
+@media (max-width: 1366px) {
+  .home {
+    grid-template-columns: minmax(280px, 320px) minmax(0, 1fr);
+    gap: 28px;
+  }
+  .dock-btn {
+    min-width: 104px;
+  }
+}
+
+/* Round 2 fixes */
+.home-tile-label,
+.home-tile-icon {
+  align-self: center;
+}
+.home-tile[data-tone="lifeline"] .home-tile-icon {
+  color: #fff;
+}
+/* Help and Lifeline red is the same solid, high-contrast red in light and dark (7:1 with white). */
+.dock-btn.help-btn,
+.dock-btn.help-btn:hover {
+  background: #c4001a;
+  color: #fff;
+}
+:root[data-theme="contrast"] .dock-btn.help-btn {
+  background: #ff7b7b;
+  color: #000;
+}
+
+.tile[aria-checked="true"] {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+.tile[aria-checked="true"] .tile-check {
+  display: grid;
+}
+.usual {
+  min-height: 120px;
+}
+.task-head h1 {
+  font-size: var(--type-title);
+}
+/* Short screens (800 px tall): tighter spacing, same target sizes. */
+@media (max-height: 860px) {
+  .shell-os .main {
+    padding-top: 10px;
+  }
+  .home-widget {
+    padding: 16px 18px;
+    gap: 10px;
+  }
+  .task {
+    gap: 14px;
+  }
+  .task-plan,
+  .task-now {
+    padding: 12px 18px;
+  }
+  .task-now h2 {
+    margin-bottom: 6px;
+  }
+  .approval {
+    gap: 8px;
+  }
+  .approval .task-big {
+    font-size: 1.1rem;
+  }
+  .approval-details {
+    gap: 4px;
+  }
+  .approval-details div {
+    padding: 3px 12px;
+  }
+}
+@media (max-height: 860px) {
+  .flow {
+    gap: 24px;
+  }
+  .flow-options[data-count="4"],
+  .flow-options[data-count="5"],
+  .flow-options[data-count="6"] {
+    grid-auto-rows: minmax(104px, 1fr);
+  }
+  .choice {
+    padding: 10px 16px;
+    gap: 4px;
+  }
+  .choice-pic {
+    width: 60px;
+    height: 60px;
+  }
+}
+/* Lifeline screens: a plain, solid background instead of the wallpaper. */
+.main[data-zone="lifeline"] {
+  background: var(--bg);
+}
+:root:not([data-theme="dark"]):not([data-theme="contrast"]) .main[data-zone="lifeline"] {
+  background: #f2f2f7;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]):not([data-theme="contrast"]) .main[data-zone="lifeline"] {
+    background: #000;
+  }
+}
+/* The emergency screen is the same solid red and white in light and dark. */
+:root:not([data-theme="contrast"]) .ll-overlay {
+  --ll: #c4001a;
+  --glass: #ffffff;
+  --glass-strong: #ffffff;
+  --hairline: 2px solid #8e8e93;
+  --danger: #c4001a;
+  --danger-soft: #fde6e8;
+  --surface: #ffffff;
+  --surface-2: #f2f2f7;
+  --ink: #1d1d1f;
+  --ink-2: #3a3a3c;
+  --line: #c7c7cc;
+  --line-strong: #8e8e93;
+  --accent: #0064d2;
+  --accent-ink: #ffffff;
+  color-scheme: light;
 }

@@ -69,7 +69,7 @@ before the watchdog alerts, check-ins off.
 | How | Works when | Notes |
 |---|---|---|
 | **Three long blinks** (each about a second, within 10 s) | The camera is on, in any input mode, even with eye control paused | Ordinary blinks are ignored; eyes closed for a long time (resting) and losing the face reset the pattern |
-| **Help button** | Always | First in the top bar on every screen, so it's the first choice when scanning; selectable while eye control is paused |
+| **Help button** | Always | First in the dock at the bottom of every screen (solid red), so it's the first choice when scanning; selectable while eye control is paused |
 | **A helper's click** | Always | The same Help button with a mouse, keyboard or touch |
 | **Watchdog** | Watch over me is on | The coordinator stops receiving heartbeats from the person's screen for 30 s |
 | **Missed check-in** | Watch over me is on and check-ins are scheduled | No answer within 90 s |

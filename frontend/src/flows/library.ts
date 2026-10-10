@@ -6,26 +6,26 @@ import type { FlowDef, FlowOption, Selections } from "./types";
 
 // ---- Food -------------------------------------------------------------------------------------------------------
 
-const MENUS: Record<string, { label: string; price: string; glyph: string }[]> = {
+const MENUS: Record<string, { label: string; price: string; icon: string }[]> = {
   "Thai Basil": [
-    { label: "Pad thai", price: "$24.80", glyph: "🍜" },
-    { label: "Green curry", price: "$22.50", glyph: "🍛" },
-    { label: "Tom yum soup", price: "$16.00", glyph: "🥣" },
+    { label: "Pad thai", price: "$24.80", icon: "food" },
+    { label: "Green curry", price: "$22.50", icon: "food" },
+    { label: "Tom yum soup", price: "$16.00", icon: "food" },
   ],
   "Slice House": [
-    { label: "Margherita pizza", price: "$19.00", glyph: "🍕" },
-    { label: "Pepperoni pizza", price: "$21.00", glyph: "🍕" },
-    { label: "Garden salad", price: "$11.50", glyph: "🥗" },
+    { label: "Margherita pizza", price: "$19.00", icon: "food" },
+    { label: "Pepperoni pizza", price: "$21.00", icon: "food" },
+    { label: "Garden salad", price: "$11.50", icon: "food" },
   ],
   Sakura: [
-    { label: "Salmon rolls", price: "$18.40", glyph: "🍣" },
-    { label: "Chicken teriyaki", price: "$20.00", glyph: "🍱" },
-    { label: "Miso soup", price: "$6.50", glyph: "🥣" },
+    { label: "Salmon rolls", price: "$18.40", icon: "food" },
+    { label: "Chicken teriyaki", price: "$20.00", icon: "food" },
+    { label: "Miso soup", price: "$6.50", icon: "food" },
   ],
   "Green Bowl": [
-    { label: "Soft lentil soup", price: "$12.00", glyph: "🥣" },
-    { label: "Smoothie bowl", price: "$13.50", glyph: "🥤" },
-    { label: "Mashed potato bowl", price: "$14.00", glyph: "🥔" },
+    { label: "Soft lentil soup", price: "$12.00", icon: "food" },
+    { label: "Smoothie bowl", price: "$13.50", icon: "food" },
+    { label: "Mashed potato bowl", price: "$14.00", icon: "food" },
   ],
 };
 
@@ -45,7 +45,7 @@ const food: FlowDef = {
           id: "thai",
           label: "Thai",
           sub: "Thai Basil",
-          glyph: "🍜",
+          icon: "food",
           set: { restaurant: "Thai Basil" },
           next: "dish",
         },
@@ -53,7 +53,7 @@ const food: FlowDef = {
           id: "pizza",
           label: "Pizza",
           sub: "Slice House",
-          glyph: "🍕",
+          icon: "food",
           set: { restaurant: "Slice House" },
           next: "dish",
         },
@@ -61,7 +61,7 @@ const food: FlowDef = {
           id: "sushi",
           label: "Japanese",
           sub: "Sakura",
-          glyph: "🍣",
+          icon: "food",
           set: { restaurant: "Sakura" },
           next: "dish",
         },
@@ -69,7 +69,7 @@ const food: FlowDef = {
           id: "soft",
           label: "Soft foods",
           sub: "Green Bowl",
-          glyph: "🥣",
+          icon: "food",
           set: { restaurant: "Green Bowl" },
           next: "dish",
         },
@@ -83,7 +83,7 @@ const food: FlowDef = {
           id: `d${i}`,
           label: d.label,
           sub: d.price,
-          glyph: d.glyph,
+          icon: d.icon,
           set: { dish: d.label, price: d.price },
           next: "when",
         })),
@@ -124,14 +124,14 @@ function foodEnd() {
 // ---- Call someone -----------------------------------------------------------------------------------------------
 
 const PEOPLE: FlowOption[] = [
-  { id: "jordan", label: "Jordan", sub: "Caregiver", glyph: "🧑", set: { person: "Jordan" }, next: "why" },
-  { id: "morgan", label: "Morgan", sub: "Neighbour", glyph: "🧓", set: { person: "Morgan" }, next: "why" },
-  { id: "mom", label: "Mom", sub: "Family", glyph: "👩", set: { person: "Mom" }, next: "why" },
+  { id: "jordan", label: "Jordan", sub: "Caregiver", icon: "name", set: { person: "Jordan" }, next: "why" },
+  { id: "morgan", label: "Morgan", sub: "Neighbour", icon: "name", set: { person: "Morgan" }, next: "why" },
+  { id: "mom", label: "Mom", sub: "Family", icon: "name", set: { person: "Mom" }, next: "why" },
   {
     id: "clinic",
     label: "Dr. Patel's office",
     sub: "Clinic",
-    glyph: "🩺",
+    icon: "lifeline",
     set: { person: "Dr. Patel's office" },
     next: "why",
   },
@@ -200,10 +200,10 @@ function callEnd() {
 // ---- Papers -----------------------------------------------------------------------------------------------------
 
 const DOCS = [
-  { id: "benefits", label: "Letter from the benefits office", glyph: "✉️", to: "Benefits office" },
-  { id: "paratransit", label: "Paratransit renewal form", glyph: "🚐", to: "City paratransit" },
-  { id: "lease", label: "Lease renewal", glyph: "🏠", to: "Landlord" },
-  { id: "pharmacy", label: "Pharmacy prior authorization", glyph: "💊", to: "Pharmacy" },
+  { id: "benefits", label: "Letter from the benefits office", icon: "message", to: "Benefits office" },
+  { id: "paratransit", label: "Paratransit renewal form", icon: "calendar", to: "City paratransit" },
+  { id: "lease", label: "Lease renewal", icon: "home", to: "Landlord" },
+  { id: "pharmacy", label: "Pharmacy prior authorization", icon: "document", to: "Pharmacy" },
 ];
 
 const papers: FlowDef = {
@@ -256,7 +256,7 @@ const papers: FlowDef = {
       options: DOCS.map((d): FlowOption => ({
         id: d.id,
         label: d.label,
-        glyph: d.glyph,
+        icon: d.icon,
         set: { document: d.label, to: d.to },
         end: {
           type: "pack",
@@ -276,14 +276,14 @@ const PRODUCTS: Record<
   string,
   {
     label: string;
-    glyph: string;
+    icon: string;
     offers: { store: string; price: string; arrives: string; rating: string }[];
   }[]
 > = {
   household: [
     {
       label: "Paper towels",
-      glyph: "🧻",
+      icon: "bag",
       offers: [
         { store: "Corner Market", price: "$12.99", arrives: "Today", rating: "4.6" },
         { store: "BigBox", price: "$9.49", arrives: "In 2 days", rating: "4.4" },
@@ -292,7 +292,7 @@ const PRODUCTS: Record<
     },
     {
       label: "Dish soap",
-      glyph: "🧴",
+      icon: "bag",
       offers: [
         { store: "Corner Market", price: "$4.29", arrives: "Today", rating: "4.5" },
         { store: "BigBox", price: "$3.10", arrives: "In 2 days", rating: "4.3" },
@@ -302,7 +302,7 @@ const PRODUCTS: Record<
   care: [
     {
       label: "Lip balm",
-      glyph: "💄",
+      icon: "bag",
       offers: [
         { store: "Pharmacy Plus", price: "$3.99", arrives: "Today", rating: "4.7" },
         { store: "BigBox", price: "$2.49", arrives: "In 2 days", rating: "4.2" },
@@ -310,7 +310,7 @@ const PRODUCTS: Record<
     },
     {
       label: "Eye drops",
-      glyph: "💧",
+      icon: "bag",
       offers: [
         { store: "Pharmacy Plus", price: "$8.99", arrives: "Today", rating: "4.8" },
         { store: "BigBox", price: "$7.25", arrives: "In 2 days", rating: "4.5" },
@@ -320,7 +320,7 @@ const PRODUCTS: Record<
   medical: [
     {
       label: "Suction catheters",
-      glyph: "🩺",
+      icon: "lifeline",
       offers: [
         { store: "CareSupply", price: "$24.00", arrives: "Tomorrow", rating: "4.9" },
         { store: "MedDirect", price: "$21.50", arrives: "In 3 days", rating: "4.6" },
@@ -328,7 +328,7 @@ const PRODUCTS: Record<
     },
     {
       label: "Mask cushions",
-      glyph: "😷",
+      icon: "bag",
       offers: [
         { store: "CareSupply", price: "$38.00", arrives: "Tomorrow", rating: "4.7" },
         { store: "MedDirect", price: "$35.00", arrives: "In 3 days", rating: "4.4" },
@@ -352,7 +352,7 @@ const shopping: FlowDef = {
           id: "household",
           label: "Household",
           sub: "Paper towels, soap",
-          glyph: "🏠",
+          icon: "home",
           set: { category: "household" },
           next: "item",
         },
@@ -360,7 +360,7 @@ const shopping: FlowDef = {
           id: "care",
           label: "Personal care",
           sub: "Lip balm, eye drops",
-          glyph: "🧴",
+          icon: "bag",
           set: { category: "care" },
           next: "item",
         },
@@ -368,7 +368,7 @@ const shopping: FlowDef = {
           id: "medical",
           label: "Medical supplies",
           sub: "Catheters, mask parts",
-          glyph: "🩺",
+          icon: "lifeline",
           set: { category: "medical" },
           next: "item",
         },
@@ -381,7 +381,7 @@ const shopping: FlowDef = {
         (PRODUCTS[s.category ?? ""] ?? PRODUCTS.household!).map((p, i): FlowOption => ({
           id: `p${i}`,
           label: p.label,
-          glyph: p.glyph,
+          icon: p.icon,
           set: { product: p.label },
           next: "compare",
         })),
@@ -434,7 +434,7 @@ const messages: FlowDef = {
           id: "family",
           label: "Family group",
           sub: "4 people",
-          glyph: "👪",
+          icon: "name",
           set: { person: "Family group" },
           next: "say",
         },
@@ -489,7 +489,7 @@ const watch: FlowDef = {
           id: "youtube",
           label: "YouTube",
           sub: "In Chrome",
-          glyph: "▶️",
+          icon: "play",
           set: { where: "YouTube in Chrome" },
           next: "youtube",
         },
@@ -497,7 +497,7 @@ const watch: FlowDef = {
           id: "netflix",
           label: "Netflix",
           sub: "In Chrome",
-          glyph: "🎬",
+          icon: "play",
           set: { where: "Netflix in Chrome" },
           next: "netflix",
         },
@@ -505,7 +505,7 @@ const watch: FlowDef = {
           id: "music",
           label: "Music",
           sub: "The Music app",
-          glyph: "🎵",
+          icon: "music",
           set: { where: "Music", app: "Music" },
           next: "music",
         },
@@ -513,7 +513,7 @@ const watch: FlowDef = {
           id: "tv",
           label: "TV",
           sub: "The TV app",
-          glyph: "📺",
+          icon: "tv",
           end: { type: "launch", bundleId: "com.apple.TV", name: "TV" },
         },
       ],
@@ -621,28 +621,28 @@ const browse: FlowDef = {
         {
           id: "news",
           label: "News",
-          glyph: "📰",
+          icon: "news",
           set: { where: "the news" },
           end: siteEnd("Open the news in Chrome"),
         },
         {
           id: "weather",
           label: "Weather",
-          glyph: "⛅",
+          icon: "weather",
           set: { where: "the weather" },
           end: siteEnd("Show today's weather in Chrome"),
         },
         {
           id: "wiki",
           label: "Wikipedia",
-          glyph: "📚",
+          icon: "book",
           set: { where: "Wikipedia" },
           end: siteEnd("Open Wikipedia in Chrome"),
         },
         {
           id: "mail",
           label: "My email",
-          glyph: "📧",
+          icon: "mail",
           set: { where: "your email" },
           end: siteEnd("Open my email in Chrome"),
         },
@@ -684,19 +684,19 @@ const appsFlow: FlowDef = {
         {
           id: "chrome",
           label: "Chrome",
-          glyph: "🌐",
+          icon: "globe",
           end: { type: "launch", bundleId: "com.google.Chrome", name: "Google Chrome" },
         },
         {
           id: "mail",
           label: "Mail",
-          glyph: "📧",
+          icon: "mail",
           end: { type: "launch", bundleId: "com.apple.mail", name: "Mail" },
         },
         {
           id: "photos",
           label: "Photos",
-          glyph: "🖼️",
+          icon: "photo",
           end: { type: "launch", bundleId: "com.apple.Photos", name: "Photos" },
         },
         { id: "all", label: "All apps", icon: "grid", end: { type: "route", path: "/apps?view=all" } },
