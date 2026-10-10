@@ -156,6 +156,12 @@ export class BridgeServer implements BridgeApi {
     const timeout = opts.timeoutMs !== undefined ? opts.timeoutMs : (DEFAULT_TIMEOUTS[method] ?? 30_000);
     // Sign first, so nothing is pending (and unobserved) while we await.
     const sealed = await ch.seal("cmd", req);
+    // Chrome may have gone away while we were signing; its close handler has already failed what was pending.
+    if (this.sock !== sock || this.channel !== ch || this._connection !== "ready")
+      throw new BridgeCallError({
+        code: "not-paired",
+        message: "Chrome with the AGENCY Bridge isn't connected.",
+      });
     const result = new Promise<unknown>((resolve, reject) => {
       const entry: {
         resolve: (v: unknown) => void;
