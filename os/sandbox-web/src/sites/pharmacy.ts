@@ -16,10 +16,43 @@ export interface Prescription {
 }
 
 export const PRESCRIPTIONS: Prescription[] = [
-  { rx: "RX-204118", name: "Riluzole", dose: "50 mg tablet, twice a day", refillsLeft: 3, lastFilled: "Sep 12", blocked: null, doctor: "Dr. Sam Lee" },
-  { rx: "RX-204377", name: "Baclofen", dose: "10 mg tablet, three times a day", refillsLeft: 2, lastFilled: "Sep 20", blocked: null, doctor: "Dr. Sam Lee" },
-  { rx: "RX-198802", name: "Glycopyrrolate", dose: "1 mg tablet, as needed", refillsLeft: 1, lastFilled: "Oct 3", blocked: "too-soon", eligibleOn: "Oct 24", doctor: "Dr. Ana Ortiz" },
-  { rx: "RX-187455", name: "Vitamin D3", dose: "2000 IU capsule, daily", refillsLeft: 0, lastFilled: "Aug 30", blocked: "no-refills", doctor: "Dr. Ana Ortiz" },
+  {
+    rx: "RX-204118",
+    name: "Riluzole",
+    dose: "50 mg tablet, twice a day",
+    refillsLeft: 3,
+    lastFilled: "Sep 12",
+    blocked: null,
+    doctor: "Dr. Sam Lee",
+  },
+  {
+    rx: "RX-204377",
+    name: "Baclofen",
+    dose: "10 mg tablet, three times a day",
+    refillsLeft: 2,
+    lastFilled: "Sep 20",
+    blocked: null,
+    doctor: "Dr. Sam Lee",
+  },
+  {
+    rx: "RX-198802",
+    name: "Glycopyrrolate",
+    dose: "1 mg tablet, as needed",
+    refillsLeft: 1,
+    lastFilled: "Oct 3",
+    blocked: "too-soon",
+    eligibleOn: "Oct 24",
+    doctor: "Dr. Ana Ortiz",
+  },
+  {
+    rx: "RX-187455",
+    name: "Vitamin D3",
+    dose: "2000 IU capsule, daily",
+    refillsLeft: 0,
+    lastFilled: "Aug 30",
+    blocked: "no-refills",
+    doctor: "Dr. Ana Ortiz",
+  },
 ];
 
 export const STORES = [
@@ -58,7 +91,9 @@ export function pharmacy(w: World, r: Req): Res {
 <form method="post" action="/refill/review" class="card"><table><caption>Your prescriptions</caption>
 <thead><tr><th>Refill</th><th>Medicine</th><th>Rx number</th><th>Refills left</th><th>Last filled</th><th>Status</th></tr></thead><tbody>
 ${PRESCRIPTIONS.map(
-  (p) => `<tr><td>${p.blocked ? "" : `<input type="checkbox" id="rx-${p.rx}" name="rx" value="${p.rx}" aria-label="Refill ${esc(p.name)}">`}</td>
+  (
+    p,
+  ) => `<tr><td>${p.blocked ? "" : `<input type="checkbox" id="rx-${p.rx}" name="rx" value="${p.rx}" aria-label="Refill ${esc(p.name)}">`}</td>
 <td><label for="rx-${p.rx}"><strong>${esc(p.name)}</strong></label><div class="muted">${esc(p.dose)}</div></td><td>${p.rx}</td><td>${p.refillsLeft}</td><td>${p.lastFilled}</td>
 <td>${esc(status(p))}${p.blocked === "no-refills" ? `<br><button type="submit" formaction="/doctor-request" name="doctorRx" value="${p.rx}">Ask ${esc(p.doctor)} for a refill</button>` : ""}</td></tr>`,
 ).join("")}</tbody></table>
@@ -75,18 +110,26 @@ ${PRESCRIPTIONS.map(
     if (!p) return notFound();
     ph.doctorRequests.push({ rx: p.rx, name: p.name, doctor: p.doctor, at: new Date().toISOString() });
     record(w, "pharmacy", "doctor.requested", { rx: p.rx });
-    return layout("Request sent", `<h1>Request sent to ${esc(p.doctor)}</h1><p role="status">We asked for a new prescription for ${esc(p.name)}. We'll message you when it's ready.</p><p><a href="/">Back to prescriptions</a></p>`);
+    return layout(
+      "Request sent",
+      `<h1>Request sent to ${esc(p.doctor)}</h1><p role="status">We asked for a new prescription for ${esc(p.name)}. We'll message you when it's ready.</p><p><a href="/">Back to prescriptions</a></p>`,
+    );
   }
 
   if (r.method === "POST" && r.path === "/refill/review") {
     const rxs = r.form.getAll("rx");
-    if (!rxs.length) return redirect(`/?error=${encodeURIComponent("Choose at least one prescription to refill.")}`);
+    if (!rxs.length)
+      return redirect(`/?error=${encodeURIComponent("Choose at least one prescription to refill.")}`);
     const chosen = rxs.map((x) => PRESCRIPTIONS.find((p) => p.rx === x));
-    if (chosen.some((p) => !p || p.blocked)) return redirect(`/?error=${encodeURIComponent("One of those can't be refilled yet.")}`);
+    if (chosen.some((p) => !p || p.blocked))
+      return redirect(`/?error=${encodeURIComponent("One of those can't be refilled yet.")}`);
     ph.pending = rxs;
     ph.method = r.form.get("method") === "delivery" ? "delivery" : "pickup";
     ph.store = STORES.some((s) => s.id === r.form.get("store")) ? (r.form.get("store") ?? "elm") : "elm";
-    const where = ph.method === "delivery" ? "Delivery to 12 Elm Street, Apt 3" : `Pick up at ${STORES.find((s) => s.id === ph.store)?.label}`;
+    const where =
+      ph.method === "delivery"
+        ? "Delivery to 12 Elm Street, Apt 3"
+        : `Pick up at ${STORES.find((s) => s.id === ph.store)?.label}`;
     return layout(
       "Review refill",
       `<h1>Review your refill request</h1><form method="post" action="/refill/submit" class="card"><ul>${chosen
@@ -99,11 +142,21 @@ ${PRESCRIPTIONS.map(
   if (r.method === "POST" && r.path === "/refill/submit") {
     if (!ph.pending) return redirect("/");
     const id = `RF-${5000 + ph.refills.length + 1}`;
-    const entry = { id, rx: ph.pending, method: ph.method, store: ph.store, at: new Date().toISOString(), readyBy: "tomorrow after 2 pm" };
+    const entry = {
+      id,
+      rx: ph.pending,
+      method: ph.method,
+      store: ph.store,
+      at: new Date().toISOString(),
+      readyBy: "tomorrow after 2 pm",
+    };
     ph.refills.push(entry);
     ph.pending = null;
     record(w, "pharmacy", "refill.submitted", entry);
-    return layout("Refill requested", `<div class="card" role="status"><h1>Refill requested</h1><p>Confirmation <strong>${id}</strong>. Ready ${entry.readyBy}.</p></div><p><a href="/history">See refill history</a></p>`);
+    return layout(
+      "Refill requested",
+      `<div class="card" role="status"><h1>Refill requested</h1><p>Confirmation <strong>${id}</strong>. Ready ${entry.readyBy}.</p></div><p><a href="/history">See refill history</a></p>`,
+    );
   }
 
   if (r.method === "GET" && r.path === "/history") {

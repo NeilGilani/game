@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { classifyAction, classifyUrl, containsCardNumber, isOpenableUrl, isSecretField } from "../src/policy.ts";
+import {
+  classifyAction,
+  classifyUrl,
+  containsCardNumber,
+  isOpenableUrl,
+  isSecretField,
+} from "../src/policy.ts";
 
 describe("protected sites", () => {
   it.each([
@@ -22,12 +28,14 @@ describe("protected sites", () => {
     expect(classifyUrl(url)?.category).toBe(category);
   });
 
-  it.each(["https://www.doordash.com/", "https://myaccount.google.com/personal-info", "http://food.localhost:8787/", "https://bankrate.example.org/"])(
-    "%s is not protected",
-    (url) => {
-      expect(classifyUrl(url)).toBeNull();
-    },
-  );
+  it.each([
+    "https://www.doordash.com/",
+    "https://myaccount.google.com/personal-info",
+    "http://food.localhost:8787/",
+    "https://bankrate.example.org/",
+  ])("%s is not protected", (url) => {
+    expect(classifyUrl(url)).toBeNull();
+  });
 
   it("adds the person's own hosts", () => {
     expect(classifyUrl("https://portal.mycu.org/", ["mycu.org"])?.category).toBe("custom");
@@ -36,7 +44,14 @@ describe("protected sites", () => {
 
   it("only opens http and https", () => {
     expect(isOpenableUrl("https://a.example/")).toBe(true);
-    for (const u of ["javascript:alert(1)", "file:///etc/passwd", "data:text/html,hi", "chrome://flags", "about:blank"]) expect(isOpenableUrl(u)).toBe(false);
+    for (const u of [
+      "javascript:alert(1)",
+      "file:///etc/passwd",
+      "data:text/html,hi",
+      "chrome://flags",
+      "about:blank",
+    ])
+      expect(isOpenableUrl(u)).toBe(false);
   });
 });
 
@@ -94,12 +109,18 @@ describe("consequential actions", () => {
     expect(button(name)).toBe(kind);
   });
 
-  it.each(["Add to cart · $15.00", "Search", "Save and continue", "Review refill request", "Update tip", "Remove Pad thai", "Next", "Back"])(
-    "%s doesn't need approval",
-    (name) => {
-      expect(button(name, { submitsForm: true, formMethod: "post" })).toBeNull();
-    },
-  );
+  it.each([
+    "Add to cart · $15.00",
+    "Search",
+    "Save and continue",
+    "Review refill request",
+    "Update tip",
+    "Remove Pad thai",
+    "Next",
+    "Back",
+  ])("%s doesn't need approval", (name) => {
+    expect(button(name, { submitsForm: true, formMethod: "post" })).toBeNull();
+  });
 
   it("treats other posted forms as submissions, including signing in with saved credentials, but not searches", () => {
     expect(button("Sign in", { submitsForm: true, formMethod: "post" })).toBe("submit");

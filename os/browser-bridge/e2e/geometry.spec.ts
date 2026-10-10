@@ -21,9 +21,18 @@ import { startRig, type Rig } from "./harness.ts";
 
 const ZOOMS = [0.5, 0.75, 1, 1.25, 1.5, 2];
 const PIXEL = process.env.PIXEL_CHECK === "1" && process.platform === "darwin";
-const CONFIGS = PIXEL ? [{ dsf: 0, headed: true }] : [{ dsf: 1, headed: false }, { dsf: 2, headed: false }];
+const CONFIGS = PIXEL
+  ? [{ dsf: 0, headed: true }]
+  : [
+      { dsf: 1, headed: false },
+      { dsf: 2, headed: false },
+    ];
 
-async function latestTargets(rig: Rig, after: number, want: (s: TargetSnapshot) => boolean): Promise<TargetSnapshot> {
+async function latestTargets(
+  rig: Rig,
+  after: number,
+  want: (s: TargetSnapshot) => boolean,
+): Promise<TargetSnapshot> {
   return new Promise((resolve, reject) => {
     const t = setTimeout(() => {
       off();
@@ -71,7 +80,11 @@ for (const cfg of CONFIGS) {
       rig = await startRig({
         headless: !cfg.headed,
         viewport: null,
-        args: ["--window-position=60,50", "--window-size=1240,940", ...(cfg.dsf ? [`--force-device-scale-factor=${cfg.dsf}`] : [])],
+        args: [
+          "--window-position=60,50",
+          "--window-size=1240,940",
+          ...(cfg.dsf ? [`--force-device-scale-factor=${cfg.dsf}`] : []),
+        ],
       });
       ({ tabId } = await rig.bridge.call("tabs.open", { url: rig.sandbox.url("lab") }));
     });
@@ -91,7 +104,11 @@ for (const cfg of CONFIGS) {
         const snap = await snapP;
         // Wait for the snapshot that reflects this zoom (the size of box-a scales with it).
         let s = snap;
-        for (let i = 0; i < 20 && Math.abs((s.targets.find((t) => t.label === "box-a")?.rect.width ?? 0) - 120 * zoom) > 1; i++)
+        for (
+          let i = 0;
+          i < 20 && Math.abs((s.targets.find((t) => t.label === "box-a")?.rect.width ?? 0) - 120 * zoom) > 1;
+          i++
+        )
           s = await latestTargets(rig, since, (x) => x.targets.some((t) => t.label === "box-a"));
         const dpr = await page.evaluate(() => devicePixelRatio);
         if (cfg.dsf) expect(dpr).toBeCloseTo(cfg.dsf * zoom, 5);
@@ -113,7 +130,11 @@ for (const cfg of CONFIGS) {
           if (!fullyIn) continue;
           const bb = (await page.locator(`#${box.id}`).boundingBox())!;
           await page.mouse.click(bb.x + bb.width / 2, bb.y + bb.height / 2);
-          const click = await page.evaluate(() => (window as unknown as { __clicks: Array<{ id: string; screenX: number; screenY: number }> }).__clicks.at(-1)!);
+          const click = await page.evaluate(() =>
+            (
+              window as unknown as { __clicks: Array<{ id: string; screenX: number; screenY: number }> }
+            ).__clicks.at(-1)!,
+          );
           expect(click.id).toBe(box.id);
           expect(Math.abs(c.x - click.screenX)).toBeLessThanOrEqual(1);
           expect(Math.abs(c.y - click.screenY)).toBeLessThanOrEqual(1);
@@ -121,8 +142,12 @@ for (const cfg of CONFIGS) {
             // Sample inside the box but away from its white label. Colour management shifts colours, so
             // the check is that the screen shows this box's colour rather than any other box or the page.
             const px = pixelAt(t.rect.x + t.rect.width * 0.15, t.rect.y + t.rect.height * 0.2);
-            const palette = [...LAB_BOXES.map((x) => ({ id: x.id, rgb: hexRgb(x.color) })), { id: "page", rgb: hexRgb("#ffffff") }];
-            const dist = (a: number[], b: number[]) => a.reduce((s, v, i) => s + Math.abs(v - (b[i] ?? 0)), 0);
+            const palette = [
+              ...LAB_BOXES.map((x) => ({ id: x.id, rgb: hexRgb(x.color) })),
+              { id: "page", rgb: hexRgb("#ffffff") },
+            ];
+            const dist = (a: number[], b: number[]) =>
+              a.reduce((s, v, i) => s + Math.abs(v - (b[i] ?? 0)), 0);
             const nearest = palette.reduce((best, p) => (dist(px, p.rgb) < dist(px, best.rgb) ? p : best));
             expect(nearest.id, `screen pixel ${px} at ${box.id}`).toBe(box.id);
           }
@@ -144,7 +169,9 @@ for (const cfg of CONFIGS) {
       const t = s.targets.find((x) => x.label === "box-e")!;
       const bb = (await page.locator("#box-e").boundingBox())!;
       await page.mouse.click(bb.x + bb.width / 2, bb.y + bb.height / 2);
-      const click = await page.evaluate(() => (window as unknown as { __clicks: Array<{ screenX: number; screenY: number }> }).__clicks.at(-1)!);
+      const click = await page.evaluate(() =>
+        (window as unknown as { __clicks: Array<{ screenX: number; screenY: number }> }).__clicks.at(-1)!,
+      );
       expect(Math.abs(centre(t).x - click.screenX)).toBeLessThanOrEqual(1);
       expect(Math.abs(centre(t).y - click.screenY)).toBeLessThanOrEqual(1);
     });

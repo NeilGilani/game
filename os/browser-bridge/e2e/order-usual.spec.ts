@@ -20,7 +20,13 @@ const TASKS = process.env.AGENCY_TASKS_DIR ?? resolve(import.meta.dirname, "../.
 const HAVE_TASKS = existsSync(join(TASKS, "src", "packs", "ordering.ts"));
 
 /* eslint-disable @typescript-eslint/no-explicit-any -- Instance 8's modules are loaded at run time. */
-async function loadPack(): Promise<{ createOrderingPack: any; FakeMemory: any; encodeItems: any; runPack: any; ofType: any }> {
+async function loadPack(): Promise<{
+  createOrderingPack: any;
+  FakeMemory: any;
+  encodeItems: any;
+  runPack: any;
+  ofType: any;
+}> {
   const imp = (p: string) => import(pathToFileURL(join(TASKS, p)).href);
   const [ordering, memory, store, helpers] = await Promise.all([
     imp("src/packs/ordering.ts"),
@@ -28,7 +34,13 @@ async function loadPack(): Promise<{ createOrderingPack: any; FakeMemory: any; e
     imp("src/ordering/store.ts"),
     imp("tests/helpers.ts"),
   ]);
-  return { createOrderingPack: ordering.createOrderingPack, FakeMemory: memory.FakeMemory, encodeItems: store.encodeItems, runPack: helpers.runPack, ofType: helpers.ofType };
+  return {
+    createOrderingPack: ordering.createOrderingPack,
+    FakeMemory: memory.FakeMemory,
+    encodeItems: store.encodeItems,
+    runPack: helpers.runPack,
+    ofType: helpers.ofType,
+  };
 }
 
 test.describe("order the usual meal through the bridge", () => {
@@ -83,7 +95,11 @@ test.describe("order the usual meal through the bridge", () => {
       { goal: "Order my usual Friday dinner" },
       {
         answer: (q: { prompt: string; options: Array<{ id: string }> }) =>
-          q.prompt === "Your usual?" ? "usual" : q.prompt.startsWith("Subtotal") ? "18" : q.options.at(-1)!.id,
+          q.prompt === "Your usual?"
+            ? "usual"
+            : q.prompt.startsWith("Subtotal")
+              ? "18"
+              : q.options.at(-1)!.id,
         approve: (_summary: string, details: Record<string, string>) => {
           seenApprovals.push(details);
           // The person approves only the exact total the store will charge for this cart.
@@ -127,13 +143,23 @@ test.describe("order the usual meal through the bridge", () => {
           if (approvals === 1) {
             // While the person is approving, someone adds a drink to the cart in the store.
             const f = rig.sandbox.world().food;
-            f.cart.lines.push({ lineId: 99, itemId: "thai-iced-tea", name: "Thai iced tea", options: ["Ice: Regular ice"], qty: 1, unitCents: 450, note: "" });
+            f.cart.lines.push({
+              lineId: 99,
+              itemId: "thai-iced-tea",
+              name: "Thai iced tea",
+              options: ["Ice: Regular ice"],
+              qty: 1,
+              unitCents: 450,
+              note: "",
+            });
           }
           return "approve";
         },
       },
     );
-    const asked = m.ofType(events, "approval.required").map((e: { approval: { details: Record<string, string> } }) => e.approval.details.Total);
+    const asked = m
+      .ofType(events, "approval.required")
+      .map((e: { approval: { details: Record<string, string> } }) => e.approval.details.Total);
     expect(asked).toHaveLength(2);
     expect(asked[0]).not.toBe(asked[1]);
     const orders = rig.sandbox.world().food.orders;
@@ -149,7 +175,11 @@ test.describe("order the usual meal through the bridge", () => {
       { goal: "Order my usual" },
       {
         answer: (q: { prompt: string; options: Array<{ id: string }> }) =>
-          q.prompt === "Your usual?" ? "usual" : q.prompt.startsWith("Subtotal") ? "15" : q.options.at(-1)!.id,
+          q.prompt === "Your usual?"
+            ? "usual"
+            : q.prompt.startsWith("Subtotal")
+              ? "15"
+              : q.options.at(-1)!.id,
         approve: () => "decline",
       },
     );

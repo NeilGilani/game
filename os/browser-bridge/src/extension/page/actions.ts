@@ -5,7 +5,17 @@
 
 import { classifyAction, containsCardNumber } from "../../policy.ts";
 import type { BridgeError, TableData, WaitCondition } from "../../protocol.ts";
-import { elementFor, isSecure, isVisible, nameOf, roleOf, looksClickable, valueOf, visibleText, buildTree } from "./dom.ts";
+import {
+  elementFor,
+  isSecure,
+  isVisible,
+  nameOf,
+  roleOf,
+  looksClickable,
+  valueOf,
+  visibleText,
+  buildTree,
+} from "./dom.ts";
 import { highlight, hideHighlight } from "./ui.ts";
 
 export class PageError extends Error {
@@ -78,7 +88,15 @@ function formFields(form: HTMLFormElement): Array<[string, string]> {
       continue;
     }
     if (i.type === "checkbox" || i.type === "radio") {
-      if (i.checked) out.push([fieldLabel(el), i.type === "radio" && i.value && i.value !== "on" ? i.value : i.type === "radio" ? "selected" : "checked"]);
+      if (i.checked)
+        out.push([
+          fieldLabel(el),
+          i.type === "radio" && i.value && i.value !== "on"
+            ? i.value
+            : i.type === "radio"
+              ? "selected"
+              : "checked",
+        ]);
       continue;
     }
     if (i.type === "hidden") {
@@ -98,7 +116,8 @@ export function describeMaterial(ref: string, action: "click" | "submit"): Actio
   const { role, name } = roleName(el);
   const form = formOf(el);
   const sub = submitsForm(el, action);
-  const container = form ?? el.closest("main, [role=main], dialog, [role=dialog], section, article") ?? document.body;
+  const container =
+    form ?? el.closest("main, [role=main], dialog, [role=dialog], section, article") ?? document.body;
   const context = visibleText(container, 4000).text;
   const amounts = context
     .split("\n")
@@ -130,9 +149,15 @@ function checkApproval(ref: string, action: "click" | "submit", expectKey: strin
   const m = describeMaterial(ref, action);
   if (!m.consequential) return;
   if (expectKey === undefined)
-    throw new PageError("approval-required", `“${m.name}” is a ${m.consequential} action and needs the person's approval.`);
+    throw new PageError(
+      "approval-required",
+      `“${m.name}” is a ${m.consequential} action and needs the person's approval.`,
+    );
   if (expectKey !== materialKey(m))
-    throw new PageError("approval-mismatch", "The page changed since the person approved. Describe the action again and ask again.");
+    throw new PageError(
+      "approval-mismatch",
+      "The page changed since the person approved. Describe the action again and ask again.",
+    );
 }
 
 // ---------- Actions ----------
@@ -151,12 +176,25 @@ async function show(el: Element, verb: string): Promise<void> {
 
 function fire(el: Element, type: string, init: MouseEventInit = {}): void {
   const r = el.getBoundingClientRect();
-  const opts = { bubbles: true, cancelable: true, composed: true, clientX: r.x + r.width / 2, clientY: r.y + r.height / 2, ...init };
-  const ev = type.startsWith("pointer") ? new PointerEvent(type, { ...opts, pointerType: "mouse", isPrimary: true }) : new MouseEvent(type, opts);
+  const opts = {
+    bubbles: true,
+    cancelable: true,
+    composed: true,
+    clientX: r.x + r.width / 2,
+    clientY: r.y + r.height / 2,
+    ...init,
+  };
+  const ev = type.startsWith("pointer")
+    ? new PointerEvent(type, { ...opts, pointerType: "mouse", isPrimary: true })
+    : new MouseEvent(type, opts);
   el.dispatchEvent(ev);
 }
 
-export async function click(ref: string, expectKey: string | undefined, stoppedCheck: () => boolean): Promise<void> {
+export async function click(
+  ref: string,
+  expectKey: string | undefined,
+  stoppedCheck: () => boolean,
+): Promise<void> {
   const el = need(ref);
   actionable(el);
   checkApproval(ref, "click", expectKey);
@@ -175,7 +213,8 @@ export async function click(ref: string, expectKey: string | undefined, stoppedC
 }
 
 function setNativeValue(el: HTMLInputElement | HTMLTextAreaElement, value: string): void {
-  const proto = el instanceof HTMLTextAreaElement ? HTMLTextAreaElement.prototype : HTMLInputElement.prototype;
+  const proto =
+    el instanceof HTMLTextAreaElement ? HTMLTextAreaElement.prototype : HTMLInputElement.prototype;
   const setter = Object.getOwnPropertyDescriptor(proto, "value")?.set;
   if (setter) setter.call(el, value);
   else el.value = value;
@@ -190,8 +229,16 @@ export async function type(
   stoppedCheck: () => boolean,
 ): Promise<string> {
   const el = need(ref);
-  if (isSecure(el)) throw new PageError("secure-field", "This is a password, code or card field. AGENCY never types into those; the person or a helper must.");
-  if (containsCardNumber(text)) throw new PageError("secret-in-text", "That text contains what looks like a card number. AGENCY never types card numbers.");
+  if (isSecure(el))
+    throw new PageError(
+      "secure-field",
+      "This is a password, code or card field. AGENCY never types into those; the person or a helper must.",
+    );
+  if (containsCardNumber(text))
+    throw new PageError(
+      "secret-in-text",
+      "That text contains what looks like a card number. AGENCY never types card numbers.",
+    );
   actionable(el);
   // Enter in a form submits it: that approval binds to the form *after* typing, so it is checked below
   // (type first without Enter, describe the submit, get approval, then press Enter with empty text).
@@ -201,7 +248,9 @@ export async function type(
   if (el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement) {
     if (el.readOnly) throw new PageError("bad-request", "This field is read-only.");
     setNativeValue(el, (clear ? "" : el.value) + text);
-    el.dispatchEvent(new InputEvent("input", { bubbles: true, composed: true, inputType: "insertText", data: text }));
+    el.dispatchEvent(
+      new InputEvent("input", { bubbles: true, composed: true, inputType: "insertText", data: text }),
+    );
     el.dispatchEvent(new Event("change", { bubbles: true }));
   } else if (el instanceof HTMLElement && el.isContentEditable) {
     if (clear) document.execCommand("selectAll");
@@ -211,7 +260,12 @@ export async function type(
   }
   if (pressEnter) {
     if (formOf(el)) checkApproval(ref, "submit", expectKey);
-    const down = new KeyboardEvent("keydown", { key: "Enter", code: "Enter", bubbles: true, cancelable: true });
+    const down = new KeyboardEvent("keydown", {
+      key: "Enter",
+      code: "Enter",
+      bubbles: true,
+      cancelable: true,
+    });
     const proceed = el.dispatchEvent(down);
     el.dispatchEvent(new KeyboardEvent("keyup", { key: "Enter", code: "Enter", bubbles: true }));
     const form = formOf(el);
@@ -223,14 +277,22 @@ export async function type(
 
 export async function select(ref: string, option: string, stoppedCheck: () => boolean): Promise<string> {
   const el = need(ref);
-  if (!(el instanceof HTMLSelectElement)) throw new PageError("bad-request", "That element isn't a list to choose from. Click its options instead.");
+  if (!(el instanceof HTMLSelectElement))
+    throw new PageError(
+      "bad-request",
+      "That element isn't a list to choose from. Click its options instead.",
+    );
   actionable(el);
   const want = option.trim().toLowerCase();
   const opts = Array.from(el.options);
   const match =
     opts.find((o) => o.value.toLowerCase() === want || (o.label || o.text).trim().toLowerCase() === want) ??
     opts.find((o) => (o.label || o.text).toLowerCase().includes(want));
-  if (!match) throw new PageError("no-element", `No option “${option}”. Options: ${opts.map((o) => o.label || o.text).join(", ")}`);
+  if (!match)
+    throw new PageError(
+      "no-element",
+      `No option “${option}”. Options: ${opts.map((o) => o.label || o.text).join(", ")}`,
+    );
   if (match.disabled) throw new PageError("bad-request", `“${match.label}” can't be chosen right now.`);
   await show(el, "choosing in");
   if (stoppedCheck()) throw new PageError("stopped", "The person pressed Stop.");
@@ -247,11 +309,16 @@ export function scrollState(): { y: number; maxY: number } {
   return { y: Math.round(se.scrollTop), maxY: Math.max(0, Math.round(se.scrollHeight - innerHeight)) };
 }
 
-export async function scroll(ref: string | undefined, direction: "up" | "down" | undefined, pages: number): Promise<{ y: number; maxY: number }> {
+export async function scroll(
+  ref: string | undefined,
+  direction: "up" | "down" | undefined,
+  pages: number,
+): Promise<{ y: number; maxY: number }> {
   if (ref) {
     need(ref).scrollIntoView({ block: "center", behavior: "instant" });
   } else {
-    const dy = Math.round(innerHeight * 0.85) * Math.max(1, Math.min(10, pages)) * (direction === "up" ? -1 : 1);
+    const dy =
+      Math.round(innerHeight * 0.85) * Math.max(1, Math.min(10, pages)) * (direction === "up" ? -1 : 1);
     window.scrollBy({ top: dy, behavior: "instant" });
   }
   await sleep(50);
@@ -271,14 +338,19 @@ function findElement(c: Extract<WaitCondition, { kind: "element" }>): string | u
   return hit?.ref;
 }
 
-export async function waitFor(c: WaitCondition, timeoutMs: number, cancelled: () => boolean): Promise<{ met: boolean; ref?: string }> {
+export async function waitFor(
+  c: WaitCondition,
+  timeoutMs: number,
+  cancelled: () => boolean,
+): Promise<{ met: boolean; ref?: string }> {
   const deadline = Date.now() + timeoutMs;
   for (;;) {
     if (c.kind === "element") {
       const ref = findElement(c);
       if (ref) return { met: true, ref };
     } else if (c.kind === "text") {
-      if (visibleText(document.body, 200_000).text.toLowerCase().includes(c.text.toLowerCase())) return { met: true };
+      if (visibleText(document.body, 200_000).text.toLowerCase().includes(c.text.toLowerCase()))
+        return { met: true };
     } else if (c.kind === "gone") {
       const el = elementFor(c.ref);
       if (!el || !isVisible(el)) return { met: true };
@@ -303,7 +375,9 @@ export function extractTables(): TableData[] {
     const cell = (c: Element) => visibleText(c, 500).text.replace(/\n/g, " ");
     const rows = Array.from(t.rows).filter((r) => isVisible(r));
     let headers: string[] = [];
-    const head = t.tHead?.rows[0] ?? (rows[0] && Array.from(rows[0].cells).every((c) => c.tagName === "TH") ? rows[0] : undefined);
+    const head =
+      t.tHead?.rows[0] ??
+      (rows[0] && Array.from(rows[0].cells).every((c) => c.tagName === "TH") ? rows[0] : undefined);
     if (head) headers = Array.from(head.cells, cell);
     const body = rows.filter((r) => r !== head).map((r) => Array.from(r.cells, cell));
     out.push({ caption: t.caption ? cell(t.caption) : nameOf(t), headers, rows: body.slice(0, 500) });

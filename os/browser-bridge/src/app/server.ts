@@ -73,7 +73,10 @@ export class BridgeServer implements BridgeApi {
   private pendingWelcome: { session: string } | null = null;
   private keyP: Promise<CryptoKey>;
   private nextId = 1;
-  private pending = new Map<string, { resolve: (v: unknown) => void; reject: (e: Error) => void; timer?: ReturnType<typeof setTimeout> }>();
+  private pending = new Map<
+    string,
+    { resolve: (v: unknown) => void; reject: (e: Error) => void; timer?: ReturnType<typeof setTimeout> }
+  >();
   private eventFns = new Set<(e: BridgeEvent) => void>();
   private connFns = new Set<(c: BridgeConnection, info?: { extensionVersion?: string }) => void>();
   private _connection: BridgeConnection = "no-host";
@@ -135,20 +138,33 @@ export class BridgeServer implements BridgeApi {
     });
   }
 
-  async call<M extends BridgeMethod>(method: M, params: ParamsOf<M>, opts: CallOptions = {}): Promise<ResultOf<M>> {
+  async call<M extends BridgeMethod>(
+    method: M,
+    params: ParamsOf<M>,
+    opts: CallOptions = {},
+  ): Promise<ResultOf<M>> {
     const ch = this.channel;
     const sock = this.sock;
     if (!ch || !sock || this._connection !== "ready")
-      throw new BridgeCallError({ code: "not-paired", message: "Chrome with the AGENCY Bridge isn't connected." });
+      throw new BridgeCallError({
+        code: "not-paired",
+        message: "Chrome with the AGENCY Bridge isn't connected.",
+      });
     const id = String(this.nextId++);
     const req: BridgeRequest = { id, method, params };
     const timeout = opts.timeoutMs !== undefined ? opts.timeoutMs : (DEFAULT_TIMEOUTS[method] ?? 30_000);
     const result = new Promise<unknown>((resolve, reject) => {
-      const entry: { resolve: (v: unknown) => void; reject: (e: Error) => void; timer?: ReturnType<typeof setTimeout> } = { resolve, reject };
+      const entry: {
+        resolve: (v: unknown) => void;
+        reject: (e: Error) => void;
+        timer?: ReturnType<typeof setTimeout>;
+      } = { resolve, reject };
       if (timeout !== null)
         entry.timer = setTimeout(() => {
           this.pending.delete(id);
-          reject(new BridgeCallError({ code: "timeout", message: `${method} took longer than ${timeout} ms.` }));
+          reject(
+            new BridgeCallError({ code: "timeout", message: `${method} took longer than ${timeout} ms.` }),
+          );
         }, timeout);
       this.pending.set(id, entry);
     });
@@ -159,7 +175,10 @@ export class BridgeServer implements BridgeApi {
   private setConnection(c: BridgeConnection): void {
     if (this._connection === c) return;
     this._connection = c;
-    const info = c === "ready" && this.extensionVersion !== undefined ? { extensionVersion: this.extensionVersion } : undefined;
+    const info =
+      c === "ready" && this.extensionVersion !== undefined
+        ? { extensionVersion: this.extensionVersion }
+        : undefined;
     for (const fn of this.connFns) fn(c, info);
   }
 
@@ -201,7 +220,10 @@ export class BridgeServer implements BridgeApi {
         }
         if (!authed) {
           const expected = Buffer.from(hostAuthMac(this.opts.token, nonce), "hex");
-          const got = typeof m.mac === "string" && /^[0-9a-f]{64}$/.test(m.mac) ? Buffer.from(m.mac, "hex") : Buffer.alloc(32);
+          const got =
+            typeof m.mac === "string" && /^[0-9a-f]{64}$/.test(m.mac)
+              ? Buffer.from(m.mac, "hex")
+              : Buffer.alloc(32);
           if (m.t !== "auth" || !timingSafeEqual(expected, got)) {
             this.log("refused a socket connection that doesn't know the pairing token");
             s.destroy();
@@ -218,7 +240,9 @@ export class BridgeServer implements BridgeApi {
           this.setConnection("host-connected");
           continue;
         }
-        void this.onWire(s, m as unknown as WireMessage).catch((e) => this.log(`wire error: ${(e as Error).message}`));
+        void this.onWire(s, m as unknown as WireMessage).catch((e) =>
+          this.log(`wire error: ${(e as Error).message}`),
+        );
       }
     });
     s.on("error", () => undefined);
@@ -243,7 +267,13 @@ export class BridgeServer implements BridgeApi {
         const appNonce = randomHex(16);
         this.pendingWelcome = { session: `${m.extNonce}.${appNonce}` };
         this.extensionVersion = typeof m.extensionVersion === "string" ? m.extensionVersion : undefined;
-        s.write(JSON.stringify({ k: "welcome", appNonce, mac: await hmac(key, welcomeText(m.extNonce, appNonce)) }) + "\n");
+        s.write(
+          JSON.stringify({
+            k: "welcome",
+            appNonce,
+            mac: await hmac(key, welcomeText(m.extNonce, appNonce)),
+          }) + "\n",
+        );
         return;
       }
       case "ready": {

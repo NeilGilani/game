@@ -160,10 +160,14 @@ export function main(): void {
   try {
     const { configPath, origin } = parseArgs(process.argv.slice(2));
     const config = JSON.parse(readFileSync(configPath, "utf8")) as HostConfig;
-    runHost(config, origin, { stdin: process.stdin, stdout: process.stdout, log, exit: (c) => process.exit(c) });
+    runHost(config, origin, {
+      stdin: process.stdin,
+      stdout: process.stdout,
+      log,
+      exit: (c) => process.exit(c),
+    });
   } catch (e) {
     log((e as Error).message);
     process.exit(1);
   }
 }
-

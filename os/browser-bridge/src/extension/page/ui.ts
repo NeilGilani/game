@@ -80,7 +80,11 @@ export function showBanner(): void {
   const b = r.querySelector(".banner");
   b?.classList.add("on");
   b?.classList.remove("stopped");
-  setText(r, "AGENCY is using this tab", "It will ask you before anything important. Press Stop to take back control.");
+  setText(
+    r,
+    "AGENCY is using this tab",
+    "It will ask you before anything important. Press Stop to take back control.",
+  );
   r.querySelector<HTMLButtonElement>("button.stop")!.hidden = false;
 }
 

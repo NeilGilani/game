@@ -10,7 +10,14 @@ import { record, type World } from "../world.ts";
 
 export function flaky(w: World, r: Req): Res {
   const layout = (title: string, body: string, script?: string) =>
-    page({ title: `${title} · Flaky Corner`, brand: "Flaky Corner", css: `:root{--brand:#495057}`, nav: [["/", "All tests"]], body, ...(script ? { script } : {}) });
+    page({
+      title: `${title} · Flaky Corner`,
+      brand: "Flaky Corner",
+      css: `:root{--brand:#495057}`,
+      nav: [["/", "All tests"]],
+      body,
+      ...(script ? { script } : {}),
+    });
   switch (r.path) {
     case "/":
       return layout(
@@ -22,11 +29,22 @@ export function flaky(w: World, r: Req): Res {
       );
     case "/slow": {
       const ms = Math.max(0, Math.min(30_000, Number(r.query.get("ms")) || 4000));
-      return { kind: "delay", ms, then: layout("Slow page", `<h1>Finally loaded</h1><p>This page took ${ms} ms.</p><button type="button" onclick="this.textContent='Clicked'">Continue</button>`) };
+      return {
+        kind: "delay",
+        ms,
+        then: layout(
+          "Slow page",
+          `<h1>Finally loaded</h1><p>This page took ${ms} ms.</p><button type="button" onclick="this.textContent='Clicked'">Continue</button>`,
+        ),
+      };
     }
     case "/flaky": {
       const n = (w.flaky.attempts.flaky = (w.flaky.attempts.flaky ?? 0) + 1);
-      if (n <= 2) return html(`<!doctype html><title>Error</title><h1>Something went wrong (attempt ${n})</h1><p>Please try again.</p>`, 503);
+      if (n <= 2)
+        return html(
+          `<!doctype html><title>Error</title><h1>Something went wrong (attempt ${n})</h1><p>Please try again.</p>`,
+          503,
+        );
       return layout("It worked", `<h1>It worked on attempt ${n}</h1>`);
     }
     case "/late":
@@ -53,7 +71,16 @@ export function flaky(w: World, r: Req): Res {
 
 export function bank(w: World, r: Req): Res {
   const layout = (title: string, body: string) =>
-    page({ title: `${title} · Sandbox Savings`, brand: "Sandbox Savings Bank", css: `:root{--brand:#0b3d91}`, nav: [["/", "Home"], ["/accounts", "Accounts"]], body });
+    page({
+      title: `${title} · Sandbox Savings`,
+      brand: "Sandbox Savings Bank",
+      css: `:root{--brand:#0b3d91}`,
+      nav: [
+        ["/", "Home"],
+        ["/accounts", "Accounts"],
+      ],
+      body,
+    });
   if (r.path === "/" && r.method === "GET")
     return layout(
       "Sign in",

@@ -63,7 +63,8 @@ class FakeExtension {
     }
     if (m.k === "welcome" && this.pending && this.token) {
       const key = await hmacKey(this.token);
-      if (!(await hmacVerify(key, welcomeText(this.pending.extNonce, m.appNonce as string), m.mac as string))) return;
+      if (!(await hmacVerify(key, welcomeText(this.pending.extNonce, m.appNonce as string), m.mac as string)))
+        return;
       const session = `${this.pending.extNonce}.${m.appNonce as string}`;
       this.channel = new SignedChannel(key, session, ["res", "evt"]);
       this.send({ k: "ready", mac: await hmac(key, readyText(session)) });
@@ -168,8 +169,17 @@ describe("pairing and the signed protocol", () => {
     expect(real).toHaveLength(1);
     // Something on the Mac writes into the extension's stream: replay, forgery and a tampered body.
     const replay = real[0]!;
-    const forged = { k: "cmd", seq: 99, body: JSON.stringify({ id: "x", method: "page.click", params: {} }), mac: "0".repeat(64) };
-    const tampered = { ...replay, seq: 100, body: (replay.body as string).replace("bridge.status", "stop.all") };
+    const forged = {
+      k: "cmd",
+      seq: 99,
+      body: JSON.stringify({ id: "x", method: "page.click", params: {} }),
+      mac: "0".repeat(64),
+    };
+    const tampered = {
+      ...replay,
+      seq: 100,
+      body: (replay.body as string).replace("bridge.status", "stop.all"),
+    };
     for (const m of [replay, forged, tampered]) ext.stdout.write(encodeFrame(m));
     await until(() => ext.dropped === 3);
     expect(ext.commands.map((c) => c.method)).toEqual(["bridge.status"]);
@@ -181,7 +191,14 @@ describe("pairing and the signed protocol", () => {
     await server.waitUntilReady(3000);
     const p = server.call("tabs.list", {}, { timeoutMs: 300 });
     // A forged response arrives first; the real one follows from the extension.
-    ext.stdin.write(encodeFrame({ k: "res", seq: 50, body: JSON.stringify({ id: "1", ok: true, result: "forged" }), mac: "f".repeat(64) }));
+    ext.stdin.write(
+      encodeFrame({
+        k: "res",
+        seq: 50,
+        body: JSON.stringify({ id: "1", ok: true, result: "forged" }),
+        mac: "f".repeat(64),
+      }),
+    );
     expect(await p).toEqual({ echo: "tabs.list" });
   });
 

@@ -35,7 +35,8 @@ export function ensurePairing(opts: PairingOptions = {}): HostConfig & { configP
   chmodSync(dir, 0o700);
   const configPath = join(dir, "bridge.json");
   let socketPath = join(dir, "bridge.sock");
-  if (Buffer.byteLength(socketPath) > MAX_SOCKET_PATH) socketPath = join("/tmp", `agency-bridge-${process.getuid?.() ?? "user"}.sock`);
+  if (Buffer.byteLength(socketPath) > MAX_SOCKET_PATH)
+    socketPath = join("/tmp", `agency-bridge-${process.getuid?.() ?? "user"}.sock`);
   let token: string | undefined;
   if (existsSync(configPath)) {
     try {

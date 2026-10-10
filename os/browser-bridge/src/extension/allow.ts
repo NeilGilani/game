@@ -18,9 +18,17 @@ const WHY: Record<string, string> = {
 };
 
 const site = document.getElementById("site");
-if (site) site.textContent = (() => { try { return new URL(origin).host; } catch { return origin; } })();
+if (site)
+  site.textContent = (() => {
+    try {
+      return new URL(origin).host;
+    } catch {
+      return origin;
+    }
+  })();
 const why = document.getElementById("why");
-if (why) why.textContent = `${WHY[category] ?? "It is a protected site."} AGENCY doesn't use it unless you say so.`;
+if (why)
+  why.textContent = `${WHY[category] ?? "It is a protected site."} AGENCY doesn't use it unless you say so.`;
 
 const yes = document.getElementById("yes") as HTMLButtonElement;
 const no = document.getElementById("no") as HTMLButtonElement;
@@ -32,7 +40,9 @@ setTimeout(() => {
 }, 1500);
 
 function answer(allowed: boolean, e: Event): void {
-  chrome.runtime.sendMessage({ kind: "allowance-answer", req, allowed, trusted: e.isTrusted }).catch(() => undefined);
+  chrome.runtime
+    .sendMessage({ kind: "allowance-answer", req, allowed, trusted: e.isTrusted })
+    .catch(() => undefined);
 }
 yes.addEventListener("click", (e) => {
   if (!e.isTrusted || yes.disabled) return;

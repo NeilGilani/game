@@ -21,7 +21,14 @@ const STATES = ["", "California", "Illinois", "Massachusetts", "New York", "Texa
 const required = (label: string) => (v: string) => (v.trim() ? null : `Enter ${label}.`);
 
 export const FIELDS: Field[] = [
-  { name: "fullName", label: "Full legal name", type: "text", step: 1, autocomplete: "name", validate: (v) => (v.trim().split(/\s+/).length >= 2 ? null : "Enter your first and last name.") },
+  {
+    name: "fullName",
+    label: "Full legal name",
+    type: "text",
+    step: 1,
+    autocomplete: "name",
+    validate: (v) => (v.trim().split(/\s+/).length >= 2 ? null : "Enter your first and last name."),
+  },
   {
     name: "dob",
     label: "Date of birth",
@@ -34,23 +41,106 @@ export const FIELDS: Field[] = [
       return y < 1900 || new Date(v) > new Date() ? "Enter a real date of birth." : null;
     },
   },
-  { name: "memberId", label: "Member ID", type: "text", step: 1, hint: "Two letters, a dash, then six numbers, like AB-123456. It's on your benefits letter.", validate: (v) => (/^[A-Z]{2}-\d{6}$/.test(v.trim().toUpperCase()) ? null : "Enter your member ID like AB-123456.") },
-  { name: "phone", label: "Phone number", type: "tel", step: 1, autocomplete: "tel", validate: (v) => (v.replace(/\D/g, "").length === 10 ? null : "Enter a 10-digit phone number.") },
-  { name: "email", label: "Email (optional)", type: "email", step: 1, autocomplete: "email", validate: (v) => (!v || /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(v) ? null : "Enter an email like name@example.com, or leave it empty.") },
-  { name: "street", label: "Street address", type: "text", step: 2, autocomplete: "street-address", validate: required("your street address") },
-  { name: "city", label: "City", type: "text", step: 2, autocomplete: "address-level2", validate: required("your city") },
-  { name: "state", label: "State", type: "select", step: 2, options: STATES, validate: (v) => (STATES.includes(v) && v ? null : "Choose your state.") },
-  { name: "zip", label: "ZIP code", type: "text", step: 2, autocomplete: "postal-code", validate: (v) => (/^\d{5}$/.test(v.trim()) ? null : "Enter a 5-digit ZIP code.") },
-  { name: "household", label: "People in your household", type: "number", step: 2, validate: (v) => (/^\d+$/.test(v) && +v >= 1 && +v <= 12 ? null : "Enter a number from 1 to 12.") },
-  { name: "income", label: "Household income per month ($)", type: "number", step: 2, validate: (v) => (/^\d+(\.\d{1,2})?$/.test(v) && +v >= 0 && +v < 100000 ? null : "Enter monthly income in dollars, for example 1450.") },
-  { name: "attestTrue", label: "I confirm this information is true to the best of my knowledge.", type: "checkbox", step: 3, validate: (v) => (v === "yes" ? null : "Confirm that the information is true.") },
-  { name: "attestRenew", label: "I understand I must report changes within 10 days.", type: "checkbox", step: 3, validate: (v) => (v === "yes" ? null : "Confirm that you will report changes.") },
+  {
+    name: "memberId",
+    label: "Member ID",
+    type: "text",
+    step: 1,
+    hint: "Two letters, a dash, then six numbers, like AB-123456. It's on your benefits letter.",
+    validate: (v) =>
+      /^[A-Z]{2}-\d{6}$/.test(v.trim().toUpperCase()) ? null : "Enter your member ID like AB-123456.",
+  },
+  {
+    name: "phone",
+    label: "Phone number",
+    type: "tel",
+    step: 1,
+    autocomplete: "tel",
+    validate: (v) => (v.replace(/\D/g, "").length === 10 ? null : "Enter a 10-digit phone number."),
+  },
+  {
+    name: "email",
+    label: "Email (optional)",
+    type: "email",
+    step: 1,
+    autocomplete: "email",
+    validate: (v) =>
+      !v || /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(v)
+        ? null
+        : "Enter an email like name@example.com, or leave it empty.",
+  },
+  {
+    name: "street",
+    label: "Street address",
+    type: "text",
+    step: 2,
+    autocomplete: "street-address",
+    validate: required("your street address"),
+  },
+  {
+    name: "city",
+    label: "City",
+    type: "text",
+    step: 2,
+    autocomplete: "address-level2",
+    validate: required("your city"),
+  },
+  {
+    name: "state",
+    label: "State",
+    type: "select",
+    step: 2,
+    options: STATES,
+    validate: (v) => (STATES.includes(v) && v ? null : "Choose your state."),
+  },
+  {
+    name: "zip",
+    label: "ZIP code",
+    type: "text",
+    step: 2,
+    autocomplete: "postal-code",
+    validate: (v) => (/^\d{5}$/.test(v.trim()) ? null : "Enter a 5-digit ZIP code."),
+  },
+  {
+    name: "household",
+    label: "People in your household",
+    type: "number",
+    step: 2,
+    validate: (v) => (/^\d+$/.test(v) && +v >= 1 && +v <= 12 ? null : "Enter a number from 1 to 12."),
+  },
+  {
+    name: "income",
+    label: "Household income per month ($)",
+    type: "number",
+    step: 2,
+    validate: (v) =>
+      /^\d+(\.\d{1,2})?$/.test(v) && +v >= 0 && +v < 100000
+        ? null
+        : "Enter monthly income in dollars, for example 1450.",
+  },
+  {
+    name: "attestTrue",
+    label: "I confirm this information is true to the best of my knowledge.",
+    type: "checkbox",
+    step: 3,
+    validate: (v) => (v === "yes" ? null : "Confirm that the information is true."),
+  },
+  {
+    name: "attestRenew",
+    label: "I understand I must report changes within 10 days.",
+    type: "checkbox",
+    step: 3,
+    validate: (v) => (v === "yes" ? null : "Confirm that you will report changes."),
+  },
   {
     name: "signature",
     label: "Type your full legal name to sign",
     type: "text",
     step: 3,
-    validate: (v, all) => (v.trim().toLowerCase() === (all.fullName ?? "").trim().toLowerCase() && v.trim() ? null : "Type your full legal name exactly as above to sign."),
+    validate: (v, all) =>
+      v.trim().toLowerCase() === (all.fullName ?? "").trim().toLowerCase() && v.trim()
+        ? null
+        : "Type your full legal name exactly as above to sign.",
   },
 ];
 
@@ -61,7 +151,16 @@ const CSS = `:root{--brand:#1c3d5a} .err-summary{border:3px solid #b00020;paddin
 const STEP_TITLES = ["About you", "Your household", "Review and sign"];
 
 function layout(title: string, body: string): Res {
-  return page({ title: `${title} · Benefits Portal`, brand: "State Benefits Portal", css: CSS, nav: [["/", "Home"], ["/apply/1", "Apply or renew"]], body });
+  return page({
+    title: `${title} · Benefits Portal`,
+    brand: "State Benefits Portal",
+    css: CSS,
+    nav: [
+      ["/", "Home"],
+      ["/apply/1", "Apply or renew"],
+    ],
+    body,
+  });
 }
 
 function fieldHtml(f: Field, value: string, error: string | null): string {
@@ -92,8 +191,12 @@ export function benefits(w: World, r: Req): Res {
     const fields = FIELDS.filter((f) => f.step === step);
     let errors: Array<[Field, string]> = [];
     if (r.method === "POST") {
-      for (const f of fields) b.draft[f.name] = f.type === "checkbox" ? (r.form.get(f.name) ?? "") : (r.form.get(f.name) ?? "").slice(0, 200);
-      errors = fields.map((f) => [f, f.validate(b.draft[f.name] ?? "", b.draft)] as [Field, string | null]).filter((x): x is [Field, string] => !!x[1]);
+      for (const f of fields)
+        b.draft[f.name] =
+          f.type === "checkbox" ? (r.form.get(f.name) ?? "") : (r.form.get(f.name) ?? "").slice(0, 200);
+      errors = fields
+        .map((f) => [f, f.validate(b.draft[f.name] ?? "", b.draft)] as [Field, string | null])
+        .filter((x): x is [Field, string] => !!x[1]);
       if (!errors.length) {
         if (step < 3) return redirect(`/apply/${step + 1}`);
         const earlier = FIELDS.filter((f) => f.step < 3 && f.validate(b.draft[f.name] ?? "", b.draft));
@@ -128,7 +231,10 @@ export function benefits(w: World, r: Req): Res {
   }
   const d = /^\/done\/(BEN-\d+)$/.exec(r.path);
   if (d && r.method === "GET") {
-    return layout("Submitted", `<div class="card" role="status"><h1>Application submitted</h1><p>Your reference number is <strong>${esc(d[1])}</strong>. Keep it for your records.</p></div>`);
+    return layout(
+      "Submitted",
+      `<div class="card" role="status"><h1>Application submitted</h1><p>Your reference number is <strong>${esc(d[1])}</strong>. Keep it for your records.</p></div>`,
+    );
   }
   return notFound();
 }

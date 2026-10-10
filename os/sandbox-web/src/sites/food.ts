@@ -109,16 +109,42 @@ export const RESTAURANTS: Restaurant[] = [
           },
         ],
       },
-      { id: "spring-rolls", name: "Spring rolls (4)", description: "Crispy vegetable rolls, sweet chili sauce.", cents: 695, emoji: "🥢", groups: [] },
+      {
+        id: "spring-rolls",
+        name: "Spring rolls (4)",
+        description: "Crispy vegetable rolls, sweet chili sauce.",
+        cents: 695,
+        emoji: "🥢",
+        groups: [],
+      },
       {
         id: "thai-iced-tea",
         name: "Thai iced tea",
         description: "Sweet black tea with condensed milk.",
         cents: 450,
         emoji: "🧋",
-        groups: [{ id: "ice", label: "Ice", kind: "radio", required: true, choices: [{ id: "regular", label: "Regular ice" }, { id: "light", label: "Light ice" }] }],
+        groups: [
+          {
+            id: "ice",
+            label: "Ice",
+            kind: "radio",
+            required: true,
+            choices: [
+              { id: "regular", label: "Regular ice" },
+              { id: "light", label: "Light ice" },
+            ],
+          },
+        ],
       },
-      { id: "mango-sticky-rice", name: "Mango sticky rice", description: "Seasonal.", cents: 850, emoji: "🥭", groups: [], soldOut: true },
+      {
+        id: "mango-sticky-rice",
+        name: "Mango sticky rice",
+        description: "Seasonal.",
+        cents: 850,
+        emoji: "🥭",
+        groups: [],
+        soldOut: true,
+      },
     ],
   },
   {
@@ -158,7 +184,15 @@ export const RESTAURANTS: Restaurant[] = [
               { id: "almond", label: "Almond milk", cents: 70 },
             ],
           },
-          { id: "extras", label: "Extras", kind: "checkbox", choices: [{ id: "shot", label: "Extra shot", cents: 90 }, { id: "vanilla", label: "Vanilla syrup", cents: 60 }] },
+          {
+            id: "extras",
+            label: "Extras",
+            kind: "checkbox",
+            choices: [
+              { id: "shot", label: "Extra shot", cents: 90 },
+              { id: "vanilla", label: "Vanilla syrup", cents: 60 },
+            ],
+          },
         ],
       },
       {
@@ -167,10 +201,35 @@ export const RESTAURANTS: Restaurant[] = [
         description: "Espresso, steamed milk, deep foam.",
         cents: 450,
         emoji: "☕",
-        groups: [{ id: "size", label: "Size", kind: "radio", required: true, choices: [{ id: "small", label: "Small" }, { id: "medium", label: "Medium", cents: 60 }] }],
+        groups: [
+          {
+            id: "size",
+            label: "Size",
+            kind: "radio",
+            required: true,
+            choices: [
+              { id: "small", label: "Small" },
+              { id: "medium", label: "Medium", cents: 60 },
+            ],
+          },
+        ],
       },
-      { id: "muffin", name: "Blueberry muffin", description: "Baked this morning.", cents: 325, emoji: "🧁", groups: [] },
-      { id: "bagel", name: "Bagel with cream cheese", description: "Everything bagel, toasted.", cents: 395, emoji: "🥯", groups: [] },
+      {
+        id: "muffin",
+        name: "Blueberry muffin",
+        description: "Baked this morning.",
+        cents: 325,
+        emoji: "🧁",
+        groups: [],
+      },
+      {
+        id: "bagel",
+        name: "Bagel with cream cheese",
+        description: "Everything bagel, toasted.",
+        cents: 395,
+        emoji: "🥯",
+        groups: [],
+      },
     ],
   },
   {
@@ -188,13 +247,53 @@ export const RESTAURANTS: Restaurant[] = [
         cents: 1500,
         emoji: "🍕",
         groups: [
-          { id: "size", label: "Size", kind: "radio", required: true, choices: [{ id: "12", label: '12"' }, { id: "16", label: '16"', cents: 500 }] },
-          { id: "crust", label: "Crust", kind: "select", required: true, choices: [{ id: "classic", label: "Classic" }, { id: "thin", label: "Thin" }, { id: "gf", label: "Gluten-free", cents: 300 }] },
+          {
+            id: "size",
+            label: "Size",
+            kind: "radio",
+            required: true,
+            choices: [
+              { id: "12", label: '12"' },
+              { id: "16", label: '16"', cents: 500 },
+            ],
+          },
+          {
+            id: "crust",
+            label: "Crust",
+            kind: "select",
+            required: true,
+            choices: [
+              { id: "classic", label: "Classic" },
+              { id: "thin", label: "Thin" },
+              { id: "gf", label: "Gluten-free", cents: 300 },
+            ],
+          },
         ],
       },
-      { id: "pepperoni", name: "Pepperoni pizza", description: "Tomato, mozzarella, pepperoni.", cents: 1700, emoji: "🍕", groups: [] },
-      { id: "garlic-knots", name: "Garlic knots (6)", description: "With marinara.", cents: 595, emoji: "🧄", groups: [] },
-      { id: "caesar", name: "Caesar salad", description: "Romaine, parmesan, croutons.", cents: 950, emoji: "🥗", groups: [] },
+      {
+        id: "pepperoni",
+        name: "Pepperoni pizza",
+        description: "Tomato, mozzarella, pepperoni.",
+        cents: 1700,
+        emoji: "🍕",
+        groups: [],
+      },
+      {
+        id: "garlic-knots",
+        name: "Garlic knots (6)",
+        description: "With marinara.",
+        cents: 595,
+        emoji: "🧄",
+        groups: [],
+      },
+      {
+        id: "caesar",
+        name: "Caesar salad",
+        description: "Romaine, parmesan, croutons.",
+        cents: 950,
+        emoji: "🥗",
+        groups: [],
+      },
     ],
   },
   {
@@ -205,9 +304,30 @@ export const RESTAURANTS: Restaurant[] = [
     rating: 4.6,
     emoji: "🥗",
     items: [
-      { id: "harvest", name: "Harvest bowl", description: "Quinoa, roasted squash, kale, feta, apple.", cents: 1295, emoji: "🥗", groups: [] },
-      { id: "kale-caesar", name: "Kale caesar", description: "Kale, parmesan, lemon, croutons.", cents: 1150, emoji: "🥬", groups: [] },
-      { id: "soup", name: "Lentil soup", description: "Cup of red lentil soup.", cents: 595, emoji: "🍲", groups: [] },
+      {
+        id: "harvest",
+        name: "Harvest bowl",
+        description: "Quinoa, roasted squash, kale, feta, apple.",
+        cents: 1295,
+        emoji: "🥗",
+        groups: [],
+      },
+      {
+        id: "kale-caesar",
+        name: "Kale caesar",
+        description: "Kale, parmesan, lemon, croutons.",
+        cents: 1150,
+        emoji: "🥬",
+        groups: [],
+      },
+      {
+        id: "soup",
+        name: "Lentil soup",
+        description: "Cup of red lentil soup.",
+        cents: 595,
+        emoji: "🍲",
+        groups: [],
+      },
     ],
   },
 ];
@@ -242,7 +362,14 @@ export function computeTotals(lines: CartLine[], tipPercent: number | null, tipC
   const serviceFeeCents = lines.length ? Math.min(600, Math.max(150, Math.round(subtotalCents * 0.1))) : 0;
   const taxCents = Math.round(subtotalCents * TAX_RATE);
   const tipCents = tipPercent === null ? tipCustomCents : Math.round((subtotalCents * tipPercent) / 100);
-  return { subtotalCents, deliveryFeeCents, serviceFeeCents, taxCents, tipCents, totalCents: subtotalCents + deliveryFeeCents + serviceFeeCents + taxCents + tipCents };
+  return {
+    subtotalCents,
+    deliveryFeeCents,
+    serviceFeeCents,
+    taxCents,
+    tipCents,
+    totalCents: subtotalCents + deliveryFeeCents + serviceFeeCents + taxCents + tipCents,
+  };
 }
 
 const CSS = `:root{--brand:#d6336c} .item{display:flex;justify-content:space-between;gap:16px;align-items:center}
@@ -299,7 +426,9 @@ export function food(w: World, r: Req): Res {
 
   if (r.method === "GET" && r.path === "/") {
     const q = (r.query.get("q") ?? "").trim().toLowerCase();
-    const list = RESTAURANTS.filter((x) => !q || (x.name + x.cuisine + x.items.map((i) => i.name).join(" ")).toLowerCase().includes(q));
+    const list = RESTAURANTS.filter(
+      (x) => !q || (x.name + x.cuisine + x.items.map((i) => i.name).join(" ")).toLowerCase().includes(q),
+    );
     return layout(
       w,
       "Restaurants",
@@ -308,7 +437,9 @@ export function food(w: World, r: Req): Res {
 <h2>${q ? `Results for “${esc(q)}”` : "Popular near you"}</h2>
 <div class="grid">${list
         .map(
-          (x) => `<a class="card rcard" href="/r/${x.id}"><div class="emoji" aria-hidden="true">${x.emoji}</div><h3>${esc(x.name)}</h3>
+          (
+            x,
+          ) => `<a class="card rcard" href="/r/${x.id}"><div class="emoji" aria-hidden="true">${x.emoji}</div><h3>${esc(x.name)}</h3>
 <p class="muted">${esc(x.cuisine)} · ${x.eta} · ★ ${x.rating}</p></a>`,
         )
         .join("")}</div>${list.length ? "" : `<p>No matches.</p>`}`,
@@ -324,7 +455,9 @@ export function food(w: World, r: Req): Res {
       `<h1>${esc(rest.name)}</h1><p class="muted">${esc(rest.cuisine)} · ${rest.eta} · Delivery ${money(DELIVERY_FEE_CENTS)}</p>
 <h2>Menu</h2>${rest.items
         .map(
-          (i) => `<div class="card item"><div><span class="emoji" aria-hidden="true">${i.emoji}</span> <strong>${esc(i.name)}</strong> <span>${money(unitPrice(w, i))}</span>
+          (
+            i,
+          ) => `<div class="card item"><div><span class="emoji" aria-hidden="true">${i.emoji}</span> <strong>${esc(i.name)}</strong> <span>${money(unitPrice(w, i))}</span>
 <p class="muted">${esc(i.description)}</p></div>${i.soldOut ? `<span class="badge">Sold out</span>` : `<a class="btn primary" href="/r/${rest.id}/item/${i.id}" aria-label="Add ${esc(i.name)}">Add</a>`}</div>`,
         )
         .join("")}`,
@@ -340,7 +473,10 @@ export function food(w: World, r: Req): Res {
       .map((g) => {
         if (g.kind === "select")
           return `<label for="opt-${g.id}">${esc(g.label)}</label><select id="opt-${g.id}" name="opt-${g.id}" data-price-group>${g.choices
-            .map((c) => `<option value="${c.id}" data-cents="${c.cents ?? 0}">${esc(c.label)}${c.cents ? ` (+${money(c.cents)})` : ""}</option>`)
+            .map(
+              (c) =>
+                `<option value="${c.id}" data-cents="${c.cents ?? 0}">${esc(c.label)}${c.cents ? ` (+${money(c.cents)})` : ""}</option>`,
+            )
             .join("")}</select>`;
         const type = g.kind === "radio" ? "radio" : "checkbox";
         return `<fieldset class="inline"><legend>${esc(g.label)}${g.required ? " (required)" : ""}</legend>${g.choices
@@ -377,7 +513,8 @@ c*=+f.qty.value;f.querySelector('[data-line-total]').textContent=fmt(c)}f.addEve
     let cents = unitPrice(w, item);
     for (const g of item.groups) {
       const vals = r.form.getAll(`opt-${g.id}`);
-      if (g.required && vals.length === 0) return redirect(`${back}?error=${encodeURIComponent(`Choose a ${g.label.toLowerCase()}.`)}`);
+      if (g.required && vals.length === 0)
+        return redirect(`${back}?error=${encodeURIComponent(`Choose a ${g.label.toLowerCase()}.`)}`);
       for (const v of vals) {
         const c = g.choices.find((x) => x.id === v);
         if (!c) return redirect(`${back}?error=${encodeURIComponent("That option isn't available.")}`);
@@ -394,12 +531,22 @@ c*=+f.qty.value;f.querySelector('[data-line-total]').textContent=fmt(c)}f.addEve
           `<h1>Start a new cart?</h1><p>Your cart has items from another restaurant. You can only order from one restaurant at a time.</p>
 <form method="post" action="/cart/add">${Array.from(r.form.entries())
             .map(([k, v]) => `<input type="hidden" name="${esc(k)}" value="${esc(v)}">`)
-            .join("")}<input type="hidden" name="replace" value="yes"><button class="primary" type="submit">Start new cart</button> <a class="btn" href="/cart">Keep my cart</a></form>`,
+            .join(
+              "",
+            )}<input type="hidden" name="replace" value="yes"><button class="primary" type="submit">Start new cart</button> <a class="btn" href="/cart">Keep my cart</a></form>`,
         );
       f.cart.lines = [];
     }
     f.cart.restaurantId = rest.id;
-    f.cart.lines.push({ lineId: f.cart.nextLine++, itemId: item.id, name: item.name, options: chosen, qty, unitCents: cents, note: (r.form.get("note") ?? "").slice(0, 200) });
+    f.cart.lines.push({
+      lineId: f.cart.nextLine++,
+      itemId: item.id,
+      name: item.name,
+      options: chosen,
+      qty,
+      unitCents: cents,
+      note: (r.form.get("note") ?? "").slice(0, 200),
+    });
     record(w, "food", "cart.add", { item: item.name, options: chosen, qty, unitCents: cents });
     return redirect("/cart?added=1");
   }
@@ -427,13 +574,17 @@ c*=+f.qty.value;f.querySelector('[data-line-total]').textContent=fmt(c)}f.addEve
         f.cart.lines.length
           ? `<p>From <strong>${esc(rest?.name ?? "")}</strong></p>${f.cart.lines
               .map(
-                (l) => `<div class="card item"><div><strong>${l.qty} × ${esc(l.name)}</strong> — ${money(l.unitCents * l.qty)}
+                (
+                  l,
+                ) => `<div class="card item"><div><strong>${l.qty} × ${esc(l.name)}</strong> — ${money(l.unitCents * l.qty)}
 <div class="muted">${l.options.map(esc).join(" · ") || "No options"}${l.note ? ` · Note: ${esc(l.note)}` : ""}</div></div>
 <div class="row"><form method="post" action="/cart/qty"><input type="hidden" name="line" value="${l.lineId}"><label for="qty-${l.lineId}" class="muted">Qty</label>
 <select id="qty-${l.lineId}" name="qty" onchange="this.form.submit()">${[1, 2, 3, 4, 5, 6].map((n) => `<option ${n === l.qty ? "selected" : ""}>${n}</option>`).join("")}</select></form>
 <form method="post" action="/cart/remove"><input type="hidden" name="line" value="${l.lineId}"><button type="submit" aria-label="Remove ${esc(l.name)}">Remove</button></form></div></div>`,
               )
-              .join("")}<p>Subtotal: <strong>${money(t.subtotalCents)}</strong></p><p><a class="btn primary" href="/checkout">Go to checkout</a></p>`
+              .join(
+                "",
+              )}<p>Subtotal: <strong>${money(t.subtotalCents)}</strong></p><p><a class="btn primary" href="/checkout">Go to checkout</a></p>`
           : `<p>Your cart is empty.</p><p><a class="btn" href="/">Find food</a></p>`
       }`,
     );
@@ -483,8 +634,16 @@ ${summaryRows(t, f.tipPercent === null ? "" : ` (${f.tipPercent}%)`)}
     if (!f.cart.lines.length) return redirect("/cart");
     const t = computeTotals(f.cart.lines, f.tipPercent, f.tipCustomCents);
     if (Number(r.form.get("expectedTotal")) !== t.totalCents) {
-      record(w, "food", "order.rejected", { reason: "total changed", expected: r.form.get("expectedTotal"), actual: t.totalCents });
-      return layout(w, "Total changed", `<h1>Your total changed</h1><p role="alert">The total is now ${money(t.totalCents)}. Please review your order again.</p><p><a class="btn primary" href="/checkout">Review order</a></p>`);
+      record(w, "food", "order.rejected", {
+        reason: "total changed",
+        expected: r.form.get("expectedTotal"),
+        actual: t.totalCents,
+      });
+      return layout(
+        w,
+        "Total changed",
+        `<h1>Your total changed</h1><p role="alert">The total is now ${money(t.totalCents)}. Please review your order again.</p><p><a class="btn primary" href="/checkout">Review order</a></p>`,
+      );
     }
     const rest = RESTAURANTS.find((x) => x.id === f.cart.restaurantId);
     const order: FoodOrder = {
@@ -502,7 +661,11 @@ ${summaryRows(t, f.tipPercent === null ? "" : ` (${f.tipPercent}%)`)}
     };
     f.orders.push(order);
     f.cart = { restaurantId: null, lines: [], nextLine: f.cart.nextLine };
-    record(w, "food", "order.placed", { id: order.id, totalCents: order.totalCents, restaurant: order.restaurant });
+    record(w, "food", "order.placed", {
+      id: order.id,
+      totalCents: order.totalCents,
+      restaurant: order.restaurant,
+    });
     return redirect(`/orders/${order.id}?placed=1`);
   }
 
@@ -515,7 +678,10 @@ ${summaryRows(t, f.tipPercent === null ? "" : ` (${f.tipPercent}%)`)}
           ? `<table><caption>Past and current orders</caption><thead><tr><th>Order</th><th>Restaurant</th><th>Total</th><th>Status</th></tr></thead><tbody>${f.orders
               .slice()
               .reverse()
-              .map((o) => `<tr><td><a href="/orders/${o.id}">${o.id}</a></td><td>${esc(o.restaurant)}</td><td>${money(o.totalCents)}</td><td>${orderStatus(o)}</td></tr>`)
+              .map(
+                (o) =>
+                  `<tr><td><a href="/orders/${o.id}">${o.id}</a></td><td>${esc(o.restaurant)}</td><td>${money(o.totalCents)}</td><td>${orderStatus(o)}</td></tr>`,
+              )
               .join("")}</tbody></table>`
           : "<p>No orders yet.</p>"
       }`,
@@ -563,7 +729,11 @@ ${summaryRows(o, "")}${status === "Order received" ? `<form method="post" action
   }
   if (r.method === "POST" && r.path === "/payment/new") {
     record(w, "food", "card.submitted", { hasNumber: !!r.form.get("cardnumber") });
-    return layout(w, "Card not saved", `<h1>Sandbox: card not saved</h1><p>This pretend store never stores cards.</p><p><a href="/checkout">Back to checkout</a></p>`);
+    return layout(
+      w,
+      "Card not saved",
+      `<h1>Sandbox: card not saved</h1><p>This pretend store never stores cards.</p><p><a href="/checkout">Back to checkout</a></p>`,
+    );
   }
 
   return notFound();

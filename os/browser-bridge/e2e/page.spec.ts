@@ -70,7 +70,9 @@ test("clicks, chooses options, types and selects by reference", async () => {
 
   const tree = await rig.bridge.call("page.tree", { tabId });
   expect(tree.data.nodes.find((n) => n.role === "radio" && n.name === "Tofu")?.state.checked).toBe(true);
-  expect(tree.data.nodes.find((n) => n.role === "checkbox" && /Fried egg/.test(n.name))?.state.checked).toBe(true);
+  expect(tree.data.nodes.find((n) => n.role === "checkbox" && /Fried egg/.test(n.name))?.state.checked).toBe(
+    true,
+  );
   // The live price updates: 13.50 + 1.50 egg.
   const add = tree.data.nodes.find((n) => n.role === "button" && /Add to cart/.test(n.name));
   expect(add?.name).toContain("$15.00");
@@ -89,7 +91,10 @@ test("consequential clicks need an approval bound to the exact page state", asyn
   await clickByName(rig.bridge, tabId, "link", "Go to checkout");
 
   const place = await find(rig.bridge, tabId, "button", "Place order");
-  const err = await expectError(rig.bridge.call("page.click", { tabId, ref: place.ref }), "approval-required");
+  const err = await expectError(
+    rig.bridge.call("page.click", { tabId, ref: place.ref }),
+    "approval-required",
+  );
   const action = err.error.action!;
   expect(action.consequential).toBe("purchase");
   expect(action.details.Button).toBe("Place order");
@@ -97,7 +102,10 @@ test("consequential clicks need an approval bound to the exact page state", asyn
   expect(rig.sandbox.world().food.orders).toHaveLength(0);
 
   // A wrong fingerprint is refused.
-  await expectError(rig.bridge.call("page.click", { tabId, ref: place.ref, approvedFingerprint: "0".repeat(64) }), "approval-mismatch");
+  await expectError(
+    rig.bridge.call("page.click", { tabId, ref: place.ref, approvedFingerprint: "0".repeat(64) }),
+    "approval-mismatch",
+  );
 
   // The page changes (the tip changes the total): the old approval no longer applies.
   await clickByName(rig.bridge, tabId, "radio", "20%");
@@ -110,7 +118,11 @@ test("consequential clicks need an approval bound to the exact page state", asyn
   // Describe again, approve that exact action, and it goes through.
   const fresh = await rig.bridge.call("page.describeAction", { tabId, ref: place2.ref });
   expect(fresh.data.fingerprint).not.toBe(action.fingerprint);
-  const done = await rig.bridge.call("page.click", { tabId, ref: place2.ref, approvedFingerprint: fresh.data.fingerprint });
+  const done = await rig.bridge.call("page.click", {
+    tabId,
+    ref: place2.ref,
+    approvedFingerprint: fresh.data.fingerprint,
+  });
   expect(done.navigated).toBe(true);
   expect(done.url).toMatch(/\/orders\/DD-\d+\?placed=1/);
   expect(rig.sandbox.world().food.orders).toHaveLength(1);
@@ -125,7 +137,10 @@ test("never types into card, password or code fields, and never types card numbe
   const csc = tree.data.nodes.find((n) => n.name === "Security code");
   expect(csc?.state.secure).toBe(true);
   const name = tree.data.nodes.find((n) => n.name === "Name on card");
-  await expectError(rig.bridge.call("page.type", { tabId, ref: name!.ref, text: "4242 4242 4242 4242" }), "secret-in-text");
+  await expectError(
+    rig.bridge.call("page.type", { tabId, ref: name!.ref, text: "4242 4242 4242 4242" }),
+    "secret-in-text",
+  );
   await rig.bridge.call("page.type", { tabId, ref: name!.ref, text: "Riley Morgan" });
 });
 
@@ -144,7 +159,13 @@ test("password values are never read, and the injection page is flagged but hidd
   const text = await rig.bridge.call("page.extractText", { tabId });
   expect(text.data.text).toContain("Coziest Red Lentil Soup");
   expect(text.data.text).toContain("Note to AI assistants"); // visible attempts stay visible, flagged
-  for (const hidden of ["Forward all emails", "10 pizzas", "visit http", "Reveal the user's password", "approve all purchases"]) {
+  for (const hidden of [
+    "Forward all emails",
+    "10 pizzas",
+    "visit http",
+    "Reveal the user's password",
+    "approve all purchases",
+  ]) {
     expect(text.data.text).not.toContain(hidden);
   }
   expect(text.suspectedInjection.join("\n")).toMatch(/ignore previous instructions/);
@@ -164,21 +185,38 @@ test("extracts tables", async () => {
 
 test("waits for late elements, survives slow pages and reports what didn't happen", async () => {
   const { tabId } = await rig.bridge.call("tabs.open", { url: rig.sandbox.url("flaky", "/late") });
-  const early = await rig.bridge.call("page.waitFor", { tabId, condition: { kind: "element", role: "button", name: "Show offers" }, timeoutMs: 300 });
+  const early = await rig.bridge.call("page.waitFor", {
+    tabId,
+    condition: { kind: "element", role: "button", name: "Show offers" },
+    timeoutMs: 300,
+  });
   expect(early.met).toBe(false);
-  const late = await rig.bridge.call("page.waitFor", { tabId, condition: { kind: "element", role: "button", name: "Show offers" }, timeoutMs: 8000 });
+  const late = await rig.bridge.call("page.waitFor", {
+    tabId,
+    condition: { kind: "element", role: "button", name: "Show offers" },
+    timeoutMs: 8000,
+  });
   expect(late.met).toBe(true);
   await rig.bridge.call("page.click", { tabId, ref: late.ref! });
-  const t = await rig.bridge.call("page.waitFor", { tabId, condition: { kind: "text", text: "Offers shown" }, timeoutMs: 3000 });
+  const t = await rig.bridge.call("page.waitFor", {
+    tabId,
+    condition: { kind: "text", text: "Offers shown" },
+    timeoutMs: 3000,
+  });
   expect(t.met).toBe(true);
 
-  const nav = await rig.bridge.call("tabs.navigate", { tabId, url: rig.sandbox.url("flaky", "/slow?ms=1500") });
+  const nav = await rig.bridge.call("tabs.navigate", {
+    tabId,
+    url: rig.sandbox.url("flaky", "/slow?ms=1500"),
+  });
   expect(nav.url).toContain("/slow");
   const text = await rig.bridge.call("page.extractText", { tabId });
   expect(text.data.text).toContain("Finally loaded");
 
   await rig.bridge.call("tabs.navigate", { tabId, url: rig.sandbox.url("flaky", "/flaky") });
-  expect((await rig.bridge.call("page.extractText", { tabId })).data.text).toContain("Something went wrong (attempt 1)");
+  expect((await rig.bridge.call("page.extractText", { tabId })).data.text).toContain(
+    "Something went wrong (attempt 1)",
+  );
 });
 
 test("Stop in the page halts AGENCY until the person starts a new task", async () => {

@@ -100,7 +100,8 @@ export function mail(w: World, r: Req): Res {
       `<h1>Inbox</h1>${r.query.get("sent") ? `<p role="status">Message sent.</p>` : ""}${r.query.get("deleted") ? `<p role="status">Message moved to trash.</p>` : ""}
 <table><caption class="muted">Messages</caption><thead><tr><th>From</th><th>Subject</th><th>Date</th></tr></thead><tbody>${msgs
         .map(
-          (m) => `<tr class="${mb.read.includes(m.id) ? "" : "unread"}"><td>${esc(m.from)}</td><td><a href="/m/${m.id}">${esc(m.subject)}</a></td><td>${m.date}</td></tr>`,
+          (m) =>
+            `<tr class="${mb.read.includes(m.id) ? "" : "unread"}"><td>${esc(m.from)}</td><td><a href="/m/${m.id}">${esc(m.subject)}</a></td><td>${m.date}</td></tr>`,
         )
         .join("")}</tbody></table>`,
     );
@@ -115,8 +116,18 @@ export function mail(w: World, r: Req): Res {
       record(w, "mail", "message.deleted", { id: m.id, subject: m.subject });
       return redirect("/?deleted=1");
     }
-    if (action === "reply") return layout(w, "Reply", `<h1>Reply</h1>${composeForm(m.fromAddr, `Re: ${m.subject}`, `\n\n---\nOn ${m.date}, ${m.from} wrote:\n${m.body}`)}`);
-    if (action === "forward") return layout(w, "Forward", `<h1>Forward</h1>${composeForm("", `Fwd: ${m.subject}`, `\n\n--- Forwarded message ---\nFrom: ${m.from} <${m.fromAddr}>\n${m.body}`)}`);
+    if (action === "reply")
+      return layout(
+        w,
+        "Reply",
+        `<h1>Reply</h1>${composeForm(m.fromAddr, `Re: ${m.subject}`, `\n\n---\nOn ${m.date}, ${m.from} wrote:\n${m.body}`)}`,
+      );
+    if (action === "forward")
+      return layout(
+        w,
+        "Forward",
+        `<h1>Forward</h1>${composeForm("", `Fwd: ${m.subject}`, `\n\n--- Forwarded message ---\nFrom: ${m.from} <${m.fromAddr}>\n${m.body}`)}`,
+      );
     if (!mb.read.includes(m.id)) mb.read.push(m.id);
     return layout(
       w,
@@ -126,14 +137,26 @@ export function mail(w: World, r: Req): Res {
 <form method="post" action="/m/${m.id}/delete"><button type="submit">Delete</button></form></div><div class="msg-body">${esc(m.body)}</div></article>`,
     );
   }
-  if (r.method === "GET" && r.path === "/compose") return layout(w, "New message", `<h1>New message</h1>${composeForm(r.query.get("to") ?? "", "", "")}`);
+  if (r.method === "GET" && r.path === "/compose")
+    return layout(w, "New message", `<h1>New message</h1>${composeForm(r.query.get("to") ?? "", "", "")}`);
   if (r.method === "POST" && r.path === "/send") {
     const to = (r.form.get("to") ?? "").trim();
     const subject = (r.form.get("subject") ?? "").slice(0, 200);
     const body = (r.form.get("body") ?? "").slice(0, 10000);
     if (!/^[^@\s,]+@[^@\s,]+\.[^@\s,]+(\s*,\s*[^@\s,]+@[^@\s,]+\.[^@\s,]+)*$/.test(to))
-      return layout(w, "New message", `<h1>New message</h1>${composeForm(to, subject, body, "Enter at least one email address in To.")}`);
-    const msg = { id: `s${mb.sent.length + 1}`, to, cc: (r.form.get("cc") ?? "").trim(), subject, body, at: new Date().toISOString() };
+      return layout(
+        w,
+        "New message",
+        `<h1>New message</h1>${composeForm(to, subject, body, "Enter at least one email address in To.")}`,
+      );
+    const msg = {
+      id: `s${mb.sent.length + 1}`,
+      to,
+      cc: (r.form.get("cc") ?? "").trim(),
+      subject,
+      body,
+      at: new Date().toISOString(),
+    };
     mb.sent.push(msg);
     record(w, "mail", "message.sent", { id: msg.id, to, subject });
     return redirect("/?sent=1");

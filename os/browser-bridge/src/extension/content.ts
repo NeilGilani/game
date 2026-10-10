@@ -88,7 +88,14 @@ function start(): void {
         if (!ref) throw new act.PageError("bad-request", "ref is required.");
         return {
           done: true,
-          value: await act.type(ref, str("text") ?? "", p.clear !== false, p.pressEnter === true, str("expectKey"), isStopped),
+          value: await act.type(
+            ref,
+            str("text") ?? "",
+            p.clear !== false,
+            p.pressEnter === true,
+            str("expectKey"),
+            isStopped,
+          ),
         };
       case "select":
         if (!ref) throw new act.PageError("bad-request", "ref is required.");
@@ -96,10 +103,18 @@ function start(): void {
       case "scroll":
         return {
           done: true,
-          scroll: await act.scroll(ref, p.direction === "up" ? "up" : p.direction === "down" ? "down" : undefined, Number(p.pages) || 1),
+          scroll: await act.scroll(
+            ref,
+            p.direction === "up" ? "up" : p.direction === "down" ? "down" : undefined,
+            Number(p.pages) || 1,
+          ),
         };
       case "waitFor":
-        return act.waitFor(p.condition as never, Math.max(0, Math.min(120_000, Number(p.timeoutMs) || 10_000)), isStopped);
+        return act.waitFor(
+          p.condition as never,
+          Math.max(0, Math.min(120_000, Number(p.timeoutMs) || 10_000)),
+          isStopped,
+        );
       case "extractText":
         return act.extractText(ref, Math.max(100, Math.min(200_000, Number(p.maxChars) || 20_000)));
       case "extractTables":

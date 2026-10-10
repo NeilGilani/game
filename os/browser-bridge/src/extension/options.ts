@@ -15,8 +15,7 @@ const extra = document.getElementById("extra") as HTMLTextAreaElement;
 
 async function refresh(): Promise<void> {
   const r = (await chrome.runtime.sendMessage({ kind: "options-status" })) as
-    | { link: string; paired: boolean; fingerprint: string | null; extraProtected: string[] }
-    | undefined;
+    { link: string; paired: boolean; fingerprint: string | null; extraProtected: string[] } | undefined;
   if (!r) return;
   status.textContent = LINK_TEXT[r.link] ?? r.link;
   fp.textContent = r.fingerprint ?? "none";
@@ -33,7 +32,13 @@ document.getElementById("save")!.addEventListener("click", async (e) => {
   if (!e.isTrusted) return;
   const hosts = extra.value
     .split(/\s+/)
-    .map((h) => h.trim().toLowerCase().replace(/^https?:\/\//, "").replace(/\/.*$/, ""))
+    .map((h) =>
+      h
+        .trim()
+        .toLowerCase()
+        .replace(/^https?:\/\//, "")
+        .replace(/\/.*$/, ""),
+    )
     .filter((h) => /^[a-z0-9.-]+$/.test(h));
   await chrome.storage.local.set({ extraProtected: hosts });
   await refresh();

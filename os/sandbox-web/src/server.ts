@@ -22,13 +22,28 @@ import { bank, flaky, lab } from "./sites/misc.ts";
 import { pharmacy } from "./sites/pharmacy.ts";
 import { newWorld, type World } from "./world.ts";
 
-export const SITES: Record<string, { title: string; about: string; handler: (w: World, r: Req) => Res | Promise<Res> }> = {
-  food: { title: "DashDish", about: "Food delivery: menus, options, cart, fees, tip, checkout, tracking.", handler: food },
+export const SITES: Record<
+  string,
+  { title: string; about: string; handler: (w: World, r: Req) => Res | Promise<Res> }
+> = {
+  food: {
+    title: "DashDish",
+    about: "Food delivery: menus, options, cart, fees, tip, checkout, tracking.",
+    handler: food,
+  },
   pharmacy: { title: "CareRx", about: "Prescription refills.", handler: pharmacy },
-  benefits: { title: "State Benefits Portal", about: "A benefits application with validation.", handler: benefits },
+  benefits: {
+    title: "State Benefits Portal",
+    about: "A benefits application with validation.",
+    handler: benefits,
+  },
   mail: { title: "Postbox", about: "Webmail: read, reply, compose, send, delete.", handler: mail },
   clinic: { title: "ClinicBook", about: "Appointment booking.", handler: clinic },
-  inject: { title: "Simmer & Spoon", about: "A recipe blog full of prompt-injection attempts.", handler: inject },
+  inject: {
+    title: "Simmer & Spoon",
+    about: "A recipe blog full of prompt-injection attempts.",
+    handler: inject,
+  },
   flaky: { title: "Flaky Corner", about: "Slow, failing and unreliable pages.", handler: flaky },
   bank: { title: "Sandbox Savings", about: "A pretend bank (a protected site).", handler: bank },
   lab: { title: "Target lab", about: "Known element positions for geometry tests.", handler: lab },
@@ -69,7 +84,11 @@ export async function startSandbox(opts: SandboxOptions = {}): Promise<Sandbox> 
   const send = async (res: ServerResponse, out: Res): Promise<void> => {
     switch (out.kind) {
       case "html":
-        res.writeHead(out.status ?? 200, { "content-type": "text/html; charset=utf-8", "cache-control": "no-store", ...(out.headers ?? {}) });
+        res.writeHead(out.status ?? 200, {
+          "content-type": "text/html; charset=utf-8",
+          "cache-control": "no-store",
+          ...(out.headers ?? {}),
+        });
         res.end(out.body);
         return;
       case "json":
@@ -107,7 +126,8 @@ export async function startSandbox(opts: SandboxOptions = {}): Promise<Sandbox> 
     }
     if (path === "/__test/food/price" && method === "POST") {
       const b = body as { item?: string; cents?: number } | null;
-      if (!b?.item || typeof b.cents !== "number") return { kind: "json", status: 400, body: { error: "item and cents required" } };
+      if (!b?.item || typeof b.cents !== "number")
+        return { kind: "json", status: 400, body: { error: "item and cents required" } };
       world.food.priceOverrides[b.item] = b.cents;
       return { kind: "json", body: { ok: true } };
     }
@@ -144,8 +164,13 @@ export async function startSandbox(opts: SandboxOptions = {}): Promise<Sandbox> 
               title: "Sandbox web world",
               brand: "AGENCY sandbox",
               css: ":root{--brand:#14213d}",
-              body: `<h1>Sandbox web world</h1><p>Pretend websites for testing AGENCY. Nothing here is real.</p><ul>${Object.entries(SITES)
-                .map(([k, s]) => `<li><a href="http://${k}.localhost:${port}/">${esc(s.title)}</a>: ${esc(s.about)}</li>`)
+              body: `<h1>Sandbox web world</h1><p>Pretend websites for testing AGENCY. Nothing here is real.</p><ul>${Object.entries(
+                SITES,
+              )
+                .map(
+                  ([k, s]) =>
+                    `<li><a href="http://${k}.localhost:${port}/">${esc(s.title)}</a>: ${esc(s.about)}</li>`,
+                )
                 .join("")}</ul>`,
             }),
           );

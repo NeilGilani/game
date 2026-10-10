@@ -7,8 +7,15 @@ describe("native messaging framing", () => {
     const b = encodeFrame({ k: "x", list: [1, 2, 3] });
     const all = Buffer.concat([a, b]);
     const d = new FrameDecoder();
-    const out = [...d.push(all.subarray(0, 3)), ...d.push(all.subarray(3, a.length + 5)), ...d.push(all.subarray(a.length + 5))];
-    expect(out).toEqual([{ k: "hello", n: "ünïcødé ✓" }, { k: "x", list: [1, 2, 3] }]);
+    const out = [
+      ...d.push(all.subarray(0, 3)),
+      ...d.push(all.subarray(3, a.length + 5)),
+      ...d.push(all.subarray(a.length + 5)),
+    ];
+    expect(out).toEqual([
+      { k: "hello", n: "ünïcødé ✓" },
+      { k: "x", list: [1, 2, 3] },
+    ]);
   });
   it("uses the byte length, not the character count", () => {
     const f = encodeFrame("é");
@@ -25,6 +32,6 @@ describe("native messaging framing", () => {
   it("splits socket lines", () => {
     const d = new LineDecoder();
     expect(d.push('{"a":1}\n{"b"')).toEqual(['{"a":1}']);
-    expect(d.push(':2}\n\n')).toEqual(['{"b":2}']);
+    expect(d.push(":2}\n\n")).toEqual(['{"b":2}']);
   });
 });

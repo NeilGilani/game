@@ -4,7 +4,17 @@
  */
 
 import type { Target, TargetSnapshot } from "../../../contracts/src/index.ts";
-import { SignedChannel, hmacKey, hmacVerify, hmac, randomHex, readyText, sha256Hex, tokenFingerprint, welcomeText } from "../auth.ts";
+import {
+  SignedChannel,
+  hmacKey,
+  hmacVerify,
+  hmac,
+  randomHex,
+  readyText,
+  sha256Hex,
+  tokenFingerprint,
+  welcomeText,
+} from "../auth.ts";
 import { contentOrigin, toScreenRect } from "../geometry.ts";
 import { detectInjection } from "../injection.ts";
 import { classifyUrl, isOpenableUrl, originOf } from "../policy.ts";
@@ -32,9 +42,7 @@ import type { ContentReply, FromContent, ToContent } from "./content.ts";
 const VERSION = chrome.runtime.getManifest().version;
 
 class Fail extends Error {
-  constructor(
-    readonly error: BridgeError,
-  ) {
+  constructor(readonly error: BridgeError) {
     super(error.message);
   }
 }
@@ -83,7 +91,9 @@ function setLink(s: LinkState): void {
   linkState = s;
   const badge = s === "ready" ? "" : s === "mismatch" || s === "unpaired" ? "!" : "…";
   chrome.action.setBadgeText({ text: badge }).catch(() => undefined);
-  chrome.action.setBadgeBackgroundColor({ color: s === "mismatch" ? "#b00020" : "#14213d" }).catch(() => undefined);
+  chrome.action
+    .setBadgeBackgroundColor({ color: s === "mismatch" ? "#b00020" : "#14213d" })
+    .catch(() => undefined);
   chrome.runtime.sendMessage({ kind: "link-state", state: s }).catch(() => undefined);
 }
 
@@ -133,7 +143,9 @@ async function onHostMessage(m: HostMessage | WireMessage): Promise<void> {
       if (!existing) {
         // Trust on first use: the host is launched by Chrome only for this extension, from the manifest
         // AGENCY installed. Later changes of token need the person to pair again in the options page.
-        await chrome.storage.local.set({ pairing: { token: m.token, fingerprint: await tokenFingerprint(m.token) } });
+        await chrome.storage.local.set({
+          pairing: { token: m.token, fingerprint: await tokenFingerprint(m.token) },
+        });
         setLink("waiting-for-agency");
       } else if (existing.token !== m.token) {
         setLink("mismatch");
@@ -202,7 +214,10 @@ async function emit(ev: BridgeEvent): Promise<void> {
 async function handle(req: BridgeRequest): Promise<BridgeResponse> {
   try {
     if (!BRIDGE_METHODS.includes(req.method)) fail("unknown-method", `Unknown method ${String(req.method)}.`);
-    const params = (req.params && typeof req.params === "object" ? req.params : {}) as Record<string, unknown>;
+    const params = (req.params && typeof req.params === "object" ? req.params : {}) as Record<
+      string,
+      unknown
+    >;
     const result = await run(req.method, params);
     return { id: req.id, ok: true, result };
   } catch (e) {
@@ -240,7 +255,8 @@ function str(p: Record<string, unknown>, k: string): string {
   if (typeof v !== "string") fail("bad-request", `${k} must be text.`);
   return v as string;
 }
-const optStr = (p: Record<string, unknown>, k: string): string | undefined => (typeof p[k] === "string" ? (p[k] as string) : undefined);
+const optStr = (p: Record<string, unknown>, k: string): string | undefined =>
+  typeof p[k] === "string" ? (p[k] as string) : undefined;
 
 async function getTab(tabId: number): Promise<chrome.tabs.Tab> {
   try {
@@ -253,7 +269,10 @@ async function getTab(tabId: number): Promise<chrome.tabs.Tab> {
 async function protectedInfo(url: string): Promise<ProtectedInfo | null> {
   const c = classifyUrl(url, await extraProtectedHosts());
   if (!c) return null;
-  return { category: c.category, allowed: c.category !== "browser-internal" && state.allowed.includes(originOf(url)) };
+  return {
+    category: c.category,
+    allowed: c.category !== "browser-internal" && state.allowed.includes(originOf(url)),
+  };
 }
 
 /** Refuses page access on protected sites the person hasn't allowed. */
@@ -274,11 +293,19 @@ async function guardTab(tabId: number): Promise<chrome.tabs.Tab> {
 }
 
 function untrusted<T>(url: string, data: T, scanText: string): Untrusted<T> {
-  return { untrusted: true, notice: UNTRUSTED_NOTICE, origin: originOf(url), url, data, suspectedInjection: detectInjection(scanText) };
+  return {
+    untrusted: true,
+    notice: UNTRUSTED_NOTICE,
+    origin: originOf(url),
+    url,
+    data,
+    suspectedInjection: detectInjection(scanText),
+  };
 }
 
 async function toContent(tabId: number, msg: ToContent): Promise<unknown> {
-  const sendOnce = () => chrome.tabs.sendMessage(tabId, msg, { frameId: 0 }) as Promise<ContentReply | undefined>;
+  const sendOnce = () =>
+    chrome.tabs.sendMessage(tabId, msg, { frameId: 0 }) as Promise<ContentReply | undefined>;
   let reply: ContentReply | undefined;
   try {
     reply = await sendOnce();
@@ -288,7 +315,10 @@ async function toContent(tabId: number, msg: ToContent): Promise<unknown> {
       await chrome.scripting.executeScript({ target: { tabId, frameIds: [0] }, files: ["content.js"] });
       reply = await sendOnce();
     } catch (e) {
-      fail("page-unavailable", `The page isn't ready or can't be used: ${e instanceof Error ? e.message : String(e)}`);
+      fail(
+        "page-unavailable",
+        `The page isn't ready or can't be used: ${e instanceof Error ? e.message : String(e)}`,
+      );
     }
   }
   if (!reply) return fail("page-unavailable", "The page didn't answer (it may be navigating).");
@@ -307,11 +337,22 @@ async function ensureSession(tabId: number, taskId = "agent"): Promise<void> {
   await toContent(tabId, { kind: "banner", state: "on" }).catch(() => undefined);
 }
 
-async function describe(tabId: number, ref: string, action: "click" | "submit"): Promise<{ desc: ActionDescription; key: string; url: string }> {
+async function describe(
+  tabId: number,
+  ref: string,
+  action: "click" | "submit",
+): Promise<{ desc: ActionDescription; key: string; url: string }> {
   const tab = await guardTab(tabId);
-  const { material, key } = (await page(tabId, "describe", { ref, action })) as { material: ActionMaterial; key: string };
+  const { material, key } = (await page(tabId, "describe", { ref, action })) as {
+    material: ActionMaterial;
+    key: string;
+  };
   const fingerprint = await sha256Hex(`agency-bridge-action|${key}`);
-  const details: Record<string, string> = { Site: material.origin, Page: material.path, Button: material.name || material.role };
+  const details: Record<string, string> = {
+    Site: material.origin,
+    Page: material.path,
+    Button: material.name || material.role,
+  };
   for (const [k, v] of material.fields) details[`Field: ${k}`] = v;
   material.amounts.forEach((a, i) => (details[`Amount ${i + 1}`] = a));
   const host = new URL(material.origin).host;
@@ -331,15 +372,26 @@ async function describe(tabId: number, ref: string, action: "click" | "submit"):
 }
 
 /** Requires an approval bound to the exact action when it is consequential. Returns the key to re-check. */
-async function approvalGate(tabId: number, ref: string, action: "click" | "submit", approved: string | undefined): Promise<string | undefined> {
+async function approvalGate(
+  tabId: number,
+  ref: string,
+  action: "click" | "submit",
+  approved: string | undefined,
+): Promise<string | undefined> {
   const { desc, key } = await describe(tabId, ref, action);
   if (!desc.consequential) return undefined;
-  if (!approved) fail("approval-required", `${desc.summary} This needs the person's approval.`, { action: desc });
-  if (approved !== desc.fingerprint) fail("approval-mismatch", "The page changed since the approval. Ask the person again.", { action: desc });
+  if (!approved)
+    fail("approval-required", `${desc.summary} This needs the person's approval.`, { action: desc });
+  if (approved !== desc.fingerprint)
+    fail("approval-mismatch", "The page changed since the approval. Ask the person again.", { action: desc });
   return key;
 }
 
-function waitForNavigation(tabId: number, startedWithin: number, timeoutMs: number): Promise<{ navigated: boolean }> {
+function waitForNavigation(
+  tabId: number,
+  startedWithin: number,
+  timeoutMs: number,
+): Promise<{ navigated: boolean }> {
   return new Promise((resolve) => {
     let started = false;
     const done = (navigated: boolean) => {
@@ -364,7 +416,10 @@ function waitForNavigation(tabId: number, startedWithin: number, timeoutMs: numb
 async function run(method: BridgeMethod, p: Record<string, unknown>): Promise<unknown> {
   await loaded;
   if (state.stopped && NEEDS_NOT_STOPPED.has(method))
-    fail("stopped", "The person pressed Stop. Nothing more happens until they start a new task (session.reset).");
+    fail(
+      "stopped",
+      "The person pressed Stop. Nothing more happens until they start a new task (session.reset).",
+    );
 
   switch (method) {
     case "bridge.status":
@@ -444,7 +499,8 @@ async function run(method: BridgeMethod, p: Record<string, unknown>): Promise<un
     case "session.reset": {
       state.stopped = false;
       await save();
-      for (const tabId of Object.keys(state.sessions)) await toContent(Number(tabId), { kind: "banner", state: "off" }).catch(() => undefined);
+      for (const tabId of Object.keys(state.sessions))
+        await toContent(Number(tabId), { kind: "banner", state: "off" }).catch(() => undefined);
       state.sessions = {};
       await save();
       return { stopped: false };
@@ -455,7 +511,11 @@ async function run(method: BridgeMethod, p: Record<string, unknown>): Promise<un
       const tab = await guardTab(tabId);
       await ensureSession(tabId);
       const tree = (await page(tabId, "tree", { maxNodes: p.maxNodes })) as PageTree;
-      return untrusted(tab.url ?? tree.url, tree, tree.title + "\n" + tree.nodes.map((n) => n.name + " " + (n.value ?? "")).join("\n"));
+      return untrusted(
+        tab.url ?? tree.url,
+        tree,
+        tree.title + "\n" + tree.nodes.map((n) => n.name + " " + (n.value ?? "")).join("\n"),
+      );
     }
 
     case "page.describeAction": {
@@ -487,11 +547,20 @@ async function run(method: BridgeMethod, p: Record<string, unknown>): Promise<un
       if (pressEnter) {
         // Enter submits the form as it will be after typing; only empty text can be bound in advance.
         if (str(p, "text") !== "")
-          fail("bad-request", "Type the text first without pressEnter, then describe the submit, get approval, and press Enter with empty text.");
+          fail(
+            "bad-request",
+            "Type the text first without pressEnter, then describe the submit, get approval, and press Enter with empty text.",
+          );
         expectKey = await approvalGate(tabId, ref, "submit", optStr(p, "approvedFingerprint"));
       }
       const nav = pressEnter ? waitForNavigation(tabId, 600, 30_000) : null;
-      const r = (await page(tabId, "type", { ref, text: str(p, "text"), clear: p.clear !== false, pressEnter, expectKey })) as {
+      const r = (await page(tabId, "type", {
+        ref,
+        text: str(p, "text"),
+        clear: p.clear !== false,
+        pressEnter,
+        expectKey,
+      })) as {
         value: string;
       };
       await nav;
@@ -514,7 +583,10 @@ async function run(method: BridgeMethod, p: Record<string, unknown>): Promise<un
 
     case "page.waitFor": {
       const tabId = num(p, "tabId");
-      const timeoutMs = Math.max(0, Math.min(120_000, typeof p.timeoutMs === "number" ? p.timeoutMs : 10_000));
+      const timeoutMs = Math.max(
+        0,
+        Math.min(120_000, typeof p.timeoutMs === "number" ? p.timeoutMs : 10_000),
+      );
       const cond = p.condition as { kind?: string } | undefined;
       if (!cond || typeof cond.kind !== "string") fail("bad-request", "condition is required.");
       await guardTab(tabId);
@@ -527,7 +599,10 @@ async function run(method: BridgeMethod, p: Record<string, unknown>): Promise<un
       // The content script restarts on navigation, so retry until the deadline.
       for (;;) {
         try {
-          const r = (await page(tabId, "waitFor", { condition: cond, timeoutMs: Math.max(0, deadline - Date.now()) })) as { met: boolean; ref?: string };
+          const r = (await page(tabId, "waitFor", {
+            condition: cond,
+            timeoutMs: Math.max(0, deadline - Date.now()),
+          })) as { met: boolean; ref?: string };
           const t = await getTab(tabId);
           return { ...r, url: t.url ?? "" };
         } catch (e) {
@@ -542,7 +617,10 @@ async function run(method: BridgeMethod, p: Record<string, unknown>): Promise<un
       const tabId = num(p, "tabId");
       const tab = await guardTab(tabId);
       await ensureSession(tabId);
-      const r = (await page(tabId, "extractText", { ref: optStr(p, "ref"), maxChars: p.maxChars })) as { text: string; truncated: boolean };
+      const r = (await page(tabId, "extractText", { ref: optStr(p, "ref"), maxChars: p.maxChars })) as {
+        text: string;
+        truncated: boolean;
+      };
       return untrusted(tab.url ?? "", r, r.text);
     }
 
@@ -550,8 +628,16 @@ async function run(method: BridgeMethod, p: Record<string, unknown>): Promise<un
       const tabId = num(p, "tabId");
       const tab = await guardTab(tabId);
       await ensureSession(tabId);
-      const r = (await page(tabId, "extractTables")) as Array<{ caption: string; headers: string[]; rows: string[][] }>;
-      return untrusted(tab.url ?? "", r, r.map((t) => [t.caption, ...t.headers, ...t.rows.flat()].join(" ")).join("\n"));
+      const r = (await page(tabId, "extractTables")) as Array<{
+        caption: string;
+        headers: string[];
+        rows: string[][];
+      }>;
+      return untrusted(
+        tab.url ?? "",
+        r,
+        r.map((t) => [t.caption, ...t.headers, ...t.rows.flat()].join(" ")).join("\n"),
+      );
     }
 
     case "page.capture": {
@@ -575,7 +661,8 @@ async function run(method: BridgeMethod, p: Record<string, unknown>): Promise<un
       const info = await protectedInfo(url);
       const origin = originOf(url);
       if (!info) return { allowed: true, origin };
-      if (info.category === "browser-internal") fail("protected-site", "Browser pages can't be allowed.", { category: info.category });
+      if (info.category === "browser-internal")
+        fail("protected-site", "Browser pages can't be allowed.", { category: info.category });
       if (info.allowed) return { allowed: true, origin };
       const allowed = await askPerson(origin, info.category);
       if (allowed && !state.allowed.includes(origin)) state.allowed.push(origin);
@@ -611,7 +698,8 @@ async function run(method: BridgeMethod, p: Record<string, unknown>): Promise<un
 async function stopAll(byPerson: boolean, tabId: number | null = null): Promise<void> {
   state.stopped = true;
   await save();
-  for (const id of Object.keys(state.sessions)) await toContent(Number(id), { kind: "banner", state: "stopped" }).catch(() => undefined);
+  for (const id of Object.keys(state.sessions))
+    await toContent(Number(id), { kind: "banner", state: "stopped" }).catch(() => undefined);
   if (byPerson) await emit({ type: "stopped", by: "person", tabId });
 }
 
@@ -621,7 +709,9 @@ const pendingAsks = new Map<string, { resolve: (v: boolean) => void; windowId?: 
 
 async function askPerson(origin: string, category: string): Promise<boolean> {
   const req = randomHex(8);
-  const url = chrome.runtime.getURL(`allow.html?req=${req}&origin=${encodeURIComponent(origin)}&category=${encodeURIComponent(category)}`);
+  const url = chrome.runtime.getURL(
+    `allow.html?req=${req}&origin=${encodeURIComponent(origin)}&category=${encodeURIComponent(category)}`,
+  );
   return new Promise((resolve) => {
     pendingAsks.set(req, { resolve });
     chrome.windows
@@ -647,86 +737,119 @@ chrome.windows.onRemoved.addListener((windowId) => {
 
 // ---------- Messages from content scripts and extension pages ----------
 
-chrome.runtime.onMessage.addListener((msg: FromContent | { kind: string; [k: string]: unknown }, sender, reply) => {
-  if (sender.id !== chrome.runtime.id) return false;
-  const fromExtensionPage = sender.url?.startsWith(chrome.runtime.getURL("")) && !sender.tab?.url?.startsWith("http");
+chrome.runtime.onMessage.addListener(
+  (msg: FromContent | { kind: string; [k: string]: unknown }, sender, reply) => {
+    if (sender.id !== chrome.runtime.id) return false;
+    const fromExtensionPage =
+      sender.url?.startsWith(chrome.runtime.getURL("")) && !sender.tab?.url?.startsWith("http");
 
-  if (msg.kind === "allowance-answer" && fromExtensionPage && sender.url?.startsWith(chrome.runtime.getURL("allow.html"))) {
-    const m = msg as unknown as { req: string; allowed: boolean; trusted: boolean };
-    const p = pendingAsks.get(m.req);
-    if (p) {
-      pendingAsks.delete(m.req);
-      p.resolve(m.allowed === true && m.trusted === true);
-      if (p.windowId !== undefined) chrome.windows.remove(p.windowId).catch(() => undefined);
+    if (
+      msg.kind === "allowance-answer" &&
+      fromExtensionPage &&
+      sender.url?.startsWith(chrome.runtime.getURL("allow.html"))
+    ) {
+      const m = msg as unknown as { req: string; allowed: boolean; trusted: boolean };
+      const p = pendingAsks.get(m.req);
+      if (p) {
+        pendingAsks.delete(m.req);
+        p.resolve(m.allowed === true && m.trusted === true);
+        if (p.windowId !== undefined) chrome.windows.remove(p.windowId).catch(() => undefined);
+      }
+      return false;
+    }
+
+    if (msg.kind === "options-status" && fromExtensionPage) {
+      pairing().then(async (pr) =>
+        reply({
+          link: linkState,
+          paired: !!pr,
+          fingerprint: pr?.fingerprint ?? null,
+          extraProtected: await extraProtectedHosts(),
+        }),
+      );
+      return true;
+    }
+
+    if (msg.kind === "options-forget-pairing" && fromExtensionPage) {
+      chrome.storage.local.remove("pairing").then(() => {
+        channel = null;
+        setLink("unpaired");
+        port?.disconnect();
+        port = null;
+        connect();
+        reply({ ok: true });
+      });
+      return true;
+    }
+
+    const tabId = sender.tab?.id;
+    if (tabId === undefined) return false;
+
+    if (msg.kind === "hello-content") {
+      loaded.then(() => {
+        const inSession = state.sessions[String(tabId)] !== undefined;
+        reply({
+          targets: state.targets,
+          banner: inSession ? (state.stopped ? "stopped" : "on") : "off",
+          reading: !!state.reading[String(tabId)],
+        });
+      });
+      return true;
+    }
+
+    if (msg.kind === "stop") {
+      loaded.then(() => stopAll(true, tabId));
+      return false;
+    }
+
+    if (msg.kind === "reading") {
+      state.reading[String(tabId)] = (msg as { on: boolean }).on;
+      save().then(() => emit({ type: "reading", tabId, on: (msg as { on: boolean }).on }));
+      return false;
+    }
+
+    if (msg.kind === "targets" && sender.tab && sender.frameId === 0) {
+      publishTargets(sender.tab, msg as Extract<FromContent, { kind: "targets" }>).catch(() => undefined);
+      return false;
     }
     return false;
-  }
+  },
+);
 
-  if (msg.kind === "options-status" && fromExtensionPage) {
-    pairing().then(async (pr) =>
-      reply({ link: linkState, paired: !!pr, fingerprint: pr?.fingerprint ?? null, extraProtected: await extraProtectedHosts() }),
-    );
-    return true;
-  }
-
-  if (msg.kind === "options-forget-pairing" && fromExtensionPage) {
-    chrome.storage.local.remove("pairing").then(() => {
-      channel = null;
-      setLink("unpaired");
-      port?.disconnect();
-      port = null;
-      connect();
-      reply({ ok: true });
-    });
-    return true;
-  }
-
-  const tabId = sender.tab?.id;
-  if (tabId === undefined) return false;
-
-  if (msg.kind === "hello-content") {
-    loaded.then(() => {
-      const inSession = state.sessions[String(tabId)] !== undefined;
-      reply({
-        targets: state.targets,
-        banner: inSession ? (state.stopped ? "stopped" : "on") : "off",
-        reading: !!state.reading[String(tabId)],
-      });
-    });
-    return true;
-  }
-
-  if (msg.kind === "stop") {
-    loaded.then(() => stopAll(true, tabId));
-    return false;
-  }
-
-  if (msg.kind === "reading") {
-    state.reading[String(tabId)] = (msg as { on: boolean }).on;
-    save().then(() => emit({ type: "reading", tabId, on: (msg as { on: boolean }).on }));
-    return false;
-  }
-
-  if (msg.kind === "targets" && sender.tab && sender.frameId === 0) {
-    publishTargets(sender.tab, msg as Extract<FromContent, { kind: "targets" }>).catch(() => undefined);
-    return false;
-  }
-  return false;
-});
-
-async function publishTargets(tab: chrome.tabs.Tab, m: Extract<FromContent, { kind: "targets" }>): Promise<void> {
+async function publishTargets(
+  tab: chrome.tabs.Tab,
+  m: Extract<FromContent, { kind: "targets" }>,
+): Promise<void> {
   await loaded;
   if (!state.targets || !tab.active || tab.id === undefined || !channel) return;
   const win = await chrome.windows.get(tab.windowId);
-  if (win.state === "minimized" || win.left === undefined || win.top === undefined || win.width === undefined || win.height === undefined) return;
+  if (
+    win.state === "minimized" ||
+    win.left === undefined ||
+    win.top === undefined ||
+    win.width === undefined ||
+    win.height === undefined
+  )
+    return;
   const zoom = await chrome.tabs.getZoom(tab.id);
-  const origin = contentOrigin({ left: win.left, top: win.top, width: win.width, height: win.height }, m.viewport, zoom);
+  const origin = contentOrigin(
+    { left: win.left, top: win.top, width: win.width, height: win.height },
+    m.viewport,
+    zoom,
+  );
   const owner = originOf(m.url);
   const targets: Target[] = [];
   for (const it of m.items) {
     const rect = toScreenRect(it.rect, origin, m.viewport);
     if (!rect) continue;
-    const t: Target = { id: `web:${tab.id}:${it.ref}`, rect, role: it.role, label: it.name, source: "web", owner };
+    const t: Target = {
+      id: `web:${tab.id}:${it.ref}`,
+      rect,
+      role: it.role,
+      label: it.name,
+      source: "web",
+      owner,
+    };
     if (it.secure) t.secure = true;
     if (it.protected) t.protected = true;
     targets.push(t);
@@ -737,7 +860,9 @@ async function publishTargets(tab: chrome.tabs.Tab, m: Extract<FromContent, { ki
 
 async function broadcastTargets(): Promise<void> {
   const tabs = await chrome.tabs.query({ active: true });
-  for (const t of tabs) if (t.id !== undefined) await toContent(t.id, { kind: "targets", enabled: state.targets }).catch(() => undefined);
+  for (const t of tabs)
+    if (t.id !== undefined)
+      await toContent(t.id, { kind: "targets", enabled: state.targets }).catch(() => undefined);
 }
 
 // Window moves, tab switches and zoom changes all move targets on screen.

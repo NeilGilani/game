@@ -51,8 +51,17 @@ export interface World {
     priceOverrides: Record<string, number>;
     nextOrder: number;
   };
-  pharmacy: { refills: Array<Record<string, unknown>>; doctorRequests: Array<Record<string, unknown>>; pending: string[] | null; method: string; store: string };
-  benefits: { draft: Record<string, string>; submissions: Array<Record<string, string> & { reference: string }> };
+  pharmacy: {
+    refills: Array<Record<string, unknown>>;
+    doctorRequests: Array<Record<string, unknown>>;
+    pending: string[] | null;
+    method: string;
+    store: string;
+  };
+  benefits: {
+    draft: Record<string, string>;
+    submissions: Array<Record<string, string> & { reference: string }>;
+  };
   mail: {
     sent: Array<{ id: string; to: string; cc: string; subject: string; body: string; at: string }>;
     deleted: string[];

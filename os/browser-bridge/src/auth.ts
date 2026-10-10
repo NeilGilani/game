@@ -77,7 +77,10 @@ export class SignedChannel {
     private readonly sendDirs: readonly Direction[],
   ) {}
 
-  async seal(dir: Direction, payload: unknown): Promise<{ k: Direction; seq: number; body: string; mac: string }> {
+  async seal(
+    dir: Direction,
+    payload: unknown,
+  ): Promise<{ k: Direction; seq: number; body: string; mac: string }> {
     if (!this.sendDirs.includes(dir)) throw new Error(`This side can't send ${dir}.`);
     const body = JSON.stringify(payload);
     const seq = ++this.sendSeq;
@@ -89,7 +92,8 @@ export class SignedChannel {
     if (this.sendDirs.includes(msg.k)) return null;
     if (!Number.isSafeInteger(msg.seq) || msg.seq <= this.recvSeq) return null;
     if (typeof msg.body !== "string" || typeof msg.mac !== "string") return null;
-    if (!(await hmacVerify(this.key, signedText(msg.k, this.session, msg.seq, msg.body), msg.mac))) return null;
+    if (!(await hmacVerify(this.key, signedText(msg.k, this.session, msg.seq, msg.body), msg.mac)))
+      return null;
     this.recvSeq = msg.seq;
     try {
       return JSON.parse(msg.body) as unknown;

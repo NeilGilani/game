@@ -54,7 +54,11 @@ export function contentOrigin(win: WindowGeometry, vp: ViewportGeometry, zoom: n
 }
 
 /** A viewport rect (CSS px from getBoundingClientRect) in global screen points, clipped to the content area. */
-export function toScreenRect(r: ViewportRect, origin: ContentOrigin, vp: ViewportGeometry): ScreenRect | null {
+export function toScreenRect(
+  r: ViewportRect,
+  origin: ContentOrigin,
+  vp: ViewportGeometry,
+): ScreenRect | null {
   const s = vp.vvScale > 0 ? vp.vvScale : 1;
   // Pinch zoom magnifies the layout viewport around the visual viewport's offset.
   const vx = (r.x - vp.vvOffsetLeft) * s;

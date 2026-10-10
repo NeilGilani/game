@@ -32,14 +32,28 @@ export function slotTaken(w: World, provider: string, day: string, time: string)
 }
 
 function label(day: string): string {
-  return new Date(day + "T12:00:00Z").toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", timeZone: "UTC" });
+  return new Date(day + "T12:00:00Z").toLocaleDateString("en-US", {
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+    timeZone: "UTC",
+  });
 }
 
 const CSS = `:root{--brand:#2b8a3e} .days{display:flex;gap:8px;flex-wrap:wrap} .days a{padding:10px 14px;border-radius:8px;border:1px solid #bbb;text-decoration:none}
 .days a[aria-current]{background:var(--brand);color:#fff} .slots{display:flex;gap:8px;flex-wrap:wrap}`;
 
 function layout(title: string, body: string): Res {
-  return page({ title: `${title} · ClinicBook`, brand: "ClinicBook", css: CSS, nav: [["/", "Book a visit"], ["/visits", "My visits"]], body });
+  return page({
+    title: `${title} · ClinicBook`,
+    brand: "ClinicBook",
+    css: CSS,
+    nav: [
+      ["/", "Book a visit"],
+      ["/visits", "My visits"],
+    ],
+    body,
+  });
 }
 
 export function clinic(w: World, r: Req): Res {
@@ -47,7 +61,8 @@ export function clinic(w: World, r: Req): Res {
     return layout(
       "Choose a provider",
       `<h1>Who would you like to see?</h1><div class="grid">${PROVIDERS.map(
-        (p) => `<div class="card"><h2>${esc(p.name)}</h2><p>${esc(p.specialty)}${p.video ? " · Video visits available" : ""}</p><a class="btn primary" href="/p/${p.id}">See times for ${esc(p.name)}</a></div>`,
+        (p) =>
+          `<div class="card"><h2>${esc(p.name)}</h2><p>${esc(p.specialty)}${p.video ? " · Video visits available" : ""}</p><a class="btn primary" href="/p/${p.id}">See times for ${esc(p.name)}</a></div>`,
       ).join("")}</div>`,
     );
   }
@@ -78,16 +93,28 @@ ${p.video ? `<input type="radio" id="vt-video" name="visitType" value="Video"><l
     const day = r.form.get("day") ?? "";
     const time = r.form.get("time") ?? "";
     if (!p) return notFound();
-    const back = (e: string) => redirect(`/p/${p.id}?day=${encodeURIComponent(day)}&error=${encodeURIComponent(e)}`);
+    const back = (e: string) =>
+      redirect(`/p/${p.id}?day=${encodeURIComponent(day)}&error=${encodeURIComponent(e)}`);
     if (!bookingDays().includes(day)) return back("Choose a day.");
     if (!TIMES.includes(time)) return back("Choose a time.");
     if (slotTaken(w, p.id, day, time)) return back("That time was just taken. Choose another.");
     if (!(r.form.get("reason") ?? "").trim()) return back("Tell the clinic the reason for your visit.");
     const visitType = r.form.get("visitType") === "Video" && p.video ? "Video" : "In person";
-    const b = { id: `CB-${700 + w.clinic.bookings.length + 1}`, provider: p.id, providerName: p.name, day, time, visitType, reason: (r.form.get("reason") ?? "").slice(0, 300) };
+    const b = {
+      id: `CB-${700 + w.clinic.bookings.length + 1}`,
+      provider: p.id,
+      providerName: p.name,
+      day,
+      time,
+      visitType,
+      reason: (r.form.get("reason") ?? "").slice(0, 300),
+    };
     w.clinic.bookings.push(b);
     record(w, "clinic", "appointment.booked", b);
-    return layout("Booked", `<div class="card" role="status"><h1>You're booked</h1><p>${esc(p.name)}, ${label(day)} at ${time} (${visitType}). Confirmation ${b.id}.</p></div>`);
+    return layout(
+      "Booked",
+      `<div class="card" role="status"><h1>You're booked</h1><p>${esc(p.name)}, ${label(day)} at ${time} (${visitType}). Confirmation ${b.id}.</p></div>`,
+    );
   }
   if (r.method === "GET" && r.path === "/visits") {
     return layout(

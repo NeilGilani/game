@@ -75,7 +75,8 @@ export class FakeBridge implements BridgeApi {
   allowanceAnswer = false;
 
   constructor(sites?: Record<string, FakeSite>) {
-    for (const [origin, site] of Object.entries(sites ?? { "http://food.fake": this.foodStore() })) this.sites.set(origin, site);
+    for (const [origin, site] of Object.entries(sites ?? { "http://food.fake": this.foodStore() }))
+      this.sites.set(origin, site);
   }
 
   onEvent(fn: (e: BridgeEvent) => void): () => void {
@@ -112,22 +113,34 @@ export class FakeBridge implements BridgeApi {
   private guard(tabId: number): { url: string; origin: string; page: FakePage } {
     const p = this.page(tabId);
     const c = classifyUrl(p.url);
-    if (c && !this.allowed.has(p.origin)) fail("protected-site", `Protected site (${c.category}).`, { category: c.category });
+    if (c && !this.allowed.has(p.origin))
+      fail("protected-site", `Protected site (${c.category}).`, { category: c.category });
     return p;
   }
 
   private untrusted<T>(url: string, data: T, text: string): Untrusted<T> {
-    return { untrusted: true, notice: UNTRUSTED_NOTICE, origin: new URL(url).origin, url, data, suspectedInjection: detectInjection(text) };
+    return {
+      untrusted: true,
+      notice: UNTRUSTED_NOTICE,
+      origin: new URL(url).origin,
+      url,
+      data,
+      suspectedInjection: detectInjection(text),
+    };
   }
 
   private node(p: FakePage, ref: string): FakeNode {
-    return p.nodes.find((n) => n.ref === ref) ?? fail("no-element", `Element ${ref} is no longer on the page.`);
+    return (
+      p.nodes.find((n) => n.ref === ref) ?? fail("no-element", `Element ${ref} is no longer on the page.`)
+    );
   }
 
   private async describe(tabId: number, ref: string): Promise<ActionDescription> {
     const { url, page } = this.guard(tabId);
     const n = this.node(page, ref);
-    const fingerprint = await sha256Hex(`fake|${url}|${ref}|${n.name}|${page.text ?? page.nodes.map((x) => `${x.name}=${x.value ?? ""}`).join(";")}`);
+    const fingerprint = await sha256Hex(
+      `fake|${url}|${ref}|${n.name}|${page.text ?? page.nodes.map((x) => `${x.name}=${x.value ?? ""}`).join(";")}`,
+    );
     return {
       action: "click",
       ref,
@@ -146,7 +159,11 @@ export class FakeBridge implements BridgeApi {
     return true;
   }
 
-  async call<M extends BridgeMethod>(method: M, params: ParamsOf<M>, _opts?: CallOptions): Promise<ResultOf<M>> {
+  async call<M extends BridgeMethod>(
+    method: M,
+    params: ParamsOf<M>,
+    _opts?: CallOptions,
+  ): Promise<ResultOf<M>> {
     this.calls.push({ method, params });
     const p = params as Record<string, unknown>;
     const tabId = p.tabId as number;
@@ -155,12 +172,25 @@ export class FakeBridge implements BridgeApi {
     const r = async (): Promise<unknown> => {
       switch (method) {
         case "bridge.status":
-          return { protocol: 1, extensionVersion: "fake", stopped: this.stopped, sessions: [], targetsEnabled: true };
+          return {
+            protocol: 1,
+            extensionVersion: "fake",
+            stopped: this.stopped,
+            sessions: [],
+            targetsEnabled: true,
+          };
         case "tabs.list": {
           const data: TabInfo[] = [...this.tabs].map(([id, t]) => {
             const c = classifyUrl(t.url);
             const allowed = c ? this.allowed.has(new URL(t.url).origin) : false;
-            return { tabId: id, windowId: 1, url: t.url, title: c && !allowed ? "(protected site)" : this.page(id).page.title, active: true, protected: c ? { category: c.category, allowed } : null };
+            return {
+              tabId: id,
+              windowId: 1,
+              url: t.url,
+              title: c && !allowed ? "(protected site)" : this.page(id).page.title,
+              active: true,
+              protected: c ? { category: c.category, allowed } : null,
+            };
           });
           return this.untrusted("http://tabs.fake", data, data.map((d) => d.title).join("\n"));
         }
@@ -190,14 +220,26 @@ export class FakeBridge implements BridgeApi {
         case "page.tree": {
           const { url, page } = this.guard(tabId);
           const nodes: TreeNode[] = page.nodes.map((n, i) => {
-            const t: TreeNode = { ref: n.ref, role: n.role, name: n.name, state: {}, rect: { x: 0, y: i * 40, width: 200, height: 32 }, depth: 0, inView: true };
+            const t: TreeNode = {
+              ref: n.ref,
+              role: n.role,
+              name: n.name,
+              state: {},
+              rect: { x: 0, y: i * 40, width: 200, height: 32 },
+              depth: 0,
+              inView: true,
+            };
             if (n.value !== undefined && !n.secure) t.value = n.value;
             if (n.secure) t.state.secure = true;
             if (n.checked !== undefined) t.state.checked = n.checked;
             if (n.options) t.options = n.options;
             return t;
           });
-          return this.untrusted(url, { url, title: page.title, nodes, truncated: false, scroll: { y: 0, maxY: 0 } }, page.title + "\n" + (page.text ?? ""));
+          return this.untrusted(
+            url,
+            { url, title: page.title, nodes, truncated: false, scroll: { y: 0, maxY: 0 } },
+            page.title + "\n" + (page.text ?? ""),
+          );
         }
         case "page.describeAction": {
           const d = await this.describe(tabId, String(p.ref));
@@ -208,8 +250,10 @@ export class FakeBridge implements BridgeApi {
           const n = this.node(page, String(p.ref));
           if (n.consequential) {
             const d = await this.describe(tabId, n.ref);
-            if (!p.approvedFingerprint) fail("approval-required", `${d.summary} This needs the person's approval.`, { action: d });
-            if (p.approvedFingerprint !== d.fingerprint) fail("approval-mismatch", "The page changed since the approval.", { action: d });
+            if (!p.approvedFingerprint)
+              fail("approval-required", `${d.summary} This needs the person's approval.`, { action: d });
+            if (p.approvedFingerprint !== d.fingerprint)
+              fail("approval-mismatch", "The page changed since the approval.", { action: d });
           }
           const navigated = this.go(tabId, n.act?.({}));
           return { done: true, navigated, url: this.page(tabId).url };
@@ -226,7 +270,9 @@ export class FakeBridge implements BridgeApi {
         case "page.select": {
           const { page } = this.guard(tabId);
           const n = this.node(page, String(p.ref));
-          const opt = n.options?.find((o) => o.toLowerCase() === String(p.option).toLowerCase()) ?? fail("no-element", `No option ${String(p.option)}.`);
+          const opt =
+            n.options?.find((o) => o.toLowerCase() === String(p.option).toLowerCase()) ??
+            fail("no-element", `No option ${String(p.option)}.`);
           n.value = opt;
           n.act?.({ option: opt });
           return { done: true, value: opt };
@@ -247,7 +293,11 @@ export class FakeBridge implements BridgeApi {
           return this.untrusted(this.guard(tabId).url, { dataUrl: "data:image/png;base64," }, "");
         case "policy.check": {
           const c = classifyUrl(String(p.url));
-          return { protected: c ? { category: c.category, allowed: this.allowed.has(new URL(String(p.url)).origin) } : null };
+          return {
+            protected: c
+              ? { category: c.category, allowed: this.allowed.has(new URL(String(p.url)).origin) }
+              : null,
+          };
         }
         case "policy.requestAllowance": {
           const origin = new URL(this.page(tabId).url).origin;
@@ -280,13 +330,28 @@ export class FakeBridge implements BridgeApi {
     const money = (c: number) => `$${(c / 100).toFixed(2)}`;
     return (path) => {
       if (path === "/")
-        return { title: "Fake Food", nodes: [{ ref: "f1", role: "link", name: "Thai Basil", act: () => "/thai-basil" }] };
+        return {
+          title: "Fake Food",
+          nodes: [{ ref: "f1", role: "link", name: "Thai Basil", act: () => "/thai-basil" }],
+        };
       if (path === "/thai-basil")
         return {
           title: "Thai Basil · Fake Food",
           nodes: [
-            { ref: "t1", role: "combobox", name: "Spice level", value: spice, options: ["Mild", "Medium", "Hot"], act: ({ option }) => void (spice = option ?? spice) },
-            { ref: "t2", role: "button", name: `Add Pad thai · ${money(PRICE)}`, act: () => (cart.push(`Pad thai (${spice})`), "/cart") },
+            {
+              ref: "t1",
+              role: "combobox",
+              name: "Spice level",
+              value: spice,
+              options: ["Mild", "Medium", "Hot"],
+              act: ({ option }) => void (spice = option ?? spice),
+            },
+            {
+              ref: "t2",
+              role: "button",
+              name: `Add Pad thai · ${money(PRICE)}`,
+              act: () => (cart.push(`Pad thai (${spice})`), "/cart"),
+            },
           ],
         };
       if (path === "/cart")
@@ -305,7 +370,13 @@ export class FakeBridge implements BridgeApi {
           title: "Checkout · Fake Food",
           text,
           nodes: [
-            { ref: "k-tip20", role: "radio", name: "20%", checked: tipPercent === 20, act: () => void (tipPercent = 20) },
+            {
+              ref: "k-tip20",
+              role: "radio",
+              name: "20%",
+              checked: tipPercent === 20,
+              act: () => void (tipPercent = 20),
+            },
             { ref: "k-total", role: "text", name: `Total ${money(t.total)}` },
             { ref: "k-card", role: "textbox", name: "Card number", secure: true },
             {
@@ -326,7 +397,13 @@ export class FakeBridge implements BridgeApi {
       const m = /^\/orders\/(FAKE-\d+)$/.exec(path);
       if (m) {
         const o = this.orders.find((x) => x.id === m[1]);
-        return o ? { title: "Order placed", text: `Thanks! Order ${o.id}. Total ${money(o.totalCents)}.`, nodes: [{ ref: "o1", role: "heading", name: `Order ${o.id} placed` }] } : null;
+        return o
+          ? {
+              title: "Order placed",
+              text: `Thanks! Order ${o.id}. Total ${money(o.totalCents)}.`,
+              nodes: [{ ref: "o1", role: "heading", name: `Order ${o.id} placed` }],
+            }
+          : null;
       }
       return null;
     };

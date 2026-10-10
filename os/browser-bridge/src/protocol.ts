@@ -93,7 +93,8 @@ export interface ProtectedInfo {
   allowed: boolean;
 }
 
-export type BlockCategory = "banking" | "password-manager" | "account-security" | "browser-internal" | "custom";
+export type BlockCategory =
+  "banking" | "password-manager" | "account-security" | "browser-internal" | "custom";
 
 /** What an action would do, and the fingerprint an approval must bind to. */
 export interface ActionDescription {
@@ -153,7 +154,14 @@ export interface BridgeMethods {
     result: { done: true; navigated: boolean; url: string };
   };
   "page.type": {
-    params: { tabId: number; ref: string; text: string; clear?: boolean; pressEnter?: boolean; approvedFingerprint?: string };
+    params: {
+      tabId: number;
+      ref: string;
+      text: string;
+      clear?: boolean;
+      pressEnter?: boolean;
+      approvedFingerprint?: string;
+    };
     result: { done: true; value: string };
   };
   "page.select": {
@@ -249,8 +257,7 @@ export interface BridgeRequest {
 }
 
 export type BridgeResponse =
-  | { id: string; ok: true; result: unknown }
-  | { id: string; ok: false; error: BridgeError };
+  { id: string; ok: true; result: unknown } | { id: string; ok: false; error: BridgeError };
 
 export type BridgeEvent =
   | { type: "targets"; snapshot: TargetSnapshot; tabId: number }
