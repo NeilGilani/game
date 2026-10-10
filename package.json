@@ -1,0 +1,23 @@
+{
+  "name": "agency-os",
+  "private": true,
+  "version": "0.1.0",
+  "description": "AGENCY OS: an eye-controlled home and accessibility layer for macOS. npm workspaces for the interface, the OS packages and the landing page.",
+  "workspaces": [
+    "frontend",
+    "os/*",
+    "site"
+  ],
+  "engines": {
+    "node": ">=20.19"
+  },
+  "scripts": {
+    "os:dev": "npm run dev -w @agency/desktop",
+    "os:build": "npm run build -w @agency/desktop",
+    "os:test": "npm test -w @agency/desktop"
+  },
+  "allowScripts": {
+    "esbuild": true,
+    "electron": true
+  }
+}
