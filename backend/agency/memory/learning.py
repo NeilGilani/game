@@ -369,16 +369,23 @@ def rank(
     seq_mass = sum(seq.values())
     w_seq = params.w_sequence * (followed / seq_total) if seq_total >= 2 and followed >= 2 and seq_mass > 0 else 0.0
 
-    usual_items = [(o, o.node_id) for o in occs if o.node_id in cand and horizon <= o.at <= now]
-    usual = usual_of(usual_items, ctx, params, now)
+    # A usual is settled within an area: Friday dinner is one question, Friday calls another.
+    by_area: dict[str, list[tuple[Occasion, str]]] = defaultdict(list)
+    for o in occs:
+        if o.node_id in cand and horizon <= o.at <= now:
+            by_area[o.path_ids[0] if o.path_ids else ""].append((o, o.node_id))
+    usuals: dict[str, UsualFact] = {}
+    for items in by_area.values():
+        found = usual_of(items, ctx, params, now)
+        if found is not None:
+            usuals[found[0]] = found[1]
 
     ranked: list[Ranked] = []
     for n in cand:
         score = (1.0 - w_seq) * p_ctx[n] + (w_seq * seq.get(n, 0.0) / seq_mass if w_seq else 0.0)
         score /= 1.0 + params.rejection_penalty * rejw[n]
         f = facts[n]
-        if usual is not None and usual[0] == n:
-            f.usual = usual[1]
+        f.usual = usuals.get(n)
         if prev is not None and seq_counts.get(n):
             f.after_node = prev.node_id
             f.after_count = seq_counts[n]

@@ -242,3 +242,13 @@ def test_events_use_the_person_s_time_zone(svc: MemoryService, clock: FakeClock)
     assert row is not None and (row["weekday"], row["hour"]) == (4, 19)
     with pytest.raises(MemoryServiceError):
         svc.record(SelectionEventIn(path=DINNER, surface="food", outcome="chosen", at="2027-01-01T00:00:00Z"))
+
+
+def test_home_usuals_are_settled_per_area(svc: MemoryService, clock: FakeClock) -> None:
+    fridays(svc, clock, [DINNER, DINNER, DINNER, DINNER])
+    # Calls made just now, in the same slot, must not dilute the dinner habit.
+    choose(svc, ["call", "Pharmacy"], surface="call")
+    clock.advance(minutes=10)
+    choose(svc, ["call", "Jordan"], surface="call")
+    home = {s["label"]: s for s in svc.suggestions("home")}
+    assert home["Pad thai (mild)"]["reason"] == "You chose this 4 of your last 4 Friday evenings."
