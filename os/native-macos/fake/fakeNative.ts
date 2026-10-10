@@ -305,8 +305,6 @@ export class FakeNative implements NativeClient {
         this.listening = on;
         return { ok: true };
       },
-      "input.drag": () => ({ ok: true }),
-      "apps.hide": () => ({ ok: true }),
       "input.stopAll": () => {
         this.generation += 1;
         this.stopCount += 1;
