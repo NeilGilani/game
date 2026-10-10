@@ -3,6 +3,7 @@ import { ErrorNote } from "../components/common";
 import { Icon } from "../components/Icon";
 import { Page } from "../components/Shell";
 import { Loading } from "../components/status";
+import { useAnnounce } from "../state/announcer";
 import { MODE_LABELS, useInput } from "../state/input";
 import { usePreferences } from "../state/preferences";
 import { navigate } from "../state/router";
@@ -77,6 +78,7 @@ function Check({ ok, label, pending }: { ok: boolean; label: string; pending?: b
 
 export function CameraSetup() {
   const input = useInput();
+  const announce = useAnnounce();
   const { prefs, update } = usePreferences();
   const stage = useRef<HTMLDivElement>(null);
   const canvas = useRef<HTMLCanvasElement>(null);
@@ -108,7 +110,7 @@ export function CameraSetup() {
           face: frame.face,
           eyes: !!frame.features,
           issues: frame.issues,
-          confidence: frame.confidence,
+          confidence: frame.trackingConfidence,
           blink: frame.blink,
         });
       }
@@ -121,7 +123,9 @@ export function CameraSetup() {
   const lighting = !issues.includes("too-dark") && !issues.includes("too-bright");
   const distance = !issues.includes("too-far") && !issues.includes("too-close");
   const ready = running && !!snap?.eyes && lighting && distance;
-  const needsCalibration = input.mode === "gaze" || input.mode === "head";
+  // Eye gaze needs calibrating; the head pointer just starts from wherever the head points now.
+  const needsCalibration = input.mode === "gaze";
+  const headPointer = input.mode === "head";
 
   return (
     <Page label="Camera setup">
@@ -237,6 +241,18 @@ export function CameraSetup() {
                 data-dwell
               >
                 <Icon name="target" /> {ready ? "Calibrate now" : "Calibrate (fix the checks first)"}
+              </button>
+            )}
+            {running && headPointer && (
+              <button
+                className="btn btn-xl"
+                onClick={() => {
+                  vision.recentre();
+                  announce("Head pointer centred. Point your nose at the middle of the screen.");
+                }}
+                data-dwell
+              >
+                <Icon name="target" /> Centre the head pointer
               </button>
             )}
             {running && !needsCalibration && (

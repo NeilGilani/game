@@ -68,7 +68,7 @@ export function HostBridge() {
     let lost = false;
     return vision.onFrame((f) => {
       if (input.eyeControlPaused) return;
-      if (!f.face || f.confidence < 0.5) {
+      if (!f.face || f.trackingConfidence < 0.5) {
         if (!lost) host.gaze.publish({ type: "tracking", t: f.t, state: f.face ? "weak" : "lost" });
         lost = true;
         return;
@@ -84,8 +84,8 @@ export function HostBridge() {
           x: f.pointer.x,
           y: f.pointer.y,
           confidence: f.confidence,
-          fixation: false,
-          source: "webcam-gaze",
+          fixation: f.fixation,
+          source: vision.kind === "head" ? "webcam-head" : "webcam-gaze",
         },
       });
     });

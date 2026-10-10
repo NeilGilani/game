@@ -41,6 +41,12 @@ export interface DwellSample {
   targetId: string | null;
   /** Some targets ask for a longer dwell (e.g. resuming eye control). */
   dwellScale?: number;
+  /**
+   * How much this frame counts towards the dwell, 0..1 (default 1). Target magnetism passes 0 while
+   * the highlight holds on a target that another one is now closer to: progress pauses there
+   * instead of completing on evidence that no longer supports it.
+   */
+  weight?: number;
 }
 
 export type DwellEvent =
@@ -151,7 +157,7 @@ export class DwellEngine {
       events.push({ type: "blocked", targetId: target, reason: "refractory" });
       return events;
     }
-    if (this.stable) this.accumulated += dt;
+    if (this.stable) this.accumulated += dt * Math.max(0, Math.min(1, sample.weight ?? 1));
     const needed = this.config.dwellMs * (sample.dwellScale ?? 1);
     const progress = Math.min(1, this.accumulated / needed);
     events.push({ type: "progress", targetId: target, progress });

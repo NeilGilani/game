@@ -82,6 +82,7 @@ export function InputLayer() {
     at: 0,
   });
   const lowSince = useRef<number | null>(null);
+  const dwellStart = useRef<{ id: string; t: number } | null>(null);
   const goodSince = useRef<number | null>(null);
 
   const {
@@ -141,8 +142,12 @@ export function InputLayer() {
     const cursor = cursorRef.current;
     const handle = (frame: VisionFrame) => {
       const now = frame.t;
-      // Tracking state and automatic fallback to scanning.
-      if (frame.confidence < 0.5 || !frame.pointer) {
+      // Tracking state and automatic fallback to scanning. This follows the face, not the pointer:
+      // the pointer's own confidence also dips on the frame of each eye jump, which isn't a loss.
+      // While selection is suspended (calibration dots) there is no pointer by design: not a loss.
+      if (suspended) {
+        lowSince.current = null;
+      } else if (frame.trackingConfidence < 0.5 || !frame.pointer) {
         lowSince.current ??= now;
         goodSince.current = null;
         const lostFor = now - lowSince.current;
@@ -185,12 +190,18 @@ export function InputLayer() {
         if (ev.type === "enter") {
           clearMarks("data-dwell-active");
           target?.setAttribute("data-dwell-active", "");
+          dwellStart.current = { id: ev.targetId, t: now };
         } else if (ev.type === "progress" && target) {
           target.style.setProperty("--dwell", ev.progress.toFixed(3));
         } else if (ev.type === "cancel") {
           clearMarks("data-dwell-active");
         } else if (ev.type === "activate" && target) {
           target.style.setProperty("--dwell", "0");
+          // Where the eyes were during this dwell teaches the engine where this person's gaze lands
+          // (continuous recalibration: bounded, and only kept when it makes estimates better).
+          const start = dwellStart.current?.id === ev.targetId ? dwellStart.current.t : now;
+          vision.selected(ev.targetId, target.getBoundingClientRect(), now, start);
+          dwellStart.current = null;
           activate(target);
           targets.current.at = 0;
         }

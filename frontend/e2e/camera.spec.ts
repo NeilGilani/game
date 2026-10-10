@@ -50,7 +50,7 @@ test.describe("with a fake webcam", () => {
     // Calibration starts by itself after a countdown (no click needed for eye-only users).
     await page.getByRole("button", { name: /Calibrate now/ }).click();
     await expect(page.getByText(/Starting in \d/)).toBeVisible({ timeout: 20_000 });
-    await expect(page.getByText(/Dot 1 of 9/)).toBeVisible({ timeout: 20_000 });
+    await expect(page.getByText(/Dot 1 of \d+/)).toBeVisible({ timeout: 20_000 });
     // A still photo can't follow the dots, so the honest answer is "poor" with a fallback offered.
     await expect(page.getByRole("heading", { name: /Accuracy: poor/ })).toBeVisible({ timeout: 120_000 });
     await expect(page.getByText(/Not reliable enough for dwell selection/)).toBeVisible();

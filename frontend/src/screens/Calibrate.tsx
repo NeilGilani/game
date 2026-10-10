@@ -1,20 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import type { SessionTarget } from "../../../os/gaze/src/calibration/session";
 import { Icon } from "../components/Icon";
 import { useAnnounce } from "../state/announcer";
-import { featureSetFor, useInput } from "../state/input";
+import { useInput } from "../state/input";
 import { usePreferences } from "../state/preferences";
 import { navigate } from "../state/router";
-import {
-  CalibrationError,
-  type CalibrationModel,
-  type CalibrationSample,
-  type CalibrationTarget,
-  calibrationTargets,
-  featureVector,
-  fitCalibration,
-} from "../vision/calibration";
-import type { VisionFrame } from "../vision/tracker";
+import { type StoredCalibration, describeError, worstError } from "../vision/calibrationStore";
 
+/** Time for the eyes to land on a new dot before its frames count. */
 const SETTLE_MS = 800;
 const COLLECT_MS = 1100;
 const MAX_COLLECT_MS = 2600;
@@ -24,17 +17,19 @@ const MIN_SAMPLES = 10;
 
 type Phase =
   | { kind: "intro" }
-  | { kind: "running"; index: number; collecting: boolean }
-  | { kind: "result"; model: CalibrationModel; skipped: number }
+  | { kind: "running"; target: SessionTarget; collecting: boolean }
+  | { kind: "result"; calibration: StoredCalibration }
   | { kind: "failed"; message: string };
 
-const pct = (v: number) => `${Math.round(v * 100)}%`;
-
+/**
+ * Eye calibration with the gaze engine's calibration v2 (os/gaze/src/calibration/session.ts): 9
+ * training dots, a few more where the model is weakest, then check dots it never trained on. The
+ * grade shown is the error on those check dots, so it doesn't flatter the model.
+ */
 export function Calibrate() {
   const input = useInput();
   const { update } = usePreferences();
   const announce = useAnnounce();
-  const set = featureSetFor(input.mode) ?? "gaze";
   const [phase, setPhase] = useState<Phase>({ kind: "intro" });
   const [countdown, setCountdown] = useState(5);
   const [faceVisible, setFaceVisible] = useState(false);
@@ -43,85 +38,79 @@ export function Calibrate() {
   const cancelled = useRef(false);
   const { vision, setSuspended, setCalibration } = input;
   const running = input.status === "running";
+  const head = input.mode === "head";
 
-  // Hand-free selection is off while the dots are shown; it comes back for the result screen.
+  // Hands-free selection is off during the countdown and while the dots are shown; it comes back for
+  // the result. Every screen here covers the app, so only its own buttons are dwell targets.
+  const suspend = running && !head && (phase.kind === "intro" || phase.kind === "running");
   useEffect(() => {
-    setSuspended(phase.kind !== "result" && phase.kind !== "failed");
+    setSuspended(suspend);
     return () => setSuspended(false);
-  }, [phase.kind, setSuspended]);
+  }, [suspend, setSuspended]);
 
   useEffect(() => vision.onFrame((f) => setFaceVisible(!!f.features)), [vision]);
 
+  const stop = useCallback(() => {
+    cancelled.current = true;
+    vision.cancelCalibration();
+  }, [vision]);
+
   const run = useCallback(async () => {
     cancelled.current = false;
-    const targets = calibrationTargets();
-    const samples: CalibrationSample[] = [];
-    let skipped = 0;
-    for (let index = 0; index < targets.length; index++) {
+    const session = vision.startCalibration();
+    for (;;) {
       if (cancelled.current) return;
-      const target = targets[index]!;
-      setPhase({ kind: "running", index, collecting: false });
-      await new Promise((r) => setTimeout(r, SETTLE_MS));
+      const step = session.next();
+      if (step.kind === "failed") {
+        vision.cancelCalibration();
+        setPhase({ kind: "failed", message: step.reason });
+        return;
+      }
+      if (step.kind === "done") {
+        const calibration = vision.finishCalibration(step.result);
+        // Apply for this session straight away so the result screen can be used hands-free.
+        setCalibration(calibration, false);
+        setPhase({ kind: "result", calibration });
+        announce(`Calibration finished. Accuracy: ${calibration.result.quality.grade}.`);
+        return;
+      }
+      const target = step.target;
+      setPhase({ kind: "running", target, collecting: false });
+      const settled = window.setTimeout(() => {
+        if (!cancelled.current) setPhase({ kind: "running", target, collecting: true });
+      }, SETTLE_MS);
+      // On a slow camera (or a slow computer) give each dot time for MIN_SAMPLES frames, up to a cap.
+      const msPerFrame = 1000 / Math.max(1, vision.stats.fps || 15);
+      const maxMs = Math.max(MAX_COLLECT_MS, Math.min(HARD_MAX_COLLECT_MS, msPerFrame * MIN_SAMPLES * 1.5));
+      let timer = 0;
+      // Never wait on frames forever: a stalled camera still moves on.
+      const stalled = new Promise<null>((resolve) => {
+        timer = window.setTimeout(() => resolve(null), SETTLE_MS + maxMs + 1500);
+      });
+      const got = await Promise.race([
+        session.collect(target.id, {
+          settleMs: SETTLE_MS,
+          collectMs: COLLECT_MS,
+          maxMs,
+          minSamples: MIN_SAMPLES,
+        }),
+        stalled,
+      ]);
+      window.clearTimeout(timer);
+      window.clearTimeout(settled);
       if (cancelled.current) return;
-      setPhase({ kind: "running", index, collecting: true });
-      const collected = await new Promise<number[][]>((resolve) => {
-        const got: number[][] = [];
-        const start = performance.now();
-        let frames = 0;
-        let done = false;
-        const finish = () => {
-          if (done) return;
-          done = true;
-          off();
-          clearTimeout(hardStop);
-          resolve(got);
-        };
-        // Never wait on a frame to end a dot: slow or stalled cameras still finish.
-        const hardStop = setTimeout(finish, HARD_MAX_COLLECT_MS);
-        const off = vision.onFrame((f: VisionFrame) => {
-          frames += 1;
-          if (f.features && f.confidence >= 0.5 && (f.blink ?? 0) < 0.4)
-            got.push(featureVector(f.features, set));
-          const elapsed = performance.now() - start;
-          // On a slow camera (or a slow computer) give each dot time for MIN_SAMPLES frames, up to the hard cap.
-          const msPerFrame = frames > 1 ? elapsed / (frames - 1) : 0;
-          const deadline = Math.max(
-            MAX_COLLECT_MS,
-            Math.min(HARD_MAX_COLLECT_MS, msPerFrame * MIN_SAMPLES * 1.5),
-          );
-          if (
-            (elapsed > COLLECT_MS && got.length >= MIN_SAMPLES) ||
-            elapsed > deadline ||
-            cancelled.current
-          ) {
-            finish();
-          }
-        });
-      });
-      if (collected.length < MIN_SAMPLES) skipped += 1;
-      else for (const features of collected) samples.push({ target, features });
+      if (got === null) {
+        // No frames arrived for this dot: it counts as missed and is shown once more at the end.
+        session.cancel();
+        session.session.addSamples(target.id, []);
+      }
     }
-    try {
-      const model = fitCalibration(samples, set, { width: window.innerWidth, height: window.innerHeight });
-      // Apply for this session straight away so the result screen can be used hands-free.
-      setCalibration(model, false);
-      setPhase({ kind: "result", model, skipped });
-      announce(`Calibration finished. Quality: ${model.quality.grade}.`);
-    } catch (err) {
-      setPhase({
-        kind: "failed",
-        message:
-          err instanceof CalibrationError
-            ? err.message
-            : "Calibration couldn't be completed. Please try again.",
-      });
-    }
-  }, [vision, set, setCalibration, announce]);
+  }, [vision, setCalibration, announce]);
 
   // Start automatically after a short countdown once a face is visible, so someone who
   // can only use their eyes doesn't need to press anything.
   useEffect(() => {
-    if (phase.kind !== "intro" || !running || !faceVisible) {
+    if (phase.kind !== "intro" || !running || !faceVisible || head) {
       setCountdown(5);
       return;
     }
@@ -131,21 +120,21 @@ export function Calibrate() {
     }
     const t = setTimeout(() => setCountdown((c) => c - 1), 1000);
     return () => clearTimeout(t);
-  }, [phase.kind, running, faceVisible, countdown, run]);
+  }, [phase.kind, running, faceVisible, countdown, run, head]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
-        cancelled.current = true;
+        stop();
         navigate("/camera");
       }
     };
     window.addEventListener("keydown", onKey);
     return () => {
       window.removeEventListener("keydown", onKey);
-      cancelled.current = true;
+      stop();
     };
-  }, []);
+  }, [stop]);
 
   // Live test on the result screen: which ninth of the screen is the pointer in?
   useEffect(() => {
@@ -158,11 +147,9 @@ export function Calibrate() {
     });
   }, [phase.kind, vision]);
 
-  const targets = calibrationTargets();
-
   if (!running) {
     return (
-      <div className="calibration welcome">
+      <div className="calibration welcome" data-dwell-scope="modal">
         <div className="welcome-card panel stack">
           <h1>The camera needs to be on to calibrate</h1>
           <button className="btn btn-xl btn-primary" onClick={() => navigate("/camera")} data-dwell>
@@ -173,18 +160,46 @@ export function Calibrate() {
     );
   }
 
+  if (head) {
+    return (
+      <div className="calibration welcome" data-dwell-scope="modal">
+        <div className="welcome-card panel stack" style={{ maxWidth: 820 }}>
+          <h1>The head pointer doesn&apos;t need calibrating</h1>
+          <p>
+            It starts from wherever your head points. If the pointer sits off to one side, point your nose at
+            the middle of the screen and centre it.
+          </p>
+          <div className="grid grid-2">
+            <button
+              className="btn btn-xl btn-primary"
+              data-dwell
+              onClick={() => {
+                vision.recentre();
+                announce("Head pointer centred.");
+                navigate("/");
+              }}
+            >
+              <Icon name="target" /> Centre it and go Home
+            </button>
+            <button className="btn btn-xl" data-dwell onClick={() => navigate("/camera")}>
+              <Icon name="camera" /> Camera setup
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   if (phase.kind === "intro") {
     return (
-      <div className="calibration welcome">
+      <div className="calibration welcome" data-dwell-scope="modal">
         <div className="welcome-card panel stack" style={{ maxWidth: 820 }}>
-          <div className="eyebrow">Calibration · 9 dots · about 20 seconds</div>
-          <h1>{set === "head" ? "Point your nose at each dot" : "Look at each dot until it moves"}</h1>
+          <div className="eyebrow">Calibration · about 13 dots · about 30 seconds</div>
+          <h1>Look at each dot until it moves</h1>
           <p>
-            {set === "head"
-              ? "Move your head gently so your nose points at each dot."
-              : "Keep your head as still as is comfortable and follow the dot with your eyes."}{" "}
-            Webcam tracking is approximate, so AGENCY uses large targets and measures how accurate this
-            calibration is before relying on it.
+            Keep your head as still as is comfortable and follow the dot with your eyes. The last few dots
+            check how accurate the calibration is on places it didn&apos;t learn from, so AGENCY knows how
+            much to trust it. Webcam tracking is approximate, so AGENCY uses large targets.
           </p>
           <p aria-live="polite">
             <strong>
@@ -205,17 +220,18 @@ export function Calibrate() {
   }
 
   if (phase.kind === "running") {
-    const t: CalibrationTarget = targets[phase.index]!;
+    const t = phase.target;
     return (
       <div className="calibration" role="dialog" aria-label="Calibration in progress">
         <div className="cal-hud">
           <span aria-live="polite">
-            Dot {phase.index + 1} of {targets.length}
+            Dot {t.index} of {t.total}
+            {t.phase === "validate" ? " · checking accuracy" : ""}
           </span>
           <button
             className="btn"
             onClick={() => {
-              cancelled.current = true;
+              stop();
               navigate("/camera");
             }}
           >
@@ -225,7 +241,7 @@ export function Calibrate() {
         <div
           className="cal-target"
           data-collecting={phase.collecting}
-          style={{ left: `${t.x * 100}%`, top: `${t.y * 100}%` }}
+          style={{ left: `${t.x}px`, top: `${t.y}px` }}
           aria-hidden="true"
         >
           <span />
@@ -236,9 +252,9 @@ export function Calibrate() {
 
   if (phase.kind === "failed") {
     return (
-      <div className="calibration welcome">
+      <div className="calibration welcome" data-dwell-scope="modal">
         <div className="welcome-card panel panel-danger stack" style={{ maxWidth: 820 }}>
-          <h1>Calibration didn't work</h1>
+          <h1>Calibration didn&apos;t work</h1>
           <p>{phase.message}</p>
           <div className="grid grid-2">
             <button className="btn btn-xl btn-primary" onClick={() => setPhase({ kind: "intro" })} data-dwell>
@@ -260,8 +276,9 @@ export function Calibrate() {
     );
   }
 
-  const { model, skipped } = phase;
-  const q = model.quality;
+  const { calibration } = phase;
+  const r = calibration.result;
+  const q = r.quality;
   const message =
     q.grade === "good"
       ? "Good. Dwell selection should work well with AGENCY's large buttons."
@@ -270,7 +287,7 @@ export function Calibrate() {
         : "Not reliable enough for dwell selection. I recommend blink scanning or the head pointer; you can also try again with better light.";
 
   return (
-    <div className="calibration" style={{ overflow: "auto" }}>
+    <div className="calibration" style={{ overflow: "auto" }} data-dwell-scope="modal">
       <div className="page" style={{ padding: 28 }}>
         <div className="page-head">
           <div>
@@ -286,15 +303,15 @@ export function Calibrate() {
         </div>
         <div className="grid grid-2">
           <section className="panel stack">
-            <h3>Measured on targets it didn't train on</h3>
+            <h3>Measured on dots it didn&apos;t train on</h3>
             <p>
-              Average error {pct(q.meanError)} of the screen (worst {pct(q.maxError)}). Model: {model.basis},{" "}
-              {set === "head" ? "head pose" : "iris position + head pose"}.
-              {skipped > 0 &&
-                ` ${skipped} dot${skipped > 1 ? "s" : ""} had too little usable data and were skipped.`}
+              Average error {describeError(calibration)} (worst {worstError(calibration)} px), from{" "}
+              {r.trainingTargets} training dots and {r.validation.length} check dots. It keeps improving as
+              you use it: each choice you don&apos;t undo corrects small drifts.
             </p>
             <p className="small muted">
-              This is a webcam estimate, not a medical-grade eye tracker. It's stored only in this browser
+              This is a webcam estimate, not a medical-grade eye tracker. It&apos;s stored only in this
+              browser
               {remember ? " (remembered on this device)" : " for this session"}.
             </p>
             <label className="row">
@@ -313,32 +330,32 @@ export function Calibrate() {
             </div>
           </section>
         </div>
-        <div className="grid grid-3">
-          <button className="btn btn-xl" onClick={() => setPhase({ kind: "intro" })} data-dwell>
-            <Icon name="refresh" /> Calibrate again
-          </button>
-          <button
-            className="btn btn-xl"
-            data-dwell
-            onClick={() => {
-              update({ input_mode: "scan_blink" });
-              navigate("/");
-            }}
-          >
-            <Icon name="blink" /> Use blink scanning
-          </button>
-          <button
-            className="btn btn-xl btn-primary"
-            data-dwell
-            onClick={() => {
-              input.setCalibration(model, remember);
-              announce("Calibration saved.");
-              navigate("/");
-            }}
-          >
-            <Icon name="check" /> Use this calibration
-          </button>
-        </div>
+      </div>
+      <div className="grid grid-3">
+        <button className="btn btn-xl" onClick={() => setPhase({ kind: "intro" })} data-dwell>
+          <Icon name="refresh" /> Calibrate again
+        </button>
+        <button
+          className="btn btn-xl"
+          data-dwell
+          onClick={() => {
+            update({ input_mode: "scan_blink" });
+            navigate("/");
+          }}
+        >
+          <Icon name="blink" /> Use blink scanning
+        </button>
+        <button
+          className="btn btn-xl btn-primary"
+          data-dwell
+          onClick={() => {
+            input.setCalibration(calibration, remember);
+            announce("Calibration saved.");
+            navigate("/");
+          }}
+        >
+          <Icon name="check" /> Use this calibration
+        </button>
       </div>
     </div>
   );

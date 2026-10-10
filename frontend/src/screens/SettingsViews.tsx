@@ -12,6 +12,7 @@ import { MODE_LABELS, useInput } from "../state/input";
 import { applyEasyRead, usePreferences } from "../state/preferences";
 import { navigate } from "../state/router";
 import { usePoll } from "../state/usePoll";
+import { describeError } from "../vision/calibrationStore";
 
 const MODE_ICONS: Record<InputMode, string> = {
   gaze: "eye",
@@ -23,7 +24,7 @@ const MODE_ICONS: Record<InputMode, string> = {
 
 const MODE_HELP: Record<InputMode, string> = {
   gaze: "Look at a button and hold your gaze to select it. Needs calibration.",
-  head: "Point with small head movements and hold to select. Needs calibration.",
+  head: "Point with small head movements and hold to select. No calibration: it starts from where your head points.",
   scan_blink: "Choices light up in turn; a deliberate long blink selects.",
   scan_key: "Choices light up in turn; press Space (or any switch mapped to it) to select.",
   pointer: "Use a mouse, trackpad, keyboard or touch as usual.",
@@ -362,7 +363,7 @@ export function SettingsView() {
           <p>
             <strong>{MODE_LABELS[input.mode].long}</strong>. Camera: {input.status}.{" "}
             {input.calibration
-              ? `Calibrated ${formatTime(input.calibration.createdAt)} (${input.calibration.quality.grade}), stored ${input.calibrationRemembered ? "on this device" : "for this session only"}.`
+              ? `Eyes calibrated ${formatTime(input.calibration.createdAt)} (${input.calibration.result.quality.grade}), stored ${input.calibrationRemembered ? "on this device" : "for this session only"}.`
               : "Not calibrated."}
           </p>
           <div className="row">
@@ -618,7 +619,7 @@ export function StatusView() {
             <dt>Calibration</dt>
             <dd>
               {input.calibration
-                ? `${input.calibration.set}, ${input.calibration.basis}, ${input.calibration.quality.grade} (avg error ${Math.round(input.calibration.quality.meanError * 100)}% of screen)`
+                ? `Eye gaze, ${input.calibration.result.trainingTargets} dots, ${input.calibration.result.quality.grade} (error ${describeError(input.calibration)} on check dots; improves as you use it)`
                 : "None"}
             </dd>
           </dl>
