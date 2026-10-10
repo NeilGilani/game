@@ -1,0 +1,40 @@
+{
+  "name": "@agency/agent",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "AGENCY OS agent runtime: turns a few eye-made choices into a finished, verified task, with approvals enforced in code. Owned by Instance 4.",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./fake": "./src/fake/fakeAgent.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json",
+    "lint": "eslint .",
+    "format": "prettier --write \"src/**/*.ts\" \"tests/**/*.ts\" \"evals/**/*.ts\"",
+    "format:check": "prettier --check \"src/**/*.ts\" \"tests/**/*.ts\" \"evals/**/*.ts\"",
+    "test": "vitest run",
+    "evals": "tsx evals/run.ts",
+    "build": "esbuild src/utility.ts --bundle --platform=node --format=esm --target=node20 --outfile=dist/agent-utility.mjs --external:electron",
+    "check": "npm run lint && npm run format:check && npm run typecheck && npm test && npm run build"
+  },
+  "dependencies": {
+    "@agency/contracts": "0.0.0",
+    "@anthropic-ai/sdk": "0.133.0",
+    "@google/genai": "2.28.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "9.39.5",
+    "@types/node": "22.20.5",
+    "esbuild": "0.28.2",
+    "eslint": "9.39.5",
+    "globals": "17.13.0",
+    "prettier": "3.9.9",
+    "tsx": "4.23.15",
+    "typescript": "5.9.3",
+    "typescript-eslint": "8.71.1",
+    "vitest": "4.1.11"
+  }
+}
