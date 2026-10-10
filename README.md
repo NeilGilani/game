@@ -67,6 +67,10 @@ How Lifeline works and why it's designed this way: see [LIFELINE.md](LIFELINE.md
 coordinator: see [DEPLOY_PI.md](DEPLOY_PI.md). Running the 5-minute demo:
 see [DEMO_SCRIPT.md](DEMO_SCRIPT.md). How it's built: see [ARCHITECTURE.md](ARCHITECTURE.md).
 
+**Synapse layer:** with Ray's [Synapse-Mesh](https://github.com/RayB-007/synapse-mesh) edge running on the Mac
+(`AGENCY_SYNAPSE_URL=http://127.0.0.1:8100`, or `make demo-local`), every AI request is routed by its expert
+classifier and Cisco network sentinel before Gemini answers: see [ARCHITECTURE.md](ARCHITECTURE.md#the-synapse-layer-rays-synapse-mesh-over-gemini).
+
 To enable cloud reasoning, put a Gemini API key from [Google AI Studio](https://aistudio.google.com/apikey) in `.env`
 as `GEMINI_API_KEY=...` (copy `.env.example`; the default model is `gemini-3.8-flash`). The status bar then shows
 **Gemini · gemini-3.8-flash**. Without a key it says **Demo mode: built-in plans**. An Anthropic key

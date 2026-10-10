@@ -117,6 +117,29 @@ recovered), completed with open items, paused, interrupted (after a restart), ne
 9. **Restart reconciliation** marks open invocations interrupted, asks services what happened, settles steps, and holds
    the case as `interrupted` until the person presses Resume.
 
+## The Synapse layer (Ray's Synapse-Mesh over Gemini)
+
+Every AI request goes through `agency/synapse.py` before any model sees it: interpreting a goal, adapting a plan,
+explaining an approval (coordinator), and starting a task (the agent asks `POST /api/synapse/route`).
+
+1. **Route.** Synapse-Mesh's edge on the Mac (`AGENCY_SYNAPSE_URL`, [github.com/RayB-007/synapse-mesh](https://github.com/RayB-007/synapse-mesh))
+   answers `POST /intent`: its Sifter (a local classifier) scores the request against the expert vault (coding,
+   medical, legal), and its Cisco sentinel budgets that mixture by the network: Ultra-Fusion (good, cap 1.0),
+   Lean-Fusion (congested, 0.4), Critical-Fusion (critical, 0.1, strongest expert only), Safe-Mode (offline).
+2. **Apply.** Gemini gets the weighted expert lenses in its system instruction (the prompt-level analogue of
+   Synapse's LoRA fusion); Lean-Fusion means low thinking and short answers; Critical-Fusion and Safe-Mode mean no
+   cloud call at all: AGENCY's built-in plans and wording at once, and the agent starts no new model task (saved
+   task packs still run).
+3. **Show.** Each route (experts, mode, network source, timing) is recorded and shown: the status-bar chip, the
+   Synapse panel on Status, the task and case pages, and approval explanations.
+
+The network monitor (`agency/network.py`) reads Synapse's sentinel (`GET /network`: Cisco IOS XE RESTCONF counters,
+the cloud kernel's round trip, or mock telemetry, labelled) or, without Synapse, times a request to the cloud
+model's host. Lifeline lists an offline or critical network as a problem and retries the moment it's back.
+Presenters can simulate the network (`PUT /api/demo/network`), which also moves Synapse's mock telemetry. Without
+Synapse-Mesh, AGENCY's keyword router stands in and says so. Plans still pass the validator; model output never
+decides whether an action happened.
+
 ## Planning and cloud reasoning
 
 `planning/templates.py` holds the built-in plans. `planning/validate.py` checks any plan: unique ids, dependencies only

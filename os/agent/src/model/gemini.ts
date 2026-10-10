@@ -145,7 +145,7 @@ export class GeminiModel implements AgentModel {
           system_instruction: options.system,
           tools,
           generation_config: {
-            thinking_level: this.thinkingLevel,
+            thinking_level: options.thinking ?? this.thinkingLevel,
             tool_choice: "auto",
             max_output_tokens: 16000,
           },

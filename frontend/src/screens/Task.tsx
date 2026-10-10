@@ -14,6 +14,9 @@ import type { ApprovalRequest, ChoiceQuestion, PlanStepView } from "../state/con
 import { navigate } from "../state/router";
 import { progressText, type TaskView } from "../state/tasks";
 
+/** The agent's note on how the Synapse layer routed this task (os/agent SYNAPSE_STEP). */
+const SYNAPSE_STEP = "synapse:route";
+
 /** How long the confirm button waits before it can be selected. Not a time limit: it waits for the person after. */
 export const CONFIRM_PAUSE_MS = 1500;
 
@@ -115,6 +118,12 @@ function TaskBody({ t }: { t: TaskView }) {
           <h2 id="h-plan">
             The plan <span className="muted small">· {progressText(t)}</span>
           </h2>
+          {t.notes[SYNAPSE_STEP] && (
+            <div className="synapse-route">
+              <Icon name="sparkle" size={18} />
+              <span>{t.notes[SYNAPSE_STEP]!.summary}</span>
+            </div>
+          )}
           <ol className="plan-steps">
             {t.steps.map((s) => (
               <li key={s.id} className="plan-step" data-status={s.status}>

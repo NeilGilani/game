@@ -20,6 +20,7 @@ export type AuditKind =
   | "injection"
   | "verify"
   | "model"
+  | "synapse.route"
   | "task.ended";
 
 export interface AuditEntry {

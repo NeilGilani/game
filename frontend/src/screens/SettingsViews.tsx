@@ -1,3 +1,4 @@
+import { SynapsePanel } from "../components/Synapse";
 import { useState, type ReactNode } from "react";
 import { accessToken, api, coordinatorUrl, setAccessToken, setCoordinatorUrl } from "../api/client";
 import type { Faults, InputMode, Preferences, ReasoningStatus, Runtime } from "../api/types";
@@ -513,6 +514,8 @@ export function StatusView() {
           <p>Everything here is reported by the running system, not assumed.</p>
         </div>
       </div>
+
+      <SynapsePanel />
 
       <div className="grid grid-2">
         <section className="panel stack">

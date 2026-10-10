@@ -103,7 +103,8 @@ class Route:
     def mixture(self) -> dict[str, float]:
         """Applied weights as shares of the budget actually spent (what Gemini's lenses are weighted by)."""
         total = sum(w for w in self.experts.values() if w > 0)
-        return {n: round(w / total, 3) for n, w in self.experts.items() if w > 0} if total else {}
+        ranked = sorted(((n, w) for n, w in self.experts.items() if w > 0), key=lambda nw: -nw[1])
+        return {n: round(w / total, 3) for n, w in ranked} if total else {}
 
     def note(self) -> str:
         if self.decision == "built-in":

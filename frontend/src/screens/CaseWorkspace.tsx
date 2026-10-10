@@ -1,3 +1,4 @@
+import { RouteLine } from "../components/Synapse";
 import { useState } from "react";
 import { api } from "../api/client";
 import type { CaseDetail, Step } from "../api/types";
@@ -317,6 +318,7 @@ export function CaseWorkspace({ id }: { id: string }) {
             </span>
             <SimulatedBadge text="Demo services only" />
           </div>
+          <RouteLine route={data.reasoning.route} />
         </div>
         <div className="row">
           <button className="btn" onClick={() => navigate(`/case/${id}/timeline`)} data-dwell>

@@ -20,6 +20,7 @@ import type { AgentModel } from "../model/types";
 import { DEFAULT_SETTINGS, type SafetySettings } from "../policy/settings";
 import { GuardedTools } from "../tools/guarded";
 import type { BrowserBridge, NativeClient, TaskPack } from "../types";
+import type { SynapseRoute, SynapseRouter } from "../synapse";
 import { runModel } from "./modelRunner";
 import { runPack } from "./packRunner";
 import { BudgetExceeded, DEFAULT_BUDGETS, TaskRun, TaskStopped, type Budgets } from "./task";
@@ -35,8 +36,13 @@ export interface RuntimeDeps {
   settings?: () => SafetySettings;
   /** Offer computer use when agency-native is connected (default true). */
   computerUse?: boolean;
+  /** Synapse layer: routes each model task (experts + network budget) before the model sees it. */
+  router?: SynapseRouter | null;
   budgets?: Partial<Budgets>;
 }
+
+/** Task note id for the Synapse route ("Synapse-Mesh: Lean-Fusion: Gemini with light thinking, …"). */
+export const SYNAPSE_STEP = "synapse:route";
 
 export type RunResult =
   | { kind: "done"; outcome: string; verified: boolean; evidence?: string }
@@ -153,6 +159,25 @@ export class AgentRuntime {
     }
   }
 
+  /** Ask the Synapse layer how to run this task; shown to the person as the first line of the task. */
+  private async routeTask(taskId: string, request: TaskRequest): Promise<SynapseRoute | null> {
+    const router = this.deps.router;
+    if (!router) return null;
+    const text = [request.goal, ...Object.values(request.selections ?? {})].join(". ");
+    const route = await router.route(text);
+    if (!route) return null;
+    const who = route.router === "synapse" ? "Synapse-Mesh" : "AGENCY's stand-in router";
+    this.emit({
+      type: "task.step",
+      taskId,
+      stepId: SYNAPSE_STEP,
+      status: "done",
+      summary: `${who}: ${route.note}`,
+    });
+    this.audit.record({ taskId, kind: "synapse.route", message: `${who}: ${route.note}` });
+    return route;
+  }
+
   private async start(request: TaskRequest): Promise<void> {
     if (this.tasks.get(request.id) && !this.tasks.get(request.id)!.ended) return;
     const task = new TaskRun(request, this.budgets, (e) => this.emit(e));
@@ -204,16 +229,25 @@ export class AgentRuntime {
       if (pack) {
         result = await runPack(task, pack, tools, ask);
       } else if (this.deps.model) {
-        result = await runModel({
-          task,
-          tools,
-          ask,
-          model: this.deps.model,
-          computerUse: this.deps.computerUse ?? true,
-          audit: this.audit,
-          suggestions: suggestions as Suggestion[],
-          safety: this.settings(),
-        });
+        const route = await this.routeTask(task.id, request);
+        result =
+          route?.decision === "built-in"
+            ? {
+                kind: "failed",
+                reason: `${route.note} New tasks need the cloud model, so this one has to wait; saved tasks still work.`,
+                recoverable: true,
+              }
+            : await runModel({
+                task,
+                tools,
+                ask,
+                model: this.deps.model,
+                computerUse: this.deps.computerUse ?? true,
+                audit: this.audit,
+                suggestions: suggestions as Suggestion[],
+                safety: this.settings(),
+                route,
+              });
       } else {
         const names = this.deps.packs.map((p) => p.title).join(", ") || "none installed";
         result = {

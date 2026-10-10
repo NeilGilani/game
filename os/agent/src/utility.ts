@@ -20,6 +20,7 @@ import { HttpMemoryClient } from "./memory";
 import { AnthropicModel } from "./model/anthropic";
 import { GeminiModel, type GeminiThinkingLevel } from "./model/gemini";
 import { findApiKey, type Provider } from "./model/keys";
+import { HttpSynapseRouter } from "./synapse";
 import type { AgentModel } from "./model/types";
 import { DEFAULT_SETTINGS, type SafetySettings } from "./policy/settings";
 import { AgentRuntime } from "./runtime/runtime";
@@ -149,6 +150,9 @@ async function main(port: ParentPort): Promise<void> {
       audit: new AuditLog(env.AGENCY_AUDIT_FILE),
       settings: settingsFromFile(env.AGENCY_AGENT_SETTINGS),
       computerUse: env.AGENCY_COMPUTER_USE !== "0",
+      router: env.AGENCY_COORDINATOR_URL
+        ? new HttpSynapseRouter(env.AGENCY_COORDINATOR_URL, env.AGENCY_COORDINATOR_TOKEN)
+        : null,
     });
     agent = runtime;
     status = { ...runtime.capabilities(), keySource: source };

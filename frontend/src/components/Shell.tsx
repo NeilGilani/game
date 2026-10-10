@@ -1,3 +1,4 @@
+import { synapseChip } from "./Synapse";
 import { useEffect, useState, type ReactNode } from "react";
 import { api } from "../api/client";
 import type { Approval } from "../api/types";
@@ -50,6 +51,7 @@ export function TopBar() {
         ? "warn"
         : "ok";
 
+  const synapse = synapseChip(health);
   const agent = useAgent();
   const togglePause = async () => {
     // Stop reaches the agent and all synthetic input at once, before anything else (even if the coordinator is down).
@@ -156,6 +158,12 @@ export function TopBar() {
             <Icon name={reasoning?.mode === "deterministic" ? "shield" : "sparkle"} size={18} />
             <strong>{reasoningText}</strong>
           </a>
+          {synapse && (
+            <a className="chip chip-optional" data-tone={synapse.tone} href="#/status" title={synapse.title}>
+              <Icon name="sparkle" size={18} />
+              <strong>{synapse.text}</strong>
+            </a>
+          )}
           <a className="chip" data-tone={chip.tone} href="#/camera" title={MODE_LABELS[input.mode].long}>
             <Icon name={input.usesCamera ? "eye" : input.mode === "scan_key" ? "key" : "pointer"} size={18} />
             <strong>{chip.text}</strong>

@@ -22,11 +22,15 @@ import type {
   LifelineReport,
   LifelineSettings,
   LifelineStatus,
+  NetworkSnapshot,
+  NetworkState,
   OutboxMessage,
   Preferences,
   ReasoningStatus,
   Situation,
   Runtime,
+  SynapseRoute,
+  SynapseStatus,
   Timeline,
 } from "./types";
 
@@ -202,7 +206,12 @@ export const api = {
       on_device?: boolean;
       model: string | null;
       facts?: string[];
+      route?: SynapseRoute | null;
     }>(`/api/approvals/${encodeURIComponent(approvalId)}/explain`, { timeoutMs: 60000 }),
+  synapse: () =>
+    request<SynapseStatus & { network: NetworkSnapshot; recent: SynapseRoute[] }>("/api/synapse"),
+  setNetworkDemo: (state: Exclude<NetworkState, "unknown"> | null) =>
+    request<NetworkSnapshot>("/api/demo/network", { method: "PUT", body: JSON.stringify({ state }) }),
   pauseAll: () => post<{ automation_paused: boolean }>("/api/system/pause"),
   resumeAll: () => post<{ automation_paused: boolean }>("/api/system/resume"),
   preferences: () => request<Preferences>("/api/preferences"),

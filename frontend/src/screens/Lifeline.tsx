@@ -1,3 +1,4 @@
+import { NetworkDemoControls } from "../components/Synapse";
 import { useEffect, useState } from "react";
 import { api, lifelineApi } from "../api/client";
 import type {
@@ -463,6 +464,10 @@ export function LifelineHome() {
               value={!!faults.data?.lifeline_power_cut}
               onChange={(v) => void api.setFaults({ lifeline_power_cut: v }).then(() => faults.reload())}
             />
+            <div className="stack">
+              <strong>Network (Cisco sentinel)</strong>
+              <NetworkDemoControls />
+            </div>
             <Toggle
               label="Freeze this computer"
               help="Stops heartbeats, like a crash or power cut"

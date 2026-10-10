@@ -1,3 +1,5 @@
+import type { SynapseRoute } from "../api/types";
+import { RouteLine } from "../components/Synapse";
 import { useEffect, useState } from "react";
 import { api } from "../api/client";
 import type { Approval } from "../api/types";
@@ -93,6 +95,7 @@ export function Approve({ id }: { id: string }) {
     label?: string | null;
     on_device?: boolean;
     model: string | null;
+    route?: SynapseRoute | null;
   } | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -243,6 +246,7 @@ export function Approve({ id }: { id: string }) {
                       The details below come from AGENCY's records, not from the model.
                     </p>
                   )}
+                  <RouteLine route={explanation.route} />
                 </section>
               )}
               {editing && current.details.edit ? (
