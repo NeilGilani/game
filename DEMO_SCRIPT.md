@@ -35,10 +35,21 @@ five-minute task demo**. If you only have three minutes, do Lifeline and minutes
 - Back on Riley's screen: **Morgan is on the way.** The alarm stops. "A message being sent isn't help. Help is a
   person saying they're coming, and until someone does, AGENCY keeps going: Morgan, then the monitoring centre, then
   everyone again, every 90 seconds, forever."
-- **I'm OK now → Yes, I'm OK.** Morgan gets an all-clear. **Lifeline → Recent alerts** shows the time to an answer.
+- **The rescue (optional, 60 seconds).** On Riley's screen: **Tell them what's wrong → Breathing or mask**. It's
+  critical, so everyone is alerted at once. On Morgan's response page, tap **Is it your breathing?**: the question takes
+  over Riley's screen and Riley looks at **Yes**; the answer appears on Morgan's page. Morgan ticks **Done** on the first
+  care-plan steps ("an example plan; a real one is written with the care team"). Morgan taps **Do you want an
+  ambulance?**, Riley looks at **Yes**, and a few seconds later the screen says the ambulance is confirmed by **Demo
+  Emergency Dispatch (simulated)**. Say it plainly: "In this build the dispatch centre is simulated. Nobody is sent."
+- **I'm OK now → Yes, I'm OK.** Morgan gets an all-clear. **Lifeline → Recent alerts** shows the time to an answer;
+  open the alert to show what Riley said, the answers, the steps done, the request and the summary for paramedics.
 - One more sentence: "If Riley's laptop crashes in the night, the Raspberry Pi notices the silence and calls for
   help by itself." To show it: turn on **Watch over me**, then **Presenter controls → Freeze this computer**. After
   30 s (set 15 s in Lifeline setup to shorten it) the alert starts on its own.
+
+- Power, if there's time: **Presenter controls → Power cut at the ventilator**. Within a few seconds a critical
+  **Ventilator power cut** alert starts by itself ("the battery still has time; someone can plug it back in"). The
+  power reading comes from a simulated smart plug, not the ventilator. Turn the switch off again and end the alert.
 
 Turn **Jordan's phone unreachable** off again before the task demo.
 

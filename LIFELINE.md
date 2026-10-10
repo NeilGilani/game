@@ -88,7 +88,45 @@ communicate, breathing equipment to check first, allergies, medications, how to 
 (the number is configurable).
 
 The **Demo Monitoring Center** contact simulates a staffed 24/7 monitoring service: it answers 12 s after receiving
-an alert. Real services of this kind can dispatch emergency services; AGENCY does not call 911 itself.
+an alert. Real services of this kind can dispatch emergency services; AGENCY does not call 911 itself (see the rescue
+section below for the simulated emergency-services request).
+
+### After the alarm: the rescue
+
+Raising the alarm is half the job. A helper arriving at 3 a.m. still has to find out what's wrong from someone who
+can't speak. Lifeline helps run the rescue, using only what the person says and what is written in their own care
+plan:
+
+- **Say what's wrong, with the eyes.** The emergency screen offers six big choices: *Breathing or mask*, *Choking or
+  secretions*, *Ventilator or equipment* (critical), *Pain*, *Position or discomfort*, *Something else* (urgent).
+  With **"When it's critical, alert everyone at once"** on (the default), a critical answer skips the contact order and
+  alerts everyone together; if the countdown was still running it starts the alert at once. Urgency never goes down.
+- **Questions from helpers.** On their response page a helper taps a ready question (*Is it your breathing?*, *Are you
+  in pain?*, *Should I hurry?*, *Do you want an ambulance?*) or types their own. It takes over the person's screen,
+  chimes and is read aloud; the person answers **Yes**, **No** or **Not sure** with their eyes, and the answer appears
+  on every helper's page.
+- **The care plan as a checklist.** Helpers see the steps for the situation the person chose (one list per situation,
+  at most 8 steps each, plus "first steps" for any alert) and tick them off; everyone sees who did what. The demo ships
+  a clearly labelled *example* plan for the fictional Riley. **A real plan is written with the person's care team.**
+  AGENCY never makes up medical steps.
+- **Emergency services (simulated in this build).** A separate permission, given in setup and timestamped by the
+  coordinator. With it, an ambulance can be requested by the person (with a confirmation), by a helper (with a
+  confirmation), by the person answering *yes* to "Do you want an ambulance?", or automatically when a critical alert
+  has gone unanswered for a set time (90 s by default, 0 = never). The request carries a structured address, a phone
+  number for the dispatcher, entry instructions, and a 4-digit PIN needed to cancel it. **The only dispatch centre in
+  this build is simulated (Demo Emergency Dispatch): nothing real is ever contacted.** AGENCY never places an automated
+  call to 911 (US rules bar autodialed or prerecorded calls to emergency lines, and a recording can't answer a
+  call-taker). Connecting a real staffed dispatch service would put real ambulances on the road and is left to the
+  person, their care team and the owner of this project.
+- **The home (simulated).** If a smart home is connected: lights on during an alert, the front door unlocked for a
+  helper who says they are at the door or for confirmed emergency services, and locked again after a set time (15
+  min by default). **In this build the home is simulated: no real lock is ever opened.**
+- **Ventilator power.** With power watching on, a power cut at the ventilator's outlet raises an alert by itself while
+  the battery still has time; below the "critical" threshold (20 min by default) everyone is alerted at once. This
+  reads a smart plug or UPS, not the ventilator: it is not a ventilator alarm.
+- **A summary for paramedics.** Each alert keeps a short, factual handoff (how the person communicates, what they said,
+  their answers, steps done, the emergency-services request, and the medical details from the responder card) for the
+  helper to show paramedics. The alert's page on the person's screen shows the whole story.
 
 ---
 
@@ -179,11 +217,20 @@ Verified in this repository (all run for the commit that added Lifeline):
   consent and alarm-only mode, the responder page (escaping, headers, tokens, confirmation), watchdog, check-ins,
   signal-unavailable, restart persistence, reporting, demo reset, and Twilio (text and call, failures, network
   errors) with a fake transport.
+- **Rescue backend:** 29 more tests (`backend/tests/test_rescue.py`): situations and urgency, alerting everyone for
+  critical problems, questions and answers, care-plan steps, emergency-services requests (by the person, a helper, a
+  yes answer and automatically, never for tests or without permission), cancelling a request, the paramedic summary,
+  the simulated home (lights, door, relock) and ventilator power watching.
 - **Frontend:** 10 Vitest tests of the blink pattern detector.
 - **Browser:** 5 Playwright tests against a real coordinator and its real supervisor loop: cancel during the
   countdown; fail-over, a contact answering on the real response page in another window, and ending the alert;
   the three-long-blink signal (with synthetic blink frames) and ordinary blinks being ignored; check-in and
   watchdog; offline queueing across a reload and recovery.
+- **Rescue in the browser:** 3 Playwright tests (`frontend/e2e/rescue.spec.ts`) against the real coordinator: the
+  person says what's wrong and answers a helper's questions by gaze dwell (synthetic gaze frames), the helper ticks
+  care-plan steps on the real response page, a simulated ambulance is requested by answering yes and is confirmed,
+  the alert is resolved and its page shows the situation, answers, steps, request and paramedic summary; a
+  simulated power cut at the ventilator raises a critical alert; setup validation and saving.
 - The coordinator with Lifeline ran on **emulated arm64 Debian Bookworm** (the base of Raspberry Pi OS); see
   [DEPLOY_PI.md](DEPLOY_PI.md).
 
@@ -198,6 +245,8 @@ Not verified, and why:
   were not tested over hours with the tab hidden. Keep AGENCY visible on screen while Watch over me is on.
 - **Physical Raspberry Pi hardware, power loss and UPS behaviour.**
 - **Sound without a prior click.** Browsers block it by design; this is reported, not worked around.
+- **Any real emergency service, smart lock or power sensor.** Dispatch, the door and the ventilator's power are
+  simulated in this build. The demo care plan is an example, not clinical advice.
 
 ## Configuration
 
@@ -207,5 +256,9 @@ Not verified, and why:
 | Consent | Lifeline setup | Recorded for the fictional demo profile |
 | Timings, check-ins, signal-unavailable alert | Lifeline setup | 8 s / 45 s / 30 s / off / off |
 | Responder card, emergency number | Lifeline setup | Fictional demo card, 911 |
+| Alert everyone at once for critical problems | Lifeline setup | On |
+| Care plan (per situation, at most 8 steps) | Lifeline setup | Example plan for the fictional demo profile |
+| Emergency services: permission, automatic delay, address, phone, entry, cancel PIN | Lifeline setup | Allowed for the demo profile, 90 s, fictional address; **simulated dispatch only** |
+| Home: lights, door unlocking (helpers / emergency services), relock, ventilator power, critical threshold | Lifeline setup | Simulated demo home; 15 min; 20 min |
 | `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_FROM_NUMBER` | Coordinator environment | Not set: real texts and calls are off |
 | `AGENCY_PUBLIC_URL` | Coordinator environment | `http://<host>:<port>`, or `http://<hostname>.local:<port>` when listening on the network |
