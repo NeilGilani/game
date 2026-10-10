@@ -36,6 +36,8 @@ async function launch(extraEnv: Record<string, string> = {}): Promise<Ctx> {
       AGENCY_FAKE_AGENT_LOG: agentLog,
       AGENCY_LOG_ECHO: "0",
       AGENCY_GAZE: "mouse",
+      // These tests cover the host and its built-in overlay; packages.spec.ts covers os/overlay.
+      AGENCY_OVERLAY_BUILTIN: "1",
       ...extraEnv,
     },
   });
