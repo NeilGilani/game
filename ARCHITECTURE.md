@@ -241,6 +241,21 @@ Emergency alerting, documented as a safety case in [LIFELINE.md](LIFELINE.md).
   the alarm. `LifelineOverlay` is a `data-dwell-scope="modal"` dialog, so while it's open eye control can only select
   its own buttons; Cancel carries `data-dwell-scale="2"`.
 
+## AGENCY OS desktop app (os/desktop)
+
+The desktop app wraps everything above; the full picture is in [docs/os/PLAN.md](docs/os/PLAN.md) and the details in
+[os/desktop/README.md](os/desktop/README.md).
+
+```
+ AGENCY.app main process ── supervises ──▶ coordinator sidecar (this backend, PyInstaller; or a Raspberry Pi)
+   │  agency:// protocol (CSP; /api proxied with the token)   ──▶ agency-native (Swift, JSON-RPC over stdio)
+   │  Lifeline heartbeat every 5 s, help, global Stop          ──▶ agent (Electron utility process)
+   ├─ shell window (frontend/dist, full screen)
+   ├─ overlay window per display (transparent, click-through, all Spaces)
+   └─ hidden gaze window (the only one allowed the camera)
+ Renderers see only window.agency (os/contracts/src/host.ts); main checks every call against the window's role.
+```
+
 ## Notable tradeoffs
 
 - **Polling, not WebSockets.** The interface polls (1 s for an open case). Simpler, robust to the Pi dropping off the

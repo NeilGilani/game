@@ -26,6 +26,23 @@ Raspberry Pi 4 (coordinator, SQLite). Cloud reasoning with Google Gemini is opti
 
 ---
 
+## AGENCY OS (the desktop app)
+
+AGENCY is growing into **AGENCY OS**: a Mac app that runs full screen as the person's home, floats eye control over
+every app, lets an agent do real tasks with their approval, and keeps Lifeline one look away. The plan, ownership
+and safety rules are in [docs/os/PLAN.md](docs/os/PLAN.md); what works today is in
+[docs/os/STATUS.md](docs/os/STATUS.md); installing a release is in [docs/os/INSTALL.md](docs/os/INSTALL.md).
+
+```bash
+make setup      # once
+make os-dev     # run the desktop app from source (windowed)
+make os-test    # type-checks, unit tests and Electron smoke tests (macOS)
+make os-dist    # a .dmg (unsigned unless signing secrets are set)
+```
+
+The repository is an npm workspace (`frontend`, `os/*`, `site`); `make check` covers the web app and the OS packages.
+The web demo below works exactly as before.
+
 ## Quick start (MacBook)
 
 Requires Python 3.11+ (`brew install python@3.12`, or `uv`) and Node 20.19+ (`brew install node`).

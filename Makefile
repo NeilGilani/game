@@ -4,6 +4,9 @@
 #   make dev       backend on :8000 + live-reloading interface on http://localhost:5173
 #   make check     lint, type-check, unit tests and production build
 #   make e2e       browser end-to-end tests (Playwright)
+#   make os-dev    run the AGENCY OS desktop app (Electron) from source
+#   make os-build  build the desktop app; make os-dist packages a .dmg (macOS)
+#   make os-test   desktop unit tests + Electron smoke tests (needs a display)
 # Raspberry Pi: see DEPLOY_PI.md (make pi-setup on the Pi, make dev-pi PI=<address> on the Mac).
 
 SHELL := /bin/bash
@@ -11,10 +14,11 @@ PY := backend/.venv/bin/python
 PI ?= agency-pi.local
 
 .PHONY: help setup setup-backend setup-frontend dev demo backend frontend dev-pi test test-backend test-frontend \
-        lint typecheck build check e2e e2e-fixtures reset-demo pi-setup pi-start pi-stop pi-status pi-logs clean
+        lint typecheck build check e2e e2e-fixtures reset-demo pi-setup pi-start pi-stop pi-status pi-logs clean \
+        os-check os-dev os-build os-dist os-test os-e2e sidecar
 
 help:
-	@grep -E '^#' Makefile | head -7 | sed 's/^# \{0,1\}//'
+	@grep -E '^#' Makefile | head -10 | sed 's/^# \{0,1\}//'
 
 setup: setup-backend setup-frontend
 	@echo "Setup complete. Next: make demo  (then open http://localhost:8000)"
@@ -38,7 +42,8 @@ setup-backend:
 
 setup-frontend:
 	@node -e 'const [a,b]=process.versions.node.split(".").map(Number); if (a<20||(a===20&&b<19)) { console.error("Node 20.19+ is required (found "+process.versions.node+"). brew install node"); process.exit(1) }'
-	cd frontend && npm install --no-audit --no-fund && npm run vendor
+	npm install --no-audit --no-fund
+	npm run vendor -w frontend
 
 backend:
 	cd backend && .venv/bin/uvicorn agency.main:app --host 127.0.0.1 --port 8000 --reload
@@ -81,8 +86,47 @@ typecheck:
 build:
 	cd frontend && npm run build
 
-check: lint typecheck test build
+check: lint typecheck test build os-check
 	@echo "All checks passed."
+
+# --- AGENCY OS (npm workspaces: frontend, os/*, site) -------------------------------------
+# Runs anywhere (Linux CI included): contracts and desktop type-checks and unit tests.
+os-check:
+	npm run typecheck -w @agency/contracts
+	npm run typecheck -w @agency/desktop
+	npm test -w @agency/desktop
+	@for ws in os/*/; do \
+	  name=$$(node -p "require('./$$ws/package.json').name" 2>/dev/null) || continue; \
+	  case "$$name" in @agency/contracts|@agency/desktop) continue;; esac; \
+	  if node -e "process.exit(require('./$$ws/package.json').scripts?.check ? 0 : 1)"; then \
+	    echo "== $$name: npm run check"; npm run check -w "$$name" || exit 1; fi; \
+	done
+
+os-build: build
+	@for ws in os/*/; do \
+	  name=$$(node -p "require('./$$ws/package.json').name" 2>/dev/null) || continue; \
+	  case "$$name" in @agency/contracts|@agency/desktop) continue;; esac; \
+	  if node -e "process.exit(require('./$$ws/package.json').scripts?.build ? 0 : 1)"; then \
+	    echo "== $$name: npm run build"; npm run build -w "$$name" || exit 1; fi; \
+	done
+	npm run build -w @agency/desktop
+
+os-dev: os-build
+	cd os/desktop && AGENCY_WINDOWED=1 npx electron .
+
+os-test: os-check os-e2e
+
+os-e2e:
+	npm run build -w @agency/desktop
+	cd os/desktop && npx playwright test
+
+# The coordinator as a self-contained binary for the app bundle (PyInstaller, see os/sidecar/README.md).
+sidecar:
+	bash os/sidecar/build.sh
+
+# A .dmg in os/desktop/dist (signed and notarized only when the signing secrets are set).
+os-dist: os-build sidecar
+	npm run dist -w @agency/desktop
 
 e2e-fixtures:
 	$(PY) frontend/e2e/fixtures/make_fake_camera.py frontend/e2e/fixtures/.cache/face.y4m
@@ -110,4 +154,5 @@ pi-logs:
 	journalctl -u agency-coordinator -n 100 --no-pager
 
 clean:
+	rm -rf os/desktop/out os/desktop/dist os/desktop/test-results os/sidecar/build os/sidecar/dist
 	rm -rf frontend/dist frontend/test-results frontend/playwright-report backend/.pytest_cache backend/.mypy_cache backend/.ruff_cache
