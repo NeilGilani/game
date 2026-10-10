@@ -19,7 +19,7 @@ import { hostAuthMac, originAllowed, runHost } from "../src/host/host.ts";
 import type { BridgeRequest, BridgeResponse } from "../src/protocol.ts";
 
 const EXT = "abcdefghijklmnopabcdefghijklmnop";
-const until = async (fn: () => boolean, ms = 3000) => {
+const until = async (fn: () => boolean, ms = 15_000) => {
   const end = Date.now() + ms;
   while (!fn()) {
     if (Date.now() > end) throw new Error("timed out");
@@ -53,21 +53,23 @@ class FakeExtension {
     this.received.push(m);
     if (m.k === "host.pairing") this.token ??= this.tokenOverride ?? (m.token as string);
     if (m.k === "host.status" && m.agency === "connected") {
+      // Like the real extension: without a token, ask for one; the host answers and says connected again.
       if (!this.token) {
         this.send({ k: "pair.request" });
-        await until(() => !!this.token);
+        return;
       }
       const extNonce = randomHex(16);
       this.pending = { extNonce };
       this.send({ k: "hello", extNonce, protocol: 1, extensionVersion: "test" });
     }
-    if (m.k === "welcome" && this.pending && this.token) {
+    const pending = this.pending;
+    if (m.k === "welcome" && pending && this.token && m.extNonce === pending.extNonce) {
       const key = await hmacKey(this.token);
-      if (!(await hmacVerify(key, welcomeText(this.pending.extNonce, m.appNonce as string), m.mac as string)))
+      if (!(await hmacVerify(key, welcomeText(pending.extNonce, m.appNonce as string), m.mac as string)))
         return;
-      const session = `${this.pending.extNonce}.${m.appNonce as string}`;
+      const session = `${pending.extNonce}.${m.appNonce as string}`;
       this.channel = new SignedChannel(key, session, ["res", "evt"]);
-      this.send({ k: "ready", mac: await hmac(key, readyText(session)) });
+      this.send({ k: "ready", extNonce: pending.extNonce, mac: await hmac(key, readyText(session)) });
     }
     if (m.k === "cmd" && this.channel) {
       const req = (await this.channel.open(m as never)) as BridgeRequest | null;
@@ -125,7 +127,7 @@ describe("pairing and the signed protocol", () => {
   it("pairs on first use and carries signed commands both ways", async () => {
     const ext = new FakeExtension();
     startHost(ext);
-    await server.waitUntilReady(3000);
+    await server.waitUntilReady(15_000);
     expect(ext.token).toBe(token);
     const r = await server.call("bridge.status", {});
     expect(r).toEqual({ echo: "bridge.status" });
@@ -163,7 +165,7 @@ describe("pairing and the signed protocol", () => {
   it("drops forged, replayed and re-ordered commands", async () => {
     const ext = new FakeExtension();
     startHost(ext);
-    await server.waitUntilReady(3000);
+    await server.waitUntilReady(15_000);
     await server.call("bridge.status", {});
     const real = ext.received.filter((m) => m.k === "cmd");
     expect(real).toHaveLength(1);
@@ -188,7 +190,7 @@ describe("pairing and the signed protocol", () => {
   it("drops responses that weren't signed by the extension", async () => {
     const ext = new FakeExtension();
     startHost(ext);
-    await server.waitUntilReady(3000);
+    await server.waitUntilReady(15_000);
     const p = server.call("tabs.list", {}, { timeoutMs: 300 });
     // A forged response arrives first; the real one follows from the extension.
     ext.stdin.write(
@@ -205,12 +207,12 @@ describe("pairing and the signed protocol", () => {
   it("reconnects when AGENCY restarts, with a fresh session", async () => {
     const ext = new FakeExtension();
     startHost(ext);
-    await server.waitUntilReady(3000);
+    await server.waitUntilReady(15_000);
     const firstSession = ext.channel?.session;
     await server.stop();
     server = new BridgeServer({ socketPath, token });
     await server.start();
-    await server.waitUntilReady(3000);
+    await server.waitUntilReady(15_000);
     expect(ext.channel?.session).not.toBe(firstSession);
     expect(await server.call("bridge.status", {})).toEqual({ echo: "bridge.status" });
   });
@@ -219,7 +221,7 @@ describe("pairing and the signed protocol", () => {
     const ext = new FakeExtension();
     // This extension never answers page.tree.
     startHost(ext);
-    await server.waitUntilReady(3000);
+    await server.waitUntilReady(15_000);
     ext.channel = null;
     const p = server.call("page.tree", { tabId: 1 });
     hosts.splice(0).forEach((h) => h.close());

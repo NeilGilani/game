@@ -272,9 +272,9 @@ export type WireMessage =
   /** extension -> app, unsigned: starts a session. */
   | { k: "hello"; extNonce: string; protocol: number; extensionVersion: string }
   /** app -> extension: proves the app holds the token. */
-  | { k: "welcome"; appNonce: string; mac: string }
+  | { k: "welcome"; extNonce: string; appNonce: string; mac: string }
   /** extension -> app: proves the extension holds the token. */
-  | { k: "ready"; mac: string }
+  | { k: "ready"; extNonce: string; mac: string }
   /** Signed traffic. `body` is a JSON string; `mac` covers direction, session, seq and body. */
   | { k: "cmd" | "res" | "evt"; seq: number; body: string; mac: string };
 

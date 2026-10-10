@@ -70,7 +70,8 @@ export class BridgeServer implements BridgeApi {
   private server: Server | null = null;
   private sock: Socket | null = null;
   private channel: SignedChannel | null = null;
-  private pendingWelcome: { session: string } | null = null;
+  /** Sessions offered in welcomes, by the extension nonce they answer (hellos can cross). */
+  private pendingWelcomes = new Map<string, string>();
   private keyP: Promise<CryptoKey>;
   private nextId = 1;
   private pending = new Map<
@@ -153,6 +154,8 @@ export class BridgeServer implements BridgeApi {
     const id = String(this.nextId++);
     const req: BridgeRequest = { id, method, params };
     const timeout = opts.timeoutMs !== undefined ? opts.timeoutMs : (DEFAULT_TIMEOUTS[method] ?? 30_000);
+    // Sign first, so nothing is pending (and unobserved) while we await.
+    const sealed = await ch.seal("cmd", req);
     const result = new Promise<unknown>((resolve, reject) => {
       const entry: {
         resolve: (v: unknown) => void;
@@ -168,7 +171,7 @@ export class BridgeServer implements BridgeApi {
         }, timeout);
       this.pending.set(id, entry);
     });
-    sock.write(JSON.stringify(await ch.seal("cmd", req)) + "\n");
+    sock.write(JSON.stringify(sealed) + "\n");
     return result as Promise<ResultOf<M>>;
   }
 
@@ -265,11 +268,14 @@ export class BridgeServer implements BridgeApi {
         this.channel = null;
         this.setConnection("host-connected");
         const appNonce = randomHex(16);
-        this.pendingWelcome = { session: `${m.extNonce}.${appNonce}` };
+        this.pendingWelcomes.set(m.extNonce, `${m.extNonce}.${appNonce}`);
+        if (this.pendingWelcomes.size > 8)
+          this.pendingWelcomes.delete(this.pendingWelcomes.keys().next().value!);
         this.extensionVersion = typeof m.extensionVersion === "string" ? m.extensionVersion : undefined;
         s.write(
           JSON.stringify({
             k: "welcome",
+            extNonce: m.extNonce,
             appNonce,
             mac: await hmac(key, welcomeText(m.extNonce, appNonce)),
           }) + "\n",
@@ -277,13 +283,13 @@ export class BridgeServer implements BridgeApi {
         return;
       }
       case "ready": {
-        const pw = this.pendingWelcome;
-        this.pendingWelcome = null;
-        if (!pw || !(await hmacVerify(key, readyText(pw.session), m.mac))) {
+        const session = typeof m.extNonce === "string" ? this.pendingWelcomes.get(m.extNonce) : undefined;
+        if (!session || !(await hmacVerify(key, readyText(session), m.mac))) {
           this.log("the extension couldn't prove it holds the pairing token");
           return;
         }
-        this.channel = new SignedChannel(key, pw.session, ["cmd"]);
+        this.pendingWelcomes.clear();
+        this.channel = new SignedChannel(key, session, ["cmd"]);
         this.setConnection("ready");
         return;
       }

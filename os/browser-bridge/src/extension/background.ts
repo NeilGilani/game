@@ -162,8 +162,9 @@ async function onHostMessage(m: HostMessage | WireMessage): Promise<void> {
       return;
     case "welcome": {
       const hello = pendingHello;
+      // A welcome for an older hello (two hellos crossed): ignore it, the newer one is coming.
+      if (!hello || m.extNonce !== hello.extNonce) return;
       pendingHello = null;
-      if (!hello) return;
       if (!(await hmacVerify(hello.key, welcomeText(hello.extNonce, m.appNonce), m.mac))) {
         // Someone without our token answered. Refuse everything until the person pairs again.
         setLink("mismatch");
@@ -171,7 +172,7 @@ async function onHostMessage(m: HostMessage | WireMessage): Promise<void> {
       }
       const session = `${hello.extNonce}.${m.appNonce}`;
       channel = new SignedChannel(hello.key, session, ["res", "evt"]);
-      post({ k: "ready", mac: await hmac(hello.key, readyText(session)) });
+      post({ k: "ready", extNonce: hello.extNonce, mac: await hmac(hello.key, readyText(session)) });
       setLink("ready");
       return;
     }
