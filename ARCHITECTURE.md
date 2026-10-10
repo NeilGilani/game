@@ -8,7 +8,7 @@
  │ Browser (http://localhost: secure context)   │     │ Coordinator (FastAPI, Python 3.11+)            │
  │                                              │     │                                                │
  │ webcam ─▶ MediaPipe Face Landmarker (WASM)   │     │  /api  ─▶ Planner ─▶ Plan validator             │
- │          ─▶ features (iris, head pose, blink)│     │            │  (built-in plans; optional Claude) │
+ │          ─▶ features (iris, head pose, blink)│     │            │  (built-in plans; optional Gemini) │
  │          ─▶ calibration ─▶ smoothed pointer  │HTTP │            ▼                                    │
  │          ─▶ dwell / scan engines             │────▶│        Engine: approvals, idempotent execution, │
  │          ─▶ click() on large targets         │JSON │        retries, timeouts, verification,        │
@@ -25,7 +25,7 @@
                                                       └────────────────────────────────────────────────┘
                                                                    │ optional, server-side only
                                                                    ▼
-                                                        Anthropic API (Claude): interpret goals,
+                                                        Gemini API (or Claude): interpret goals,
                                                         adapt plans, explain, all validated
 ```
 
@@ -42,7 +42,7 @@ Pi).
 | `frontend/src/input` | Dwell and scan engines (pure), the input layer that turns selections into `click()` | Know what a button does |
 | `frontend/src/screens`, `components`, `state` | Presentation; poll the coordinator; send decisions | Decide whether an action succeeded |
 | `backend/agency/planning` | Goal interpretation, built-in plans, plan validation, reference syntax | Execute anything |
-| `backend/agency/reasoning` | Optional Claude adapter with structured outputs; deterministic fallback | Bypass the validator or executor |
+| `backend/agency/reasoning` | Optional cloud model (Gemini, or Claude) with structured outputs; deterministic fallback | Bypass the validator or executor |
 | `backend/agency/engine` | State machines, execution, approvals, verification, recovery, persistence, runner | Call services except through tools |
 | `backend/agency/tools` | The permitted-tool registry: typed inputs, run, verify, lookup, describe, edit | Expose shell, SQL, browser or arbitrary HTTP |
 | `backend/agency/services` | Simulated integrations with their own tables and endpoints | Be reached by the engine except via tools |
@@ -123,18 +123,27 @@ recovered), completed with open items, paused, interrupted (after a restart), ne
 on earlier steps, tools exist and are permitted, references only to dependencies and to keys the source tool actually
 produces, literal inputs type-check, consequential tools forced to `approval: required`, finalizers appended.
 
-When `ANTHROPIC_API_KEY` is set (`reasoning/provider.py`):
+When a cloud model is configured (`reasoning/provider.py`): Google Gemini when `GEMINI_API_KEY` is set, otherwise
+Claude when `ANTHROPIC_API_KEY` is set (`AGENCY_REASONING=gemini|anthropic|deterministic` forces one):
 
 - `interpret_goal`: free text or phrases → a JSON-schema-constrained set of fields; the Goal is still built by the
   deterministic code from those fields.
 - `draft_plan`: the model receives the goal, the tool catalog (with JSON schemas) and the built-in plan, and returns a
   plan via structured outputs. If it fails validation, AGENCY uses the built-in plan and says why.
-- `explain`: plain-language explanation of an approval, shown labelled as from Claude, next to AGENCY's own facts.
+- `explain`: plain-language explanation of an approval, labelled with the model that wrote it, next to AGENCY's own facts.
 
-Calls use `client.beta.messages.create` with `output_config.format` (JSON schema), a configurable effort level
-(`AGENCY_ANTHROPIC_EFFORT`), prompt caching, and server-side refusal fallback. Errors are caught by type (auth, not
-found, rate limit, bad request, API status, connection) and recorded in the provider status shown on the Status screen.
-The default model is `claude-opus-5-5` (configurable).
+Both providers share the prompts, schemas and parsing (`CloudProvider`); each implements one structured-output call
+and a credential check:
+
+- **Gemini** (default model `gemini-3.8-flash`, `AGENCY_GEMINI_MODEL`): the official `google-genai` SDK,
+  `client.aio.models.generate_content` with `response_mime_type="application/json"` and `response_json_schema`, the
+  system prompt as `system_instruction`, and `thinking_level` from `AGENCY_REASONING_EFFORT` (Gemini 3 models only).
+  The key goes in the `x-goog-api-key` header. Blocked prompts, safety stops and truncation are treated as failures.
+- **Claude** (default `claude-opus-5-5`, `AGENCY_ANTHROPIC_MODEL`): `client.beta.messages.create` with
+  `output_config.format` (JSON schema), effort, prompt caching, and server-side refusal fallback.
+
+Errors are caught by type (key rejected, permission, model not found, rate limit, bad request, service error,
+network) and recorded in the provider status shown on the Status screen; AGENCY then uses its built-in plans.
 
 ## Computer vision pipeline (frontend/src/vision)
 
@@ -231,6 +240,21 @@ Emergency alerting, documented as a safety case in [LIFELINE.md](LIFELINE.md).
   detector on every vision frame regardless of input mode, keeps unsent help requests in `localStorage`, and drives
   the alarm. `LifelineOverlay` is a `data-dwell-scope="modal"` dialog, so while it's open eye control can only select
   its own buttons; Cancel carries `data-dwell-scale="2"`.
+
+## AGENCY OS desktop app (os/desktop)
+
+The desktop app wraps everything above; the full picture is in [docs/os/PLAN.md](docs/os/PLAN.md) and the details in
+[os/desktop/README.md](os/desktop/README.md).
+
+```
+ AGENCY.app main process ── supervises ──▶ coordinator sidecar (this backend, PyInstaller; or a Raspberry Pi)
+   │  agency:// protocol (CSP; /api proxied with the token)   ──▶ agency-native (Swift, JSON-RPC over stdio)
+   │  Lifeline heartbeat every 5 s, help, global Stop          ──▶ agent (Electron utility process)
+   ├─ shell window (frontend/dist, full screen)
+   ├─ overlay window per display (transparent, click-through, all Spaces)
+   └─ hidden gaze window (the only one allowed the camera)
+ Renderers see only window.agency (os/contracts/src/host.ts); main checks every call against the window's role.
+```
 
 ## Notable tradeoffs
 

@@ -5,11 +5,19 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
-const source = join(root, "node_modules", "@mediapipe", "tasks-vision", "wasm");
+// npm workspaces hoist packages to the repository root, so look upward from frontend/.
+function findSource() {
+  for (let dir = root; ; dir = dirname(dir)) {
+    const candidate = join(dir, "node_modules", "@mediapipe", "tasks-vision", "wasm");
+    if (existsSync(candidate)) return candidate;
+    if (dirname(dir) === dir) return join(root, "node_modules", "@mediapipe", "tasks-vision", "wasm");
+  }
+}
+const source = findSource();
 const target = join(root, "public", "mediapipe", "wasm");
 
 if (!existsSync(source)) {
-  console.error("MediaPipe is not installed. Run `npm install` in frontend/ first.");
+  console.error("MediaPipe is not installed. Run `npm install` at the repository root first.");
   process.exit(1);
 }
 mkdirSync(target, { recursive: true });

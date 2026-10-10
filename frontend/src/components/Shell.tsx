@@ -40,8 +40,8 @@ export function TopBar() {
     : reasoning.mode === "deterministic"
       ? "Demo mode: built-in plans"
       : reasoning.state === "error"
-        ? "Claude unavailable: built-in plans"
-        : `Claude · ${reasoning.model ?? "cloud"}`;
+        ? `${reasoning.label ?? "Cloud model"} unavailable: built-in plans`
+        : `${reasoning.label ?? "Cloud"} · ${reasoning.model ?? "cloud"}`;
   const reasoningTone = !reasoning
     ? "neutral"
     : reasoning.mode === "deterministic"

@@ -312,7 +312,7 @@ export function CaseWorkspace({ id }: { id: string }) {
             <span className="badge" data-tone={data.reasoning.mode === "cloud" ? "info" : "neutral"}>
               <Icon name={data.reasoning.mode === "cloud" ? "sparkle" : "shield"} size={16} />
               {data.reasoning.mode === "cloud"
-                ? "Plan adapted by Claude, validated by AGENCY"
+                ? `Plan adapted by ${data.reasoning.label ?? "the cloud model"}, validated by AGENCY`
                 : "Built-in plan"}
             </span>
             <SimulatedBadge text="Demo services only" />
