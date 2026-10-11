@@ -494,9 +494,7 @@ class GeminiProvider(CloudProvider):
                 ),
             )
 
-    def _config(
-        self, schema: dict[str, Any] | None, effort: str | None, max_tokens: int, model: str | None = None
-    ) -> Any:
+    def _config(self, schema: dict[str, Any] | None, effort: str | None, max_tokens: int, model: str | None = None) -> Any:
         from google.genai import types
 
         config = types.GenerateContentConfig(
