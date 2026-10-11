@@ -2935,6 +2935,34 @@ h2 {
   pointer-events: none;
 }
 
+/* Gaze lock: the target the eyes are held on glows, and the cursor sits still in its middle. */
+[data-dwell-locked] {
+  outline: 4px solid var(--accent);
+  outline-offset: 4px;
+  box-shadow: 0 0 0 10px color-mix(in srgb, var(--accent) 22%, transparent);
+}
+/* A glance away or a blink pauses the ring where it is (it hasn't reset). */
+[data-dwell-paused]::after {
+  opacity: 0.45;
+}
+.gaze-cursor[data-locked] {
+  width: 20px;
+  height: 20px;
+  margin: -10px 0 0 -10px;
+  background: var(--accent);
+  transition:
+    transform 160ms cubic-bezier(0.2, 0.8, 0.2, 1),
+    width 160ms ease-out,
+    height 160ms ease-out,
+    margin 160ms ease-out,
+    opacity 150ms linear;
+}
+@media (prefers-reduced-motion: reduce) {
+  .gaze-cursor[data-locked] {
+    transition: opacity 150ms linear;
+  }
+}
+
 /* Motion: screens zoom open like Launchpad; selection "launches". Only on change, never under a steady gaze. */
 @keyframes os-zoom-in {
   from {
