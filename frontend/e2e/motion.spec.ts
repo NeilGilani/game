@@ -8,6 +8,7 @@ test.beforeEach(async ({ context }) => {
   await context.addInitScript(() => {
     localStorage.setItem("agency.onboarded", "1");
     localStorage.setItem("agency.fakes", "memory,agent,native");
+    localStorage.setItem("agency.preferences", JSON.stringify({ input_mode: "pointer" }));
   });
 });
 

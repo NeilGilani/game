@@ -40,6 +40,9 @@ make os-test    # type-checks, unit tests and Electron smoke tests (macOS)
 make os-dist    # a .dmg (unsigned unless signing secrets are set)
 ```
 
+`npm start` (or `npm run os:dev`) runs `make os-dev`, rebuilding the interface, OS packages and native helper
+before launching Electron. Run it from the checkout you want to test so the app uses that checkout's code.
+
 The repository is an npm workspace (`frontend`, `os/*`, `site`); `make check` covers the web app and the OS packages.
 The web demo below works exactly as before.
 
