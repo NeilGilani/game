@@ -13,6 +13,8 @@ export interface SecurityPolicy {
   /** May this web contents use the camera (the shell or the gaze engine window)? */
   mayUseCamera: (contents: WebContents) => boolean;
   log: Logger;
+  /** Opens an allow-listed https page in the person's browser (Electron's shell.openExternal). */
+  openExternal?: (url: string) => void;
 }
 
 export function isAllowedNavigation(target: string, allowedOrigins: string[]): boolean {
@@ -37,10 +39,34 @@ export function decidePermission(
   return types.length > 0 && types.every((t) => t === "video");
 }
 
+/** Sites the Watch & listen and Browse screens open in the person's browser (https only). */
+const EXTERNAL_HOSTS = [
+  "youtube.com",
+  "netflix.com",
+  "wikipedia.org",
+  "weather.com",
+  "news.google.com",
+  "mail.google.com",
+  "www.google.com",
+];
+
+export function isExternalAllowed(url: string): boolean {
+  try {
+    const u = new URL(url);
+    if (u.protocol !== "https:") return false;
+    return EXTERNAL_HOSTS.some((h) => u.hostname === h || u.hostname.endsWith(`.${h}`));
+  } catch {
+    return false;
+  }
+}
+
 export function applySecurity(app: App, policy: SecurityPolicy): void {
   app.on("web-contents-created", (_event, contents) => {
     contents.setWindowOpenHandler(({ url }) => {
-      policy.log.warn(`blocked window.open to ${url}`);
+      // A page the person chose in Watch & listen or Browse opens in their own browser, never in an AGENCY window.
+      // Only these well-known https sites; anything else stays blocked.
+      if (isExternalAllowed(url) && policy.openExternal) policy.openExternal(url);
+      else policy.log.warn(`blocked window.open to ${url}`);
       return { action: "deny" };
     });
     contents.on("will-navigate", (event, url) => {

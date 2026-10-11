@@ -16,6 +16,8 @@ export type FlowEnd =
   | { type: "pack"; pack: string; goal: string | ((s: Selections) => string); selections?: Selections }
   /** Open a Mac app through agency-native. */
   | { type: "launch"; bundleId: string; name: string }
+  /** Open a web page (a video, a site) in the browser. */
+  | { type: "open"; url: string | ((s: Selections) => string); name: string }
   /** Go to another AGENCY screen (Talk, the Apps screen, an errand). */
   | { type: "route"; path: string };
 
@@ -76,4 +78,5 @@ export interface FlowDef {
 export type FlowOutcome =
   | { type: "task"; goal: string; selections: Selections; pack?: string; usual?: boolean }
   | { type: "launch"; bundleId: string; name: string }
+  | { type: "open"; url: string; name: string }
   | { type: "route"; path: string };
