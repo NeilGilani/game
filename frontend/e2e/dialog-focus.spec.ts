@@ -41,7 +41,7 @@ test("Talk approval traps keyboard focus and keeps its deliberate approval delay
   const dialog = page.getByRole("dialog");
   await expect(dialog).toBeVisible();
   const back = dialog.getByRole("button", { name: "No, don't" });
-  const call = dialog.getByRole("button", { name: "Call now" });
+  const call = dialog.locator(".btn-primary");
   await expect(back).toBeFocused();
   await expect(call).toBeDisabled();
   await page.keyboard.press("Tab");

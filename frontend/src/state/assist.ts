@@ -41,14 +41,19 @@ export function speedNote(label: string, speed: Speed | undefined): string | und
   if (!speed) return undefined;
   const secs = (speed.ms / 1000).toFixed(1);
   if (speed.cached) return `Synapse cache: same task as before, planned in ${secs} s with no cloud wait.`;
-  const routed = typeof speed.route_ms === "number" ? ` routed in ${Math.max(1, Math.round(speed.route_ms))} ms,` : "";
+  const routed =
+    typeof speed.route_ms === "number" ? ` routed in ${Math.max(1, Math.round(speed.route_ms))} ms,` : "";
   const lane = speed.lane === "fast" ? "fast lane" : (speed.mode ?? "routed");
   return `Synapse ${lane}:${routed} ${label} planned it in ${secs} s.`;
 }
 
 /** Gemini plans each Home task through the coordinator (Synapse routes it; the network budget may say built-in). */
 export const planWithCoordinator: RemotePlanner = async (r) => {
-  const out = await post<{ steps: { title: string; risk: string; done: string }[]; label: string; speed?: Speed }>(
+  const out = await post<{
+    steps: { title: string; risk: string; done: string }[];
+    label: string;
+    speed?: Speed;
+  }>(
     "/api/assist/plan",
     { goal: r.goal.slice(0, 200), kind: r.selections?.kind ?? "", selections: r.selections ?? {} },
     30_000,

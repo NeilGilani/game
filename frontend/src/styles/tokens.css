@@ -31,9 +31,9 @@
 
   /* Colour (light). System colours darkened where needed so text passes 4.5:1. */
   --wallpaper:
-    radial-gradient(1200px 800px at 12% 8%, #dfe9ff 0%, transparent 60%),
-    radial-gradient(1000px 700px at 92% 18%, #f6e3ff 0%, transparent 55%),
-    radial-gradient(1100px 800px at 70% 100%, #ffe9d6 0%, transparent 60%),
+    radial-gradient(1200px 800px at 12% 8%, #cddffc 0%, transparent 60%),
+    radial-gradient(1000px 700px at 92% 18%, #e8dfff 0%, transparent 55%),
+    radial-gradient(1100px 800px at 70% 100%, #e2eff6 0%, transparent 60%),
     linear-gradient(160deg, #eef2fb, #f7f1f6);
   --bg: #f2f2f7;
   --glass: rgb(255 255 255 / 80%);
@@ -63,9 +63,9 @@
   --sim-soft: #efe8fb;
   --shadow: 0 1px 1px rgb(0 0 0 / 4%), 0 4px 12px rgb(0 0 0 / 6%), 0 16px 40px rgb(0 0 0 / 8%);
   --material-edge: color-mix(in srgb, var(--ink) 11%, transparent);
-  --material-highlight: rgb(255 255 255 / 40%);
-  --material-chrome: color-mix(in srgb, var(--glass-strong) 92%, transparent);
-  --material-content: color-mix(in srgb, var(--surface) 97%, transparent);
+  --material-highlight: rgb(255 255 255 / 65%);
+  --material-chrome: color-mix(in srgb, var(--glass-strong) 88%, transparent);
+  --material-content: color-mix(in srgb, var(--surface) 76%, transparent);
   --shadow-window: 0 28px 80px rgb(10 20 43 / 18%), 0 3px 12px rgb(0 0 0 / 8%);
   --shadow-control: inset 0 1px 0 var(--material-highlight), 0 3px 10px rgb(10 20 43 / 5%);
   --radius-window: 32px;
@@ -83,10 +83,11 @@
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]):not([data-theme="contrast"]) {
     --wallpaper:
-      radial-gradient(1200px 800px at 12% 8%, #182947 0%, transparent 60%),
-      radial-gradient(1000px 700px at 92% 18%, #252338 0%, transparent 55%),
-      radial-gradient(1100px 800px at 70% 100%, #16262c 0%, transparent 60%),
+      radial-gradient(1200px 800px at 12% 8%, #23456d 0%, transparent 60%),
+      radial-gradient(1000px 700px at 92% 18%, #37304f 0%, transparent 55%),
+      radial-gradient(1100px 800px at 70% 100%, #173c43 0%, transparent 60%),
       linear-gradient(160deg, #090e17, #13151f);
+    --material-highlight: rgb(255 255 255 / 16%);
     --bg: #090e17;
     --glass: rgb(29 35 49 / 78%);
     --glass-strong: rgb(35 42 57 / 92%);
@@ -120,10 +121,11 @@
 
 :root[data-theme="dark"] {
   --wallpaper:
-    radial-gradient(1200px 800px at 12% 8%, #182947 0%, transparent 60%),
-    radial-gradient(1000px 700px at 92% 18%, #252338 0%, transparent 55%),
-    radial-gradient(1100px 800px at 70% 100%, #16262c 0%, transparent 60%),
+    radial-gradient(1200px 800px at 12% 8%, #23456d 0%, transparent 60%),
+    radial-gradient(1000px 700px at 92% 18%, #37304f 0%, transparent 55%),
+    radial-gradient(1100px 800px at 70% 100%, #173c43 0%, transparent 60%),
     linear-gradient(160deg, #090e17, #13151f);
+  --material-highlight: rgb(255 255 255 / 16%);
   --bg: #090e17;
   --glass: rgb(29 35 49 / 78%);
   --glass-strong: rgb(35 42 57 / 92%);
