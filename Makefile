@@ -14,7 +14,7 @@ SHELL := /bin/bash
 PY := backend/.venv/bin/python
 PI ?= agency-pi.local
 
-.PHONY: help setup setup-backend setup-frontend dev demo demo-local site-deploy web-demo backend frontend dev-pi test test-backend test-frontend \
+.PHONY: free-port help setup setup-backend setup-frontend dev demo demo-local site-deploy web-demo backend frontend dev-pi test test-backend test-frontend \
         lint typecheck build check e2e e2e-fixtures reset-demo pi-setup pi-start pi-stop pi-status pi-logs clean \
         os-check os-dev os-build os-dist os-test os-e2e sidecar sandbox
 
@@ -59,13 +59,25 @@ dev:
 	  (cd frontend && npm run dev) & \
 	  wait
 
-demo: build
+# An old coordinator still holding port 8000 would keep serving old code: stop it first (only AGENCY's own).
+free-port:
+	@pids=$$(lsof -ti tcp:8000 -sTCP:LISTEN 2>/dev/null); \
+	for pid in $$pids; do \
+	  if ps -o command= -p $$pid | grep -q "agency.main"; then \
+	    echo "Stopping an older AGENCY coordinator on port 8000 (pid $$pid)"; kill $$pid; sleep 1; \
+	  else \
+	    echo "Port 8000 is used by another program:"; ps -o pid=,command= -p $$pid; \
+	    echo "Quit it, or run: kill $$pid"; exit 1; \
+	  fi; \
+	done
+
+demo: build free-port
 	@echo "AGENCY is running at http://localhost:8000  (Ctrl-C to stop)"
 	cd backend && .venv/bin/uvicorn agency.main:app --host 127.0.0.1 --port 8000
 
 # AGENCY plus the on-device model (Synapse-Mesh) on port 8100. See LOCAL_MODEL.md.
 SYNAPSE_DIR ?= $(HOME)/synapse
-demo-local: build
+demo-local: build free-port
 	@test -x "$(SYNAPSE_DIR)/.venv/bin/python" || { echo "Synapse-Mesh isn't set up in $(SYNAPSE_DIR). See LOCAL_MODEL.md (or pass SYNAPSE_DIR=/path/to/synapse-mesh)."; exit 1; }
 	@echo "AGENCY: http://localhost:8000   On-device model: http://127.0.0.1:8100   (Ctrl-C stops both)"
 	@trap 'kill 0' EXIT; \
