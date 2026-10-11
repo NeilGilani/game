@@ -9,7 +9,7 @@ import { navigate, useRoute, type Route } from "../state/router";
 import { usePoll } from "../state/usePoll";
 import { useLifeline } from "../lifeline/LifelineProvider";
 import { useAgent } from "../state/agent";
-import { BrandMark, Icon } from "./Icon";
+import { AppIcon, BrandMark, Icon } from "./Icon";
 
 function useInputChip(): { text: string; tone: string } {
   const input = useInput();
@@ -337,7 +337,7 @@ export function Nav({ route }: { route: Route }) {
           onClick={() => navigate(item.path)}
           data-dwell
         >
-          <Icon name={item.icon} />
+          <AppIcon name={item.icon} size={44} />
           {item.label}
           {item.path === "/approvals" && count > 0 && (
             <span className="count" aria-label={`${count} waiting`}>

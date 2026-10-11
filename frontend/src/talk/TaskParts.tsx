@@ -7,6 +7,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { ApprovalRequest, ChoiceQuestion, PlanStepView } from "../../../os/contracts/src/agent";
 import { SELECTION_RESET_EVENT } from "../components/common";
+import { useDialogFocus } from "../components/useDialogFocus";
 import { Icon } from "../components/Icon";
 import type { TaskResult } from "./useAgentTask";
 
@@ -142,11 +143,10 @@ export function ApprovalPanel({
 }) {
   const [ready, setReady] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  useDialogFocus(ref, () => onDecide("decline"));
   useEffect(() => {
-    window.dispatchEvent(new Event(SELECTION_RESET_EVENT));
     setReady(false);
     const t = window.setTimeout(() => setReady(true), APPROVE_PAUSE_MS);
-    ref.current?.querySelector<HTMLElement>("[data-autofocus]")?.focus();
     return () => window.clearTimeout(t);
   }, [approval.id]);
   const entries = Object.entries(approval.details);

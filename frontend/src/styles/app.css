@@ -2776,60 +2776,6 @@ h2 {
   font-weight: 650;
   color: var(--ink);
 }
-[data-tile="talk"] {
-  --g1: #34c3a8;
-  --g2: #0b7a66;
-}
-[data-tile="call"] {
-  --g1: #4cd964;
-  --g2: #178a35;
-}
-[data-tile="food"] {
-  --g1: #ffa64d;
-  --g2: #c4520a;
-}
-[data-tile="messages"] {
-  --g1: #5ac8fa;
-  --g2: #0a6fb8;
-}
-[data-tile="watch"] {
-  --g1: #ff6b8b;
-  --g2: #b3124a;
-}
-[data-tile="browse"] {
-  --g1: #6e9bff;
-  --g2: #2541c4;
-}
-[data-tile="shopping"] {
-  --g1: #e08cff;
-  --g2: #8a2fc4;
-}
-[data-tile="papers"] {
-  --g1: #8e9bb5;
-  --g2: #46516b;
-}
-[data-tile="apps"] {
-  --g1: #7a7dff;
-  --g2: #3d34c4;
-}
-[data-tile="errands"] {
-  --g1: #d9a441;
-  --g2: #8a5a00;
-}
-[data-tile="settings"] {
-  --g1: #9a9aa3;
-  --g2: #55555c;
-}
-/* Lifeline: solid red and white, never a gradient or glass. */
-.home-tile[data-tone="lifeline"] .home-tile-icon {
-  background: #c4001a;
-  box-shadow:
-    0 2px 4px rgb(0 0 0 / 12%),
-    0 10px 24px rgb(196 0 26 / 25%);
-}
-.home-tile[data-tone="lifeline"] {
-  border: none;
-}
 :root[data-theme="contrast"] .home-tile-icon {
   background: #000;
   border: 3px solid #fff;

@@ -4,7 +4,7 @@
  * screen at 1280 × 800 without scrolling.
  */
 import { useEffect, useState } from "react";
-import { Icon } from "../components/Icon";
+import { AppIcon, BrandMark, Icon } from "../components/Icon";
 import { useLifeline } from "../lifeline/LifelineProvider";
 import { useAgent } from "../state/agent";
 import type { InputMode } from "../api/types";
@@ -157,6 +157,10 @@ export function Home() {
       </div>
       <section className="widget home-widget" aria-labelledby="home-greeting">
         <div className="home-widget-head">
+          <div className="home-signature" aria-hidden="true">
+            <BrandMark />
+            <span>Your space.</span>
+          </div>
           <h1 id="home-greeting">{greeting()}.</h1>
           <p className="home-howto">{howToChoose(input.mode)}</p>
         </div>
@@ -224,7 +228,7 @@ export function Home() {
             aria-label={`${tile.label}: ${tile.id === "lifeline" && watching ? "Watch over me is on" : tile.sub}`}
           >
             <span className="home-tile-icon" aria-hidden>
-              <Icon name={tile.icon} size={52} />
+              <AppIcon name={tile.icon} size={108} />
             </span>
             <span className="home-tile-caption" aria-hidden>
               <span className="home-tile-label">{tile.label}</span>

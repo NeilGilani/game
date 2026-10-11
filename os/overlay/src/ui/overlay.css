@@ -1,124 +1,9 @@
-/* AGENCY overlay. Tokens are copied from frontend/src/styles/app.css (the AGENCY design system) so the
-   overlay looks like the shell; keep them in sync. The window is transparent: only the overlay's own
-   buttons and panels are painted, and nothing is ever drawn over what the person is looking at except a
-   thin outline and the dwell ring around it. */
-
+/* Shared shell materials; native target positions and transparent window stay unchanged. */
+@import "../../../../frontend/src/styles/tokens.css";
 :root {
-  --text-scale: 1;
-  --font: "Atkinson Hyperlegible", system-ui, -apple-system, "Segoe UI", sans-serif;
-  --radius: 16px;
-  --radius-lg: 22px;
-  --gap: 20px;
   --target: 76px;
+  --gap: 20px;
   --topbar: 84px;
-
-  --bg: #f3f1eb;
-  --surface: #ffffff;
-  --surface-2: #e9e6dd;
-  --ink: #111a26;
-  --ink-2: #3c4655;
-  --line: #cfc9bc;
-  --line-strong: #8f887a;
-  --accent: #0b6b5c;
-  --accent-hover: #095a4d;
-  --accent-ink: #ffffff;
-  --accent-soft: #d9eee8;
-  --focus: #f2b400;
-  --ok: #1b6a36;
-  --ok-soft: #dcf0e2;
-  --warn: #8a5200;
-  --warn-soft: #fff0cc;
-  --danger: #a3241a;
-  --danger-soft: #fbe2de;
-  --info: #1d4f99;
-  --info-soft: #e0eafa;
-  --sim: #5b3f99;
-  --sim-soft: #ece6f7;
-  --shadow: 0 1px 2px rgb(17 26 38 / 6%), 0 8px 24px rgb(17 26 38 / 6%);
-  color-scheme: light;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]):not([data-theme="contrast"]) {
-    --bg: #0b111a;
-    --surface: #131b27;
-    --surface-2: #1b2533;
-    --ink: #eef2f7;
-    --ink-2: #a9b4c3;
-    --line: #2b3749;
-    --line-strong: #4b5a70;
-    --accent: #4fc9b0;
-    --accent-hover: #6fd8c2;
-    --accent-ink: #052823;
-    --accent-soft: #10362f;
-    --focus: #ffd54a;
-    --ok: #7bd69a;
-    --ok-soft: #11301c;
-    --warn: #f6c56a;
-    --warn-soft: #36280d;
-    --danger: #ff8f84;
-    --danger-soft: #3b1714;
-    --info: #8db9ff;
-    --info-soft: #13294b;
-    --sim: #c3a9ff;
-    --sim-soft: #271d40;
-    --shadow: 0 1px 2px rgb(0 0 0 / 30%), 0 8px 24px rgb(0 0 0 / 25%);
-    color-scheme: dark;
-  }
-}
-
-:root[data-theme="dark"] {
-  --bg: #0b111a;
-  --surface: #131b27;
-  --surface-2: #1b2533;
-  --ink: #eef2f7;
-  --ink-2: #a9b4c3;
-  --line: #2b3749;
-  --line-strong: #4b5a70;
-  --accent: #4fc9b0;
-  --accent-hover: #6fd8c2;
-  --accent-ink: #052823;
-  --accent-soft: #10362f;
-  --focus: #ffd54a;
-  --ok: #7bd69a;
-  --ok-soft: #11301c;
-  --warn: #f6c56a;
-  --warn-soft: #36280d;
-  --danger: #ff8f84;
-  --danger-soft: #3b1714;
-  --info: #8db9ff;
-  --info-soft: #13294b;
-  --sim: #c3a9ff;
-  --sim-soft: #271d40;
-  --shadow: 0 1px 2px rgb(0 0 0 / 30%), 0 8px 24px rgb(0 0 0 / 25%);
-  color-scheme: dark;
-}
-
-:root[data-theme="contrast"] {
-  --bg: #000000;
-  --surface: #000000;
-  --surface-2: #141414;
-  --ink: #ffffff;
-  --ink-2: #ffffff;
-  --line: #ffffff;
-  --line-strong: #ffffff;
-  --accent: #ffe600;
-  --accent-hover: #fff27a;
-  --accent-ink: #000000;
-  --accent-soft: #2b2700;
-  --focus: #00e5ff;
-  --ok: #7dff9e;
-  --ok-soft: #002b0e;
-  --warn: #ffd166;
-  --warn-soft: #2e2200;
-  --danger: #ff7b7b;
-  --danger-soft: #330000;
-  --info: #9cc8ff;
-  --info-soft: #001a33;
-  --sim: #e0ccff;
-  --sim-soft: #1c0f33;
-  --shadow: none;
-  color-scheme: dark;
 }
 
 *,
@@ -156,8 +41,8 @@ body,
   gap: 4px;
   padding: 6px 10px;
   border-radius: var(--radius);
-  border: 2px solid var(--line-strong);
-  background: var(--surface);
+  border: 1px solid var(--line-strong);
+  background: var(--glass-strong);
   color: var(--ink);
   font: inherit;
   font-weight: 700;
@@ -369,4 +254,29 @@ body,
   .ov-cursor {
     transition: transform 60ms linear;
   }
+}
+
+.ov-btn:not([data-tone="help"]):not([data-tone="stop"]) {
+  box-shadow: var(--shadow-control);
+  border-radius: 20px;
+}
+:root[data-theme="contrast"] .ov-btn {
+  border-width: 2px;
+  box-shadow: none;
+}
+
+.ov-btn > svg.app-art {
+  width: 36px;
+  height: 36px;
+  fill: none;
+  stroke: none;
+}
+.app-art-contrast {
+  display: none;
+}
+:root[data-theme="contrast"] .app-art-sculpture {
+  display: none;
+}
+:root[data-theme="contrast"] .app-art-contrast {
+  display: block;
 }

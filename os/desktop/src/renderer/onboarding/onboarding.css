@@ -1,34 +1,18 @@
+@import "../../../../../frontend/src/styles/tokens.css";
 :root {
-  --bg: #f7f5f0;
-  --fg: #1a1a1a;
-  --muted: #4a4a4a;
-  --primary: #1d4ed8;
-  --primary-fg: #ffffff;
-  --secondary: #e7e3da;
-  --ok: #166534;
-  --warn: #9a3412;
-  --ring: #f5b301;
-  --font: "Atkinson Hyperlegible", -apple-system, system-ui, sans-serif;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #15171a;
-    --fg: #f2f2f2;
-    --muted: #c7c7c7;
-    --primary: #6b9bff;
-    --primary-fg: #0b0b0b;
-    --secondary: #2a2d33;
-    --ok: #4ade80;
-    --warn: #fdba74;
-  }
+  --fg: var(--ink);
+  --muted: var(--ink-2);
+  --primary: var(--accent);
+  --primary-fg: var(--accent-ink);
+  --secondary: var(--glass-strong);
+  --ring: var(--focus);
 }
 
 html,
 body {
   margin: 0;
   height: 100%;
-  background: var(--bg);
+  background: var(--wallpaper) fixed;
   color: var(--fg);
   font-family: var(--font);
 }
@@ -128,5 +112,50 @@ button .ring {
 @media (prefers-reduced-motion: reduce) {
   * {
     transition: none !important;
+  }
+}
+
+main {
+  box-sizing: border-box;
+  padding: 40px;
+  background: var(--glass-strong);
+  border: var(--hairline);
+  border-radius: 36px;
+  box-shadow: var(--shadow-window);
+}
+h1 {
+  font-family: var(--font-display);
+  letter-spacing: -0.04em;
+  font-weight: 650;
+}
+button {
+  border-width: 1px;
+  border-color: var(--line);
+  box-shadow: var(--shadow-control);
+}
+button:hover {
+  border-color: var(--accent);
+}
+:root[data-theme="contrast"] main {
+  box-shadow: none;
+}
+@media (max-width: 700px) {
+  body {
+    padding: 20px;
+    height: auto;
+    min-height: 100%;
+  }
+  main {
+    padding: 24px;
+  }
+  h1 {
+    font-size: 40px;
+  }
+  .why {
+    font-size: 24px;
+  }
+  button {
+    min-width: 0;
+    width: 100%;
   }
 }

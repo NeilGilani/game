@@ -26,7 +26,7 @@ const TABS: { path: string; label: string; icon: string }[] = [
   { path: "phrases", label: "Phrases", icon: "list" },
   { path: "listen", label: "Listen", icon: "eye" },
   { path: "history", label: "History", icon: "timeline" },
-  { path: "voice", label: "Voice", icon: "gear" },
+  { path: "voice", label: "Voice", icon: "voice" },
 ];
 
 const TITLES: Record<string, string> = {
