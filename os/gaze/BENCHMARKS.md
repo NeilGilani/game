@@ -105,12 +105,12 @@ Node, `npm run bench:cursor` (10 simulated people per row, 30 fixations each wit
 | low          | natural | after  | 22.6      | 3.8           | 169    | 35.3        | 41.7          | 5.3                   |
 
 Browser, `frontend/e2e/eyes.spec.ts` "the drawn cursor" (one simulated person after the 5-second eye scan, real
-Chromium reading the cursor element every animation frame, 12 saccades, one 200 ms blink; two runs each):
+Chromium reading the cursor element every animation frame, 12 saccades, one 200 ms blink; two runs before, three after):
 
-| cursor | jitter px  | step px/frame | lag ms (median of 12) | accuracy px | moved while closed px |
-| ------ | ---------- | ------------- | --------------------- | ----------- | --------------------- |
-| before | 33.3, 32.9 | 9.6, 9.9      | 260, 256              | 57, 54      | 13, 8                 |
-| after  | 34.8, 33.9 | 5.4, 5.4      | 349, 294              | 61, 57      | 3, 7                  |
+| cursor | jitter px        | step px/frame | lag ms (median of 12) | accuracy px | moved while closed px |
+| ------ | ---------------- | ------------- | --------------------- | ----------- | --------------------- |
+| before | 33.3, 32.9       | 9.6, 9.9      | 260, 256              | 57, 54      | 13, 8                 |
+| after  | 34.8, 33.9, 37.8 | 5.4, 5.4, 4.7 | 349, 294, 374         | 61, 57, 57  | 3, 7, 1               |
 
 Reading it: shake per drawn frame roughly halves everywhere, and blinks no longer drag the cursor (the remaining
 "blink move" is real eye jumps in the 150 ms after the eyes reopen). With a typical webcam, jitter and lag improve

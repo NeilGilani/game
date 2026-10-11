@@ -20,6 +20,7 @@ import { ScanCheck } from "../../../os/gaze/src/calibration/check";
 import { PursuitCalibration } from "../../../os/gaze/src/calibration/pursuit";
 import type { CalibrationResult } from "../../../os/gaze/src/calibration/session";
 import type { TouchUpResult } from "../../../os/gaze/src/calibration/touchup";
+import { GazeCursor } from "../../../os/gaze/src/cursor";
 import { type CalibrationRun, type EngineAdvice, GazeEngine } from "../../../os/gaze/src/engine";
 import type { PaceState } from "../../../os/gaze/src/input/pace";
 import type { GazeFeatures } from "../../../os/gaze/src/landmarks";
@@ -187,6 +188,8 @@ export class VisionEngine {
    * iris was when it started (or was recentred) is the middle of the screen.
    */
   private iris: { cx: number; cy: number; x: number; y: number } | null = null;
+  /** The eye cursor as drawn: glides between camera frames and holds still through blinks. */
+  private readonly eyeCursor = new GazeCursor();
 
   private irisCursor(f: FaceFrame): { x: number; y: number } | null {
     const lm = f.landmarks?.[475];
@@ -338,6 +341,7 @@ export class VisionEngine {
    */
   cursorAt(now: number): { x: number; y: number } | null {
     if (this.calibrating) return null;
+    if (this.gaze.mode === "head") return this.eyeCursor.at(now);
     const p = this.gaze.cursorAt(now);
     if (!p) return null;
     return {
@@ -414,6 +418,8 @@ export class VisionEngine {
     if (head && !this.calibrating) {
       pointer = d.trackingConfidence >= 0.5 ? this.irisCursor(f) : null;
       raw = pointer;
+      if (pointer && !this.eyeCursor.blinking(d.blink)) this.eyeCursor.follow(d.t, pointer);
+      else this.eyeCursor.hold(d.t);
     } else if (d.point && !this.calibrating) {
       pointer = { x: d.point.x * sx, y: d.point.y * sy };
       raw = d.raw ? { x: d.raw.x * sx, y: d.raw.y * sy } : pointer;
