@@ -49,6 +49,7 @@ from .planning.planner import GOAL_CARDS, PHRASES, case_title, interpret, make_p
 from .reasoning.provider import ReasoningProvider, build_provider
 from .services.common import INTEGRATIONS, ServiceError
 from .services.seed import ensure_seeded, seed_demo_data
+from .synapse import build_router as synapse_router
 from .tools.catalog import ASK_TOOL, TOOLS
 
 log = logging.getLogger("agency")
@@ -206,6 +207,7 @@ def create_app(
         return state
 
     api = APIRouter(prefix="/api")
+    app.include_router(synapse_router(settings.synapse_url))
 
     # -- status ---------------------------------------------------------------------------
     @api.get("/health")

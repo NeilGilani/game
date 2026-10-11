@@ -68,6 +68,7 @@ class Settings:
     lifeline_loop: bool = True
     lifeline_tick_s: float = 1.0
     inline_runner: bool = False
+    synapse_url: str = "http://127.0.0.1:8000"
     extra: dict[str, str] = field(default_factory=dict)
 
     def response_base_url(self) -> str:
@@ -121,6 +122,7 @@ def load_settings(**overrides: object) -> Settings:
         ),
         frontend_dist=frontend_dist,
         public_url=os.environ.get("AGENCY_PUBLIC_URL") or None,
+        synapse_url=os.environ.get("AGENCY_SYNAPSE_URL", "http://127.0.0.1:8000").rstrip("/"),
     )
     if overrides:
         from dataclasses import replace

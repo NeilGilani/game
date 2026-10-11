@@ -43,6 +43,45 @@ make os-dist    # a .dmg (unsigned unless signing secrets are set)
 The repository is an npm workspace (`frontend`, `os/*`, `site`); `make check` covers the web app and the OS packages.
 The web demo below works exactly as before.
 
+## Ask questions with Synapse-Mesh
+
+Home now includes **Ask a question** (`#/ask`). Enter any question and get a streamed
+answer from the resident Synapse-Mesh model. Answers use a 512-token limit by default;
+select **No token limit** to let the model finish on its own, or stop generation any time.
+Read the answer aloud with one selection.
+The expandable specialist table shows the kernel's actual and ideal coefficients,
+Cisco network budget, and confirmation that the base weights were restored.
+
+Start your existing Synapse-Mesh tensor-fusion server on port 8000 first. Then:
+
+```bash
+make setup
+AGENCY_SYNAPSE_URL=http://127.0.0.1:8000 make demo-synapse
+# Open http://localhost:8781/#/ask
+```
+
+AGENCY stays on port 8781 so it does not collide with the kernel. For development,
+run its coordinator with `AGENCY_PORT=8781 backend/.venv/bin/python -m agency`, then
+start the frontend with `AGENCY_BACKEND_URL=http://127.0.0.1:8781 npm run dev -w frontend`.
+In the desktop app, set the coordinator address to `http://127.0.0.1:8781` in
+Settings → Coordinator connection; the same question screen uses that address.
+
+The AGENCY backend forwards only the question and optional output token limit to
+`POST /generate`. It does not add a persona, send camera/profile data, or use a
+Gemini/Anthropic API for answers. Synapse-Mesh owns intent classification, Cisco
+budgeting and real `torch.matmul(B, A)` / in-place addition to base weights before
+forward passes. This repo consumes that kernel's NDJSON protocol; it does not
+bundle model checkpoints or adapter files. Existing task planning and approvals
+remain separate from question answering, and Lifeline never waits for the kernel.
+
+`GET /api/synapse/status` reports kernel readiness without revealing vault paths.
+`POST /api/synapse/questions` accepts `{"question": "...", "max_new_tokens": null}`
+and streams real kernel events. Both endpoints use the coordinator's existing
+token authentication. Broken streams and unconfirmed fusion/restoration are
+reported as interrupted answers, with no canned fallback presented as fused output.
+No output cap still respects the model's context window; the kernel currently
+accepts at most 2048 input tokens and 8000 prompt characters.
+
 ## Quick start (MacBook)
 
 Requires Python 3.11+ (`brew install python@3.12`, or `uv`) and Node 20.19+ (`brew install node`).

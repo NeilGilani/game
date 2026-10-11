@@ -17,6 +17,7 @@ PI ?= agency-pi.local
 .PHONY: help setup setup-backend setup-frontend dev demo backend frontend dev-pi test test-backend test-frontend \
         lint typecheck build check e2e e2e-fixtures reset-demo pi-setup pi-start pi-stop pi-status pi-logs clean \
         os-check os-dev os-build os-dist os-test os-e2e sidecar sandbox
+.PHONY: demo-synapse
 
 help:
 	@grep -E '^#' Makefile | head -11 | sed 's/^# \{0,1\}//'
@@ -62,6 +63,11 @@ dev:
 demo: build
 	@echo "AGENCY is running at http://localhost:8000  (Ctrl-C to stop)"
 	cd backend && .venv/bin/uvicorn agency.main:app --host 127.0.0.1 --port 8000
+
+# Synapse-Mesh already owns :8000. Serve AGENCY separately and keep the browser same-origin.
+demo-synapse: build
+	@echo "AGENCY questions: http://localhost:8781/#/ask   Synapse-Mesh kernel: $${AGENCY_SYNAPSE_URL:-http://127.0.0.1:8000}"
+	cd backend && AGENCY_PORT=8781 .venv/bin/python -m agency
 
 dev-pi:
 	@echo "Interface on http://localhost:5173, coordinator on the Pi at http://$(PI):8000"

@@ -1,7 +1,7 @@
 /**
  * Home: a calm, Launchpad-style screen of big choices. Nothing on it moves while the person is looking: the
  * usuals row keeps its place while memory loads, there are no animations or tickers, and the layout fits one
- * screen at 1280 × 800 without scrolling.
+ * screen with large choices and scrolling when needed.
  */
 import { useEffect, useState } from "react";
 import { Icon } from "../components/Icon";
@@ -22,6 +22,7 @@ interface Tile {
 }
 
 export const HOME_TILES: Tile[] = [
+  { id: "ask", label: "Ask a question", sub: "Answers from Synapse-Mesh", icon: "question", path: "/ask" },
   { id: "talk", label: "Talk", sub: "Say something out loud", icon: "speak", path: "/talk" },
   { id: "call", label: "Call someone", sub: "Jordan, Mom, the clinic", icon: "phone", path: "/flow/call" },
   { id: "food", label: "Food", sub: "Order a meal", icon: "food", path: "/flow/food" },

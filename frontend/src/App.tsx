@@ -10,6 +10,7 @@ import { InputProvider } from "./state/input";
 import { PreferencesProvider, usePreferences } from "./state/preferences";
 import { navigate, useRoute, type Route } from "./state/router";
 import { Approve } from "./screens/Approve";
+import { Ask } from "./screens/Ask";
 import { Calibrate } from "./screens/Calibrate";
 import { CameraSetup } from "./screens/CameraSetup";
 import { ApprovalsList, CasesList, RecoveryView, TimelineView } from "./screens/CaseViews";
@@ -41,6 +42,7 @@ function onboarded(): boolean {
 function Screen({ route }: { route: Route }) {
   const [a, b, c] = route.segments;
   if (!a) return <Home />;
+  if (a === "ask") return <Ask />;
   if (a === "flow" && b) return <FlowScreen key={b} id={b} />;
   if (a === "task" && b) return <TaskScreen key={b} id={b} />;
   if (a === "apps") return <AppsScreen key={route.query.toString()} route={route} />;
