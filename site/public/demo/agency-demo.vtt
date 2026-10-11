@@ -1,28 +1,72 @@
 WEBVTT
 
-00:00:04.601 --> 00:00:09.101
-First time: AGENCY sees a face and starts a 5-second eye scan by itself.
+1
+00:00:00.009 --> 00:00:04.209
+AGENCY
+Control your computer with your eyes. AGENCY does the rest.
 
-00:00:09.558 --> 00:00:14.558
-Follow the light with your eyes. That is the only setup.
+2
+00:00:04.671 --> 00:00:06.501
+The cursor follows your eyes
+Rest on anything and its ring fills: no hands, no clicks
 
-00:00:15.263 --> 00:00:17.225
-Home: a few big choices. The blue dot is where the eyes are. Look at Food until its ring fills.
+3
+00:00:06.501 --> 00:00:08.961
+Order food: look at Food
 
-00:00:17.275 --> 00:00:23.275
-Pick by looking. No hands, no clicks.
+4
+00:00:08.961 --> 00:00:17.054
+A few big choices at a time
+Large targets, so a normal webcam is enough
 
-00:00:30.478 --> 00:00:34.978
-AGENCY plans it and asks first, with every detail.
+5
+00:00:17.054 --> 00:00:21.290
+Synapse-Mesh routes it, Cisco checks the network, Gemini plans it
+Everyday tasks take Synapse's fast lane
 
-00:00:35.918 --> 00:00:39.918
-Paying needs a second look at a different button.
+6
+00:00:21.290 --> 00:00:24.701
+It asks only what it needs to know
 
-00:00:45.569 --> 00:00:48.523
-Done, and checked. Demo store: nothing real is bought.
+7
+00:00:24.701 --> 00:00:29.169
+Nothing pays or sends without your look
+The exact amount, store and order, before anything happens
 
-00:00:48.573 --> 00:00:53.573
-Lifeline: three long blinks call for help, from any screen.
+8
+00:00:29.169 --> 00:00:32.772
+Paying takes a second look at a different button
+A glance never pays. Practice store: nothing real is paid
 
-00:00:53.700 --> 00:00:58.700
-A short countdown first. Cancelling takes a longer look.
+9
+00:00:32.772 --> 00:00:36.275
+Done, and checked
+AGENCY reads the result back before it says done
+
+10
+00:00:36.275 --> 00:00:44.728
+Talk: build a sentence with your eyes
+
+11
+00:00:44.729 --> 00:00:50.001
+Gemini offers ways to finish it
+One look speaks the whole sentence out loud
+
+12
+00:00:50.001 --> 00:00:52.203
+Spoken out loud by the Mac
+
+13
+00:00:52.203 --> 00:00:56.344
+Help is always one look away
+In the app: three long blinks, or the Help button
+
+14
+00:00:56.344 --> 00:01:03.062
+Your people are alerted unless you cancel
+Cancel takes a longer look, so it never happens by accident
+
+15
+00:01:03.868 --> 00:01:08.368
+AGENCY
+Gemini plans · Synapse-Mesh routes · Cisco checks the network
