@@ -110,6 +110,21 @@ function flash(el: HTMLElement): void {
 
 /** How far outside a control the eye cursor can still choose it (px). */
 const EYE_CURSOR_SNAP_PX = 6;
+/**
+ * The eye cursor rests somewhere on a screen full of buttons all the time, so a choice takes a deliberate hold:
+ * at least 1.5 s, steady within 40 px, and moving off a button starts its ring again (no resuming).
+ */
+const EYE_CURSOR_DWELL = { minMs: 1500, stabilityPx: 40, graceMs: 0 };
+
+function dwellFor(mode: string, ms: number, stabilityPx: number) {
+  return mode === "head"
+    ? {
+        dwellMs: Math.max(ms, EYE_CURSOR_DWELL.minMs),
+        stabilityPx: Math.min(stabilityPx, EYE_CURSOR_DWELL.stabilityPx),
+        graceMs: EYE_CURSOR_DWELL.graceMs,
+      }
+    : { dwellMs: ms, stabilityPx, graceMs: 300 };
+}
 
 export function InputLayer() {
   const input = useInput();
@@ -156,7 +171,7 @@ export function InputLayer() {
   useEffect(() => {
     selector.current.setOptions({
       // Pace (os/gaze/src/input/pace.ts) lengthens the dwell a little when choosing gets harder.
-      dwell: { dwellMs: prefs.dwell_ms * vision.pace.dwellScale, stabilityPx: prefs.dwell_stability_px },
+      dwell: dwellFor(mode, prefs.dwell_ms * vision.pace.dwellScale, prefs.dwell_stability_px),
       // The eye cursor is exactly where it is drawn: only what is under it can be chosen (a few px of
       // slack). Gaze, with its error circle, keeps the person's snap distance.
       magnet: { snapPx: mode === "head" ? EYE_CURSOR_SNAP_PX : prefs.target_snap_px },
@@ -178,9 +193,13 @@ export function InputLayer() {
     () =>
       vision.onAdvice((a) => {
         if (a.type === "pace")
-          selector.current.setOptions({ dwell: { dwellMs: prefs.dwell_ms * a.dwellScale } });
+          selector.current.setOptions({
+            dwell: {
+              dwellMs: dwellFor(mode, prefs.dwell_ms * a.dwellScale, prefs.dwell_stability_px).dwellMs,
+            },
+          });
       }),
-    [vision, prefs.dwell_ms],
+    [vision, prefs.dwell_ms, prefs.dwell_stability_px, mode],
   );
 
   // Navigation: forget any half-finished dwell and pause selection briefly, so a control that

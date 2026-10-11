@@ -127,6 +127,8 @@ export interface HostOptions {
 export interface EngineHost {
   engine: GazeEngine;
   command(c: GazeCommand): Promise<void>;
+  /** Track at this many frames a second (the desktop slows the engine while its shell tracks for itself). */
+  setFps(fps: number): void;
   stop(): void;
 }
 
@@ -153,6 +155,8 @@ export async function startEngineHost(options: HostOptions): Promise<EngineHost>
   engine.onAdvice((a) => send({ type: "host.advice", advice: a }));
 
   let mouse: MouseProvider | null = null;
+  let webcam: WebcamProvider | null = null;
+  let fps = 30;
   let current = "none";
   let recorder: Recorder | null = null;
   let offRecord: (() => void) | null = null;
@@ -172,6 +176,8 @@ export async function startEngineHost(options: HostOptions): Promise<EngineHost>
   const use = async (provider: GazeProvider | null, name: string) => {
     engine.detach();
     mouse = provider instanceof MouseProvider ? provider : null;
+    webcam = provider instanceof WebcamProvider ? provider : null;
+    webcam?.setTargetFps(fps);
     current = name;
     if (provider) {
       if (provider instanceof WebcamProvider) provider.onStatus(() => status(provider));
@@ -296,6 +302,10 @@ export async function startEngineHost(options: HostOptions): Promise<EngineHost>
   return {
     engine,
     command,
+    setFps(next: number) {
+      fps = Math.max(1, next);
+      webcam?.setTargetFps(fps);
+    },
     stop() {
       offRecord?.();
       engine.detach();

@@ -37,3 +37,5 @@ camera.onStatus((status, error) => {
   if (status === "error") console.error(`gaze camera error: ${error ?? "unknown"}`);
 });
 void engine.attach(camera);
+// Main slows this window down while the shell (which tracks the eyes itself) is in front.
+window.agency.gaze.onPace?.((fps) => camera.setTargetFps(fps));
