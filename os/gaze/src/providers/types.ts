@@ -18,6 +18,8 @@ export interface FaceFrame {
   matrix?: number[] | null;
   /** Mean of eyeBlinkLeft/Right blendshapes, when available. */
   blink?: number | null;
+  /** Eye squint score 0..1 (MediaPipe eyeSquintLeft/Right), when blendshapes are on. */
+  squint?: number | null;
   /** Image width / height. */
   aspect: number;
   /** Mean luminance 0..255, measured occasionally. */

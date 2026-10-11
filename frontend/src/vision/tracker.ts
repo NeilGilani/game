@@ -43,6 +43,8 @@ export interface VisionFrame {
   face: boolean;
   features: GazeFeatures | null;
   blink: number | null;
+  /** Eye squint score 0..1 (the squint-to-scroll gesture), null when unknown. */
+  squint?: number | null;
   /** How trustworthy the pointer is on this frame (below 0.5: don't start or continue a dwell). */
   confidence: number;
   /** Whether the face itself is tracked well (pose, distance, eyes open), pointer or not. */
@@ -432,6 +434,7 @@ export class VisionEngine {
       face: d.face,
       features: d.features,
       blink: d.blink,
+      squint: f.squint ?? null,
       confidence: head ? headTracking : pointer ? d.confidence : d.trackingConfidence,
       trackingConfidence: head ? headTracking : d.trackingConfidence,
       issues: d.issues,

@@ -16,6 +16,7 @@
  * precision meter drives the adaptive layout (input/layout.ts).
  */
 
+import { SquintScroll } from "./SquintScroll";
 import { useEffect, useRef, useState } from "react";
 import { SELECTION_RESET_EVENT } from "../components/common";
 import { useAnnounce } from "../state/announcer";
@@ -505,6 +506,7 @@ export function InputLayer() {
   return (
     <>
       <div ref={cursorRef} className="gaze-cursor" aria-hidden="true" />
+      <SquintScroll />
       {mode === "scan_blink" && blinkProgress > 0 && (
         <div className="blink-meter" aria-hidden="true">
           <span style={{ transform: `scaleX(${blinkProgress})` }} />
