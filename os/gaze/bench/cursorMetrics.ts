@@ -15,7 +15,8 @@
  *   700 ms or more). Median over saccades.
  * - accuracy: distance from the cursor's mean in the jitter window to the point looked at.
  * - blink: largest distance the cursor moves from where it was when the eyes started to close,
- *   until 150 ms after they open again.
+ *   until 150 ms after they open again (includes any real jump the eyes made around the blink).
+ * - closed: the same, only while the eyes are closing or closed.
  */
 
 export interface CursorSample {
@@ -44,6 +45,7 @@ export interface CursorMetrics {
   lagMs: number;
   accuracyPx: number;
   blinkMovePx: number;
+  closedMovePx: number;
   fixations: number;
   saccades: number;
   blinks: number;
@@ -102,11 +104,14 @@ export function cursorMetrics(
     lag.push(hit ? hit.t - f.start : f.end - f.start);
   });
   const moves: number[] = [];
+  const closed: number[] = [];
   for (const b of blinks) {
     const before = [...cursor].reverse().find((s) => s.t <= b.start);
     if (!before) continue;
     const during = cursor.filter((s) => s.t > b.start && s.t <= b.end + 150);
     moves.push(Math.max(0, ...during.map((s) => Math.hypot(s.x - before.x, s.y - before.y))));
+    const shut = cursor.filter((s) => s.t > b.start && s.t <= b.end);
+    closed.push(Math.max(0, ...shut.map((s) => Math.hypot(s.x - before.x, s.y - before.y))));
   }
   const span = cursor.length > 1 ? cursor[cursor.length - 1]!.t - cursor[0]!.t : 0;
   return {
@@ -115,6 +120,7 @@ export function cursorMetrics(
     lagMs: median(lag),
     accuracyPx: mean(accuracy),
     blinkMovePx: mean(moves),
+    closedMovePx: mean(closed),
     fixations: jitter.length,
     saccades: lag.length,
     blinks: moves.length,

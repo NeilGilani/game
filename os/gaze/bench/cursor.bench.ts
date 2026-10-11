@@ -27,6 +27,7 @@ import {
 
 const SEEDS = Array.from({ length: 10 }, (_, i) => i + 1);
 const HEADS: HeadMotionKind[] = ["still", "natural"];
+const NOISES = ["typical", "low"] as const;
 const FIXATIONS = 30;
 const DRAW_MS = 1000 / 60;
 
@@ -100,8 +101,24 @@ function cssCursor(): Cursor {
   };
 }
 
-function session(seed: number, head: HeadMotionKind, makeCursor: () => Cursor): CursorMetrics | null {
-  const subject = makeSubject(seed, head, NOISE.typical);
+/** After: the engine's cursor (src/cursor.ts), evaluated at every draw time. */
+function engineCursor(): Cursor {
+  return {
+    name: "after: engine cursor, every display frame",
+    frame() {},
+    at(engine, t) {
+      return engine.cursorAt(t);
+    },
+  };
+}
+
+function session(
+  seed: number,
+  head: HeadMotionKind,
+  noise: "low" | "typical",
+  makeCursor: () => Cursor,
+): CursorMetrics | null {
+  const subject = makeSubject(seed, head, NOISE[noise]);
   if (!subject) return null;
   const engine = new GazeEngine({ screen: singleDisplay(DISPLAY.width, DISPLAY.height) });
   engine.setCalibration(subject.v2);
@@ -155,48 +172,51 @@ function session(seed: number, head: HeadMotionKind, makeCursor: () => Cursor): 
 }
 
 it("drawn cursor: jitter, lag, accuracy, blinks (simulated)", () => {
-  const cursors: (() => Cursor)[] = [cssCursor];
+  const cursors: (() => Cursor)[] = [cssCursor, engineCursor];
   const rows: Record<string, unknown>[] = [];
-  for (const head of HEADS) {
-    for (const make of cursors) {
-      const runs = SEEDS.map((s) => session(s, head, make)).filter((m): m is CursorMetrics => !!m);
-      const avg = (k: keyof CursorMetrics) => runs.reduce((a, m) => a + m[k], 0) / runs.length;
-      const sd = (k: keyof CursorMetrics) => {
-        const m = avg(k);
-        return Math.sqrt(runs.reduce((a, r) => a + (r[k] - m) ** 2, 0) / runs.length);
-      };
-      rows.push({
-        head,
-        cursor: make().name,
-        people: runs.length,
-        jitterPx: avg("jitterPx"),
-        jitterSd: sd("jitterPx"),
-        stepPx: avg("stepPx"),
-        lagMs: avg("lagMs"),
-        lagSd: sd("lagMs"),
-        accuracyPx: avg("accuracyPx"),
-        blinkMovePx: avg("blinkMovePx"),
-        fixations: runs.reduce((a, m) => a + m.fixations, 0),
-        saccades: runs.reduce((a, m) => a + m.saccades, 0),
-        blinks: runs.reduce((a, m) => a + m.blinks, 0),
-        drawnFps: avg("drawnFps"),
-      });
+  for (const noise of NOISES)
+    for (const head of HEADS) {
+      for (const make of cursors) {
+        const runs = SEEDS.map((s) => session(s, head, noise, make)).filter((m): m is CursorMetrics => !!m);
+        const avg = (k: keyof CursorMetrics) => runs.reduce((a, m) => a + m[k], 0) / runs.length;
+        const sd = (k: keyof CursorMetrics) => {
+          const m = avg(k);
+          return Math.sqrt(runs.reduce((a, r) => a + (r[k] - m) ** 2, 0) / runs.length);
+        };
+        rows.push({
+          noise,
+          head,
+          cursor: make().name,
+          people: runs.length,
+          jitterPx: avg("jitterPx"),
+          jitterSd: sd("jitterPx"),
+          stepPx: avg("stepPx"),
+          lagMs: avg("lagMs"),
+          lagSd: sd("lagMs"),
+          accuracyPx: avg("accuracyPx"),
+          blinkMovePx: avg("blinkMovePx"),
+          closedMovePx: avg("closedMovePx"),
+          fixations: runs.reduce((a, m) => a + m.fixations, 0),
+          saccades: runs.reduce((a, m) => a + m.saccades, 0),
+          blinks: runs.reduce((a, m) => a + m.blinks, 0),
+          drawnFps: avg("drawnFps"),
+        });
+      }
     }
-  }
   const f0 = (v: unknown) => (typeof v === "number" ? v.toFixed(0) : String(v));
   const f1 = (v: unknown) => (typeof v === "number" ? v.toFixed(1) : String(v));
   const lines = [
-    "| head | cursor | jitter px (sd) | step px/frame | lag ms (sd) | accuracy px | blink move px | fixations / saccades / blinks |",
-    "| ---- | ------ | -------------- | ------------- | ----------- | ----------- | ------------- | ----------------------------- |",
+    "| noise | head | cursor | jitter px (sd) | step px/frame | lag ms (sd) | accuracy px | blink move px | moved while closed px | fixations / saccades / blinks |",
+    "| ----- | ---- | ------ | -------------- | ------------- | ----------- | ----------- | ------------- | --------------------- | ----------------------------- |",
     ...rows.map(
       (r) =>
-        `| ${r.head} | ${r.cursor} | ${f1(r.jitterPx)} (${f1(r.jitterSd)}) | ${f1(r.stepPx)} | ${f0(r.lagMs)} (${f0(r.lagSd)}) | ${f1(r.accuracyPx)} | ${f1(r.blinkMovePx)} | ${r.fixations} / ${r.saccades} / ${r.blinks} |`,
+        `| ${r.noise} | ${r.head} | ${r.cursor} | ${f1(r.jitterPx)} (${f1(r.jitterSd)}) | ${f1(r.stepPx)} | ${f0(r.lagMs)} (${f0(r.lagSd)}) | ${f1(r.accuracyPx)} | ${f1(r.blinkMovePx)} | ${f1(r.closedMovePx)} | ${r.fixations} / ${r.saccades} / ${r.blinks} |`,
     ),
   ];
   const md = [
     "# Drawn gaze cursor (SIMULATED)",
     "",
-    `Synthetic people and webcam (src/synth), typical noise, ${SEEDS.length} people per row, ${FIXATIONS} fixations each`,
+    `Synthetic people and webcam (src/synth), typical and low camera noise (bench/lib.ts NOISE), ${SEEDS.length} people per row, ${FIXATIONS} fixations each`,
     "with drift and microsaccades under 1 degree and natural blinks; cursor sampled at 60 Hz. No real person or camera.",
     "Definitions: bench/cursorMetrics.ts. Run: `cd os/gaze && npm run bench:cursor`.",
     "",

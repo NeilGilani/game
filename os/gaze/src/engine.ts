@@ -46,6 +46,7 @@ import type {
   Target,
   TrackingState,
 } from "./contracts";
+import { type CursorOptions, GazeCursor } from "./cursor";
 import { FixationSmoother, type FixationOptions, type SmoothedPoint } from "./fixation";
 import { FrameRateGovernor, type FrameRateOptions } from "./frameRate";
 import { HeadPointer, type HeadPointerOptions } from "./headPointer";
@@ -79,6 +80,8 @@ export interface EngineOptions {
   precision?: Partial<PrecisionOptions>;
   posture?: Partial<PostureOptions>;
   pace?: Partial<PaceOptions>;
+  /** The drawn cursor (cursorAt): glide and smoothing settings. */
+  cursor?: Partial<CursorOptions>;
   /** Clock for latency (performance.now in a browser). Replays and tests can pass their own. */
   clock?: () => number;
 }
@@ -262,6 +265,7 @@ export class GazeEngine {
   private touchUpRun: TouchUpRun | null = null;
   private smoother: FixationSmoother;
   private pointerSmoother: FixationSmoother;
+  private cursor: GazeCursor;
   private blinkSwitch: BlinkSwitch;
   private opennessBlink = new OpennessBlink();
   private help: HelpPattern;
@@ -287,6 +291,7 @@ export class GazeEngine {
       initialNoisePt: 20,
       ...options.fixation,
     });
+    this.cursor = new GazeCursor(options.cursor);
     this.blinkSwitch = new BlinkSwitch(options.blink);
     this.help = new HelpPattern(options.help);
     this.governor = new FrameRateGovernor(options.frameRate);
@@ -349,6 +354,7 @@ export class GazeEngine {
     this.provider = provider;
     this.smoother.reset();
     this.pointerSmoother.reset();
+    this.cursor.reset();
     await provider.start((f) => this.handle(f));
   }
 
@@ -365,6 +371,7 @@ export class GazeEngine {
   setMode(mode: EngineMode): void {
     this.o = { ...this.o, mode };
     this.smoother.reset();
+    this.cursor.reset();
     this.headPointer.recentre();
   }
 
@@ -405,6 +412,7 @@ export class GazeEngine {
     const posture = this.posture.current;
     this.posture.reset();
     if (posture) this.advise({ type: "posture", t: this.lastDetail?.t ?? 0, issue: null, message: null });
+    this.cursor.reset();
     if (result) {
       const d = this.o.screen.cameraDisplay.bounds;
       const centre = { x: d.x + d.width / 2, y: d.y + d.height / 2 };
@@ -530,6 +538,20 @@ export class GazeEngine {
     return Math.max(12, 2 * this.errorSigmaPt);
   }
 
+  /**
+   * Where to draw the pointer at time `t` (global points; the frames' clock, so performance.now()
+   * with the webcam): call it on every display frame. Unlike the "sample" events, which come with
+   * camera frames and feed dwell, it glides between frames, smooths harder the longer a fixation
+   * lasts, eases across saccades, and holds still through blinks and low confidence (cursor.ts).
+   * Null until there is a pointer.
+   */
+  cursorAt(t: number): { x: number; y: number } | null {
+    const p = this.cursor.at(t);
+    if (!p) return null;
+    const c = this.o.screen.clamp(p.x, p.y);
+    return { x: c.x, y: c.y };
+  }
+
   /** How long the eyes have held the current fixation (ms); 0 when not fixating. */
   get fixationMs(): number {
     const s = this.lastDetail?.smoothed;
@@ -612,6 +634,20 @@ export class GazeEngine {
       fixation = !!prev && Math.hypot(prev.x - point.x, prev.y - point.y) < 6;
     }
     const confidence = smoothed ? sampleConfidence(p.confidence, smoothed, 0) : p.confidence;
+    if (smoothed) {
+      this.cursor.gaze({
+        t: p.t,
+        raw: clamped,
+        smoothed,
+        tracking: p.confidence,
+        blink: null,
+        minJumpPt: this.pointerSmoother.minSaccadePt,
+      });
+    } else if (p.confidence >= 0.5) {
+      this.cursor.follow(p.t, point, 1); // the mouse: no smoothing to speak of
+    } else {
+      this.cursor.hold(p.t);
+    }
     this.lastPoint = { x: point.x, y: point.y };
     const state = this.tracking.update(p.t, confidence);
     if (state) this.emit({ type: "tracking", t: p.t, state });
@@ -727,6 +763,14 @@ export class GazeEngine {
       // Hold the last position (blink, brief loss) with low confidence so dwell pauses.
       point = this.lastPoint;
       confidence = Math.min(confidence, tracking, 0.3);
+    }
+    // The drawn cursor: fixation filter and saccade glides for gaze, between-frame glide for the
+    // head pointer, and never a move on a blink or a low-confidence frame.
+    if (source === "webcam-head") {
+      if (raw && point && !this.cursor.blinking(blink)) this.cursor.follow(t, point);
+      else this.cursor.hold(t);
+    } else {
+      this.cursor.gaze({ t, raw, smoothed, tracking, blink, minJumpPt: this.smoother.minSaccadePt });
     }
     const state = this.tracking.update(t, point ? confidence : tracking >= 0.5 ? 0.5 : 0);
     if (state) this.emit({ type: "tracking", t, state });
