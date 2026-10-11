@@ -121,6 +121,7 @@ export function ConfirmSheet({
             className={`btn btn-xl ${tone === "danger" ? "btn-solid-danger" : "btn-primary"}`}
             onClick={onConfirm}
             data-dwell
+            data-approval-gate
             disabled={busy}
           >
             <Icon name="check" /> {busy ? "Working…" : confirmLabel}

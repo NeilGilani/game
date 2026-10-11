@@ -24,6 +24,8 @@ export * from "./calibration/continuous";
 export * as legacy from "./calibration/legacy";
 export * from "./input/dwell";
 export * from "./input/scan";
+export * from "./input/intent";
+export * as lab from "./lab";
 export * as hitTest from "./input/targets";
 export * from "./providers/types";
 export * from "./providers/mouse";

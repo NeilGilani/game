@@ -207,6 +207,7 @@ export function Approve({ id }: { id: string }) {
             <button
               className="btn btn-xl btn-primary"
               data-dwell
+              data-approval-gate
               onClick={() =>
                 mustConfirm
                   ? setSheet({ kind: "approve-all", approvals: pending })
@@ -305,6 +306,7 @@ export function Approve({ id }: { id: string }) {
                 onClick={() => approveOne(current)}
                 disabled={busy || editing}
                 data-dwell
+                data-approval-gate
               >
                 <Icon name="check" /> Approve
               </button>

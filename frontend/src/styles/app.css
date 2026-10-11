@@ -3128,3 +3128,57 @@ h2 {
 .cal-light {
   will-change: transform;
 }
+
+/* ---- Adaptive layout and prediction (input/layout.ts, input/context.ts) -------------------
+   <html data-gaze-precision> follows how precise eye control is, applied only when the screen
+   changes. Rough: more space between targets and likely targets bigger. Sharp: denser. */
+[data-dwell-predicted]:not([data-dwell-active]) {
+  outline: 3px dashed color-mix(in srgb, var(--accent) 70%, transparent);
+  outline-offset: 4px;
+}
+:root[data-gaze-precision="rough"] :is(.flow-options, .option-list, .task-actions, .btn-row, .talk-words) {
+  gap: 44px;
+}
+:root[data-gaze-precision="rough"] .flow-options > [data-likely] {
+  grid-column: span 2;
+}
+:root[data-gaze-precision="rough"] .btn[data-likely] {
+  min-height: 120px;
+  padding-inline: 36px;
+  font-size: 1.15em;
+}
+:root[data-gaze-precision="sharp"] :is(.flow-options, .option-list, .talk-words) {
+  gap: 16px;
+}
+.flow-options[data-count="7"],
+.flow-options[data-count="8"] {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-auto-rows: minmax(120px, 1fr);
+  max-height: 520px;
+}
+
+/* ---- Gaze lab (screens/GazeLab.tsx) ---- */
+.cal-hud.lab-hud {
+  top: calc(30% - 34px);
+}
+.lab-overlay {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  pointer-events: none;
+  z-index: 900;
+}
+.lab-swatch {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border-radius: 999px;
+  vertical-align: middle;
+}
+.lab-raw {
+  background: rgb(128 128 128 / 60%);
+}
+.lab-filtered {
+  background: var(--accent);
+}

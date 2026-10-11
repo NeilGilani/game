@@ -347,6 +347,14 @@ export class GazeEngine {
     return this.paused;
   }
 
+  /**
+   * Tune the gaze smoother (fixation filter), e.g. with settings the Gaze lab chose by replaying the
+   * person's own recorded estimates. The viewing distance stays whatever the iris size says.
+   */
+  setFilter(options: Partial<Omit<FixationOptions, "distanceCm" | "geometry">>): void {
+    this.smoother.setOptions(options);
+  }
+
   recentreHeadPointer(): void {
     this.headPointer.recentre();
   }

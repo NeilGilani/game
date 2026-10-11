@@ -4,6 +4,11 @@
  * Every interactive control that should work hands-free carries `data-dwell`. Selections
  * from any input method end in a normal `click()`, so the application logic is identical
  * whether a person uses gaze, a head pointer, a blink switch, a key, or a mouse.
+ *
+ * With a pointer (gaze or head), the target is chosen by IntentSelector (os/gaze/src/input/intent.ts):
+ * the gaze estimate's likelihood times the screen's context prior (input/context.ts), then dwell.
+ * A likely, safe target the eyes are moving to is pre-highlighted (data-dwell-predicted) and its dwell
+ * is a little shorter. The precision meter drives the adaptive layout (input/layout.ts).
  */
 
 import { useEffect, useRef, useState } from "react";
@@ -14,9 +19,11 @@ import { usePreferences } from "../state/preferences";
 import { navigate } from "../state/router";
 import { BlinkSwitch } from "../vision/blink";
 import type { VisionFrame } from "../vision/tracker";
-import { DwellEngine, type DwellEvent } from "./dwell";
+import { IntentSelector, type IntentSelectorTarget, PrecisionMeter } from "../../../os/gaze/src/input/intent";
+import { useGazeTuning } from "../vision/tuning";
+import { formNextElements, readContext } from "./context";
+import { setAdaptiveLayout, setLivePrecision } from "./layout";
 import { ScanEngine, type ScanEvent } from "./scan";
-import { findTarget, type TargetRect } from "./targets";
 
 const AUTO_CALIBRATE_KEY = "agency.autoCalibrated";
 
@@ -35,11 +42,15 @@ function labelOf(el: HTMLElement): string {
   return (el.getAttribute("aria-label") || el.textContent || "item").replace(/\s+/g, " ").trim().slice(0, 80);
 }
 
-/** Visible, enabled dwell targets, limited to an open dialog if there is one. */
-function collectTargets(onlyAlways: boolean): { list: TargetRect[]; byId: Map<string, HTMLElement> } {
+/** Visible, enabled dwell targets with their context, limited to an open dialog if there is one. */
+function collectTargets(onlyAlways: boolean): {
+  list: IntentSelectorTarget[];
+  byId: Map<string, HTMLElement>;
+} {
   const scope = document.querySelector<HTMLElement>('[data-dwell-scope="modal"]') ?? document.body;
   const nodes = scope.querySelectorAll<HTMLElement>("[data-dwell]");
-  const list: TargetRect[] = [];
+  const formNext = formNextElements(scope);
+  const list: IntentSelectorTarget[] = [];
   const byId = new Map<string, HTMLElement>();
   const vw = window.innerWidth;
   const vh = window.innerHeight;
@@ -51,7 +62,13 @@ function collectTargets(onlyAlways: boolean): { list: TargetRect[]; byId: Map<st
     if (el.closest("[inert]")) return;
     const id = idFor(el);
     byId.set(id, el);
-    list.push({ id, rect: { left: r.left, top: r.top, right: r.right, bottom: r.bottom } });
+    const context = readContext(el, formNext);
+    list.push({
+      id,
+      rect: { left: r.left, top: r.top, right: r.right, bottom: r.bottom },
+      ...context,
+      dwellScale: el.hasAttribute("data-dwell-always") ? 2 : Number(el.dataset.dwellScale ?? 1),
+    });
   });
   return { list, byId };
 }
@@ -76,10 +93,13 @@ export function InputLayer() {
   const [blinkProgress, setBlinkProgress] = useState(0);
   const [scanPaused, setScanPaused] = useState(false);
 
-  const dwell = useRef(new DwellEngine());
+  const tuning = useGazeTuning();
+  const selector = useRef(new IntentSelector());
+  const meter = useRef(new PrecisionMeter());
+  const predictedEl = useRef<HTMLElement | null>(null);
   const scan = useRef(new ScanEngine());
   const blink = useRef(new BlinkSwitch());
-  const targets = useRef<{ list: TargetRect[]; byId: Map<string, HTMLElement>; at: number }>({
+  const targets = useRef<{ list: IntentSelectorTarget[]; byId: Map<string, HTMLElement>; at: number }>({
     list: [],
     byId: new Map(),
     at: 0,
@@ -102,13 +122,28 @@ export function InputLayer() {
   const scanning = mode === "scan_key" || mode === "scan_blink" || fallbackActive;
 
   useEffect(() => {
-    dwell.current.setConfig({
-      dwellMs: prefs.dwell_ms,
-      stabilityPx: prefs.dwell_stability_px,
+    selector.current.setOptions({
+      dwell: { dwellMs: prefs.dwell_ms, stabilityPx: prefs.dwell_stability_px },
+      intent: { snapPx: prefs.target_snap_px, strength: tuning.contextStrength },
+      prediction: tuning.prediction,
     });
     scan.current.setConfig({ intervalMs: prefs.scan_interval_ms });
     blink.current.setOptions({ holdMs: prefs.blink_ms });
-  }, [prefs.dwell_ms, prefs.dwell_stability_px, prefs.scan_interval_ms, prefs.blink_ms]);
+  }, [
+    prefs.dwell_ms,
+    prefs.dwell_stability_px,
+    prefs.target_snap_px,
+    prefs.scan_interval_ms,
+    prefs.blink_ms,
+    tuning.contextStrength,
+    tuning.prediction,
+  ]);
+
+  // Adaptive layout only while a pointer drives selection, and only if the person wants it.
+  useEffect(() => {
+    setAdaptiveLayout(tuning.adaptiveLayout && pointerMode);
+    if (!pointerMode) meter.current.reset();
+  }, [tuning.adaptiveLayout, pointerMode]);
 
   // Navigation: forget any half-finished dwell and pause selection briefly, so a control that
   // appears under the person's gaze is not selected by accident.
@@ -116,8 +151,10 @@ export function InputLayer() {
     const onNav = (e: Event) => {
       // A screen can ask for a longer pause (the eye scan ends with the eyes on whatever is in the middle).
       const hold = e instanceof CustomEvent && typeof e.detail?.holdMs === "number" ? e.detail.holdMs : 1200;
-      dwell.current.reset(performance.now(), Math.max(1200, hold));
+      selector.current.reset(performance.now(), Math.max(1200, hold));
       clearMarks("data-dwell-active");
+      clearMarks("data-dwell-predicted");
+      predictedEl.current = null;
       targets.current.at = 0;
     };
     window.addEventListener("hashchange", onNav);
@@ -127,6 +164,13 @@ export function InputLayer() {
       window.removeEventListener(SELECTION_RESET_EVENT, onNav);
     };
   }, []);
+
+  const showPredicted = (el: HTMLElement | null) => {
+    if (predictedEl.current === el) return;
+    predictedEl.current?.removeAttribute("data-dwell-predicted");
+    el?.setAttribute("data-dwell-predicted", "");
+    predictedEl.current = el;
+  };
 
   const refreshTargets = (now: number, onlyAlways = false) => {
     if (now - targets.current.at > 250) {
@@ -181,23 +225,31 @@ export function InputLayer() {
           cursor.style.opacity = "0";
         }
       }
-      if (suspended || fallbackActive || !frame.pointer) return;
+      // The head pointer has no calibrated error estimate: it is steered with visible feedback.
+      const errorRadius = mode === "gaze" ? frame.errorRadius : 0;
+      if (mode === "gaze" && frame.pointer && frame.confidence >= 0.5 && !suspended) {
+        setLivePrecision(meter.current.update(now, errorRadius));
+      }
+      if (suspended || fallbackActive || !frame.pointer) {
+        showPredicted(null);
+        return;
+      }
       const { list, byId } = refreshTargets(now, eyeControlPaused);
-      const targetId = findTarget(frame.pointer.x, frame.pointer.y, list, prefs.target_snap_px);
-      const el = targetId ? byId.get(targetId) : undefined;
-      const events: DwellEvent[] = dwell.current.update({
-        t: now,
-        x: frame.pointer.x,
-        y: frame.pointer.y,
-        confidence: frame.confidence,
-        targetId,
-        dwellScale: el?.hasAttribute("data-dwell-always") ? 2 : Number(el?.dataset.dwellScale ?? 1),
-      });
+      const update = selector.current.update(
+        { t: now, x: frame.pointer.x, y: frame.pointer.y, confidence: frame.confidence, errorRadius },
+        list,
+      );
+      const events = update.events;
+      // Pre-highlight a predicted target until the eyes arrive (then the dwell ring takes over).
+      const predicted = update.predicted && update.predicted !== update.targetId ? update.predicted : null;
+      showPredicted(predicted ? (byId.get(predicted) ?? null) : null);
       for (const ev of events) {
         const target = byId.get(ev.targetId);
         if (ev.type === "enter") {
           clearMarks("data-dwell-active");
+          clearMarks("data-dwell-fast");
           target?.setAttribute("data-dwell-active", "");
+          if (update.fast) target?.setAttribute("data-dwell-fast", "");
           dwellStart.current = { id: ev.targetId, t: now };
         } else if (ev.type === "progress" && target) {
           target.style.setProperty("--dwell", ev.progress.toFixed(3));
@@ -219,6 +271,7 @@ export function InputLayer() {
     return () => {
       off();
       clearMarks("data-dwell-active");
+      showPredicted(null);
       if (cursor) cursor.style.opacity = "0";
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps

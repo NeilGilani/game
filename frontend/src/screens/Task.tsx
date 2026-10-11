@@ -8,6 +8,7 @@
 import { useEffect, useState } from "react";
 import { SELECTION_RESET_EVENT } from "../components/common";
 import { Icon } from "../components/Icon";
+import { likely, taskFocus } from "../input/context";
 import { useAgent } from "../state/agent";
 import { useAnnounce } from "../state/announcer";
 import type { ApprovalRequest, ChoiceQuestion, PlanStepView } from "../state/contracts";
@@ -107,6 +108,7 @@ function TaskBody({ t }: { t: TaskView }) {
             className="btn btn-xl btn-solid-danger task-stop"
             onClick={() => agent.stop(t.id)}
             data-dwell
+            data-protect
           >
             <Icon name="stop" /> Stop this task
           </button>
@@ -145,7 +147,12 @@ function TaskBody({ t }: { t: TaskView }) {
 
         <section className="task-now" aria-live="polite">
           {t.phase === "question" && t.question ? (
-            <Question q={t.question} onPick={(optionId) => agent.answer(t.id, t.question!.id, optionId)} />
+            <Question
+              q={t.question}
+              onPick={(optionId) => agent.answer(t.id, t.question!.id, optionId)}
+              // The agent is waiting for one of these answers: they are the likely targets.
+              likelyAnswers={taskFocus(t) === "answer"}
+            />
           ) : t.phase === "approval" && t.approval?.kind === "sign" ? (
             // Signing always goes through Talk's signing ceremony (read, then a deliberate confirmation).
             <div className="stack" data-testid="sign-handoff">
@@ -166,7 +173,12 @@ function TaskBody({ t }: { t: TaskView }) {
                   Don't sign
                 </button>
                 <span className="spacer" />
-                <button className="btn btn-primary" data-dwell onClick={() => navigate("/talk/papers")}>
+                <button
+                  className="btn btn-primary"
+                  data-dwell
+                  data-consequential
+                  onClick={() => navigate("/talk/papers")}
+                >
                   Read and sign
                 </button>
               </div>
@@ -229,7 +241,12 @@ function TaskBody({ t }: { t: TaskView }) {
               </h2>
               <p className="task-big">AGENCY is waiting. Nothing happens until you say so.</p>
               <div className="task-actions">
-                <button className="btn btn-xl btn-primary" onClick={() => agent.resume(t.id)} data-dwell>
+                <button
+                  className="btn btn-xl btn-primary"
+                  onClick={() => agent.resume(t.id)}
+                  data-dwell
+                  {...likely(taskFocus(t) === "resume" && "strong")}
+                >
                   <Icon name="play" /> Carry on
                 </button>
                 <button className="btn btn-xl" onClick={() => navigate("/")} data-dwell>
@@ -272,13 +289,23 @@ function HomeButton({ t }: { t: TaskView }) {
         navigate("/");
       }}
       data-dwell
+      // With the task finished, going home is the likely next step.
+      {...likely(taskFocus(t) === "finish" && "strong")}
     >
       <Icon name="home" /> Home
     </button>
   );
 }
 
-function Question({ q, onPick }: { q: ChoiceQuestion; onPick: (optionId: string) => void }) {
+function Question({
+  q,
+  onPick,
+  likelyAnswers,
+}: {
+  q: ChoiceQuestion;
+  onPick: (optionId: string) => void;
+  likelyAnswers: boolean;
+}) {
   return (
     <div className="stack">
       <h2>
@@ -296,6 +323,7 @@ function Question({ q, onPick }: { q: ChoiceQuestion; onPick: (optionId: string)
             className={`choice ${o.suggestedBecause ? "choice-usual" : ""}`}
             onClick={() => onPick(o.id)}
             data-dwell
+            {...likely(likelyAnswers && "strong")}
           >
             {o.image && (
               <span className="choice-pic" aria-hidden>
@@ -366,7 +394,12 @@ function Approval({
         />
       ) : (
         <div className="task-actions approval-actions">
-          <button className="btn btn-xl btn-primary" onClick={() => setConfirming(true)} data-dwell>
+          <button
+            className="btn btn-xl btn-primary"
+            onClick={() => setConfirming(true)}
+            data-dwell
+            data-approval-gate
+          >
             <Icon name="check" /> Approve
           </button>
           <button className="btn btn-xl" onClick={() => onDecide("change")} data-dwell>
@@ -416,6 +449,7 @@ function ConfirmApprove({
         onClick={onYes}
         disabled={!ready}
         data-dwell
+        data-approval-gate
         aria-describedby="confirm-why"
       >
         <Icon name="check" />{" "}

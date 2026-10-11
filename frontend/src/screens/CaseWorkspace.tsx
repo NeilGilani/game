@@ -14,6 +14,7 @@ import {
   formatWhen,
   stepIcon,
 } from "../components/status";
+import { caseFocus, likely } from "../input/context";
 import { useAnnounce } from "../state/announcer";
 import { navigate } from "../state/router";
 import { usePoll } from "../state/usePoll";
@@ -105,6 +106,8 @@ function NowPanel({ data, reload }: { data: CaseDetail; reload: () => Promise<vo
   const [busy, setBusy] = useState(false);
   const question = data.steps.find((s) => s.status === "waiting_input");
   const failures = data.steps.filter((s) => s.status === "failed" && s.replaced_by);
+  // What the coordinator's planner (backend/agency/engine next_actions) is waiting for.
+  const focus = caseFocus(data.next_actions);
 
   const act = async (fn: () => Promise<unknown>, message: string) => {
     setBusy(true);
@@ -130,6 +133,7 @@ function NowPanel({ data, reload }: { data: CaseDetail; reload: () => Promise<vo
               key={o.value}
               className="btn option"
               data-dwell
+              {...likely(focus === "answer" && "strong")}
               disabled={busy}
               onClick={() => act(() => api.answer(data.id, question.id, o.value), `Answered: ${o.label}`)}
             >
@@ -166,6 +170,7 @@ function NowPanel({ data, reload }: { data: CaseDetail; reload: () => Promise<vo
           className="btn btn-xl btn-primary"
           onClick={() => navigate(`/case/${data.id}/approve`)}
           data-dwell
+          {...likely(focus === "review" && "strong")}
         >
           <Icon name="hand" /> Review and decide
         </button>
@@ -192,6 +197,7 @@ function NowPanel({ data, reload }: { data: CaseDetail; reload: () => Promise<vo
             disabled={busy}
             onClick={() => act(() => api.resumeCase(data.id), "Resumed.")}
             data-dwell
+            {...likely(focus === "resume" && "strong")}
           >
             <Icon name="play" /> Resume
           </button>

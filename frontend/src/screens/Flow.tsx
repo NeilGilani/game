@@ -20,6 +20,8 @@ import {
   type FlowState,
 } from "../flows/engine";
 import { FLOWS } from "../flows/library";
+import { likely } from "../input/context";
+import { PAGE_SIZE, precisionForNewScreen } from "../input/layout";
 import type { FlowDef, FlowOption, FlowOutcome } from "../flows/types";
 import { useAgent } from "../state/agent";
 import { useAnnounce } from "../state/announcer";
@@ -84,7 +86,11 @@ function FlowRunner({ flow }: { flow: FlowDef }) {
   const screen = screenOf(flow, state);
   const prompt = promptOf(screen, state.selections);
   const options = useMemo(() => optionsOf(flow, state, usual), [flow, state, usual]);
-  const page = pageOf(options, state.page);
+  // Choices per page follow how precise eye control is (input/layout.ts), fixed for the whole screen so
+  // nothing moves while the person is looking: 4 when tracking is rough, 6 normally, 8 when it is sharp.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const pageSize = useMemo(() => PAGE_SIZE[precisionForNewScreen()], [state.screenId, state.typing]);
+  const page = pageOf(options, state.page, pageSize);
 
   // New choices under the gaze: pause selection briefly so a lingering look doesn't pick one.
   useEffect(() => {
@@ -207,6 +213,8 @@ function FlowRunner({ flow }: { flow: FlowDef }) {
                 className={`choice ${o.id === USUAL_ID ? "choice-usual" : ""}`}
                 onClick={() => pick(o)}
                 data-dwell
+                // The person's usual (memory) is a guess, so only weakly likely.
+                {...likely(o.id === USUAL_ID && "weak")}
               >
                 <span className="choice-pic" aria-hidden>
                   {o.image ? (
