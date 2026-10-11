@@ -368,6 +368,7 @@ body {
   padding: 8px 32px;
 }
 .main > .flow {
+  grid-template-columns: minmax(0, 1fr);
   background: var(--window-content);
   border: var(--hairline);
   border-radius: 20px;
@@ -607,6 +608,13 @@ body {
   }
   .flow-bar {
     flex-wrap: wrap;
+  }
+  .flow-head .eyebrow {
+    flex-wrap: wrap;
+  }
+  .flow-head .badge {
+    max-width: 100%;
+    white-space: normal;
   }
   .talk-page .talk-tabs,
   .talk-page .talk-words,
