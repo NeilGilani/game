@@ -103,6 +103,18 @@ function clearDwellMarks(): void {
   clearMarks("data-dwell-paused", true);
 }
 
+/** The ring around the cursor fills as a choice is held (null: no choice in progress). */
+function cursorRing(cursor: HTMLElement | null, progress: number | null): void {
+  if (!cursor) return;
+  if (progress === null) {
+    cursor.removeAttribute("data-dwelling");
+    cursor.style.setProperty("--dwell", "0");
+  } else {
+    cursor.setAttribute("data-dwelling", "");
+    cursor.style.setProperty("--dwell", progress.toFixed(3));
+  }
+}
+
 function flash(el: HTMLElement): void {
   el.setAttribute("data-selected-flash", "");
   window.setTimeout(() => el.removeAttribute("data-selected-flash"), 450);
@@ -297,13 +309,17 @@ export function InputLayer() {
             clearMarks("data-dwell-active");
             clearMarks("data-dwell-paused", true);
             target?.setAttribute("data-dwell-active", "");
+            cursorRing(cursor, 0);
           } else if (ev.type === "progress" && target) {
             target.style.setProperty("--dwell", ev.progress.toFixed(3));
+            cursorRing(cursor, ev.progress);
           } else if (ev.type === "cancel") {
             clearMarks("data-dwell-active");
             clearMarks("data-dwell-paused", true);
+            cursorRing(cursor, null);
           } else if (ev.type === "selected" && target) {
             target.style.setProperty("--dwell", "0");
+            cursorRing(cursor, null);
             // Where the eyes were during this dwell teaches the engine where this person's gaze lands
             // (continuous recalibration: bounded, and only kept when it makes estimates better).
             vision.selected(ev.targetId, target.getBoundingClientRect(), now, ev.dwellStartT);
