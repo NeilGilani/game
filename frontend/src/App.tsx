@@ -5,6 +5,7 @@ import { ConnectionBanner, Nav, TopBar } from "./components/Shell";
 import { GazeAssist } from "./input/GazeAssist";
 import { InputLayer } from "./input/InputLayer";
 import { LifelineOverlay } from "./lifeline/LifelineOverlay";
+import { EyeKeyboard } from "./components/EyeKeyboard";
 import { LifelineProvider } from "./lifeline/LifelineProvider";
 import { AgentProvider } from "./state/agent";
 import { AnnouncerProvider } from "./state/announcer";
@@ -166,6 +167,7 @@ function Shell() {
         {tools && <div style={{ height: 16 }} />}
         <Screen route={route} />
       </main>
+      <EyeKeyboard />
       <LifelineOverlay />
       <InputLayer />
       <GazeAssist />
