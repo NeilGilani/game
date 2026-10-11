@@ -1,5 +1,8 @@
+// Atkinson Hyperlegible backs the "Easy-read font" setting (tokens.css, data-font="easy-read").
 import "@fontsource/atkinson-hyperlegible/400.css";
 import "@fontsource/atkinson-hyperlegible/700.css";
+// Design tokens shared with the shell (docs/os/DESIGN.md), then the overlay's own styles.
+import "../../../frontend/src/styles/tokens.css";
 import "./ui/overlay.css";
 import { createRoot } from "react-dom/client";
 import { OverlayController } from "./core/controller";

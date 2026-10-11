@@ -1,9 +1,9 @@
 /** Draws an OverlayView. All positions come from the controller (global points) minus the display origin. */
 
-import type { CSSProperties } from "react";
+import { useEffect, useRef, type CSSProperties } from "react";
 import type { ScreenRect } from "../contracts";
 import type { OverlayButton, OverlayView } from "../core/controller";
-import { RailIcon } from "./icons";
+import { MenuIcon, NavIcon, NoticeIcon, RailIcon, hasNavIcon } from "./icons";
 
 interface Props {
   view: OverlayView;
@@ -37,7 +37,12 @@ export function Overlay({ view, onActivate }: Props) {
         >
           <h2>
             {view.panel.title}
-            {view.panel.pages > 1 ? ` · page ${view.panel.page + 1} of ${view.panel.pages}` : ""}
+            {view.panel.pages > 1 && (
+              <span className="ov-page">
+                {" "}
+                · page {view.panel.page + 1} of {view.panel.pages}
+              </span>
+            )}
           </h2>
         </section>
       )}
@@ -50,6 +55,7 @@ export function Overlay({ view, onActivate }: Props) {
         >
           {view.keyboard.secure && (
             <p className="ov-secure" role="status">
+              <NoticeIcon tone="warn" />
               This is a password box. AGENCY never types passwords. Ask a helper, or use a passkey.
             </p>
           )}
@@ -90,6 +96,7 @@ export function Overlay({ view, onActivate }: Props) {
           style={pos(b.rect)}
           paused={view.paused}
           scan={view.scanHighlight === b.id}
+          launch={view.launched?.id === b.id ? view.launched.n : 0}
           onActivate={onActivate}
         />
       ))}
@@ -105,7 +112,8 @@ export function Overlay({ view, onActivate }: Props) {
           style={{ left: chipsX, top: Math.max(16, (railTop?.y ?? 130) - o.y) }}
           data-testid="notice"
         >
-          {view.notice.text}
+          <NoticeIcon tone={view.notice.tone} />
+          <span>{view.notice.text}</span>
         </div>
       )}
       {status.length > 0 && (
@@ -135,17 +143,30 @@ function OverlayBtn({
   style,
   paused,
   scan,
+  launch,
   onActivate,
 }: {
   b: OverlayButton;
   style: CSSProperties;
   paused: boolean;
   scan: boolean;
+  /** Increments each time this control is chosen: briefly highlights it in place (DESIGN.md: Motion). */
+  launch: number;
   onActivate(id: string): void;
 }) {
+  const ref = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    const el = ref.current;
+    if (!launch || !el || reducedMotion()) return;
+    el.dataset.launched = "";
+    const end = () => delete el.dataset.launched;
+    el.addEventListener("animationend", end, { once: true });
+    return () => el.removeEventListener("animationend", end);
+  }, [launch]);
   const name = b.kind === "key" ? (b.detail ?? b.label) : b.detail ? `${b.label}, ${b.detail}` : b.label;
   return (
     <button
+      ref={ref}
       type="button"
       className="ov-btn"
       style={style}
@@ -162,9 +183,24 @@ function OverlayBtn({
     >
       {b.n !== undefined && <span className="ov-n">{b.n}</span>}
       {b.kind === "rail" && <RailIcon id={b.id} paused={paused} />}
+      {b.kind === "item" && b.n === undefined && !b.iconPng && b.id.startsWith("menu:") && (
+        <span className="ov-plate">
+          <MenuIcon id={b.id} />
+        </span>
+      )}
       {b.iconPng && <img src={`data:image/png;base64,${b.iconPng}`} alt="" />}
-      <span>{b.label}</span>
-      {b.detail && b.kind !== "key" && <span className="ov-detail">{b.detail}</span>}
+      {hasNavIcon(b.id) && <NavIcon id={b.id} />}
+      {b.kind === "item" ? (
+        <span className="ov-text">
+          <span>{b.label}</span>
+          {b.detail && <span className="ov-detail">{b.detail}</span>}
+        </span>
+      ) : (
+        <>
+          <span>{b.label}</span>
+          {b.detail && b.kind !== "key" && <span className="ov-detail">{b.detail}</span>}
+        </>
+      )}
     </button>
   );
 }
@@ -176,31 +212,37 @@ interface Box {
   height: number;
 }
 
+/** DESIGN.md dwell feedback: a 4 px outline and an activity ring that fills as the dwell completes. */
 function DwellRing({ rect: r, progress, kind }: { rect: Box; progress: number; kind: string }) {
-  const pad = 8;
-  const w = r.width + 2 * pad;
-  const h = r.height + 2 * pad;
+  const pad = 6;
+  const ring = 38;
+  // On the overlay's own buttons the ring sits inside the top-right corner, like the shell. On app controls it
+  // sits just outside that corner so it never covers the control the person is looking at.
+  const inside = kind === "overlay";
+  const ringLeft = inside ? r.left + r.width - ring - 8 : r.left + r.width + pad + 4;
+  const ringTop = inside ? r.top + 8 : r.top - pad - ring / 2;
   return (
-    <svg
-      className="ov-focus"
-      data-kind={kind}
-      style={{ left: r.left - pad, top: r.top - pad, width: w, height: h }}
-      viewBox={`0 0 ${w} ${h}`}
-      aria-hidden="true"
-      data-testid="dwell-ring"
-      data-progress={progress.toFixed(2)}
-    >
-      <rect className="track" x={3} y={3} width={w - 6} height={h - 6} rx={14} />
-      <rect
-        className="progress"
-        x={3}
-        y={3}
-        width={w - 6}
-        height={h - 6}
-        rx={14}
-        pathLength={1}
-        strokeDasharray={`${progress} 1`}
+    <>
+      <div
+        className="ov-focus"
+        data-kind={kind}
+        style={{ left: r.left - pad, top: r.top - pad, width: r.width + 2 * pad, height: r.height + 2 * pad }}
+        aria-hidden="true"
+        data-testid="dwell-ring"
+        data-progress={progress.toFixed(2)}
       />
-    </svg>
+      <div
+        className="ov-ring"
+        style={{ left: ringLeft, top: ringTop, ["--dwell" as string]: progress } as CSSProperties}
+        aria-hidden="true"
+      />
+    </>
+  );
+}
+
+function reducedMotion(): boolean {
+  return (
+    document.documentElement.hasAttribute("data-reduced-motion") ||
+    window.matchMedia?.("(prefers-reduced-motion: reduce)").matches === true
   );
 }
