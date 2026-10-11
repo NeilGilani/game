@@ -22,24 +22,63 @@ interface AgentLink {
   onEvent(listener: (event: AgentEvent) => void): () => void;
   /** True when this is the in-page fake: everything it does is simulated. */
   simulated: boolean;
+  /** Mac app only: stop the practice tasks (main stops its own agent; this must not echo stop.all to it). */
+  stopPractice?: () => void;
 }
 
 function fakeDelay(): number {
   try {
     const v = Number(localStorage.getItem("agency.fakeAgentDelayMs"));
-    return Number.isFinite(v) && v > 0 ? v : 700;
+    return Number.isFinite(v) && v > 0 ? v : 450;
   } catch {
-    return 700;
+    return 450;
   }
+}
+
+/**
+ * Tasks done on practice services (food, shopping, calls, messages, papers): the same practice world in the Mac app
+ * as in the browser, so they take seconds (Gemini plans through Synapse, then the steps run). The Mac app's agent
+ * runtime, which works the real Mac by reading the screen, keeps everything that needs the real Mac (Music, Chrome,
+ * opening apps).
+ */
+const PRACTICE_KINDS = new Set(["food", "shopping", "call", "message", "papers"]);
+
+export function practiceTask(request: TaskRequest): boolean {
+  return PRACTICE_KINDS.has(request.selections?.kind ?? "");
 }
 
 function connect(): AgentLink {
   const h = host();
-  if (h && !fakeForced("agent")) {
-    return { send: (c) => h.agent.send(c), onEvent: (l) => h.agent.onEvent(l), simulated: false };
-  }
   const fake = new FakeAgent(fakeDelay());
-  return { send: (c) => fake.send(c), onEvent: (l) => fake.onEvent(l), simulated: true };
+  if (!h || fakeForced("agent")) {
+    return { send: (c) => fake.send(c), onEvent: (l) => fake.onEvent(l), simulated: true };
+  }
+  // Each task goes to one of the two, and every later command for it follows.
+  const practice = new Set<string>();
+  return {
+    send: (c) => {
+      if (c.type === "task.start") {
+        if (practiceTask(c.request)) {
+          practice.add(c.request.id);
+          fake.send(c);
+        } else h.agent.send(c);
+      } else if (c.type === "stop.all") {
+        fake.send(c);
+        h.agent.send(c);
+      } else if (practice.has(c.taskId)) fake.send(c);
+      else h.agent.send(c);
+    },
+    onEvent: (l) => {
+      const offFake = fake.onEvent(l);
+      const offHost = h.agent.onEvent(l);
+      return () => {
+        offFake();
+        offHost();
+      };
+    },
+    simulated: false,
+    stopPractice: () => fake.send({ type: "stop.all" }),
+  };
 }
 
 export interface AgentState {
@@ -129,8 +168,10 @@ export function AgentProvider({ children }: { children: ReactNode }) {
       // In the Mac app, main stops the agent and all synthetic input itself (and tells every window); sending
       // stop.all here too would echo every broadcast back.
       const h = link.simulated ? null : host();
-      if (h) void h.stopAll();
-      else link.send({ type: "stop.all" });
+      if (h) {
+        void h.stopAll();
+        link.stopPractice?.();
+      } else link.send({ type: "stop.all" });
     },
     dismiss: (id) => {
       order.current = order.current.filter((x) => x !== id);
