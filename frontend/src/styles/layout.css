@@ -335,6 +335,32 @@ body {
     padding: 14px;
     gap: 8px;
   }
+  .apps-flow .apps-grid {
+    grid-auto-rows: minmax(120px, 1fr);
+  }
+  .apps-flow .app-tile {
+    display: grid;
+    grid-template-columns: 56px minmax(0, 1fr);
+    grid-template-rows: auto auto;
+    align-content: center;
+    gap: 4px 14px;
+    padding: 12px;
+    text-align: left;
+  }
+  .apps-flow .app-icon {
+    grid-row: 1 / 3;
+    width: 56px;
+    height: 56px;
+  }
+  .apps-flow .app-name {
+    font-size: var(--type-body);
+  }
+  .apps-flow .app-state {
+    font-size: var(--type-footnote);
+  }
+  .apps-flow .flow-bar .btn-xl {
+    padding-inline: 18px;
+  }
 }
 
 /* Never vertically centre content outside the scrollable viewport on short windows. */
@@ -495,6 +521,13 @@ body {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     grid-auto-rows: minmax(160px, auto);
   }
+  .main > .flow {
+    flex: 0 0 auto;
+    grid-template-rows: auto auto auto;
+  }
+  .apps-flow .apps-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
   .talk-page .talk-tabs,
   .talk-page .talk-words {
     grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -567,6 +600,9 @@ body {
     flex: none;
   }
   .flow-options {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .apps-flow .apps-grid {
     grid-template-columns: minmax(0, 1fr);
   }
   .flow-bar {
