@@ -15,15 +15,15 @@ export const CONTACT_EMAIL: string = import.meta.env["PUBLIC_CONTACT_EMAIL"] ?? 
 export const ISSUES_URL = `${SOURCE_URL}/issues`;
 
 /** Set PUBLIC_DEMO_VIDEO to a real recording (e.g. "demo/agency-60s.mp4" in public/) to replace the placeholder. */
-export const DEMO_VIDEO: string = import.meta.env["PUBLIC_DEMO_VIDEO"] ?? "";
-export const DEMO_CAPTIONS: string = import.meta.env["PUBLIC_DEMO_CAPTIONS"] ?? "";
+export const DEMO_VIDEO: string = import.meta.env["PUBLIC_DEMO_VIDEO"] ?? "demo/agency-demo.mp4";
+export const DEMO_CAPTIONS: string = import.meta.env["PUBLIC_DEMO_CAPTIONS"] ?? "demo/agency-demo.vtt";
 
 export const REQUIREMENTS = {
   macos: "macOS 13 Ventura or later",
   chips: "A Mac with Apple silicon (M1 or later) or an Intel processor",
   camera: "A webcam: the one built into a MacBook or iMac works",
   browser: "Google Chrome, for eye control on web pages (other apps work without it)",
-  ai: "An Anthropic API key for tasks the AI agent plans itself. Without one, AGENCY runs its built-in tasks only.",
+  ai: "A Google Gemini API key for tasks the AI agent plans itself. Without one, AGENCY runs its built-in tasks only.",
 };
 
 /**

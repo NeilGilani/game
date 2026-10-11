@@ -85,6 +85,11 @@ export function useConnection(): ConnectionState {
 export function coordinatorLabel(health: Health | null, online: boolean): { short: string; long: string } {
   if (!online) return { short: "Coordinator offline", long: "Can't reach the coordinator" };
   if (!health) return { short: "Connecting…", long: "Connecting to the coordinator" };
+  if (health.node.role === "web-demo")
+    return {
+      short: "Web demo",
+      long: "Web demo: everything runs in this browser and nothing is sent anywhere",
+    };
   if (health.node.is_raspberry_pi || health.node.role === "raspberry-pi") {
     return {
       short: "Raspberry Pi",

@@ -28,8 +28,16 @@ try {
   /* storage unavailable */
 }
 
-createRoot(document.getElementById("root")!).render(
-  <StrictMode>
-    <App />
-  </StrictMode>,
+// The hosted web demo (VITE_WEB_DEMO=1) answers coordinator calls in the page; see demo/webDemo.ts.
+const ready =
+  import.meta.env.VITE_WEB_DEMO === "1"
+    ? import("./demo/webDemo").then((m) => m.installWebDemo())
+    : Promise.resolve();
+
+void ready.then(() =>
+  createRoot(document.getElementById("root")!).render(
+    <StrictMode>
+      <App />
+    </StrictMode>,
+  ),
 );

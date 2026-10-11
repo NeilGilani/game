@@ -45,8 +45,12 @@ jobs:
         with:
           node-version: 22
           cache: npm
-      - name: Install the site's dependencies (npm workspace; the lockfile is at the root)
-        run: npm ci --workspace site --no-audit --no-fund
+      - name: Install the site's and the interface's dependencies (npm workspaces; the lockfile is at the root)
+        run: npm ci --workspace site --workspace frontend --no-audit --no-fund
+      - name: Build the web demo into the site (/app/)
+        run: |
+          npm run vendor -w frontend
+          cd frontend && VITE_WEB_DEMO=1 npx vite build --base /app/ --outDir ../site/public/app --emptyOutDir --sourcemap false
       - name: Build
         run: npm run build -w site
       - name: Deploy to Cloudflare Pages
