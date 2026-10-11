@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { SELECTION_RESET_EVENT } from "../components/common";
 import { Icon } from "../components/Icon";
 import { useAnnounce } from "../state/announcer";
 import { useInput } from "../state/input";
@@ -68,6 +69,8 @@ export function Calibrate() {
       setCalibration(vision.finishCalibration(step.result), true);
       announce("Done. Look at anything for a second to choose it.");
       navigate("/");
+      // The eyes end on whatever sits in the middle of Home: give them time to look around first.
+      window.dispatchEvent(new CustomEvent(SELECTION_RESET_EVENT, { detail: { holdMs: 3000 } }));
     };
     requestAnimationFrame(draw);
   }, [vision, setCalibration, announce]);

@@ -113,8 +113,10 @@ export function InputLayer() {
   // Navigation: forget any half-finished dwell and pause selection briefly, so a control that
   // appears under the person's gaze is not selected by accident.
   useEffect(() => {
-    const onNav = () => {
-      dwell.current.reset(performance.now(), 1200);
+    const onNav = (e: Event) => {
+      // A screen can ask for a longer pause (the eye scan ends with the eyes on whatever is in the middle).
+      const hold = e instanceof CustomEvent && typeof e.detail?.holdMs === "number" ? e.detail.holdMs : 1200;
+      dwell.current.reset(performance.now(), Math.max(1200, hold));
       clearMarks("data-dwell-active");
       targets.current.at = 0;
     };
