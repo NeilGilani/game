@@ -106,6 +106,8 @@ export interface AgencyApi {
     onEvent(listener: (event: GazeEvent) => void): Unsubscribe;
     /** Gaze window only: publish events from the engine. */
     publish(event: GazeEvent): void;
+    /** Gaze window only: how many frames a second to track (added additively; older hosts don't send it). */
+    onPace?(listener: (fps: number) => void): Unsubscribe;
   };
   targets: {
     /** Overlay: merged shell + accessibility + web targets, in global screen points. */

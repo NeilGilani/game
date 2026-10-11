@@ -37,6 +37,8 @@ export const IPC = {
   showHome: "agency:show-home",
   /** shell, overlay -> main (invoke): memory suggestions and selection events, proxied to the coordinator */
   memory: "agency:memory",
+  /** main -> gaze: frames per second to track at (slow while the shell, which tracks for itself, is in front) */
+  gazePace: "agency:gaze-pace",
 } as const;
 
 export type IpcChannel = (typeof IPC)[keyof typeof IPC];

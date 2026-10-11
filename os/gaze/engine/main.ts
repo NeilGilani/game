@@ -17,7 +17,7 @@ import { mediapipeLandmarker } from "../src/providers/mediapipe";
 import type { DisplayInfo } from "../src/screen";
 
 interface AgencyGazeApi {
-  gaze?: { publish(event: GazeEvent): void };
+  gaze?: { publish(event: GazeEvent): void; onPace?(listener: (fps: number) => void): () => void };
 }
 
 declare global {
@@ -59,6 +59,8 @@ async function main(): Promise<void> {
       if (event.type === "help-signal" || host?.engine.calibration) publish(event);
     },
   });
+  // Main slows this engine while the AGENCY window (which tracks the eyes itself) is in front.
+  window.agency?.gaze?.onPace?.((fps) => host?.setFps(fps));
 }
 
 let host: Awaited<ReturnType<typeof startEngineHost>> | null = null;

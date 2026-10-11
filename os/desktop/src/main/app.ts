@@ -395,6 +395,7 @@ export class AgencyApp {
       });
       this.gazeWin = win;
       this.track(win, "gaze");
+      win.webContents.on("did-finish-load", () => this.paceGaze());
       void win.loadURL(`${SCHEME}://gaze/${this.opts.paths.gazeDir.entry}`);
       this.setState("gaze", "starting");
       win.webContents.on("render-process-gone", () => {
@@ -454,6 +455,16 @@ export class AgencyApp {
     return this.opts.paths.shellDir ? SHELL_URL : `${SCHEME}://host/shell-missing/index.html`;
   }
 
+  /**
+   * The shell tracks the eyes itself with its own camera pipeline. While it's in front, the hidden gaze window (which
+   * serves the overlay over other apps) idles at 5 frames a second instead of running a second full face tracker
+   * on the same camera; it goes back to 30 as soon as another app is in front.
+   */
+  private paceGaze(): void {
+    const fps = this.shell && !this.shell.isDestroyed() && this.shell.isFocused() ? 5 : 30;
+    if (this.gazeWin && !this.gazeWin.isDestroyed()) this.gazeWin.webContents.send(IPC.gazePace, fps);
+  }
+
   private createShell(): void {
     const win = new BrowserWindow({
       title: "AGENCY",
@@ -477,8 +488,14 @@ export class AgencyApp {
     this.shell = win;
     this.track(win, "shell");
     win.once("ready-to-show", () => win.show());
-    win.on("focus", () => this.scheduleTargets());
-    win.on("blur", () => this.scheduleTargets());
+    win.on("focus", () => {
+      this.scheduleTargets();
+      this.paceGaze();
+    });
+    win.on("blur", () => {
+      this.scheduleTargets();
+      this.paceGaze();
+    });
     win.webContents.on("render-process-gone", (_e, details) => {
       log.error(`shell renderer gone (${details.reason}); reloading`);
       setTimeout(() => !win.isDestroyed() && void win.loadURL(this.shellUrl()), 500);
