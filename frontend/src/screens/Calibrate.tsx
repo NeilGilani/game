@@ -6,6 +6,7 @@ import { useAnnounce } from "../state/announcer";
 import { useInput } from "../state/input";
 import { usePreferences } from "../state/preferences";
 import { navigate } from "../state/router";
+import type { CalibrationResult } from "../../../os/gaze/src/calibration/session";
 import { type StoredCalibration, describeError, describeEyeModel } from "../vision/calibrationStore";
 
 /** Estimated error above which the scan says so and offers another go (px; "poor" starts at 128). */
@@ -19,7 +20,8 @@ type Phase =
 
 /**
  * The 5-second eye scan (os/gaze/src/calibration/pursuit.ts): one light glides around the screen
- * and the person follows it with their eyes. That's the only setup. It is remembered on this
+ * and the person follows it with their eyes, then three quick dots (1.5 s, check.ts) measure how
+ * accurate it really is and fix any offset left. That's the only setup. It is remembered on this
  * device, and keeps improving from everyday choices (continuous recalibration in the engine).
  */
 export function Calibrate() {
@@ -29,6 +31,8 @@ export function Calibrate() {
   const [phase, setPhase] = useState<Phase>({ kind: "intro" });
   const [countdown, setCountdown] = useState(3);
   const [faceVisible, setFaceVisible] = useState(false);
+  /** During the scan: the gliding light, then the three check dots. */
+  const [stage, setStage] = useState<"glide" | "check">("glide");
   const light = useRef<HTMLDivElement>(null);
   const cancelled = useRef(false);
   const { vision, setSuspended, setCalibration } = input;
@@ -61,35 +65,47 @@ export function Calibrate() {
     setPhase({ kind: "scanning" });
     const eyeScan = vision.startEyeScan();
     const start = performance.now();
-    const off = vision.onFrame((f) =>
+    let off = vision.onFrame((f) =>
       eyeScan.add(f.t - start, f.features, f.trackingConfidence, f.blink, f.eyes),
     );
-    const draw = () => {
-      if (cancelled.current) {
-        off();
-        return;
-      }
-      const ms = performance.now() - start;
-      const p = eyeScan.at(ms);
+    const place = (p: { x: number; y: number }) => {
       if (light.current) light.current.style.transform = `translate(${p.x}px, ${p.y}px)`;
-      if (ms < eyeScan.durationMs) {
-        requestAnimationFrame(draw);
-        return;
-      }
-      off();
-      const step = eyeScan.finish();
-      if (step.kind !== "done") {
-        vision.cancelCalibration();
-        setPhase({ kind: "failed", message: step.kind === "failed" ? step.reason : "Please try again." });
-        return;
-      }
-      const calibration = vision.finishCalibration(step.result);
-      setCalibration(calibration, true);
-      console.info(
-        "[AGENCY] eye scan:",
-        describeEyeModel(calibration),
-        step.result.realEye ?? "no eye images",
+    };
+
+    // After the glide, three quick dots measure the result and fix any offset left (check.ts).
+    const check = (result: CalibrationResult) => {
+      const dots = vision.startScanCheck(result);
+      const checkStart = performance.now();
+      setStage("check");
+      off = vision.onFrame((f) =>
+        dots.add(f.t - checkStart, f.features, f.trackingConfidence, f.blink, f.eyes),
       );
+      const step = () => {
+        if (cancelled.current) {
+          off();
+          return;
+        }
+        const ms = performance.now() - checkStart;
+        const p = dots.at(ms);
+        if (p) {
+          place(p);
+          requestAnimationFrame(step);
+          return;
+        }
+        off();
+        done(dots.finish());
+      };
+      requestAnimationFrame(step);
+    };
+
+    const done = (result: CalibrationResult) => {
+      const calibration = vision.finishCalibration(result);
+      setCalibration(calibration, true);
+      console.info("[AGENCY] eye scan:", describeEyeModel(calibration), describeError(calibration), {
+        lagMs: result.lagMs,
+        realEye: result.realEye ?? "no eye images",
+        check: result.check,
+      });
       if (calibration.result.quality.meanErrorPt > ROUGH_ERROR_PT) {
         // Say so instead of quietly using a scan that will feel random; it still works on big tiles.
         setPhase({ kind: "rough", calibration });
@@ -102,6 +118,28 @@ export function Calibrate() {
       announce("Done. Look at anything for a second to choose it.");
       goHome();
     };
+
+    const draw = () => {
+      if (cancelled.current) {
+        off();
+        return;
+      }
+      const ms = performance.now() - start;
+      place(eyeScan.at(ms));
+      if (ms < eyeScan.durationMs) {
+        requestAnimationFrame(draw);
+        return;
+      }
+      off();
+      const step = eyeScan.finish();
+      if (step.kind !== "done") {
+        vision.cancelCalibration();
+        setPhase({ kind: "failed", message: step.kind === "failed" ? step.reason : "Please try again." });
+        return;
+      }
+      check(step.result);
+    };
+    setStage("glide");
     requestAnimationFrame(draw);
   }, [vision, setCalibration, announce, goHome]);
 
@@ -180,11 +218,12 @@ export function Calibrate() {
     return (
       <div className="calibration welcome" data-dwell-scope="modal">
         <div className="welcome-card panel stack" style={{ maxWidth: 820 }}>
-          <div className="eyebrow">Eye scan · 5 seconds · only once</div>
+          <div className="eyebrow">Eye scan · 5 seconds and 3 quick dots · only once</div>
           <h1>Follow the light with your eyes</h1>
           <p>
-            A light glides around the screen. Follow it with your eyes, keeping your head comfortably still.
-            That&apos;s all: AGENCY learns how your eyes move and keeps getting better as you use it.
+            A light glides around the screen, then three dots appear one after another. Follow the light and
+            look at each dot with your eyes, keeping your head comfortably still. That&apos;s all: AGENCY
+            learns how your eyes move and keeps getting better as you use it.
           </p>
           <p aria-live="polite">
             <strong>
@@ -208,7 +247,7 @@ export function Calibrate() {
     return (
       <div className="calibration" role="dialog" aria-label="Eye scan in progress">
         <div className="cal-hud">
-          <span aria-live="polite">Follow the light</span>
+          <span aria-live="polite">{stage === "glide" ? "Follow the light" : "Now look at each dot"}</span>
           <button
             className="btn"
             onClick={() => {
@@ -223,6 +262,7 @@ export function Calibrate() {
           ref={light}
           className="cal-target cal-light"
           data-collecting="true"
+          data-stage={stage}
           style={{
             left: 0,
             top: 0,

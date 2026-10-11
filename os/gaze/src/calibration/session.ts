@@ -9,6 +9,7 @@
  */
 
 import type { AppearanceCalibration, AppearanceReport } from "./appearance";
+import type { CheckReport } from "./check";
 import type { CalibrationQuality } from "../contracts";
 import { mean } from "../linalg";
 import type { GazeInput } from "./features";
@@ -87,6 +88,12 @@ export interface CalibrationResult {
   appearance?: AppearanceCalibration | null;
   /** What the scan measured for RealEye's model; null when the camera gave no eye images. */
   realEye?: AppearanceReport | null;
+  /** How far the eyes trailed the eye scan's light, measured from the scan (ms). */
+  lagMs?: number;
+  /** Added to every estimate: the offset the check dots after the eye scan measured (check.ts). */
+  offset?: { x: number; y: number } | null;
+  /** What the check dots after the eye scan measured; null when they weren't seen clearly. */
+  check?: CheckReport | null;
 }
 
 export type SessionStep =

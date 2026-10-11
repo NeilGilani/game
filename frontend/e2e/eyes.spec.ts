@@ -63,7 +63,8 @@ test("5-second eye scan, then choose with the eyes alone (simulated person, real
     (window as unknown as { __agency: Hook }).__agency.eyes({ seed: 3, head: "still" }),
   );
 
-  // The simulated person follows the eye scan's light. Nothing is clicked; it ends on Home by itself.
+  // The simulated person follows the eye scan's light, then the check dots. Nothing is clicked; it
+  // ends on Home by itself.
   await lookAt(page, ".cal-target");
   await expect(page.getByText(/Starting in \d/)).toBeVisible();
   await expect(page.getByText(/Follow the light/).first()).toBeVisible({ timeout: 15_000 });
@@ -72,6 +73,8 @@ test("5-second eye scan, then choose with the eyes alone (simulated person, real
   await expect(
     page.getByRole("status").filter({ hasText: "Eye scan done. Eye model: Face points only" }),
   ).toBeVisible();
+  // ...and the error the three check dots after the glide measured, not just the scan's estimate.
+  await expect(page.getByRole("status")).toContainText(/Measured error about \d+ px.* on 3 check dots/);
 
   const size = page.viewportSize()!;
   const error = await pointerError(page, [

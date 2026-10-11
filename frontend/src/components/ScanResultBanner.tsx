@@ -4,6 +4,7 @@ import { Icon } from "./Icon";
 /** Which eye model the pointer now uses, and how accurate, from the eye scan that just finished. */
 export interface ScanResult {
   model: string;
+  /** How accurate, and how that was found ("measured error about 52 px on 3 check dots"). */
   error: string;
 }
 
@@ -47,7 +48,8 @@ export function ScanResultBanner() {
     <div className="banner banner-ok banner-float" role="status">
       <Icon name="check" />
       <span>
-        Eye scan done. Eye model: {result.model} Estimated error {result.error}.
+        Eye scan done. Eye model: {result.model}{" "}
+        {result.error.charAt(0).toUpperCase() + result.error.slice(1)}.
       </span>
     </div>
   );

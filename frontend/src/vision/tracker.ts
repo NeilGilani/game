@@ -16,6 +16,7 @@
  */
 
 import { type CameraErrorKind } from "../../../os/gaze/src/camera";
+import { ScanCheck } from "../../../os/gaze/src/calibration/check";
 import { PursuitCalibration } from "../../../os/gaze/src/calibration/pursuit";
 import type { CalibrationResult } from "../../../os/gaze/src/calibration/session";
 import type { TouchUpResult } from "../../../os/gaze/src/calibration/touchup";
@@ -203,6 +204,14 @@ export class VisionEngine {
     this.space = viewport();
     this.gaze.setScreen(singleDisplay(this.space.width, this.space.height));
     return new PursuitCalibration({ display: { x: 0, y: 0, ...this.space } });
+  }
+
+  /**
+   * The three check dots after the eye scan, in the scan's viewport: draw the dot at `check.at(ms)`,
+   * hand in frames with `check.add`, then `finishCalibration(check.finish())`.
+   */
+  startScanCheck(result: CalibrationResult): ScanCheck {
+    return new ScanCheck(result, { display: { x: 0, y: 0, ...this.space } });
   }
 
   /** The finished calibration, ready to store and apply (setCalibration). */

@@ -619,7 +619,7 @@ export function StatusView() {
             <dt>Calibration</dt>
             <dd>
               {input.calibration
-                ? `Eye scan, ${input.calibration.result.quality.grade} (estimated error ${describeError(input.calibration)}; improves as you use it). ${describeEyeModel(input.calibration)}`
+                ? `Eye scan, ${input.calibration.result.quality.grade} (${describeError(input.calibration)}; improves as you use it). ${describeEyeModel(input.calibration)}`
                 : "None"}
             </dd>
           </dl>

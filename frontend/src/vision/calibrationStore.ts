@@ -45,11 +45,22 @@ export function isStoredCalibration(value: unknown): value is StoredCalibration 
   return GRADES.has(r.quality.grade) && typeof r.quality.meanErrorPt === "number";
 }
 
-/** "about 70 px (2.0°)": the measured error on dots the model never trained on. */
+/**
+ * The error, and how it was found: "measured error about 52 px (1.3°) on 3 check dots" when the
+ * check dots after the eye scan were seen (check.ts), otherwise the scan's own estimate, saying so.
+ */
 export function describeError(calibration: StoredCalibration): string {
-  const q = calibration.result.quality;
-  const px = `about ${Math.round(q.meanErrorPt)} px`;
-  return q.meanErrorDeg === null ? px : `${px} (${q.meanErrorDeg.toFixed(1)}°)`;
+  const r = calibration.result;
+  const q = r.quality;
+  const size = `about ${Math.round(q.meanErrorPt)} px${q.meanErrorDeg === null ? "" : ` (${q.meanErrorDeg.toFixed(1)}°)`}`;
+  if (r.check) {
+    const dots = r.check.dots.length;
+    const offset = r.check.offset ? Math.round(Math.hypot(r.check.offset.x, r.check.offset.y)) : 0;
+    const fixed = offset > 0 ? `, after correcting a ${offset} px offset` : "";
+    return `measured error ${size} on ${dots} check dots${fixed}`;
+  }
+  if (r.check === null) return `estimated error ${size} (the check dots weren't seen clearly)`;
+  return `estimated error ${size}`;
 }
 
 /** Which eye model the pointer uses, in plain words. */
@@ -62,7 +73,7 @@ export function describeEyeModel(calibration: StoredCalibration): string {
   const share = Math.round(r.realEyeWeight * 100);
   const mix =
     share === 100 ? "RealEye's eye model" : `RealEye's eye model ${share}% + face points ${100 - share}%`;
-  return `${mix} (RealEye alone ${px(r.realEyePt)}, face points alone ${px(r.landmarksPt)}, together ${px(r.usedPt)}).`;
+  return `${mix} (the scan's estimates: RealEye alone ${px(r.realEyePt)}, face points alone ${px(r.landmarksPt)}, together ${px(r.usedPt)}).`;
 }
 
 /** The worst of the check dots, px. */

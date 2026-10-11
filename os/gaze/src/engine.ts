@@ -694,6 +694,7 @@ export class GazeEngine {
           predictModel(this.calibrationResult.model, input),
           this.calibrationResult.appearance,
           frame.eyes,
+          this.calibrationResult.offset,
         );
         const z = headDelta(this.head, input);
         touchUp = { est, z };

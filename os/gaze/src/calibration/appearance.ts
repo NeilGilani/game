@@ -10,8 +10,14 @@
  * - Its share of the blend with the landmark model: 25 %, 50 %, 75 % or 100 %, whichever predicts
  *   held-out stretches best. Only if it measures far worse than the landmarks (1.5x: unusable eye
  *   crops, say) is it switched off, and the report says so.
+ * The final fit adds RealEye's calibration augmentation: every training frame again with both eye
+ * crops moved 1 px in each of the 8 directions (their AUGMENTATION_OFFSETS_1PX), so small slips of
+ * the crop box, which follows noisy landmarks, matter less. The cross-validation above runs without
+ * it (9x the frames in every fold would take too long); the check dots after the scan measure the
+ * model as used, augmentation included.
  * It is solved in its dual form, one equation per frame instead of per feature, so 1,630 features
- * and ~150 frames fit in well under a second.
+ * and up to 720 rows (frames x 9 copies; consecutive frames are averaged first when there are more)
+ * fit in well under a second.
  *
  * Tests: tests/appearance.test.ts.
  */
@@ -79,6 +85,24 @@ const WEIGHTS = [0, 0.25, 0.5, 0.75, 1] as const;
 const OFF_RATIO = 1.5;
 /** Held-out predictions are averaged over this many frames before scoring, as the smoother would. */
 const SCORE_CHUNK = 4;
+/** RealEye's feature layout (eyeImage.ts): 30 landmark coordinates, then two 40x20 grey eye crops. */
+const CROP_LANDMARKS = 30;
+const CROP_W = 40;
+const CROP_H = 20;
+export const CROP_FEATURES = CROP_LANDMARKS + 2 * CROP_W * CROP_H;
+/** RealEye's augmentation offsets besides the crop itself (AUGMENTATION_OFFSETS_1PX), [dx, dy] px. */
+const SHIFTS: readonly (readonly [number, number])[] = [
+  [-1, -1],
+  [-1, 0],
+  [-1, 1],
+  [0, -1],
+  [0, 1],
+  [1, -1],
+  [1, 0],
+  [1, 1],
+];
+/** Most rows in the augmented final fit; above it, consecutive frames are averaged first. */
+const MAX_ROWS = 720;
 
 export function predictAppearance(model: AppearanceModel, eyes: Float32Array): Point | null {
   const d = model.wx.length;
@@ -92,8 +116,21 @@ export function predictAppearance(model: AppearanceModel, eyes: Float32Array): P
   return Number.isFinite(sx) && Number.isFinite(sy) ? { x: sx, y: sy } : null;
 }
 
-/** The calibrated estimate: the landmark model's, blended with the appearance model when there is one. */
+/**
+ * The calibrated estimate: the landmark model's, blended with the appearance model when there is
+ * one, plus the offset the check dots measured (check.ts) when there is one.
+ */
 export function predictBlend(
+  landmarks: Point | null,
+  appearance: AppearanceCalibration | null | undefined,
+  eyes: Float32Array | null | undefined,
+  offset?: Point | null,
+): Point | null {
+  const p = blend(landmarks, appearance, eyes);
+  return p && offset ? { x: p.x + offset.x, y: p.y + offset.y } : p;
+}
+
+function blend(
   landmarks: Point | null,
   appearance: AppearanceCalibration | null | undefined,
   eyes: Float32Array | null | undefined,
@@ -106,10 +143,74 @@ export function predictBlend(
   return { x: w * landmarks.x + (1 - w) * a.x, y: w * landmarks.y + (1 - w) * a.y };
 }
 
+/**
+ * RealEye's features with both eye crops moved by (dx, dy) px, as their offset crop does (the crop
+ * window moves, so the picture moves the other way), each crop then normalised to zero mean and
+ * unit variance as theirs is. RealEye cuts the moved crop from a slightly larger picture; this
+ * repeats the edge row or column instead, the one part of it the features don't hold.
+ */
+export function shiftCrops(eyes: Float32Array, dx: number, dy: number): Float32Array {
+  const out = new Float32Array(eyes.length);
+  out.set(eyes.subarray(0, CROP_LANDMARKS));
+  const n = CROP_W * CROP_H;
+  for (let e = 0; e < 2; e++) {
+    const base = CROP_LANDMARKS + e * n;
+    let sum = 0;
+    for (let r = 0; r < CROP_H; r++) {
+      const from = base + Math.min(CROP_H - 1, Math.max(0, r + dy)) * CROP_W;
+      for (let c = 0; c < CROP_W; c++) {
+        const v = eyes[from + Math.min(CROP_W - 1, Math.max(0, c + dx))]!;
+        out[base + r * CROP_W + c] = v;
+        sum += v;
+      }
+    }
+    const m = sum / n;
+    let sq = 0;
+    for (let i = base; i < base + n; i++) sq += (out[i]! - m) ** 2;
+    const sd = Math.max(Math.sqrt(sq / n), 1e-6);
+    for (let i = base; i < base + n; i++) out[i] = (out[i]! - m) / sd;
+  }
+  return out;
+}
+
 function dotF(a: Float32Array, b: Float32Array): number {
   let s = 0;
   for (let i = 0; i < a.length; i++) s += a[i]! * b[i]!;
   return s;
+}
+
+/** All dot products of `rows` with each other (m x m, row-major), four at a time for speed. */
+function gramOf(rows: readonly Float32Array[]): Float64Array {
+  const m = rows.length;
+  const gram = new Float64Array(m * m);
+  for (let a = 0; a < m; a++) {
+    const x = rows[a]!;
+    const d = x.length;
+    let b = 0;
+    for (; b + 3 <= a; b += 4) {
+      const p = rows[b]!;
+      const q = rows[b + 1]!;
+      const r = rows[b + 2]!;
+      const t = rows[b + 3]!;
+      let s0 = 0;
+      let s1 = 0;
+      let s2 = 0;
+      let s3 = 0;
+      for (let i = 0; i < d; i++) {
+        const v = x[i]!;
+        s0 += v * p[i]!;
+        s1 += v * q[i]!;
+        s2 += v * r[i]!;
+        s3 += v * t[i]!;
+      }
+      gram[a * m + b] = gram[b * m + a] = s0;
+      gram[a * m + b + 1] = gram[(b + 1) * m + a] = s1;
+      gram[a * m + b + 2] = gram[(b + 2) * m + a] = s2;
+      gram[a * m + b + 3] = gram[(b + 3) * m + a] = s3;
+    }
+    for (; b <= a; b++) gram[a * m + b] = gram[b * m + a] = dotF(x, rows[b]!);
+  }
+  return gram;
 }
 
 /** Lower-triangular Cholesky factor of an n x n SPD matrix (row-major), or null if not SPD. */
@@ -264,6 +365,7 @@ export function fitAppearance(
   frames: readonly AppearanceFrame[],
   landmarkData: readonly Sample[],
   landmarks: ModelConfig,
+  options: { augment?: boolean } = {},
 ): AppearanceFit | null {
   const groups = [...new Set(frames.map((f) => f.group))].sort((a, b) => a - b);
   if (frames.length < 40 || groups.length < 6) return null;
@@ -289,14 +391,7 @@ export function fitAppearance(
   for (const chunk of CHUNKS) {
     const items = itemsFor(frames, chunk);
     const m = items.length;
-    const gram = new Float64Array(m * m);
-    for (let a = 0; a < m; a++) {
-      for (let b = 0; b <= a; b++) {
-        const v = dotF(items[a]!.eyes, items[b]!.eyes);
-        gram[a * m + b] = v;
-        gram[b * m + a] = v;
-      }
-    }
+    const gram = gramOf(items.map((it) => it.eyes));
     const cross = frames.map((f) => items.map((it) => dotF(f.eyes, it.eyes)));
     const preds = RIDGE.map(() => frames.map((): Point | null => null));
     for (const g of groups) {
@@ -358,17 +453,16 @@ export function fitAppearance(
   }
   const top = errors.filter((e) => e.landmarkWeight < 1).reduce((a, b) => (b.errorPt < a.errorPt ? b : a));
 
-  // Final fit on every frame.
-  const items = itemsFor(frames, chosen.chunk);
+  // Final fit on every frame, each again with its crops moved 1 px each way (RealEye's augmentation).
+  const augment = (options.augment ?? true) && d === CROP_FEATURES;
+  let chunk = chosen.chunk;
+  let base = itemsFor(frames, chunk);
+  while (augment && base.length * (SHIFTS.length + 1) > MAX_ROWS) base = itemsFor(frames, ++chunk);
+  const items = augment
+    ? base.flatMap((it) => [it, ...SHIFTS.map(([dx, dy]) => ({ ...it, eyes: shiftCrops(it.eyes, dx, dy) }))])
+    : base;
   const m = items.length;
-  const gram = new Float64Array(m * m);
-  for (let a = 0; a < m; a++) {
-    for (let b = 0; b <= a; b++) {
-      const v = dotF(items[a]!.eyes, items[b]!.eyes);
-      gram[a * m + b] = v;
-      gram[b * m + a] = v;
-    }
-  }
+  const gram = gramOf(items.map((it) => it.eyes));
   const all = items.map((_, a) => a);
   const solved = solveDual(gram, m, all, items, [chosen.ridge]);
   if (!solved) return null;
