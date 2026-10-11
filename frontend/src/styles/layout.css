@@ -1,0 +1,637 @@
+/* macOS-inspired desktop. The wallpaper and icons are original AGENCY assets.
+   Chrome stays separate from content; eye targets stay large and stationary. */
+:root {
+  --desktop-shade: rgb(9 31 78 / 4%);
+  --window-content: rgb(250 251 254 / 96%);
+  --chrome-surface: rgb(241 246 255 / 82%);
+  --icon-gloss: rgb(255 255 255 / 22%);
+  --window-shadow: 0 24px 80px rgb(8 23 55 / 28%), 0 2px 8px rgb(0 0 0 / 12%);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]):not([data-theme="contrast"]) {
+    --desktop-shade: rgb(5 16 47 / 42%);
+    --window-content: rgb(30 33 40 / 97%);
+    --chrome-surface: rgb(35 43 59 / 86%);
+    --icon-gloss: rgb(255 255 255 / 14%);
+    --window-shadow: 0 24px 80px rgb(0 0 0 / 40%), 0 2px 8px rgb(0 0 0 / 25%);
+  }
+}
+:root[data-theme="dark"] {
+  --desktop-shade: rgb(5 16 47 / 42%);
+  --window-content: rgb(30 33 40 / 97%);
+  --chrome-surface: rgb(35 43 59 / 86%);
+  --icon-gloss: rgb(255 255 255 / 14%);
+  --window-shadow: 0 24px 80px rgb(0 0 0 / 40%), 0 2px 8px rgb(0 0 0 / 25%);
+}
+body {
+  background:
+    linear-gradient(var(--desktop-shade), var(--desktop-shade)) fixed,
+    url("/desktop-wallpaper.svg") center / cover fixed;
+}
+.menubar {
+  position: relative;
+  z-index: 50;
+  gap: 18px;
+  background: var(--chrome-surface);
+  font-size: var(--type-footnote);
+}
+.menubar-brand {
+  letter-spacing: 0;
+}
+.menubar-brand .brand-mark {
+  width: 23px;
+  height: 23px;
+}
+.menubar-brand,
+.menubar-time,
+.menubar .chip {
+  flex-shrink: 0;
+}
+.menubar .status-strip {
+  order: initial;
+  flex-basis: auto;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 14px;
+}
+.menubar-time {
+  order: 3;
+  font-size: 0.75rem;
+}
+.menubar .chip {
+  background: transparent;
+  border: 0;
+  padding: 0;
+  gap: 6px;
+  font-size: 0.75rem;
+}
+.menubar .chip-label {
+  display: none;
+}
+.desktop-menu {
+  display: flex;
+  gap: 2px;
+  align-self: stretch;
+}
+.desktop-menu-item {
+  position: relative;
+  display: flex;
+}
+.desktop-menu-item > button {
+  border: 0;
+  padding: 0 10px;
+  border-radius: 6px;
+  color: var(--ink);
+  background: transparent;
+  font: inherit;
+  cursor: pointer;
+}
+.desktop-menu-item > button:hover,
+.desktop-menu-item > button[aria-expanded="true"] {
+  background: var(--accent-soft);
+}
+.desktop-menu-popover {
+  position: absolute;
+  left: 0;
+  top: calc(100% + 6px);
+  z-index: 100;
+  min-width: 240px;
+  padding: 8px;
+  background: var(--glass-strong);
+  backdrop-filter: var(--glass-blur);
+  border: var(--hairline);
+  border-radius: 14px;
+  box-shadow: var(--shadow-lift);
+}
+.desktop-menu-popover a {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 48px;
+  padding: 12px;
+  border-radius: 8px;
+  text-decoration: none;
+  color: var(--ink);
+}
+.desktop-menu-popover a:hover,
+.desktop-menu-popover a:focus-visible {
+  background: var(--accent-soft);
+}
+.topbar.dock {
+  padding: 6px 12px;
+  border-radius: 26px;
+  background: var(--chrome-surface);
+  box-shadow:
+    inset 0 1px 0 var(--icon-gloss),
+    var(--shadow-lift);
+}
+.dock-btn {
+  position: relative;
+  gap: 4px;
+  padding: 4px 12px 8px;
+  border-radius: 18px;
+}
+.dock-btn > .ico {
+  width: 48px;
+  height: 48px;
+  padding: 9px;
+  border-radius: 15px;
+  background: linear-gradient(160deg, #75808c, #3d4656);
+  color: #fff;
+  box-shadow:
+    inset 0 1px 1px rgb(255 255 255 / 50%),
+    0 3px 5px rgb(0 0 0 / 15%);
+}
+.dock-btn[data-dock="home"] > .ico {
+  background: linear-gradient(160deg, #4bbbff, #006bd6);
+}
+.dock-btn[data-dock="talk"] > .ico {
+  background: linear-gradient(160deg, #52d881, #159345);
+}
+.dock-btn.help-btn > .ico {
+  background: transparent;
+  box-shadow: none;
+  padding: 10px;
+}
+.dock-btn.pause-agent > .ico {
+  background: var(--surface-2);
+  color: var(--danger);
+}
+.dock-btn.pause-agent::before {
+  content: "";
+  position: absolute;
+  left: -13px;
+  height: 60px;
+  border-left: 1px solid var(--line-strong);
+}
+.dock-btn[aria-current="page"] {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+.dock-btn[aria-current="page"]::after {
+  content: "";
+  position: absolute;
+  bottom: 4px;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: currentColor;
+}
+.home {
+  grid-template-areas: "title title" "sidebar apps";
+  grid-template-rows: 44px auto;
+  grid-template-columns: minmax(300px, 340px) minmax(0, 1fr);
+  align-items: stretch;
+  align-content: center;
+  gap: 0;
+  flex: 0 0 auto;
+  margin: auto;
+  border: var(--hairline);
+  border-radius: 20px;
+  background: var(--chrome-surface);
+  backdrop-filter: var(--glass-blur);
+  box-shadow: var(--window-shadow);
+}
+.home-titlebar {
+  grid-area: title;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 12px;
+  padding: 0 20px;
+  border-bottom: var(--hairline);
+  font-size: var(--type-footnote);
+}
+.window-lights {
+  display: flex;
+  gap: 8px;
+}
+.window-lights i {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #ff5f57;
+  box-shadow: inset 0 0 0 1px rgb(0 0 0 / 12%);
+}
+.window-lights i:nth-child(2) {
+  background: #febc2e;
+}
+.window-lights i:nth-child(3) {
+  background: #28c840;
+}
+.window-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 650;
+}
+.window-meta {
+  justify-self: end;
+  color: var(--ink-2);
+}
+.home-widget {
+  grid-area: sidebar;
+  align-self: stretch;
+  padding: 16px;
+  border: 0;
+  border-right: var(--hairline);
+  border-radius: 0 0 0 20px;
+  background: transparent;
+  box-shadow: none;
+}
+.home-widget h1 {
+  font-size: 1.4rem;
+}
+.home-usuals .usual {
+  background: color-mix(in srgb, var(--accent-soft) 72%, var(--glass-strong));
+  box-shadow: inset 0 1px 0 var(--icon-gloss);
+  border: var(--hairline);
+  padding: 10px 12px;
+}
+.home-usuals .usual-continue {
+  background: var(--warn-soft);
+}
+.home-tiles {
+  grid-area: apps;
+  padding: 12px;
+  border-radius: 0 0 20px;
+  background: var(--window-content);
+}
+.home-tile-icon {
+  position: relative;
+  width: 108px;
+  height: 108px;
+  border-radius: 24%;
+  box-shadow:
+    inset 0 1px 1px rgb(255 255 255 / 55%),
+    0 4px 8px rgb(0 0 0 / 13%);
+}
+.home-tile {
+  padding: 4px;
+}
+.settings-page {
+  margin-left: auto;
+}
+.home-tile-icon::before {
+  content: "";
+  position: absolute;
+  inset: 1px;
+  border-radius: inherit;
+  background: linear-gradient(155deg, var(--icon-gloss), transparent 55%);
+  pointer-events: none;
+}
+.home-tile[data-tone="lifeline"] .home-tile-icon::before {
+  display: none;
+}
+.home-howto {
+  font-size: var(--type-footnote);
+}
+.widget-sub {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.usual-demo {
+  padding: 2px 6px;
+  border-radius: 6px;
+  background: var(--sim-soft);
+  color: var(--sim);
+  font-size: 0.65rem;
+  letter-spacing: 0;
+  text-transform: none;
+}
+.home-tile-icon {
+  flex-shrink: 0;
+}
+.home-tile-caption {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  width: 100%;
+}
+.home-tile-sub {
+  align-self: center;
+  font-size: var(--type-footnote);
+  line-height: 1.3;
+}
+.home-widget,
+.home-tile-caption,
+.usual-text {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 1366px) {
+  .home {
+    grid-template-columns: minmax(280px, 300px) minmax(0, 1fr);
+    gap: 0;
+  }
+  .home-tile-icon {
+    width: 92px;
+    height: 92px;
+  }
+  .home-widget {
+    padding: 14px;
+    gap: 8px;
+  }
+  .apps-flow .apps-grid {
+    grid-auto-rows: minmax(120px, 1fr);
+  }
+  .apps-flow .app-tile {
+    display: grid;
+    grid-template-columns: 56px minmax(0, 1fr);
+    grid-template-rows: auto auto;
+    align-content: center;
+    gap: 4px 14px;
+    padding: 12px;
+    text-align: left;
+  }
+  .apps-flow .app-icon {
+    grid-row: 1 / 3;
+    width: 56px;
+    height: 56px;
+  }
+  .apps-flow .app-name {
+    font-size: var(--type-body);
+  }
+  .apps-flow .app-state {
+    font-size: var(--type-footnote);
+  }
+  .apps-flow .flow-bar .btn-xl {
+    padding-inline: 18px;
+  }
+}
+
+/* Never vertically centre content outside the scrollable viewport on short windows. */
+.shell-os .main:has(> .home) {
+  padding: 8px 32px;
+}
+.main > .flow {
+  grid-template-columns: minmax(0, 1fr);
+  background: var(--window-content);
+  border: var(--hairline);
+  border-radius: 20px;
+  box-shadow: var(--window-shadow);
+  padding: 20px;
+}
+.main > .talk-page {
+  padding: 12px;
+  border: var(--hairline);
+  border-radius: 20px;
+  background: var(--window-content);
+  box-shadow: var(--window-shadow);
+}
+.talk-page .talk-tab {
+  background: var(--chrome-surface);
+  border: var(--hairline);
+  font-weight: 600;
+}
+.talk-page .talk-tab[aria-current="page"] {
+  background: var(--accent-soft);
+  border: 2px solid var(--accent);
+}
+.talk-page .talk-tab-urgent {
+  background: var(--danger-soft);
+  border: 2px solid var(--danger);
+}
+.talk-page .talk-message,
+.talk-page .talk-speak,
+.talk-page .talk-word {
+  min-height: 96px;
+}
+.talk-page .talk-word {
+  border-radius: 16px;
+}
+:root[data-theme="contrast"] {
+  --window-content: #000;
+  --chrome-surface: #000;
+  --window-shadow: none;
+}
+:root[data-theme="contrast"] body {
+  background: #000;
+}
+:root[data-theme="contrast"] .home-tile-icon::before {
+  display: none;
+}
+:root[data-theme="contrast"] .dock-btn > .ico {
+  background: #000;
+  border: 2px solid #fff;
+  color: #fff;
+  box-shadow: none;
+}
+:root[data-theme="contrast"] .dock-btn.help-btn > .ico {
+  background: #ff7b7b;
+  color: #000;
+}
+:root[data-theme="contrast"] .window-lights i {
+  background: #fff;
+}
+
+@media (max-width: 1100px) {
+  .menubar-time {
+    display: none;
+  }
+  .shell-os .main,
+  .shell-os .main:has(> .home) {
+    padding: 24px;
+  }
+  .home {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas: "title" "sidebar" "apps";
+    grid-template-rows: 44px auto auto;
+    gap: 0;
+    align-content: start;
+  }
+  .home-widget {
+    align-self: start;
+    padding: 20px;
+    border-radius: 0;
+    border-right: 0;
+    border-bottom: var(--hairline);
+  }
+  .home-usuals {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .home-widget-head {
+    display: block;
+  }
+  .home-howto {
+    margin-top: 8px;
+  }
+  .usual {
+    gap: 12px;
+    padding: 12px;
+  }
+  .usual-icon {
+    flex-shrink: 0;
+  }
+  .home-tiles {
+    align-content: start;
+    padding: 24px;
+    border-radius: 0 0 20px 20px;
+  }
+  .home-tile {
+    min-height: 120px;
+  }
+}
+
+@media (max-width: 860px) {
+  .shell {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: var(--menubar) minmax(0, 1fr) auto auto;
+    grid-template-areas: "menubar" "main" "nav" "dock";
+  }
+  .shell-os {
+    grid-template-rows: var(--menubar) minmax(0, 1fr) auto;
+    grid-template-areas: "menubar" "main" "dock";
+  }
+  .menubar {
+    gap: 12px;
+    padding: 0 16px;
+  }
+  .desktop-menu {
+    display: none;
+  }
+  .menubar .chip-label {
+    display: none;
+  }
+  .home-usuals .usual {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .topbar.dock {
+    max-width: calc(100% - 24px);
+    display: grid;
+    grid-template-columns: repeat(5, minmax(96px, 1fr));
+    gap: 24px;
+    margin: 8px auto;
+  }
+  .dock-btn,
+  .dock-btn.help-btn {
+    min-width: 96px;
+    width: 100%;
+    white-space: normal;
+    padding: 8px;
+  }
+  .topbar.dock:has([aria-pressed]:not(.pause-agent)) {
+    grid-template-columns: repeat(3, minmax(96px, 1fr));
+  }
+  .flow-options {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-auto-rows: minmax(160px, auto);
+  }
+  .main > .flow {
+    flex: 0 0 auto;
+    grid-template-rows: auto auto auto;
+  }
+  .apps-flow .apps-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .talk-page .talk-tabs,
+  .talk-page .talk-words {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .talk-page .talk-message-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 650px) {
+  .shell,
+  .shell-os {
+    height: auto;
+    min-height: 100dvh;
+    grid-template-rows: auto 1fr auto auto;
+  }
+  .shell-os {
+    grid-template-rows: auto 1fr auto;
+  }
+  .menubar {
+    flex-wrap: wrap;
+    gap: 12px;
+    padding: 12px 16px;
+  }
+  .menubar .status-strip {
+    flex-basis: 100%;
+    flex-wrap: wrap;
+    justify-content: flex-start;
+    overflow: visible;
+  }
+  .menubar .chip {
+    white-space: normal;
+  }
+  .shell .main {
+    overflow: visible;
+    padding: 24px 12px;
+  }
+  .shell-os .main:has(> .home) {
+    padding: 24px 12px;
+  }
+  .home {
+    flex: none;
+  }
+  .home-usuals {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .home-usuals .usual {
+    flex-direction: row;
+    align-items: center;
+    padding: 16px;
+  }
+  .home-tiles {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    padding: 8px;
+  }
+  .home-tile {
+    padding: 8px 0;
+  }
+  .home-tile-sub {
+    min-height: 2.6em;
+  }
+  .topbar.dock,
+  .topbar.dock:has([aria-pressed]:not(.pause-agent)) {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    width: calc(100% - 24px);
+    padding: 10px;
+  }
+  .flow,
+  .flow-options {
+    flex: none;
+  }
+  .flow-options {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .apps-flow .apps-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .flow-bar {
+    flex-wrap: wrap;
+  }
+  .flow-head .eyebrow {
+    flex-wrap: wrap;
+  }
+  .flow-head .badge {
+    max-width: 100%;
+    white-space: normal;
+  }
+  .talk-page .talk-tabs,
+  .talk-page .talk-words,
+  .talk-page .talk-tiles {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .talk-page .talk-pager {
+    flex-wrap: wrap;
+  }
+  .dock-btn.pause-agent::before {
+    display: none;
+  }
+}
+
+@media (max-width: 360px) {
+  .topbar.dock,
+  .topbar.dock:has([aria-pressed]:not(.pause-agent)) {
+    grid-template-columns: repeat(2, minmax(96px, 1fr));
+  }
+}

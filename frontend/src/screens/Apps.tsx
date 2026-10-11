@@ -53,7 +53,7 @@ export function AppsScreen({ route }: { route: Route }) {
   };
 
   return (
-    <div className="flow" aria-label="Apps">
+    <div className="flow apps-flow" aria-label="Apps">
       <div className="flow-head">
         <div className="eyebrow">
           <Icon name="grid" size={18} /> Apps
