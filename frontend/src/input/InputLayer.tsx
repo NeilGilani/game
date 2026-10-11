@@ -122,18 +122,30 @@ export function InputLayer() {
 
   useEffect(() => {
     selector.current.setOptions({
-      dwell: { dwellMs: prefs.dwell_ms, stabilityPx: prefs.dwell_stability_px },
+      // Pace (os/gaze/src/input/pace.ts) lengthens the dwell a little when choosing gets harder.
+      dwell: { dwellMs: prefs.dwell_ms * vision.pace.dwellScale, stabilityPx: prefs.dwell_stability_px },
       magnet: { snapPx: prefs.target_snap_px },
     });
     scan.current.setConfig({ intervalMs: prefs.scan_interval_ms });
     blink.current.setOptions({ holdMs: prefs.blink_ms });
   }, [
+    vision,
     prefs.dwell_ms,
     prefs.dwell_stability_px,
     prefs.target_snap_px,
     prefs.scan_interval_ms,
     prefs.blink_ms,
   ]);
+
+  // Pace changes during a session: apply the new dwell time at once (GazeAssist shows the message).
+  useEffect(
+    () =>
+      vision.onAdvice((a) => {
+        if (a.type === "pace")
+          selector.current.setOptions({ dwell: { dwellMs: prefs.dwell_ms * a.dwellScale } });
+      }),
+    [vision, prefs.dwell_ms],
+  );
 
   // Navigation: forget any half-finished dwell and pause selection briefly, so a control that
   // appears under the person's gaze is not selected by accident.

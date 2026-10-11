@@ -6,8 +6,8 @@
  *   plain words ("Lean back a little."), spoken once, gone when they're back.
  * - Touch-up: when choices keep landing off the same way, a dot in the middle for 2 seconds ("Look
  *   at the dot") instead of a full rescan. Selection pauses while it shows.
- * - Pace: when choosing takes more effort, targets grow a little (and the dwell gets longer, in
- *   InputLayer), and the person is told why.
+ * - Pace: when choosing takes more effort, targets grow a little (InputLayer lengthens the dwell),
+ *   and the person is told why.
  * - Undo: a Back, Cancel or Undo chosen soon after another choice tells the engine that choice was
  *   a mistake (so it isn't learned from, and pace counts it).
  *
