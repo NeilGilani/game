@@ -5,7 +5,7 @@ import type { Approval } from "../api/types";
 import { useAnnounce } from "../state/announcer";
 import { coordinatorLabel, useConnection } from "../state/connection";
 import { MODE_LABELS, useInput } from "../state/input";
-import { navigate, type Route } from "../state/router";
+import { navigate, useRoute, type Route } from "../state/router";
 import { usePoll } from "../state/usePoll";
 import { useLifeline } from "../lifeline/LifelineProvider";
 import { useAgent } from "../state/agent";
@@ -28,6 +28,7 @@ function useInputChip(): { text: string; tone: string } {
 }
 
 export function TopBar() {
+  const route = useRoute();
   const { health, online, refresh } = useConnection();
   const input = useInput();
   const announce = useAnnounce();
@@ -91,15 +92,28 @@ export function TopBar() {
     <>
       <header className="topbar dock" aria-label="Always here">
         <HelpButton />
-        <button className="btn dock-btn" onClick={() => navigate("/")} aria-label="Home" data-dwell>
+        <button
+          className="btn dock-btn"
+          onClick={() => navigate("/")}
+          aria-label="Home"
+          data-dock="home"
+          aria-current={route.path === "/" ? "page" : undefined}
+          data-dwell
+        >
           <Icon name="home" size={30} />
           <span>Home</span>
         </button>
-        <button className="btn dock-btn" onClick={() => navigate("/talk")} data-dwell>
+        <button
+          className="btn dock-btn"
+          onClick={() => navigate("/talk")}
+          data-dock="talk"
+          aria-current={route.segments[0] === "talk" ? "page" : undefined}
+          data-dwell
+        >
           <Icon name="speak" size={30} />
           <span>Talk</span>
         </button>
-        <button className="btn dock-btn" onClick={keyboard} data-dwell>
+        <button className="btn dock-btn" onClick={keyboard} data-dock="keyboard" data-dwell>
           <Icon name="keyboard" size={30} />
           <span>Keyboard</span>
         </button>
@@ -125,6 +139,7 @@ export function TopBar() {
         <button
           className={`btn dock-btn pause-agent ${paused ? "" : "btn-danger"}`}
           data-paused={paused}
+          data-dock="agent"
           onClick={togglePause}
           disabled={busy || (!online && paused)}
           data-dwell
@@ -140,6 +155,7 @@ export function TopBar() {
           <BrandMark />
           AGENCY
         </span>
+        <DesktopMenus />
         <Clock />
         <div className="status-strip" aria-label="System status">
           <a className="chip" data-tone={online ? "ok" : "danger"} href="#/status" title={coord.long}>
@@ -171,6 +187,71 @@ export function TopBar() {
         </div>
       </div>
     </>
+  );
+}
+
+/** Helper menus complement the large eye-selectable choices on Home and in the Dock. */
+function DesktopMenus() {
+  const [open, setOpen] = useState<string | null>(null);
+  useEffect(() => {
+    if (!open) return;
+    const close = (e: MouseEvent) => {
+      if (!(e.target as Element).closest(".desktop-menu")) setOpen(null);
+    };
+    const escape = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        document.querySelector<HTMLButtonElement>(".desktop-menu [aria-expanded=true]")?.focus();
+        setOpen(null);
+      }
+    };
+    window.addEventListener("click", close);
+    window.addEventListener("keydown", escape);
+    return () => {
+      window.removeEventListener("click", close);
+      window.removeEventListener("keydown", escape);
+    };
+  }, [open]);
+  const menus = [
+    {
+      label: "View",
+      items: [
+        { label: "Home", icon: "home", path: "/" },
+        { label: "Talk", icon: "speak", path: "/talk" },
+        { label: "Settings", icon: "gear", path: "/settings" },
+      ],
+    },
+    {
+      label: "Help",
+      items: [
+        { label: "Camera setup", icon: "camera", path: "/camera" },
+        { label: "For a helper", icon: "question", path: "/settings/helper" },
+        { label: "System status", icon: "info", path: "/status" },
+      ],
+    },
+  ];
+  return (
+    <nav className="desktop-menu" aria-label="Application menu">
+      {menus.map((menu) => (
+        <div className="desktop-menu-item" key={menu.label}>
+          <button
+            aria-expanded={open === menu.label}
+            aria-controls={`desktop-menu-${menu.label}`}
+            onClick={() => setOpen(open === menu.label ? null : menu.label)}
+          >
+            {menu.label}
+          </button>
+          {open === menu.label && (
+            <div className="desktop-menu-popover" id={`desktop-menu-${menu.label}`}>
+              {menu.items.map((item) => (
+                <a key={item.path} href={`#${item.path}`} onClick={() => setOpen(null)}>
+                  <Icon name={item.icon} /> {item.label}
+                </a>
+              ))}
+            </div>
+          )}
+        </div>
+      ))}
+    </nav>
   );
 }
 
