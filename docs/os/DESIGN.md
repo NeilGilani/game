@@ -4,9 +4,20 @@ AGENCY OS should feel as calm and finished as macOS, for someone who uses it onl
 costs accessibility: the bar in [PLAN.md](PLAN.md) (targets of 96 px or more, 120 px or more on Home, 24 px gaps,
 paging instead of scrolling, no time limits, WCAG 2.2 AA) comes first, and every rule below is checked by tests.
 
-Tokens live in one file, [`frontend/src/styles/tokens.css`](../../frontend/src/styles/tokens.css), for the light,
-dark and high-contrast themes. Components use the tokens, never raw values (the Lifeline red is the one deliberate
-exception, below).
+Base tokens live in [`frontend/src/styles/tokens.css`](../../frontend/src/styles/tokens.css), for the light,
+dark and high-contrast themes. [`frontend/src/styles/layout.css`](../../frontend/src/styles/layout.css) adds
+desktop materials and responsive layouts. Home uses a Finder-style split window with a frosted sidebar;
+the Dock has original icon plates and active-page dots. The menu bar's View and Help menus navigate to real
+screens and support keyboard dismissal. Its small controls complement the large gaze targets on Home and the Dock.
+
+The original vector wallpaper is [`frontend/public/desktop-wallpaper.svg`](../../frontend/public/desktop-wallpaper.svg).
+High contrast removes wallpaper, transparency and icon gradients. References:
+[Apple's macOS interface guidance](https://developer.apple.com/design/human-interface-guidelines/designing-for-macos/)
+and [macOS Tahoe's desktop materials](https://www.apple.com/newsroom/2025/06/macos-tahoe-26-makes-the-mac-more-capable-productive-and-intelligent-than-ever/).
+
+Short MacBook windows show six core words per Talk page instead of twelve. The page size is fixed on entry,
+so choices never rearrange under a steady gaze. Settings pages its seven options into five and two. Narrow
+windows stack Home's panes and keep targets large; the content scrolls when it cannot fit on one screen.
 
 ## Materials
 

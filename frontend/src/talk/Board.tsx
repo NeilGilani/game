@@ -21,7 +21,10 @@ export function Board() {
   const [message, setMessage] = useState("");
   const [saved, setSaved] = useState<string | null>(null);
   const [memorySuggestions, setMemorySuggestions] = useState<Suggestion[]>([]);
-  const pages = usePages(CORE_WORDS, 12);
+  // Fix the page size on entry so choices never move under a steady gaze.
+  // A short MacBook window shows one row and keeps Previous / Next visible.
+  const [wordsPerPage] = useState(() => (window.innerHeight <= 860 ? 6 : 12));
+  const pages = usePages(CORE_WORDS, wordsPerPage);
 
   useEffect(() => {
     let live = true;
