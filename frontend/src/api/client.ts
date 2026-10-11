@@ -59,6 +59,31 @@ export function coordinatorUrl(): string {
   return read(COORDINATOR_KEY).replace(/\/+$/, "");
 }
 
+async function answers(base: string): Promise<boolean> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 3000);
+  try {
+    const r = await fetch(`${base}/api/health`, { signal: controller.signal });
+    return r.ok || r.status === 401 || r.status === 403;
+  } catch {
+    return false;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+/**
+ * A saved coordinator address that no longer answers (an old setting, a Pi that's off, a demo
+ * address) while the coordinator that served this page does: go back to this page's own. Run once
+ * at start-up, so "Can't reach the coordinator" never comes from a stale setting.
+ */
+export async function repairCoordinatorUrl(): Promise<void> {
+  const saved = coordinatorUrl();
+  if (!saved || saved === window.location.origin) return;
+  if (await answers(saved)) return;
+  if (await answers("")) write(COORDINATOR_KEY, "");
+}
+
 export function setCoordinatorUrl(url: string): void {
   write(COORDINATOR_KEY, url.trim());
 }

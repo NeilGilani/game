@@ -34,7 +34,7 @@ try {
 const ready =
   import.meta.env.VITE_WEB_DEMO === "1"
     ? import("./demo/webDemo").then((m) => m.installWebDemo())
-    : Promise.resolve();
+    : import("./api/client").then((m) => m.repairCoordinatorUrl());
 
 void ready.then(() =>
   createRoot(document.getElementById("root")!).render(
