@@ -3195,3 +3195,101 @@ h2 {
     transition: none;
   }
 }
+
+/* ---- Eye keyboard: big keys at the bottom whenever a text box has focus ------------------------------------ */
+.eye-keyboard {
+  position: fixed;
+  left: 50%;
+  /* Above the dock: Help and Stop always stay reachable. */
+  bottom: 122px;
+  transform: translateX(-50%);
+  width: min(1180px, calc(100vw - 24px));
+  z-index: 900;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 16px;
+  border-radius: 28px;
+  background: color-mix(in srgb, var(--surface) 88%, transparent);
+  -webkit-backdrop-filter: blur(24px) saturate(1.4);
+  backdrop-filter: blur(24px) saturate(1.4);
+  border: 1px solid var(--line-strong);
+  box-shadow: 0 24px 60px rgb(0 0 0 / 28%);
+  animation: eye-keyboard-in 200ms ease-out;
+}
+@keyframes eye-keyboard-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 24px);
+  }
+}
+.eye-keyboard-preview {
+  min-height: 56px;
+  padding: 12px 18px;
+  border-radius: 16px;
+  background: var(--bg);
+  border: 2px solid var(--line-strong);
+  font-size: 28px;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+.eye-keyboard-caret {
+  display: inline-block;
+  width: 3px;
+  height: 1.1em;
+  margin-left: 2px;
+  vertical-align: text-bottom;
+  background: var(--accent);
+  animation: eye-caret 1s steps(1) infinite;
+}
+@keyframes eye-caret {
+  50% {
+    opacity: 0;
+  }
+}
+.eye-keyboard-row {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+}
+.eye-key {
+  position: relative;
+  flex: 1 1 0;
+  max-width: 104px;
+  min-height: 64px;
+  border-radius: 16px;
+  border: 1px solid var(--line-strong);
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+  font-size: 30px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  cursor: pointer;
+}
+.eye-key-wide {
+  max-width: 170px;
+  font-size: 22px;
+}
+.eye-key-space {
+  max-width: 340px;
+  flex-grow: 3;
+  font-size: 22px;
+}
+.eye-key-done {
+  background: var(--accent);
+  color: #fff;
+  border-color: transparent;
+}
+.eye-key[aria-pressed="true"] {
+  background: color-mix(in srgb, var(--accent) 18%, var(--surface));
+}
+@media (prefers-reduced-motion: reduce) {
+  .eye-keyboard,
+  .eye-keyboard-caret {
+    animation: none;
+  }
+}
