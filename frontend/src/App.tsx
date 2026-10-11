@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useLayoutEffect } from "react";
 import { ScanResultBanner } from "./components/ScanResultBanner";
 import { ConnectionBanner, Nav, TopBar } from "./components/Shell";
 import { GazeAssist } from "./input/GazeAssist";
@@ -9,7 +9,7 @@ import { AgentProvider } from "./state/agent";
 import { AnnouncerProvider } from "./state/announcer";
 import { ConnectionProvider } from "./state/connection";
 import { HostBridge } from "./state/hostBridge";
-import { InputProvider } from "./state/input";
+import { InputProvider, useInput } from "./state/input";
 import { PreferencesProvider, usePreferences } from "./state/preferences";
 import { navigate, useRoute, type Route } from "./state/router";
 import { Approve } from "./screens/Approve";
@@ -90,6 +90,31 @@ function Screen({ route }: { route: Route }) {
 
 function Shell() {
   const route = useRoute();
+  const { mode } = useInput();
+  const { prefs } = usePreferences();
+  const search = route.query.toString();
+  useLayoutEffect(() => {
+    const screen = document.getElementById("main")?.lastElementChild;
+    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)");
+    if (!(screen instanceof HTMLElement) || prefs.reduced_motion || reduced.matches) return;
+    // Animate the existing screen so Talk drafts and other route-local state survive navigation.
+    // Hands-free modes only fade: the engine measures stationary selection targets.
+    const animation = screen.animate(
+      mode === "pointer"
+        ? [
+            { opacity: 0, transform: "translateY(8px) scale(0.992)" },
+            { opacity: 1, transform: "none" },
+          ]
+        : [{ opacity: 0 }, { opacity: 1 }],
+      { duration: 320, easing: "cubic-bezier(0.16, 1, 0.3, 1)" },
+    );
+    const cancel = () => animation.cancel();
+    reduced.addEventListener("change", cancel);
+    return () => {
+      cancel();
+      reduced.removeEventListener("change", cancel);
+    };
+  }, [route.path, search, mode, prefs.reduced_motion]);
   useEffect(() => {
     if (route.path === "/" && !onboarded()) navigate("/welcome");
   }, [route.path]);
@@ -119,7 +144,7 @@ function Shell() {
   // Caregiver tools (cases, approvals, status) keep their side navigation; everything else is the full-width OS.
   const tools = ["new", "cases", "case", "approvals", "status", "errands"].includes(route.segments[0] ?? "");
   return (
-    <div className={tools ? "shell" : "shell shell-os"}>
+    <div className={tools ? "shell" : "shell shell-os"} data-input-mode={mode}>
       <a
         className="sr-only"
         href="#main"

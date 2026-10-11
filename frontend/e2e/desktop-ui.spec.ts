@@ -14,6 +14,10 @@ test.beforeEach(async ({ context }) => {
 
 test("desktop menus navigate, dismiss with Escape and keep the Dock current", async ({ page }) => {
   await page.goto("/#/");
+  await expect(page.locator(".home-titlebar")).toBeVisible();
+  expect(await page.locator("body").evaluate((el) => getComputedStyle(el).backgroundImage)).toContain(
+    "radial-gradient",
+  );
   const dock = page.locator(".dock");
   await expect(dock.getByRole("button", { name: "Home", exact: true })).toHaveAttribute(
     "aria-current",
@@ -65,6 +69,35 @@ test("a short MacBook keeps word-board paging visible and functional", async ({ 
   await next.click();
   await expect(page.locator(".talk-pager-count")).toContainText("page 2");
   await expect(page.locator(".talk-words button")).toHaveCount(6);
+});
+
+test("AI sentence suggestions keep Talk paging and editing controls in the viewport", async ({ page }) => {
+  await page.route("**/api/assist/complete", (route) =>
+    route.fulfill({
+      json: {
+        completions: ["I would like a glass of water, please.", "I need a little help getting comfortable."],
+        label: "Test suggestions",
+      },
+    }),
+  );
+  for (const size of [
+    { width: 1280, height: 800 },
+    { width: 1440, height: 900 },
+  ]) {
+    await page.setViewportSize(size);
+    await page.goto("/#/talk");
+    await page.locator(".talk-words").getByRole("button", { name: "I", exact: true }).click();
+    await expect(page.getByRole("button", { name: "I would like a glass of water, please." })).toBeVisible();
+    expect(
+      await page.locator("#main").evaluate((el) => el.scrollHeight - el.clientHeight),
+    ).toBeLessThanOrEqual(1);
+    const main = (await page.locator("#main").boundingBox())!;
+    for (const name of ["AI finish: on", "Delete word", "Clear", "Next"]) {
+      const box = (await page.getByRole("button", { name, exact: true }).boundingBox())!;
+      expect(box.height).toBeGreaterThanOrEqual(96);
+      expect(box.y + box.height).toBeLessThanOrEqual(main.y + main.height);
+    }
+  }
 });
 
 for (const size of [
