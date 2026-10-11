@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { SELECTION_RESET_EVENT } from "../components/common";
+import { showScanResult } from "../components/ScanResultBanner";
 import { Icon } from "../components/Icon";
 import { useAnnounce } from "../state/announcer";
 import { useInput } from "../state/input";
 import { usePreferences } from "../state/preferences";
 import { navigate } from "../state/router";
-import { type StoredCalibration, describeError } from "../vision/calibrationStore";
+import { type StoredCalibration, describeError, describeEyeModel } from "../vision/calibrationStore";
 
 /** Estimated error above which the scan says so and offers another go (px; "poor" starts at 128). */
 const ROUGH_ERROR_PT = 180;
@@ -84,6 +85,11 @@ export function Calibrate() {
       }
       const calibration = vision.finishCalibration(step.result);
       setCalibration(calibration, true);
+      console.info(
+        "[AGENCY] eye scan:",
+        describeEyeModel(calibration),
+        step.result.realEye ?? "no eye images",
+      );
       if (calibration.result.quality.meanErrorPt > ROUGH_ERROR_PT) {
         // Say so instead of quietly using a scan that will feel random; it still works on big tiles.
         setPhase({ kind: "rough", calibration });
@@ -92,6 +98,7 @@ export function Calibrate() {
         );
         return;
       }
+      showScanResult({ model: describeEyeModel(calibration), error: describeError(calibration) });
       announce("Done. Look at anything for a second to choose it.");
       goHome();
     };
@@ -238,6 +245,9 @@ export function Calibrate() {
           <p>
             Estimated error {describeError(phase.calibration)}. It still works on the big tiles and improves
             as you use it. For a sharper scan:
+          </p>
+          <p>
+            <strong>Eye model:</strong> {describeEyeModel(phase.calibration)}
           </p>
           <ul className="list">
             <li>Light on your face, not behind you.</li>

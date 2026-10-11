@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { ScanResultBanner } from "./components/ScanResultBanner";
 import { ConnectionBanner, Nav, TopBar } from "./components/Shell";
 import { InputLayer } from "./input/InputLayer";
 import { LifelineOverlay } from "./lifeline/LifelineOverlay";
@@ -137,6 +138,7 @@ function Shell() {
         }
       >
         <ConnectionBanner />
+        <ScanResultBanner />
         {tools && <div style={{ height: 16 }} />}
         <Screen route={route} />
       </main>

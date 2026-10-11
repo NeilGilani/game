@@ -52,6 +52,19 @@ export function describeError(calibration: StoredCalibration): string {
   return q.meanErrorDeg === null ? px : `${px} (${q.meanErrorDeg.toFixed(1)}°)`;
 }
 
+/** Which eye model the pointer uses, in plain words. */
+export function describeEyeModel(calibration: StoredCalibration): string {
+  const r = calibration.result.realEye;
+  if (!r) return "Face points only: the camera gave no eye images for RealEye's model. Scan again to add it.";
+  const px = (v: number) => `${Math.round(v)} px`;
+  if (!calibration.result.appearance)
+    return `Face points only: RealEye's eye model measured ${px(r.realEyePt)} against ${px(r.landmarksPt)}, so it's off for now. Scan again in better light.`;
+  const share = Math.round(r.realEyeWeight * 100);
+  const mix =
+    share === 100 ? "RealEye's eye model" : `RealEye's eye model ${share}% + face points ${100 - share}%`;
+  return `${mix} (RealEye alone ${px(r.realEyePt)}, face points alone ${px(r.landmarksPt)}, together ${px(r.usedPt)}).`;
+}
+
 /** The worst of the check dots, px. */
 export function worstError(calibration: StoredCalibration): number {
   return Math.round(Math.max(0, ...calibration.result.validation.map((v) => v.errorPt)));

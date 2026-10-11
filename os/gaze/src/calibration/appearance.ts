@@ -3,15 +3,15 @@
  * regression, the way RealEye's own tracker maps them, fitted on the 5-second scan's frames and
  * blended with the landmark model (calibration v2).
  *
- * Where it differs from RealEye's calibration, the person's own data decides:
- * - The ridge strength, and whether to average a few frames before fitting, are chosen by
- *   cross-validation (RealEye fixes 1e-5 on single frames from 17 dots).
- * - It is solved in its dual form, one equation per frame instead of per feature, so 1,630
- *   features and ~150 frames fit in milliseconds.
- * - Cross-validation holds out each stretch of the path together with its neighbours, so a model
- *   that only remembers what the eyes looked like a moment earlier can't score well.
- * - The blend weight is the one that best predicts held-out stretches. The eye images are used
- *   only if they beat the landmark model alone by at least 3 %; otherwise nothing changes.
+ * RealEye's model is always part of the estimate when the camera reads eye images. The person's
+ * own scan decides the details, by cross-validation on stretches of the path held out in turn:
+ * - The ridge strength, and whether to average a few frames before fitting (RealEye fixes 1e-5
+ *   on single frames from 17 dots).
+ * - Its share of the blend with the landmark model: 25 %, 50 %, 75 % or 100 %, whichever predicts
+ *   held-out stretches best. Only if it measures far worse than the landmarks (1.5x: unusable eye
+ *   crops, say) is it switched off, and the report says so.
+ * It is solved in its dual form, one equation per frame instead of per feature, so 1,630 features
+ * and ~150 frames fit in well under a second.
  *
  * Tests: tests/appearance.test.ts.
  */
@@ -47,11 +47,25 @@ export interface AppearanceFrame {
   group: number;
 }
 
+/** What the scan measured, for the person and for support: shown after the scan and in Settings. */
+export interface AppearanceReport {
+  /** Held-out error (points) of the face points (landmark model) alone. */
+  landmarksPt: number;
+  /** Held-out error of RealEye's eye-image model alone. */
+  realEyePt: number;
+  /** Held-out error of the estimate as used. */
+  usedPt: number;
+  /** RealEye's share of the estimate, 0..1 (0: its model is off). */
+  realEyeWeight: number;
+}
+
 export interface AppearanceFit {
-  calibration: AppearanceCalibration;
-  /** Held-out error of the blend over the landmark model alone, measured the same way (< 1). */
+  /** Null when RealEye's model is off because it measured far worse than the face points. */
+  calibration: AppearanceCalibration | null;
+  report: AppearanceReport;
+  /** usedPt / landmarksPt: scales the landmark model's own error estimate to the estimate used. */
   ratio: number;
-  /** Held-out errors (points) by landmark weight, for reports and tests. */
+  /** Held-out errors (points) by landmark weight, for tests. */
   errors: { landmarkWeight: number; errorPt: number }[];
 }
 
@@ -61,7 +75,8 @@ type Point = { x: number; y: number };
 const RIDGE = [1e-4, 1e-3, 1e-2, 3e-2, 1e-1, 3e-1, 1] as const;
 const CHUNKS = [1, 3] as const;
 const WEIGHTS = [0, 0.25, 0.5, 0.75, 1] as const;
-const MIN_GAIN = 0.03;
+/** RealEye's model is switched off only if it alone measures this many times worse than the face points. */
+const OFF_RATIO = 1.5;
 /** Held-out predictions are averaged over this many frames before scoring, as the smoother would. */
 const SCORE_CHUNK = 4;
 
@@ -164,7 +179,7 @@ function byGroup<T extends { group: number }>(list: readonly T[]): Map<number, T
   return out;
 }
 
-const excluded = (held: number, group: number) => Math.abs(group - held) <= 1;
+const excluded = (held: number, group: number) => group === held;
 
 /**
  * Kernel ridge on training items `train` (indices into items), with the kernel centred on the
@@ -241,9 +256,9 @@ function heldOutError(frames: readonly AppearanceFrame[], preds: readonly (Point
 }
 
 /**
- * Fit the appearance model on the scan's frames and decide how much to trust it, next to the
- * landmark model `landmarks` (its configuration, refitted per fold on `landmarkData`). Null when
- * the eye images don't help, or there isn't enough to judge.
+ * Fit the appearance model on the scan's frames and decide its share, next to the landmark model
+ * `landmarks` (its configuration, refitted per fold on `landmarkData`). Null when there aren't
+ * enough frames with eye images to fit or judge it.
  */
 export function fitAppearance(
   frames: readonly AppearanceFrame[],
@@ -331,8 +346,17 @@ export function fitAppearance(
     ),
   }));
   const landmarkOnly = errors.find((e) => e.landmarkWeight === 1)!.errorPt;
-  const top = errors.reduce((a, b) => (b.errorPt < a.errorPt ? b : a));
-  if (top.landmarkWeight === 1 || !(top.errorPt <= (1 - MIN_GAIN) * landmarkOnly)) return null;
+  const realEyeOnly = errors.find((e) => e.landmarkWeight === 0)!.errorPt;
+  if (!Number.isFinite(landmarkOnly) || landmarkOnly <= 0) return null;
+  if (!(realEyeOnly <= OFF_RATIO * landmarkOnly)) {
+    return {
+      calibration: null,
+      report: { landmarksPt: landmarkOnly, realEyePt: realEyeOnly, usedPt: landmarkOnly, realEyeWeight: 0 },
+      ratio: 1,
+      errors,
+    };
+  }
+  const top = errors.filter((e) => e.landmarkWeight < 1).reduce((a, b) => (b.errorPt < a.errorPt ? b : a));
 
   // Final fit on every frame.
   const items = itemsFor(frames, chosen.chunk);
@@ -371,6 +395,12 @@ export function fitAppearance(
     calibration: {
       model: { version: 1, wx, wy, bx, by },
       landmarkWeight: top.landmarkWeight,
+    },
+    report: {
+      landmarksPt: landmarkOnly,
+      realEyePt: realEyeOnly,
+      usedPt: top.errorPt,
+      realEyeWeight: 1 - top.landmarkWeight,
     },
     ratio: top.errorPt / landmarkOnly,
     errors,

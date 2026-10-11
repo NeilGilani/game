@@ -12,7 +12,7 @@ import { MODE_LABELS, useInput } from "../state/input";
 import { applyEasyRead, usePreferences } from "../state/preferences";
 import { navigate } from "../state/router";
 import { usePoll } from "../state/usePoll";
-import { describeError } from "../vision/calibrationStore";
+import { describeError, describeEyeModel } from "../vision/calibrationStore";
 
 const MODE_ICONS: Record<InputMode, string> = {
   gaze: "eye",
@@ -619,7 +619,7 @@ export function StatusView() {
             <dt>Calibration</dt>
             <dd>
               {input.calibration
-                ? `Eye scan, ${input.calibration.result.quality.grade} (estimated error ${describeError(input.calibration)}; improves as you use it)`
+                ? `Eye scan, ${input.calibration.result.quality.grade} (estimated error ${describeError(input.calibration)}; improves as you use it). ${describeEyeModel(input.calibration)}`
                 : "None"}
             </dd>
           </dl>

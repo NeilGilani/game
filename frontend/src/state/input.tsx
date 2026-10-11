@@ -6,8 +6,9 @@ import { type VisionStatus, visionEngine, type VisionEngine } from "../vision/tr
 import { usePreferences } from "./preferences";
 
 /** Eye calibrations from the gaze engine (v2). The old key held legacy models, which are no longer used. */
-const CALIBRATION_KEY = "agency.calibration.v2";
-const LEGACY_CALIBRATION_KEY = "agency.calibration";
+/** v3: scans with RealEye's eye model. Older saved scans are ignored, so the scan runs again by itself. */
+const CALIBRATION_KEY = "agency.calibration.v3";
+const LEGACY_CALIBRATION_KEYS = ["agency.calibration", "agency.calibration.v2"];
 const CAMERA_OK_KEY = "agency.cameraConsented";
 
 export const MODE_LABELS: Record<InputMode, { short: string; long: string; camera: boolean }> = {
@@ -119,7 +120,7 @@ export function InputProvider({ children }: { children: ReactNode }) {
     try {
       for (const storage of [localStorage, sessionStorage]) {
         storage.removeItem(CALIBRATION_KEY);
-        storage.removeItem(LEGACY_CALIBRATION_KEY);
+        for (const key of LEGACY_CALIBRATION_KEYS) storage.removeItem(key);
       }
       if (model) (remember ? localStorage : sessionStorage).setItem(CALIBRATION_KEY, JSON.stringify(model));
     } catch {

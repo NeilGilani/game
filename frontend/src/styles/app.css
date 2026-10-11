@@ -794,6 +794,24 @@ table.data th {
   background: var(--warn-soft);
   border-color: var(--warn);
 }
+.banner-ok {
+  background: var(--ok-soft);
+  border-color: var(--ok);
+}
+/* Floats over the page instead of pushing it down, so nothing moves under the eyes when it goes. */
+.banner-float {
+  position: fixed;
+  top: 96px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 40;
+  width: max-content;
+  max-width: min(960px, calc(100vw - 32px));
+  border: 2px solid;
+  border-radius: 16px;
+  box-shadow: 0 12px 32px rgb(0 0 0 / 0.18);
+  pointer-events: none;
+}
 .banner .btn {
   min-height: 56px;
 }

@@ -68,6 +68,10 @@ test("5-second eye scan, then choose with the eyes alone (simulated person, real
   await expect(page.getByText(/Starting in \d/)).toBeVisible();
   await expect(page.getByText(/Follow the light/).first()).toBeVisible({ timeout: 15_000 });
   await expect(page).toHaveURL(/#\/$/, { timeout: 30_000 });
+  // Home says which eye model the pointer uses (the simulated person has landmarks, no eye images).
+  await expect(
+    page.getByRole("status").filter({ hasText: "Eye scan done. Eye model: Face points only" }),
+  ).toBeVisible();
 
   const size = page.viewportSize()!;
   const error = await pointerError(page, [

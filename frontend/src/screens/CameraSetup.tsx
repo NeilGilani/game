@@ -16,6 +16,7 @@ import type { VisionFrame } from "../vision/tracker";
 interface Snapshot {
   face: boolean;
   eyes: boolean;
+  eyeImages: boolean;
   issues: QualityIssue[];
   confidence: number;
   blink: number | null;
@@ -109,6 +110,7 @@ export function CameraSetup() {
         setSnap({
           face: frame.face,
           eyes: !!frame.features,
+          eyeImages: !!frame.eyes,
           issues: frame.issues,
           confidence: frame.trackingConfidence,
           blink: frame.blink,
@@ -192,6 +194,7 @@ export function CameraSetup() {
               <Check ok={running} pending={!running} label="Camera is on" />
               <Check ok={!!snap?.face} pending={!running} label="Face in view" />
               <Check ok={!!snap?.eyes} pending={!running} label="Both eyes and irises found" />
+              <Check ok={!!snap?.eyeImages} pending={!running} label="Eye images for RealEye's eye model" />
               <Check ok={lighting} pending={!running || !snap} label="Lighting" />
               <Check ok={distance} pending={!running || !snap?.face} label="Distance from screen" />
             </ul>

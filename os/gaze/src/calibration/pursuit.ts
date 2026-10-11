@@ -180,8 +180,7 @@ export class PursuitCalibration {
         data = cleaned;
       }
     }
-    // RealEye's eye images, when the camera read them: used only if they predict held-out
-    // stretches of the path better than the landmarks alone (appearance.ts).
+    // RealEye's eye-image model, blended in at the share the scan measured best (appearance.ts).
     const appearance = fitAppearance(this.eyeFrames, data, selection.model.config);
     const errorPt = selection.cv.meanErrorPt * (appearance?.ratio ?? 1);
     const residuals = data.map((s) => {
@@ -208,6 +207,7 @@ export class PursuitCalibration {
         samples: data,
         geometry: this.geometry,
         appearance: appearance?.calibration ?? null,
+        realEye: appearance?.report ?? null,
       },
     };
   }

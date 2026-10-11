@@ -96,6 +96,8 @@ describe("RealEye eye-image model in the 5-second scan (simulated)", () => {
       if (step.kind !== "done") continue;
       expect(step.result.appearance).toBeTruthy();
       expect(step.result.appearance!.landmarkWeight).toBeLessThan(1);
+      expect(step.result.realEye!.realEyeWeight).toBeGreaterThan(0);
+      expect(step.result.realEye!.usedPt).toBeLessThan(step.result.realEye!.landmarksPt);
       const without = scan(seed, null).step;
       if (without.kind !== "done") throw new Error("scan without eye images failed");
       // The reported (held-out) error is lower than the landmark model's alone.
@@ -110,14 +112,17 @@ describe("RealEye eye-image model in the 5-second scan (simulated)", () => {
     }
   });
 
-  it("ignores eye images that say nothing about the gaze, and changes nothing", () => {
+  it("switches RealEye's model off when it measures far worse (eye images that say nothing), and says so", () => {
     for (const seed of [1, 2]) {
       const { step } = scan(seed, eyeImages("noise", seed));
       const without = scan(seed, null).step;
       expect(step.kind).toBe("done");
       if (step.kind !== "done" || without.kind !== "done") continue;
       expect(step.result.appearance).toBeNull();
+      expect(step.result.realEye!.realEyeWeight).toBe(0);
+      expect(step.result.realEye!.realEyePt).toBeGreaterThan(1.5 * step.result.realEye!.landmarksPt);
       expect(step.result.quality.meanErrorPt).toBe(without.result.quality.meanErrorPt);
+      expect(without.result.realEye).toBeNull();
     }
   });
 
