@@ -29,6 +29,8 @@ import type { FaceFrame } from "../../../os/gaze/src/providers/types";
 import { type LandmarkerFactory, WebcamProvider } from "../../../os/gaze/src/providers/webcam";
 
 import { type StoredCalibration, storeCalibration } from "./calibrationStore";
+import { DEFAULT_FILTER } from "../../../os/gaze/src/lab";
+import { gazeTuning, onGazeTuning } from "./tuning";
 
 export type VisionStatus = "off" | "starting" | "loading-model" | "running" | "paused" | "error";
 
@@ -49,6 +51,10 @@ export interface VisionFrame {
   landmarks: { x: number; y: number }[] | null;
   /** Pointer in viewport pixels: calibrated gaze, or the head pointer. Null until there is one. */
   pointer: { x: number; y: number } | null;
+  /** The same estimate before the fixation filter (viewport pixels), for the Gaze lab. Never stored. */
+  raw: { x: number; y: number } | null;
+  /** About two standard deviations of the pointer's error (viewport pixels); 0 when unknown. */
+  errorRadius: number;
   /** True while the eyes hold still on one place (always true for the head pointer). */
   fixation: boolean;
   /** RealEye's eye-image features (os/gaze/src/eyeImage.ts), for the eye scan. Never stored. */
@@ -130,6 +136,9 @@ export class VisionEngine {
       this.setStatus(s === "running" && this.paused ? "paused" : s, e);
     });
     window.addEventListener("resize", () => this.fitScreen());
+    // Filter settings the Gaze lab picked from this person's own recording (defaults otherwise).
+    this.gaze.setFilter(gazeTuning().filter ?? DEFAULT_FILTER);
+    onGazeTuning((t) => this.gaze.setFilter(t.filter ?? DEFAULT_FILTER));
   }
 
   get video(): HTMLVideoElement {
@@ -352,11 +361,12 @@ export class VisionEngine {
     const d = this.gaze.last;
     if (!d) return;
     let pointer: VisionFrame["pointer"] = null;
+    let raw: VisionFrame["raw"] = null;
+    const sx = window.innerWidth / this.space.width;
+    const sy = window.innerHeight / this.space.height;
     if (d.point && !this.calibrating) {
-      pointer = {
-        x: (d.point.x * window.innerWidth) / this.space.width,
-        y: (d.point.y * window.innerHeight) / this.space.height,
-      };
+      pointer = { x: d.point.x * sx, y: d.point.y * sy };
+      raw = d.raw ? { x: d.raw.x * sx, y: d.raw.y * sy } : pointer;
     }
     const head = this.gaze.mode === "head";
     const frame: VisionFrame = {
@@ -369,6 +379,8 @@ export class VisionEngine {
       issues: d.issues,
       landmarks: f.landmarks ? f.landmarks.map((l) => ({ x: l.x, y: l.y })) : null,
       pointer,
+      raw,
+      errorRadius: pointer ? d.errorRadiusPt * sx : 0,
       fixation: head || !!d.smoothed?.fixation,
       eyes: f.eyes ?? null,
     };
@@ -398,6 +410,8 @@ export function injectFrame(engine: VisionEngine, partial: Partial<VisionFrame>)
     issues: [],
     landmarks: null,
     pointer: null,
+    raw: null,
+    errorRadius: 0,
     fixation: true,
     eyes: null,
     ...partial,

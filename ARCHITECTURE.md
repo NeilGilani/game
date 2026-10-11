@@ -185,8 +185,20 @@ network) and recorded in the provider status shown on the Status screen; AGENCY 
 - **quality.ts**: face distance, centring, head turn, lighting, and a per-frame confidence that gates dwell.
 
 Input engines (`frontend/src/input`) are pure and unit-tested; `InputLayer.tsx` collects visible `[data-dwell]`
-targets (limited to an open dialog), snaps the pointer to the nearest target within a radius, feeds the dwell or scan
-engine, draws feedback through attributes (no re-render per frame), and calls `click()`.
+targets (limited to an open dialog) with their context, picks the target with `IntentSelector`
+(`os/gaze/src/input/intent.ts`: P(target) ∝ gaze likelihood from the error radius × a context prior; with neutral
+priors this is exactly the old snap), feeds the dwell or scan engine, draws feedback through attributes (no re-render
+per frame), and calls `click()`.
+
+Context priors (`frontend/src/input/context.ts`) are computed on the device from the planner's state: the
+coordinator's `next_actions` (backend/agency/engine: waiting for an answer, an approval, paused) and the agent's task
+phase, plus simple rules (the next empty form field, then submit; the person's usual; predicted words). Screens mark
+controls with `data-likely="strong"` (1.5) or `data-likely` (weak, 1.25). Safety: approval gates
+(`data-approval-gate`) are never boosted; Stop, Help and Lifeline are protected (always the top prior); anything that
+pays, sends, shares, signs or calls is never predicted and never gets a shorter dwell. No video or gaze leaves the
+device. The precision meter drives the adaptive layout (`input/layout.ts`, `<html data-gaze-precision>`), applied only
+when the screen changes. Settings › Gaze lab (`screens/GazeLab.tsx`, `os/gaze/src/lab.ts`) measures and tunes it on
+the real person; its tuning is kept on the device (`vision/tuning.ts`).
 
 ## API
 

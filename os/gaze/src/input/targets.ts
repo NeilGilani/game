@@ -8,6 +8,8 @@ export interface Rect {
 }
 
 export interface TargetRect {
+  /** Context prior from the screen and task (1 = neutral), already clamped and safety-checked. */
+  prior?: number;
   id: string;
   rect: Rect;
 }

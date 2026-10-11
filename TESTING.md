@@ -75,6 +75,13 @@ from Settings and calibrate.
 | Errands | The original repair demo with approvals and recovery | **Simulated** services |
 | Lifeline | See below | |
 
+**Gaze lab**: Settings, then Gaze lab (eye gaze, calibrated). Run the 9-dot test: it measures accuracy, shake (raw
+and filtered), settle time and whether the engine's error radius is honest, on you and your camera. It then replays
+your own recording through 27 filter settings and suggests snap and steadiness; nothing changes until you press
+"Use these settings". "Save the numbers" exports anonymous metrics only (no images, no samples). The same screen
+switches context priors (full, half, off), prediction and adaptive layout. Real numbers on a real person come
+only from here: see `os/gaze/README.md` › Context, prediction and the Gaze lab.
+
 **Memory**: Settings, then Memory, or the full explorer at `#/memory`. After a few choices it suggests "your usual" with a
 reason; you can rename, hide, forget one thing, or forget everything.
 

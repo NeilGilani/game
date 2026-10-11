@@ -222,7 +222,8 @@ export class TargetMagnet {
     const alpha = 1 - Math.exp(-dt / Math.max(1, this.o.evidenceMs));
     const next = new Map<string, number>();
     for (const t of targets) {
-      const l = targetLikelihood(s.x, s.y, sigma, t.rect);
+      // A context prior (input/intent.ts priorsOf) settles what the tracker can't tell apart; reach is unchanged.
+      const l = targetLikelihood(s.x, s.y, sigma, t.rect) * (t.prior ?? 1);
       const e = this.evidence.get(t.id) ?? 0;
       next.set(t.id, e + alpha * (l - e));
     }

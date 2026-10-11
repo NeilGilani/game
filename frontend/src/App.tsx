@@ -21,6 +21,7 @@ import { CreateCase } from "./screens/CreateCase";
 import { AppsScreen } from "./screens/Apps";
 import { Errands } from "./screens/Errands";
 import { FlowScreen } from "./screens/Flow";
+import { GazeLab } from "./screens/GazeLab";
 import { Home } from "./screens/Home";
 import { Onboarding } from "./screens/Onboarding";
 import { HelperSettings, MemorySettings, SettingsHub, VoiceSettings } from "./screens/OsSettings";
@@ -55,6 +56,7 @@ function Screen({ route }: { route: Route }) {
   if (a === "settings" && b === "voice") return <VoiceSettings />;
   if (a === "settings" && b === "memory") return <MemorySettings />;
   if (a === "settings" && b === "helper") return <HelperSettings />;
+  if (a === "settings" && b === "gaze-lab") return <GazeLab />;
   if (a === "settings" && b === "connection") return <SettingsView />;
   if (a === "new" && !b) return <NewTask />;
   if (a === "new" && b === "phrases") return <Phrases />;

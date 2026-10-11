@@ -36,6 +36,13 @@ const SETTINGS: Choice[] = [
     path: "/camera",
   },
   {
+    id: "gaze-lab",
+    label: "Gaze lab",
+    sub: "Measure your eye control, tune it",
+    icon: "target",
+    path: "/settings/gaze-lab",
+  },
+  {
     id: "voice",
     label: "Voice",
     sub: "The voice that speaks for you",

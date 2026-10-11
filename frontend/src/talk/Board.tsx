@@ -8,6 +8,7 @@ import { useEffect, useMemo, useState } from "react";
 import { CORE_WORDS, WordModel, applyWord, predictPhrases } from "../../../os/tasks/src/index";
 import type { Suggestion } from "../../../os/contracts/src/memory";
 import { Icon } from "../components/Icon";
+import { likely } from "../input/context";
 import { useTalk } from "./services";
 import { MY_PHRASES, useBoards, useHistory } from "./storage";
 import { BigPager, usePages } from "./ui";
@@ -34,6 +35,8 @@ export function Board() {
   const said = useMemo(() => history.items.map((h) => h.text), [history.items]);
   const model = useMemo(() => new WordModel(said), [said]);
   const words = model.next(message, 5);
+  // Core words the person's own word model predicts next are weakly likely targets for eye control.
+  const predicted = new Set(words.map((w) => w.text.toLowerCase()));
   const phrases = message.trim() === "" ? predictPhrases("", said, memorySuggestions, 3) : [];
 
   const add = (word: string) => {
@@ -104,7 +107,13 @@ export function Board() {
 
       <div className="talk-words" role="group" aria-label="Core words">
         {pages.items.map((w) => (
-          <button key={w.text} className={`talk-word wc-${w.cls}`} onClick={() => add(w.text)} data-dwell>
+          <button
+            key={w.text}
+            className={`talk-word wc-${w.cls}`}
+            onClick={() => add(w.text)}
+            data-dwell
+            {...likely(predicted.has(w.text.toLowerCase()) && "weak")}
+          >
             {w.text}
           </button>
         ))}

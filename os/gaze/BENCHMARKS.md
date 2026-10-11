@@ -96,3 +96,10 @@ fake camera 640×480 at ~31 fps (still photo), 15 s after a 2 s warm-up.
 Earlier runs while the machine was heavily loaded (load average 9 to 26 from other work) gave 17–29 fps on the CPU
 delegate; the GPU delegate held 30 fps once the frame governor used a token bucket. Engine compute in Node is
 about 0.03 ms per frame (v2) against 0.003 ms (v1); both are negligible next to landmark detection.
+
+## Context priors and prediction (simulated)
+
+`cd os/gaze && npm run bench:intent` (Node, darwin arm64, 2026-10-10, 6 simulated people per head condition, 15 looks
+each, ~20 s). Tables: `bench/results/intent.md`; raw data: `bench/results/intent.json`. The engine reported a median
+error radius of 103 px (10th–90th percentile 85–120 px) during these looks. Summary and interpretation in README.md ›
+"Context, prediction and the Gaze lab". Real-person numbers come only from the Gaze lab; none have been collected yet.

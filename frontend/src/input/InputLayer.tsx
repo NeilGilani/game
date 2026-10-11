@@ -9,6 +9,11 @@
  * for the pointer and the engine's error radius, holds it with hysteresis, and the cursor sits in
  * the middle of the held target (marked data-dwell-locked) instead of wobbling. A glance away or a
  * blink pauses the dwell ring (data-dwell-paused) rather than resetting it.
+ *
+ * Each target carries a context prior (input/context.ts, os/gaze/src/input/intent.ts priorsOf): what is
+ * likely on this screen weighs the magnet's evidence when the tracker can't tell neighbours apart.
+ * Approval gates never get more than neutral; Stop, Help and Lifeline never less than the top. The
+ * precision meter drives the adaptive layout (input/layout.ts).
  */
 
 import { useEffect, useRef, useState } from "react";
@@ -25,6 +30,10 @@ import {
   type SelectorEvent,
   type SelectorTarget,
 } from "../../../os/gaze/src/input/selector";
+import { DEFAULT_INTENT, PrecisionMeter, priorsOf } from "../../../os/gaze/src/input/intent";
+import { useGazeTuning } from "../vision/tuning";
+import { formNextElements, readContext } from "./context";
+import { setAdaptiveLayout, setLivePrecision } from "./layout";
 import { ScanEngine, type ScanEvent } from "./scan";
 
 const AUTO_CALIBRATE_KEY = "agency.autoCalibrated";
@@ -45,10 +54,15 @@ function labelOf(el: HTMLElement): string {
 }
 
 /** Visible, enabled dwell targets, limited to an open dialog if there is one. */
-function collectTargets(onlyAlways: boolean): { list: SelectorTarget[]; byId: Map<string, HTMLElement> } {
+function collectTargets(
+  onlyAlways: boolean,
+  contextStrength: number,
+): { list: SelectorTarget[]; byId: Map<string, HTMLElement> } {
   const scope = document.querySelector<HTMLElement>('[data-dwell-scope="modal"]') ?? document.body;
   const nodes = scope.querySelectorAll<HTMLElement>("[data-dwell]");
   const list: SelectorTarget[] = [];
+  const contexts: ReturnType<typeof readContext>[] = [];
+  const formNext = formNextElements(scope);
   const byId = new Map<string, HTMLElement>();
   const vw = window.innerWidth;
   const vh = window.innerHeight;
@@ -60,12 +74,18 @@ function collectTargets(onlyAlways: boolean): { list: SelectorTarget[]; byId: Ma
     if (el.closest("[inert]")) return;
     const id = idFor(el);
     byId.set(id, el);
+    contexts.push(readContext(el, formNext));
     list.push({
       id,
       rect: { left: r.left, top: r.top, right: r.right, bottom: r.bottom },
       dwellScale: el.hasAttribute("data-dwell-always") ? 2 : Number(el.dataset.dwellScale ?? 1),
     });
   });
+  const priors = priorsOf(
+    list.map((t, i) => ({ ...t, ...contexts[i]! })),
+    { ...DEFAULT_INTENT, strength: contextStrength },
+  );
+  list.forEach((t, i) => (t.prior = priors[i]));
   return { list, byId };
 }
 
@@ -96,6 +116,8 @@ export function InputLayer() {
   const [blinkProgress, setBlinkProgress] = useState(0);
   const [scanPaused, setScanPaused] = useState(false);
 
+  const tuning = useGazeTuning();
+  const meter = useRef(new PrecisionMeter());
   const selector = useRef(new GazeSelector(APP_SELECTOR));
   const scan = useRef(new ScanEngine());
   const blink = useRef(new BlinkSwitch());
@@ -118,6 +140,12 @@ export function InputLayer() {
     calibration,
   } = input;
   const pointerMode = mode === "gaze" || mode === "head";
+
+  // Adaptive layout only while a pointer drives selection, and only if the person wants it.
+  useEffect(() => {
+    setAdaptiveLayout(tuning.adaptiveLayout && pointerMode);
+    if (!pointerMode) meter.current.reset();
+  }, [tuning.adaptiveLayout, pointerMode]);
   const scanning = mode === "scan_key" || mode === "scan_blink" || fallbackActive;
 
   useEffect(() => {
@@ -167,7 +195,7 @@ export function InputLayer() {
 
   const refreshTargets = (now: number, onlyAlways = false) => {
     if (now - targets.current.at > 250) {
-      targets.current = { ...collectTargets(onlyAlways), at: now };
+      targets.current = { ...collectTargets(onlyAlways, tuning.contextStrength), at: now };
     }
     return targets.current;
   };
@@ -214,6 +242,9 @@ export function InputLayer() {
       // Where the cursor goes: the middle of the held target while there is a lock, else the pointer.
       let cursorAt = frame.pointer;
       let locked = false;
+      if (mode === "gaze" && frame.pointer && frame.confidence >= 0.5 && !suspended) {
+        setLivePrecision(meter.current.update(now, vision.errorRadius));
+      }
       if (!suspended && !fallbackActive && frame.pointer) {
         const { list, byId } = refreshTargets(now, eyeControlPaused);
         const events: SelectorEvent[] = sel.update(
@@ -282,7 +313,16 @@ export function InputLayer() {
       }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pointerMode, vision, prefs, suspended, eyeControlPaused, fallbackActive, calibration]);
+  }, [
+    pointerMode,
+    vision,
+    prefs,
+    suspended,
+    eyeControlPaused,
+    fallbackActive,
+    calibration,
+    tuning.contextStrength,
+  ]);
 
   // --- Eye gaze without a calibration: start calibrating by itself ----------------------
   // Someone who can only move their eyes can't click "Calibrate". Once the camera sees a face for a
