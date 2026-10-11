@@ -21,12 +21,25 @@ describe("fixation smoother", () => {
     expect(s.noisePt).toBeLessThan(190);
   });
 
-  it("jumps on the first frame of a big saccade instead of sliding", () => {
+  it("jumps on the second frame of a big saccade instead of sliding", () => {
     const s = new FixationSmoother({ initialNoisePt: 60 });
     for (let i = 0; i < 30; i++) s.update(i * 33, noisy(200, 40), noisy(300, 40));
-    const p = s.update(30 * 33, 1200, 700);
+    const first = s.update(30 * 33, 1200, 700);
+    expect(first.saccade).toBe(false);
+    const p = s.update(31 * 33, 1200, 700);
     expect(p.saccade).toBe(true);
     expect(Math.hypot(p.x - 1200, p.y - 700)).toBeLessThan(1);
+  });
+
+  it("ignores a single wild frame (glare, a half blink)", () => {
+    const s = new FixationSmoother({ initialNoisePt: 60 });
+    for (let i = 0; i < 30; i++) s.update(i * 33, noisy(700, 40), noisy(400, 40));
+    const spike = s.update(30 * 33, 1400, 50);
+    expect(spike.saccade).toBe(false);
+    expect(Math.hypot(spike.x - 700, spike.y - 400)).toBeLessThan(60);
+    const after = s.update(31 * 33, noisy(700, 40), noisy(400, 40));
+    expect(after.saccade).toBe(false);
+    expect(Math.hypot(after.x - 700, after.y - 400)).toBeLessThan(60);
   });
 
   it("catches a smaller saccade within a few frames", () => {

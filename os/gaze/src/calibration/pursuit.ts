@@ -9,6 +9,11 @@
  * the centre. Each leg eases in and out, so the eyes nearly stop at the corners and follow
  * smoothly in between, at about 60 % of the screen diagonal per second.
  *
+ * Tried in simulation and left out (tests/pursuit.test.ts is the baseline): resting the light at
+ * the corners, a slower glide, averaging more or fewer frames per sample, and measuring each
+ * person's delay behind the light. None beat this; what limits accuracy is the noise in the eye
+ * landmarks, which is why the camera runs at 1280x720 and the smoother ignores single wild frames.
+ *
  * Pure logic, like CalibrationSession: the host draws the light at `at(ms)` and hands in each
  * frame's features with `add(ms, ...)`. Tests: tests/pursuit.test.ts.
  */

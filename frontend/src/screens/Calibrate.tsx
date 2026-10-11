@@ -5,8 +5,16 @@ import { useAnnounce } from "../state/announcer";
 import { useInput } from "../state/input";
 import { usePreferences } from "../state/preferences";
 import { navigate } from "../state/router";
+import { type StoredCalibration, describeError } from "../vision/calibrationStore";
 
-type Phase = { kind: "intro" } | { kind: "scanning" } | { kind: "failed"; message: string };
+/** Estimated error above which the scan says so and offers another go (px; "poor" starts at 128). */
+const ROUGH_ERROR_PT = 180;
+
+type Phase =
+  | { kind: "intro" }
+  | { kind: "scanning" }
+  | { kind: "rough"; calibration: StoredCalibration }
+  | { kind: "failed"; message: string };
 
 /**
  * The 5-second eye scan (os/gaze/src/calibration/pursuit.ts): one light glides around the screen
@@ -28,7 +36,7 @@ export function Calibrate() {
 
   // Hands-free selection is off during the countdown and the scan. Every screen here covers the
   // app, so only its own buttons are dwell targets.
-  const suspend = running && !head && phase.kind !== "failed";
+  const suspend = running && !head && (phase.kind === "intro" || phase.kind === "scanning");
   useEffect(() => {
     setSuspended(suspend);
     return () => setSuspended(false);
@@ -40,6 +48,12 @@ export function Calibrate() {
     cancelled.current = true;
     vision.cancelCalibration();
   }, [vision]);
+
+  const goHome = useCallback(() => {
+    navigate("/");
+    // The eyes end on whatever sits in the middle of Home: give them time to look around first.
+    window.dispatchEvent(new CustomEvent(SELECTION_RESET_EVENT, { detail: { holdMs: 3000 } }));
+  }, []);
 
   const scan = useCallback(() => {
     cancelled.current = false;
@@ -66,14 +80,21 @@ export function Calibrate() {
         setPhase({ kind: "failed", message: step.kind === "failed" ? step.reason : "Please try again." });
         return;
       }
-      setCalibration(vision.finishCalibration(step.result), true);
+      const calibration = vision.finishCalibration(step.result);
+      setCalibration(calibration, true);
+      if (calibration.result.quality.meanErrorPt > ROUGH_ERROR_PT) {
+        // Say so instead of quietly using a scan that will feel random; it still works on big tiles.
+        setPhase({ kind: "rough", calibration });
+        announce(
+          "Eye tracking is rough right now. You can scan again with better light, or use it as it is.",
+        );
+        return;
+      }
       announce("Done. Look at anything for a second to choose it.");
-      navigate("/");
-      // The eyes end on whatever sits in the middle of Home: give them time to look around first.
-      window.dispatchEvent(new CustomEvent(SELECTION_RESET_EVENT, { detail: { holdMs: 3000 } }));
+      goHome();
     };
     requestAnimationFrame(draw);
-  }, [vision, setCalibration, announce]);
+  }, [vision, setCalibration, announce, goHome]);
 
   // Starts by itself once a face is visible: nothing to press for someone who can only move their eyes.
   useEffect(() => {
@@ -201,6 +222,34 @@ export function Calibrate() {
           aria-hidden="true"
         >
           <span />
+        </div>
+      </div>
+    );
+  }
+
+  if (phase.kind === "rough") {
+    return (
+      <div className="calibration welcome" data-dwell-scope="modal">
+        <div className="welcome-card panel stack" style={{ maxWidth: 860 }}>
+          <div className="eyebrow">Eye scan · rough</div>
+          <h1>Tracking is rough in these conditions</h1>
+          <p>
+            Estimated error {describeError(phase.calibration)}. It still works on the big tiles and improves
+            as you use it. For a sharper scan:
+          </p>
+          <ul className="list">
+            <li>Light on your face, not behind you.</li>
+            <li>Sit a little closer: the bigger your face is to the camera, the steadier the pointer.</li>
+            <li>Glasses: tilt them slightly if the lenses reflect the screen.</li>
+          </ul>
+          <div className="grid grid-2">
+            <button className="btn btn-xl btn-primary" onClick={() => setPhase({ kind: "intro" })} data-dwell>
+              <Icon name="refresh" /> Scan again
+            </button>
+            <button className="btn btn-xl" onClick={goHome} data-dwell>
+              <Icon name="check" /> Use it as it is
+            </button>
+          </div>
         </div>
       </div>
     );

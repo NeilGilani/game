@@ -58,6 +58,7 @@ test.describe("with a fake webcam", () => {
     await expect(
       page
         .getByText(/The eye scan didn't work/)
+        .or(page.getByRole("heading", { name: /Tracking is rough/ }))
         .or(page.getByRole("navigation", { name: /Everything you can do/ })),
     ).toBeVisible({ timeout: 60_000 });
   });

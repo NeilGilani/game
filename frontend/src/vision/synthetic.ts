@@ -23,6 +23,8 @@ export interface SyntheticEyesOptions {
   seed?: number;
   head?: HeadMotionKind;
   fps?: number;
+  /** Real eyes trail a moving target by about a tenth of a second (pursuit lag). */
+  lagMs?: number;
 }
 
 /** A point in viewport pixels, or a CSS selector: look at the centre of the first match. */
@@ -32,6 +34,8 @@ export class SyntheticEyes {
   private readonly face: SyntheticFace;
   private readonly head: HeadMotion;
   private readonly fps: number;
+  private readonly lagMs: number;
+  private seen: { t: number; x: number; y: number }[] = [];
   private timer = 0;
   private target: LookTarget = { x: window.innerWidth / 2, y: window.innerHeight / 2 };
   private closedUntil = 0;
@@ -46,6 +50,7 @@ export class SyntheticEyes {
     this.face = new SyntheticFace(randomAnatomy(seed), display, WEBCAM_640, TYPICAL_NOISE, seed);
     this.head = new HeadMotion({ kind: options.head ?? "still", seed });
     this.fps = options.fps ?? 30;
+    this.lagMs = options.lagMs ?? 100;
   }
 
   start(): void {
@@ -75,10 +80,17 @@ export class SyntheticEyes {
     return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
   }
 
+  /** Where the eyes are: where the target was `lagMs` ago. */
+  private gaze(t: number): { x: number; y: number } {
+    this.seen.push({ t, ...this.where() });
+    while (this.seen.length > 2 && this.seen[1]!.t <= t - this.lagMs) this.seen.shift();
+    return this.seen[0]!;
+  }
+
   private frame(): void {
     const t = performance.now();
     const f = this.face.render({
-      gaze: this.where(),
+      gaze: this.gaze(t),
       head: this.head.at(t),
       closure: t < this.closedUntil ? 1 : 0,
     });
