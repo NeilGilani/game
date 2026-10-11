@@ -10,7 +10,9 @@ desktop materials and responsive layouts. Home uses a Finder-style split window 
 the Dock has original icon plates and active-page dots. The menu bar's View and Help menus navigate to real
 screens and support keyboard dismissal. Its small controls complement the large gaze targets on Home and the Dock.
 
-The original vector wallpaper is [`frontend/public/desktop-wallpaper.svg`](../../frontend/public/desktop-wallpaper.svg).
+The desktop uses soft blue, lavender and pink CSS gradients defined in
+[`frontend/src/styles/polish.css`](../../frontend/src/styles/polish.css). Window edges, cards and word-board
+outlines use thinner borders and softer shadows; high contrast keeps its solid outlines.
 High contrast removes wallpaper, transparency and icon gradients. References:
 [Apple's macOS interface guidance](https://developer.apple.com/design/human-interface-guidelines/designing-for-macos/)
 and [macOS Tahoe's desktop materials](https://www.apple.com/newsroom/2025/06/macos-tahoe-26-makes-the-mac-more-capable-productive-and-intelligent-than-ever/).
@@ -69,10 +71,14 @@ Symbols, no Apple logos or trademarks.
 
 ## Motion
 
-Springs of 200–350 ms (`--spring`, `--dur-fast`, `--dur`, `--dur-slow`). A new screen zooms open like Launchpad,
-a new set of choices fades in, a selected target "launches" (a short scale pulse). Motion only happens on a change
-the person caused, while selection is paused for the screen change; nothing moves while they are looking at it, and
-hover never scales anything. **Reduce motion** (Settings) and the system setting turn all of it off.
+Motion uses 180–420 ms easing that settles smoothly without overshoot (`--spring`, `--dur-fast`, `--dur`,
+`--dur-slow`). Pointer navigation gives the existing screen a subtle 8 px rise and fade, without remounting its
+state. Fast navigation cancels the previous animation. Nested choices fade without changing their positions.
+Pointer hover lifts only the artwork inside Home, Apps, choices and the Dock; the buttons and labels stay fixed.
+Hands-free modes use opacity-only screen transitions and stationary hover and selection feedback.
+**Reduce motion** (Settings) and the system setting disable both screen and hover motion, including when the
+system setting changes during a transition. `frontend/src/styles/polish.css` holds these material and motion
+refinements; `e2e/motion.spec.ts` checks stationary targets, both reduced-motion settings and interrupted navigation.
 
 **Dwell feedback** is a ring in the target's corner that fills like an activity ring as the dwell completes, plus a
 4 px outline, so progress is visible in every theme.

@@ -1,0 +1,277 @@
+/* Soft desktop materials. Motion decorates icons, never changes a button's hit area. */
+:root {
+  --chrome-surface: color-mix(in srgb, var(--glass-strong) 88%, transparent);
+  --window-content: color-mix(in srgb, var(--surface) 96%, transparent);
+  --window-shadow: 0 32px 90px rgb(8 23 55 / 20%), 0 4px 16px rgb(0 0 0 / 8%);
+  --polish-edge: color-mix(in srgb, var(--ink) 10%, transparent);
+  --polish-hover: color-mix(in srgb, var(--accent) 7%, transparent);
+}
+
+body {
+  background:
+    linear-gradient(var(--desktop-shade), var(--desktop-shade)) fixed,
+    radial-gradient(ellipse at 16% 8%, #c6ecff 0%, transparent 48%) fixed,
+    radial-gradient(ellipse at 88% 18%, #a6b7f5 0%, transparent 54%) fixed,
+    radial-gradient(ellipse at 72% 100%, #dfbde7 0%, transparent 52%) fixed,
+    linear-gradient(145deg, #5198ca, #526aba 54%, #7c77ba) fixed;
+}
+
+.menubar {
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  box-shadow: 0 1px 0 var(--polish-edge);
+}
+
+.shell-os .main > .home {
+  max-width: 1280px;
+  border-radius: 28px;
+}
+
+.home-titlebar {
+  border-bottom-color: var(--polish-edge);
+}
+
+.home-widget {
+  border-radius: 0 0 0 28px;
+}
+
+.home-tiles {
+  border-radius: 0 0 28px;
+}
+
+.home-usuals .usual {
+  border-color: var(--polish-edge);
+  border-radius: 22px;
+  background: color-mix(in srgb, var(--glass-strong) 70%, transparent);
+  box-shadow:
+    inset 0 1px 0 var(--icon-gloss),
+    0 2px 6px rgb(0 0 0 / 3%);
+}
+
+.home-usuals .usual-continue {
+  background: var(--warn-soft);
+}
+
+.home-tile {
+  border-radius: 24px;
+}
+
+.home-tile-icon {
+  border-radius: 28%;
+  box-shadow:
+    inset 0 1px 1px rgb(255 255 255 / 45%),
+    0 5px 12px rgb(0 0 0 / 12%);
+}
+
+.home-tile-label {
+  font-weight: 600;
+  letter-spacing: -0.015em;
+}
+
+.topbar.dock {
+  border-radius: 32px;
+  background: var(--chrome-surface);
+  box-shadow:
+    inset 0 1px 0 var(--icon-gloss),
+    0 12px 36px rgb(8 23 55 / 18%);
+}
+
+.dock-btn[aria-current="page"] {
+  background: var(--polish-hover);
+}
+
+.main > .flow,
+.main > .talk-page {
+  border-radius: 28px;
+}
+
+.shell .panel,
+.shell .choice,
+.shell .app-tile,
+.shell .tile {
+  border-radius: 24px;
+  box-shadow:
+    inset 0 1px 0 var(--icon-gloss),
+    0 3px 12px rgb(0 0 0 / 5%);
+}
+
+.shell .btn:not(.dock-btn) {
+  border-color: var(--polish-edge);
+  box-shadow:
+    inset 0 1px 0 var(--icon-gloss),
+    0 2px 4px rgb(0 0 0 / 4%);
+}
+
+.shell .btn-primary {
+  border-color: var(--accent);
+}
+
+.shell .btn-danger,
+.shell .btn-solid-danger,
+.shell .choice-danger {
+  border-color: var(--danger);
+}
+
+.talk-page .talk-word,
+.talk-page .talk-phrase,
+.talk-page .talk-option,
+.talk-page .talk-key {
+  border-width: 1px;
+  border-radius: 22px;
+  box-shadow:
+    inset 0 1px 0 var(--icon-gloss),
+    0 2px 6px rgb(0 0 0 / 4%);
+  font-weight: 600;
+}
+
+.talk-page .talk-message {
+  border: 1px solid var(--polish-edge);
+  box-shadow: inset 0 2px 6px rgb(0 0 0 / 3%);
+}
+
+.desktop-menu-popover {
+  transform-origin: top left;
+  animation: polish-menu-in var(--dur-fast) var(--ease-out);
+}
+
+@keyframes polish-menu-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* Shell handles screen motion without remounting route state. Nested choices only fade. */
+.main > .home,
+.main > .flow,
+.main > .task,
+.main > .page {
+  animation: none;
+}
+
+@keyframes polish-choices-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.flow-options {
+  animation: polish-choices-in var(--dur-fast) var(--ease-out);
+}
+
+.shell :is(.btn, .choice, .home-tile, .usual, .app-tile, .nav-item, .talk-tab, .talk-word, .talk-phrase),
+.desktop-menu :is(button, a) {
+  transition:
+    background-color var(--dur-fast) var(--ease-out),
+    border-color var(--dur-fast) var(--ease-out),
+    color var(--dur-fast) var(--ease-out),
+    box-shadow var(--dur) var(--ease-out);
+}
+
+.home-tile-icon,
+.dock-btn > .ico,
+.choice-pic,
+.app-icon {
+  transition: transform var(--dur) var(--spring);
+}
+
+/* Pointer-only feedback: the large button and its label stay fixed. */
+@media (hover: hover) and (pointer: fine) {
+  .shell[data-input-mode="pointer"] .home-tile:not([data-tone="lifeline"]):hover .home-tile-icon,
+  .shell[data-input-mode="pointer"] .app-tile:hover .app-icon,
+  .shell[data-input-mode="pointer"] .choice:not(.choice-danger):hover .choice-pic {
+    transform: translateY(-3px) scale(1.035);
+  }
+
+  .shell[data-input-mode="pointer"] .dock-btn:not(.help-btn):not(.pause-agent):hover > .ico {
+    transform: translateY(-5px) scale(1.1);
+  }
+
+  .shell[data-input-mode="pointer"] .home-tile:not([data-tone="lifeline"]):active .home-tile-icon,
+  .shell[data-input-mode="pointer"] .dock-btn:not(.help-btn):not(.pause-agent):active > .ico {
+    transform: scale(0.96);
+    transition-duration: 90ms;
+  }
+
+  .home-usuals .usual:hover,
+  .shell .choice:not(.choice-danger):hover,
+  .shell .app-tile:hover {
+    background: color-mix(in srgb, var(--surface) 92%, var(--accent));
+  }
+}
+
+/* Selection feedback must not displace a target in any hands-free input mode. */
+.shell:not([data-input-mode="pointer"]) [data-selected-flash] {
+  animation: none;
+}
+
+.shell:not([data-input-mode="pointer"]) .desktop-menu-popover {
+  animation-name: polish-choices-in;
+}
+
+@media (max-width: 1100px) {
+  .home-widget {
+    border-radius: 0;
+  }
+  .home-tiles {
+    border-radius: 0 0 28px 28px;
+  }
+}
+
+/* Preserve opaque emergency surfaces and visible high-contrast outlines. */
+:root[data-theme="contrast"] body {
+  background: #000;
+}
+
+:root[data-theme="contrast"] {
+  --chrome-surface: #000;
+  --window-content: #000;
+  --window-shadow: none;
+  --polish-edge: #fff;
+}
+
+:root[data-theme="contrast"]
+  .shell
+  :is(
+    .btn,
+    .panel,
+    .choice,
+    .app-tile,
+    .tile,
+    .talk-word,
+    .talk-phrase,
+    .talk-option,
+    .talk-key,
+    .talk-message
+  ) {
+  border: 2px solid var(--line);
+  box-shadow: none;
+}
+
+:root[data-theme="contrast"] .home-usuals .usual {
+  background: #000;
+  border: 2px solid #fff;
+}
+
+:root[data-theme="contrast"] .topbar.dock,
+:root[data-theme="contrast"] .home-tile-icon {
+  box-shadow: none;
+}
+
+:root[data-reduced-motion] :is(.home-tile-icon, .dock-btn > .ico, .choice-pic, .app-icon),
+:root[data-theme="contrast"] :is(.home-tile-icon, .dock-btn > .ico, .choice-pic, .app-icon) {
+  transform: none !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :is(.home-tile-icon, .dock-btn > .ico, .choice-pic, .app-icon) {
+    transform: none !important;
+  }
+}
