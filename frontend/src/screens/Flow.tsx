@@ -27,6 +27,7 @@ import { useAgent } from "../state/agent";
 import { useAnnounce } from "../state/announcer";
 import type { Suggestion } from "../state/contracts";
 import { memory } from "../state/memory";
+import { host } from "../state/host";
 import { apps } from "../state/native";
 import { navigate } from "../state/router";
 
@@ -112,6 +113,15 @@ function FlowRunner({ flow }: { flow: FlowDef }) {
     });
     if (outcome.type === "route") {
       navigate(outcome.path);
+    } else if (outcome.type === "open") {
+      // In the browser a new tab; in the Mac app, main opens it in the person's browser (allow-listed sites only).
+      const w = window.open(outcome.url, "_blank", "noopener");
+      const text =
+        w === null && !host()
+          ? `Your browser blocked the new tab: allow pop-ups to open ${outcome.name}.`
+          : `${outcome.name} is open in your browser.`;
+      announce(text);
+      setLaunched(text);
     } else if (outcome.type === "launch") {
       // A failed call must still end on a screen that says so: an unanswered outcome would freeze this flow.
       const text = await apps()

@@ -97,6 +97,12 @@ export function resolveEnd(end: FlowEnd, selections: Selections, usual = false):
     }
     case "launch":
       return { type: "launch", bundleId: end.bundleId, name: end.name };
+    case "open":
+      return {
+        type: "open",
+        url: typeof end.url === "function" ? end.url(selections) : end.url,
+        name: end.name,
+      };
     case "route":
       return { type: "route", path: end.path };
   }
