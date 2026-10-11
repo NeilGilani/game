@@ -14,7 +14,7 @@ SHELL := /bin/bash
 PY := backend/.venv/bin/python
 PI ?= agency-pi.local
 
-.PHONY: free-port help setup setup-backend setup-frontend dev demo demo-local site-deploy web-demo backend frontend dev-pi test test-backend test-frontend \
+.PHONY: site-gemini-key free-port help setup setup-backend setup-frontend dev demo demo-local site-deploy web-demo backend frontend dev-pi test test-backend test-frontend \
         lint typecheck build check e2e e2e-fixtures reset-demo pi-setup pi-start pi-stop pi-status pi-logs clean \
         os-check os-dev os-build os-dist os-test os-e2e sidecar sandbox
 
@@ -196,12 +196,17 @@ web-demo:
 	npm run vendor -w frontend
 	cd frontend && VITE_WEB_DEMO=1 npx vite build --base /app/ --outDir ../site/public/app --emptyOutDir --sourcemap false
 
+# The web demo's Gemini planner reads GEMINI_API_KEY as a Cloudflare secret (never in the page): run once.
+site-gemini-key:
+	npx --yes wrangler@4 pages secret put GEMINI_API_KEY --project-name=$(CF_PROJECT)
+
 site-deploy: web-demo
 	npm install --workspace site --no-audit --no-fund
 	SITE_BASE=/ SITE_URL=$${SITE_URL:-https://$(CF_PROJECT).pages.dev} npm run build -w site
 	@# Creates the project with "main" as its production branch; harmless if it already exists.
 	-npx --yes wrangler@4 pages project create $(CF_PROJECT) --production-branch=main
-	npx --yes wrangler@4 pages deploy site/dist --project-name=$(CF_PROJECT) --branch=main --commit-dirty=true
+	@# From site/, so Cloudflare also deploys site/functions (the web demo's Gemini planner).
+	cd site && npx --yes wrangler@4 pages deploy dist --project-name=$(CF_PROJECT) --branch=main --commit-dirty=true
 	@# site/dist is tracked in git (built for GitHub Pages); put it back so git pull keeps working.
 	git checkout -- site/dist && git clean -fdq site/dist
 	@echo "Deployed. Open the https://...pages.dev address printed above (the first deploy can take a minute)."
