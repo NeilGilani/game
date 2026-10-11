@@ -22,7 +22,7 @@ interface Step {
   done: string;
 }
 
-const MODEL = "gemini-3.8-flash";
+const MODEL = "gemini-3.5-flash-lite"; // about a second for a plan; GEMINI_MODEL overrides
 const PER_MINUTE = 8;
 const seen = new Map<string, number[]>();
 

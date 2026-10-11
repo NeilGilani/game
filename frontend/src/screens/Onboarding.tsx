@@ -178,7 +178,12 @@ function Permissions() {
 function InputChoice({ onChosen }: { onChosen: () => void }) {
   const { prefs, update } = usePreferences();
   const choices = [
-    { mode: "gaze" as const, label: "My eyes", sub: "Look and hold to choose. Calibrate next.", icon: "eye" },
+    {
+      mode: "head" as const,
+      label: "My eyes",
+      sub: "The cursor follows your eyes. Hold to choose.",
+      icon: "eye",
+    },
     {
       mode: "scan_key" as const,
       label: "A switch",
@@ -203,7 +208,7 @@ function InputChoice({ onChosen }: { onChosen: () => void }) {
             aria-pressed={prefs.input_mode === c.mode}
             onClick={() => {
               update({ input_mode: c.mode });
-              if (c.mode === "gaze") navigate("/camera");
+              if (c.mode === "head") navigate("/camera");
               else onChosen();
             }}
             data-dwell

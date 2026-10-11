@@ -212,6 +212,10 @@ class CloudProvider:
     history: list[dict[str, Any]] = field(default_factory=list)
     # Set per request by the Synapse layer (agency/synapse.py): the weighted expert lenses for this request.
     expert_brief: str = ""
+    # Set per request by the Synapse layer: "fast" for everyday requests (a quick model first), "deep" otherwise.
+    lane: str = "deep"
+    # The model that answered the last successful request (a fast-lane or fallback model may stand in).
+    last_model: str | None = None
 
     name: ClassVar[str] = "cloud"
     label: ClassVar[str] = "Cloud model"
@@ -446,14 +450,26 @@ def gemini_api_key() -> str | None:
     return os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY") or None
 
 
+# Synapse's fast lane: everyday requests (a short plan, replies, a sentence ending) go to Flash-Lite first, which
+# answers in about a second. If a model is busy or rate limited, the other one answers at once instead of a retry.
+GEMINI_FAST_MODEL = "gemini-3.5-flash-lite"
+# A busy or limited model: move on to the next one immediately.
+_GEMINI_BUSY = {429, 500, 502, 503, 504}
+FAST_TIMEOUT_S = 10.0  # the API refuses deadlines under 10 s
+
+
 @dataclass
 class GeminiProvider(CloudProvider):
     """Google Gemini through the official ``google-genai`` SDK, with JSON-schema structured output."""
 
     name: ClassVar[str] = "google"
     label: ClassVar[str] = "Gemini"
+    fast_model: str = field(default_factory=lambda: os.environ.get("AGENCY_GEMINI_FAST_MODEL") or GEMINI_FAST_MODEL)
+    fast_client: Any = None
 
     def __post_init__(self) -> None:
+        if self.client is not None and self.fast_client is None:
+            self.fast_client = self.client  # a client handed in (tests) serves both lanes
         if self.client is None:
             from google import genai
             from google.genai import types
@@ -465,8 +481,22 @@ class GeminiProvider(CloudProvider):
                     retry_options=types.HttpRetryOptions(attempts=2),
                 ),
             )
+        if self.fast_client is None:
+            from google import genai
+            from google.genai import types
 
-    def _config(self, schema: dict[str, Any] | None, effort: str | None, max_tokens: int) -> Any:
+            # No retries and a short timeout: on any trouble the other model answers instead.
+            self.fast_client = genai.Client(
+                api_key=gemini_api_key(),
+                http_options=types.HttpOptions(
+                    timeout=int(min(self.timeout_s, FAST_TIMEOUT_S) * 1000),
+                    retry_options=types.HttpRetryOptions(attempts=1),
+                ),
+            )
+
+    def _config(
+        self, schema: dict[str, Any] | None, effort: str | None, max_tokens: int, model: str | None = None
+    ) -> Any:
         from google.genai import types
 
         config = types.GenerateContentConfig(
@@ -477,7 +507,7 @@ class GeminiProvider(CloudProvider):
             max_output_tokens=max_tokens * 2,
         )
         level = _THINKING_LEVELS.get(effort or self.effort)
-        if level and self.model.startswith("gemini-3"):
+        if level and (model or self.model).startswith("gemini-3"):
             config.thinking_config = types.ThinkingConfig(thinking_level=types.ThinkingLevel(level))
         return config
 
@@ -506,12 +536,25 @@ class GeminiProvider(CloudProvider):
         import httpx
         from google.genai import errors
 
-        try:
-            response = await self.client.aio.models.generate_content(
-                model=self.model, contents=user, config=self._config(schema, effort, max_tokens)
-            )
-        except (errors.APIError, httpx.HTTPError, OSError, TimeoutError) as exc:
-            self._record(False, purpose, self._api_error(exc))
+        # Fast lane: the quick model, then the main one. Otherwise the main model, then the quick one.
+        order = [self.fast_model, self.model] if self.lane == "fast" else [self.model, self.fast_model]
+        order = list(dict.fromkeys(m for m in order if m))
+        response = None
+        for i, model in enumerate(order):
+            last = i == len(order) - 1
+            client = self.client if (model == self.model and self.lane != "fast") else self.fast_client
+            try:
+                response = await client.aio.models.generate_content(
+                    model=model, contents=user, config=self._config(schema, effort, max_tokens, model)
+                )
+                self.last_model = model
+                break
+            except (errors.APIError, httpx.HTTPError, OSError, TimeoutError) as exc:
+                busy = not isinstance(exc, errors.APIError) or exc.code in _GEMINI_BUSY
+                if last or not busy:
+                    self._record(False, purpose, self._api_error(exc))
+                    return None
+        if response is None:
             return None
         feedback = getattr(response, "prompt_feedback", None)
         if feedback is not None and getattr(feedback, "block_reason", None):
