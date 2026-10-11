@@ -70,7 +70,7 @@ function bottomRow(page: KeyboardPage, columns: number): KeySpec[] {
       action: { kind: "space" },
       span: Math.max(1, columns - fixed),
     },
-    { id: "key:delete", label: "⌫ delete", name: "Delete", action: { kind: "delete" }, span: 2 },
+    { id: "key:delete", label: "delete", name: "Delete", action: { kind: "delete" }, span: 2 },
     {
       id: "key:return",
       label: "return",
@@ -90,7 +90,7 @@ const ABC = "abcdefghijklmnopqrstuvwxyz',.";
 export function keyRows(page: KeyboardPage, columns: number): KeySpec[][] {
   const shift: KeySpec = {
     id: "key:shift",
-    label: "⇧ shift",
+    label: "shift",
     name: "Shift",
     action: { kind: "shift" },
     span: 1,

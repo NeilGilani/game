@@ -1,130 +1,20 @@
-/* AGENCY overlay. Tokens are copied from frontend/src/styles/app.css (the AGENCY design system) so the
-   overlay looks like the shell; keep them in sync. The window is transparent: only the overlay's own
-   buttons and panels are painted, and nothing is ever drawn over what the person is looking at except a
-   thin outline and the dwell ring around it. */
+/* AGENCY overlay, styled with the AGENCY OS design system (docs/os/DESIGN.md). Every colour, material, radius,
+   font and duration comes from frontend/src/styles/tokens.css, imported before this file; nothing here defines
+   its own palette. The window is transparent: only the overlay's own buttons and panels are painted, and nothing
+   is ever drawn over what the person is looking at except an outline and the dwell ring beside it.
 
-:root {
-  --text-scale: 1;
-  --font: "Atkinson Hyperlegible", system-ui, -apple-system, "Segoe UI", sans-serif;
-  --radius: 16px;
-  --radius-lg: 22px;
-  --gap: 20px;
-  --target: 76px;
-  --topbar: 84px;
-
-  --bg: #f3f1eb;
-  --surface: #ffffff;
-  --surface-2: #e9e6dd;
-  --ink: #111a26;
-  --ink-2: #3c4655;
-  --line: #cfc9bc;
-  --line-strong: #8f887a;
-  --accent: #0b6b5c;
-  --accent-hover: #095a4d;
-  --accent-ink: #ffffff;
-  --accent-soft: #d9eee8;
-  --focus: #f2b400;
-  --ok: #1b6a36;
-  --ok-soft: #dcf0e2;
-  --warn: #8a5200;
-  --warn-soft: #fff0cc;
-  --danger: #a3241a;
-  --danger-soft: #fbe2de;
-  --info: #1d4f99;
-  --info-soft: #e0eafa;
-  --sim: #5b3f99;
-  --sim-soft: #ece6f7;
-  --shadow: 0 1px 2px rgb(17 26 38 / 6%), 0 8px 24px rgb(17 26 38 / 6%);
-  color-scheme: light;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]):not([data-theme="contrast"]) {
-    --bg: #0b111a;
-    --surface: #131b27;
-    --surface-2: #1b2533;
-    --ink: #eef2f7;
-    --ink-2: #a9b4c3;
-    --line: #2b3749;
-    --line-strong: #4b5a70;
-    --accent: #4fc9b0;
-    --accent-hover: #6fd8c2;
-    --accent-ink: #052823;
-    --accent-soft: #10362f;
-    --focus: #ffd54a;
-    --ok: #7bd69a;
-    --ok-soft: #11301c;
-    --warn: #f6c56a;
-    --warn-soft: #36280d;
-    --danger: #ff8f84;
-    --danger-soft: #3b1714;
-    --info: #8db9ff;
-    --info-soft: #13294b;
-    --sim: #c3a9ff;
-    --sim-soft: #271d40;
-    --shadow: 0 1px 2px rgb(0 0 0 / 30%), 0 8px 24px rgb(0 0 0 / 25%);
-    color-scheme: dark;
-  }
-}
-
-:root[data-theme="dark"] {
-  --bg: #0b111a;
-  --surface: #131b27;
-  --surface-2: #1b2533;
-  --ink: #eef2f7;
-  --ink-2: #a9b4c3;
-  --line: #2b3749;
-  --line-strong: #4b5a70;
-  --accent: #4fc9b0;
-  --accent-hover: #6fd8c2;
-  --accent-ink: #052823;
-  --accent-soft: #10362f;
-  --focus: #ffd54a;
-  --ok: #7bd69a;
-  --ok-soft: #11301c;
-  --warn: #f6c56a;
-  --warn-soft: #36280d;
-  --danger: #ff8f84;
-  --danger-soft: #3b1714;
-  --info: #8db9ff;
-  --info-soft: #13294b;
-  --sim: #c3a9ff;
-  --sim-soft: #271d40;
-  --shadow: 0 1px 2px rgb(0 0 0 / 30%), 0 8px 24px rgb(0 0 0 / 25%);
-  color-scheme: dark;
-}
-
-:root[data-theme="contrast"] {
-  --bg: #000000;
-  --surface: #000000;
-  --surface-2: #141414;
-  --ink: #ffffff;
-  --ink-2: #ffffff;
-  --line: #ffffff;
-  --line-strong: #ffffff;
-  --accent: #ffe600;
-  --accent-hover: #fff27a;
-  --accent-ink: #000000;
-  --accent-soft: #2b2700;
-  --focus: #00e5ff;
-  --ok: #7dff9e;
-  --ok-soft: #002b0e;
-  --warn: #ffd166;
-  --warn-soft: #2e2200;
-  --danger: #ff7b7b;
-  --danger-soft: #330000;
-  --info: #9cc8ff;
-  --info-soft: #001a33;
-  --sim: #e0ccff;
-  --sim-soft: #1c0f33;
-  --shadow: none;
-  color-scheme: dark;
-}
+   Sizes and positions are never set here: every button's rect comes from the controller (layout.ts), so the
+   restyle cannot change a target's size or spacing. */
 
 *,
 *::before,
 *::after {
   box-sizing: border-box;
+}
+
+html {
+  /* Body is 20 px at text size 100% (DESIGN.md: Type). */
+  font-size: calc(20px * var(--text-scale));
 }
 
 html,
@@ -135,7 +25,6 @@ body,
   background: transparent;
   overflow: hidden;
   font-family: var(--font);
-  font-size: calc(18px * var(--text-scale));
   color: var(--ink);
   -webkit-font-smoothing: antialiased;
 }
@@ -146,6 +35,8 @@ body,
   pointer-events: none;
 }
 
+/* ---- Buttons: glass, like the shell's .btn and dock ------------------------------------------- */
+
 .ov-btn {
   position: absolute;
   pointer-events: auto;
@@ -153,20 +44,29 @@ body,
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 4px;
-  padding: 6px 10px;
-  border-radius: var(--radius);
-  border: 2px solid var(--line-strong);
-  background: var(--surface);
+  gap: 6px;
+  padding: 8px 12px;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--line-strong);
+  background: var(--glass-strong);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
   color: var(--ink);
   font: inherit;
-  font-weight: 700;
-  font-size: 1rem;
+  font-family: var(--font);
+  font-weight: 650;
+  font-size: var(--type-headline);
   line-height: 1.15;
   text-align: center;
   cursor: pointer;
   box-shadow: var(--shadow);
   overflow: hidden;
+  transition:
+    background-color var(--dur-fast) var(--ease-out),
+    box-shadow var(--dur-fast) var(--ease-out);
+}
+.ov-btn:hover {
+  background: var(--surface-2);
 }
 .ov-btn:focus-visible {
   outline: 6px solid var(--focus);
@@ -174,128 +74,201 @@ body,
 }
 .ov-btn .ov-detail {
   font-weight: 400;
-  font-size: 0.82rem;
+  font-size: var(--type-footnote);
   color: var(--ink-2);
 }
-.ov-btn .ov-n {
-  position: absolute;
-  top: 6px;
-  left: 8px;
-  min-width: 34px;
-  padding: 2px 8px;
-  border-radius: 999px;
-  background: var(--ink);
-  color: var(--bg);
-  font-size: 0.95rem;
-}
-.ov-btn svg {
-  width: 32px;
-  height: 32px;
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 2;
-  stroke-linecap: round;
-  stroke-linejoin: round;
+.ov-btn .ico {
+  flex: none;
 }
 .ov-btn img {
-  width: 48px;
-  height: 48px;
+  width: 56px;
+  height: 56px;
+  border-radius: 22%;
 }
-.ov-btn[data-tone="help"] {
-  background: var(--danger);
-  border-color: var(--danger);
-  color: var(--surface);
+
+/* The protected rail: separate glass tiles (no backing pill, so nothing between them is covered). */
+.ov-btn[data-kind="rail"] {
+  gap: 4px;
+  font-size: var(--type-footnote);
+  box-shadow: var(--shadow-lift);
+}
+/* Help is Lifeline: solid red and white in every theme, never glass (DESIGN.md: Materials). */
+.ov-btn[data-tone="help"],
+.ov-btn[data-tone="help"]:hover {
+  background: #c4001a;
+  border-color: #c4001a;
+  color: #fff;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+:root[data-theme="contrast"] .ov-btn[data-tone="help"] {
+  background: #ff7b7b;
+  border-color: #ff7b7b;
+  color: #000;
 }
 .ov-btn[data-tone="stop"] {
-  border-color: var(--danger);
   color: var(--danger);
+  border-color: var(--danger);
 }
 .ov-btn[data-tone="accent"] {
   background: var(--accent-soft);
   border-color: var(--accent);
 }
 .ov-btn[data-tone="quiet"] {
-  border-color: var(--line);
   color: var(--ink-2);
 }
 .ov-btn[data-active="true"] {
-  outline: 4px solid var(--accent);
-  outline-offset: 2px;
+  border-color: var(--accent);
+  box-shadow:
+    0 0 0 3px var(--accent),
+    var(--shadow);
+}
+
+/* Choices in panels: an icon plate and a label, like the shell's flow choices. */
+.ov-btn[data-kind="item"] {
+  flex-direction: row;
+  justify-content: flex-start;
+  gap: 14px;
+  padding: 10px 16px;
+  text-align: left;
+}
+.ov-btn[data-kind="item"] .ov-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.ov-plate {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 52px;
+  height: 52px;
+  border-radius: 30%;
+  color: #fff;
+  background: linear-gradient(160deg, color-mix(in srgb, var(--accent) 70%, #fff), var(--accent));
+  box-shadow: 0 2px 6px rgb(0 0 0 / 14%);
+}
+:root[data-theme="contrast"] .ov-plate {
+  background: var(--surface);
+  color: var(--ink);
+  border: var(--hairline);
+}
+.ov-btn .ov-n {
+  flex: none;
+  display: grid;
+  place-items: center;
+  min-width: 52px;
+  height: 52px;
+  padding: 0 10px;
+  border-radius: 30%;
+  background: var(--accent);
+  color: var(--accent-ink);
+  font-family: var(--font-display);
+  font-size: var(--type-title);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.ov-btn[data-kind="nav"] {
+  font-size: var(--type-body);
 }
 .ov-btn[data-kind="zone"] {
-  background: color-mix(in srgb, var(--surface) 72%, transparent);
-  border-style: dashed;
+  background: var(--glass);
+  border: 2px dashed var(--line-strong);
   box-shadow: none;
 }
 .ov-btn[data-kind="key"] {
-  font-size: 1.35rem;
+  font-size: var(--type-title);
+  font-weight: 600;
+  border-radius: var(--radius);
   box-shadow: none;
 }
 .ov-btn[data-kind="key"] .ov-detail {
   display: none;
 }
+.ov-btn[data-kind="key"][data-tone="accent"] {
+  font-size: var(--type-headline);
+}
+
+/* Switch scanning highlight (same as the shell's [data-scan-active]). */
 .ov-btn[data-scan="true"] {
   outline: 6px solid var(--focus);
-  outline-offset: 4px;
+  outline-offset: 5px;
+  box-shadow: 0 0 0 14px color-mix(in srgb, var(--focus) 28%, transparent);
 }
 .ov.paused .ov-btn:not([data-protected="true"]) {
   display: none;
 }
 
-.ov-panel {
+/* ---- Panels: glass sheets --------------------------------------------------------------------- */
+
+.ov-panel,
+.ov-keyboard {
   position: absolute;
-  background: var(--surface);
-  border: 2px solid var(--line);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow);
+  background: var(--glass);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  border: var(--hairline);
+  border-radius: 26px;
+  box-shadow: var(--shadow-lift);
 }
 .ov-panel h2 {
   margin: 0;
-  padding: 18px 24px 0;
-  font-size: 1.2rem;
+  padding: 16px 24px 0;
+  font-family: var(--font-display);
+  font-size: var(--type-headline);
+  font-weight: 650;
+  letter-spacing: -0.015em;
+}
+.ov-panel h2 .ov-page {
+  font-weight: 400;
+  color: var(--ink-2);
 }
 .ov-panel[data-kind="scroll"] {
   display: none;
 }
-.ov-keyboard {
-  position: absolute;
-  background: var(--surface-2);
-  border: 2px solid var(--line);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow);
-}
 .ov-secure {
   position: absolute;
   inset: 24px 24px auto 24px;
-  font-size: 1.3rem;
-  font-weight: 700;
+  margin: 0;
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  font-size: var(--type-headline);
+  font-weight: 650;
   color: var(--warn);
 }
 
 .ov-map {
   position: absolute;
-  background: var(--surface);
-  border: 2px solid var(--line-strong);
-  border-radius: var(--radius);
+  background: var(--glass-strong);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  border: var(--hairline);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow);
 }
 .ov-map .box {
   position: absolute;
-  border: 2px solid var(--accent);
-  border-radius: 6px;
+  border: 3px solid var(--accent);
+  border-radius: 8px;
 }
 .ov-map .box span,
 .ov-badge {
   position: absolute;
-  top: -12px;
-  left: -12px;
-  min-width: 28px;
-  padding: 1px 6px;
+  top: -14px;
+  left: -14px;
+  min-width: 30px;
+  padding: 2px 8px;
   border-radius: 999px;
-  background: var(--ink);
-  color: var(--bg);
+  background: var(--accent);
+  color: var(--accent-ink);
   font-weight: 700;
-  font-size: 0.9rem;
+  font-size: var(--type-footnote);
+  font-variant-numeric: tabular-nums;
   text-align: center;
+  box-shadow: var(--shadow);
 }
 .ov-badge {
   top: auto;
@@ -303,7 +276,9 @@ body,
   transform: translate(-40%, -40%);
 }
 
-/* The gaze cursor and dwell ring: outlines only, never a fill over the content. */
+/* ---- Gaze cursor and dwell feedback ----------------------------------------------------------- */
+
+/* Outlines only, never a fill over the content. */
 .ov-cursor {
   position: absolute;
   width: 28px;
@@ -311,7 +286,9 @@ body,
   margin: -14px 0 0 -14px;
   border-radius: 999px;
   border: 3px solid var(--accent);
-  box-shadow: 0 0 0 2px var(--surface);
+  box-shadow:
+    0 0 0 2px var(--glass-strong),
+    var(--shadow);
 }
 .ov-cursor[data-weak="true"] {
   border-style: dashed;
@@ -321,52 +298,125 @@ body,
   border-color: var(--line-strong);
   opacity: 0.5;
 }
+
+/* DESIGN.md: a 4 px outline plus a ring that fills like an activity ring. On the overlay's own buttons the ring
+   sits in the corner, as in the shell; on app controls it sits just outside the corner, so it never covers them. */
 .ov-focus {
   position: absolute;
-  overflow: visible;
+  border: 4px solid var(--accent);
+  border-radius: 14px;
 }
-.ov-focus rect {
-  fill: none;
+.ov-focus[data-kind="cluster"] {
+  border-style: dashed;
 }
-.ov-focus .track {
-  stroke: color-mix(in srgb, var(--surface) 80%, transparent);
-  stroke-width: 6;
-}
-.ov-focus .progress {
-  stroke: var(--accent);
-  stroke-width: 6;
-  stroke-linecap: round;
-}
-.ov-focus[data-kind="cluster"] .progress {
-  stroke: var(--info);
+.ov-ring {
+  position: absolute;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: conic-gradient(var(--focus) calc(var(--dwell, 0) * 360deg), rgb(128 128 128 / 28%) 0);
+  -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 8px), #000 calc(100% - 7px));
+  mask: radial-gradient(farthest-side, transparent calc(100% - 8px), #000 calc(100% - 7px));
 }
 
-.ov-notice {
+/* ---- Messages --------------------------------------------------------------------------------- */
+
+.ov-notice,
+.ov-status {
   position: absolute;
+  background: var(--glass-strong);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  border: var(--hairline);
+  box-shadow: var(--shadow-lift);
+  color: var(--ink);
+  font-weight: 650;
+}
+.ov-notice {
   max-width: 420px;
-  padding: 14px 20px;
-  border-radius: var(--radius);
-  background: var(--ink);
-  color: var(--bg);
-  font-weight: 700;
-  box-shadow: var(--shadow);
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  padding: 14px 18px;
+  border-radius: var(--radius-lg);
 }
 .ov-notice[data-tone="warn"] {
   background: var(--warn-soft);
-  color: var(--ink);
   border: 2px solid var(--warn);
 }
+.ov-notice[data-tone="warn"] .ico {
+  color: var(--warn);
+}
+.ov-notice[data-tone="ok"] .ico {
+  color: var(--ok);
+}
+.ov-notice[data-tone="info"] .ico {
+  color: var(--info);
+}
 .ov-status {
-  position: absolute;
   padding: 8px 16px;
   border-radius: 999px;
-  background: var(--ink);
-  color: var(--bg);
-  font-weight: 700;
+  font-size: var(--type-footnote);
 }
 
-@media (prefers-reduced-motion: no-preference) {
-  .ov-cursor {
-    transition: transform 60ms linear;
+/* ---- Motion (DESIGN.md): only on a change the person caused; off with reduced motion ---------- */
+
+@keyframes os-zoom-in {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
   }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes os-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes os-launch {
+  0% {
+    transform: scale(1);
+  }
+  40% {
+    transform: scale(1.06);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+/* A panel opens like Launchpad; a new page of choices fades in. Both follow a selection, during the dwell
+   engine's refractory pause, so nothing moves while the person is looking at it. */
+.ov-panel,
+.ov-keyboard,
+.ov-map {
+  animation: os-zoom-in var(--dur) var(--spring) both;
+}
+.ov-btn[data-kind="item"],
+.ov-btn[data-kind="nav"] {
+  animation: os-fade-in var(--dur-fast) var(--ease-out) both;
+}
+/* The control just chosen "launches" (a short scale pulse). */
+.ov-btn[data-launched] {
+  animation: os-launch var(--dur-slow) var(--spring);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+:root[data-reduced-motion] *,
+:root[data-reduced-motion] *::before,
+:root[data-reduced-motion] *::after {
+  animation: none !important;
+  transition: none !important;
 }

@@ -103,6 +103,8 @@ export interface OverlayView {
   notice: Notice | null;
   scanHighlight: string | null;
   helpProgress: number;
+  /** The overlay control chosen most recently (n counts selections), for the "launch" pulse. Visual only. */
+  launched: { id: string; n: number } | null;
 }
 
 export interface ControllerOptions {
@@ -183,6 +185,7 @@ export class OverlayController {
   private cluster: Cluster | null = null;
   private notice: Notice | null = null;
   private scanHighlight: string | null = null;
+  private launched: { id: string; n: number } | null = null;
   private helpProgress = 0;
   private scrolling: { zone: string; nextAt: number } | null = null;
   private lastContentPoint: Point | null = null;
@@ -319,6 +322,7 @@ export class OverlayController {
       notice: this.notice,
       scanHighlight: this.scanHighlight,
       helpProgress: this.helpProgress,
+      launched: this.launched,
     };
   }
 
@@ -342,11 +346,13 @@ export class OverlayController {
     if (id === "overlay:help") {
       this.host.lifeline({ type: "lifeline.help", source: "help_button" });
       this.host.lifeline({ type: "lifeline.surface" });
+      this.markLaunched(id);
       this.say("Sending a help alert. The help screen is opening.", "warn");
       return;
     }
     if (id === "overlay:stop") {
       this.host.stopAll();
+      this.markLaunched(id);
       this.scrolling = null;
       this.dragFrom = null;
       this.pointer = "press";
@@ -356,6 +362,7 @@ export class OverlayController {
     }
     const button = this.buttons().find((b) => b.id === id);
     if (this.paused && !(button?.protected ?? false)) return;
+    if (button) this.markLaunched(id);
 
     if (id === "overlay:pause") return this.setPaused(!this.paused);
     // Home and Keyboard while paused mean "I want to do something": they switch eye control back on.
@@ -1058,6 +1065,10 @@ export class OverlayController {
   }
 
   // ---------------------------------------------------------------- plumbing
+
+  private markLaunched(id: string): void {
+    this.launched = { id, n: (this.launched?.n ?? 0) + 1 };
+  }
 
   private say(text: string, tone: Notice["tone"]): void {
     this.notice = { text, tone };

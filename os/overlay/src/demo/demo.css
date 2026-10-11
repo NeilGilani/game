@@ -1,7 +1,7 @@
 /* The pretend app behind the overlay in demo mode. Deliberately ordinary Mac-sized controls (small). */
 html,
 body {
-  background: var(--bg) !important;
+  background: var(--wallpaper) !important;
 }
 #desktop {
   position: fixed;
