@@ -1,6 +1,7 @@
 /// <reference types="vitest/config" />
 import react from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
+import { realeyeWithoutMediapipe } from "../os/gaze/engine/realeyeVite";
 
 // The coordinator (FastAPI) runs on this MacBook by default. To use a Raspberry Pi
 // coordinator, start Vite with AGENCY_BACKEND_URL=http://<pi-address>:8000 so the browser
@@ -13,7 +14,7 @@ const proxy = {
 };
 
 export default defineConfig({
-  plugins: [react()],
+  plugins: [react(), realeyeWithoutMediapipe()],
   server: {
     host: "127.0.0.1",
     port: 5173,

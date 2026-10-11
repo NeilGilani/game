@@ -47,6 +47,14 @@ test.describe("with a fake webcam", () => {
     const checks = page.locator(".checklist");
     await expect(checks.locator("li", { hasText: "Face in view" })).toContainText("OK", { timeout: 90_000 });
     await expect(checks.locator("li", { hasText: "Both eyes and irises found" })).toContainText("OK");
+    // RealEye's eye-image features are read from the same frames (os/gaze/src/eyeImage.ts).
+    await expect
+      .poll(() =>
+        page.evaluate(() =>
+          (window as unknown as { __agency: { eyeFeatures(): number } }).__agency.eyeFeatures(),
+        ),
+      )
+      .toBe(1630);
     await expect(page.getByText(/Tracking confidence \d+%/)).toBeVisible();
     await expect(page.getByText(/Eye gaze · needs calibration/)).toBeVisible();
 

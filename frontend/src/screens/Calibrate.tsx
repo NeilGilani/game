@@ -60,7 +60,9 @@ export function Calibrate() {
     setPhase({ kind: "scanning" });
     const eyeScan = vision.startEyeScan();
     const start = performance.now();
-    const off = vision.onFrame((f) => eyeScan.add(f.t - start, f.features, f.trackingConfidence, f.blink));
+    const off = vision.onFrame((f) =>
+      eyeScan.add(f.t - start, f.features, f.trackingConfidence, f.blink, f.eyes),
+    );
     const draw = () => {
       if (cancelled.current) {
         off();

@@ -48,6 +48,8 @@ export interface VisionFrame {
   pointer: { x: number; y: number } | null;
   /** True while the eyes hold still on one place (always true for the head pointer). */
   fixation: boolean;
+  /** RealEye's eye-image features (os/gaze/src/eyeImage.ts), for the eye scan. Never stored. */
+  eyes: Float32Array | null;
 }
 
 export interface VisionStats {
@@ -311,6 +313,7 @@ export class VisionEngine {
       landmarks: f.landmarks ? f.landmarks.map((l) => ({ x: l.x, y: l.y })) : null,
       pointer,
       fixation: head || !!d.smoothed?.fixation,
+      eyes: f.eyes ?? null,
     };
     this.last = frame;
     this.emit(frame);
@@ -339,6 +342,7 @@ export function injectFrame(engine: VisionEngine, partial: Partial<VisionFrame>)
     landmarks: null,
     pointer: null,
     fixation: true,
+    eyes: null,
     ...partial,
   };
   engine.last = frame;

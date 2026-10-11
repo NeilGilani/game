@@ -17,6 +17,7 @@
 
 import { type GazeInput, gazeInput } from "./calibration/features";
 import { ContinuousCalibrator, type ContinuousEvent } from "./calibration/continuous";
+import { predictBlend } from "./calibration/appearance";
 import { predictModel } from "./calibration/model";
 import {
   type CalibrationResult,
@@ -560,7 +561,11 @@ export class GazeEngine {
         raw = this.headPointer.update(t, features.pose);
         point = this.o.screen.clamp(raw.x, raw.y);
       } else if (this.calibrationResult) {
-        const est = predictModel(this.calibrationResult.model, gazeInput(features));
+        const est = predictBlend(
+          predictModel(this.calibrationResult.model, gazeInput(features)),
+          this.calibrationResult.appearance,
+          frame.eyes,
+        );
         if (est) {
           this.observations.push({ t, x: est.x, y: est.y });
           while (this.observations.length && t - this.observations[0]!.t > 6000) this.observations.shift();

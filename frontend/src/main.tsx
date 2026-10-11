@@ -22,6 +22,8 @@ try {
       lookAt: (target: LookTarget) => eyes?.lookAt(target),
       closeEyes: (ms: number) => eyes?.close(ms),
       pointer: () => visionEngine().last?.pointer ?? null,
+      // How many of RealEye's eye-image features the last camera frame had (0: none read).
+      eyeFeatures: () => visionEngine().last?.eyes?.length ?? 0,
     };
   }
 } catch {

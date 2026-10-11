@@ -10,6 +10,7 @@
  */
 
 import { type CameraErrorKind, cameraEnvironment, classifyCameraError, openCamera } from "../camera";
+import { EyeImageReader } from "../eyeImage";
 import type { Landmark } from "../landmarks";
 import { meanLuminance } from "../quality";
 import type { GazeProvider, ProviderFrame, ProviderStats } from "./types";
@@ -83,6 +84,7 @@ export class WebcamProvider implements GazeProvider {
   private brightnessCanvas: HTMLCanvasElement | null = null;
   private lastBrightnessAt = -Infinity;
   private brightness: number | null = null;
+  private readonly eyeReader = new EyeImageReader();
   private statusListeners = new Set<(s: WebcamStatus, e: CameraErrorKind | null) => void>();
 
   constructor(
@@ -276,6 +278,8 @@ export class WebcamProvider implements GazeProvider {
     this.measureBrightness(now);
     const landmarks = result.faceLandmarks[0] ?? null;
     const matrix = result.facialTransformationMatrixes?.[0]?.data;
+    // Same task as detectForVideo, so the same camera frame.
+    const eyes = this.eyeReader.read(this.video, this.video.videoWidth, this.video.videoHeight, landmarks);
     this.onFrame?.({
       kind: "face",
       frame: {
@@ -286,6 +290,7 @@ export class WebcamProvider implements GazeProvider {
         blink: blinkFromCategories(result.faceBlendshapes?.[0]?.categories),
         aspect: this.video.videoWidth / Math.max(1, this.video.videoHeight),
         brightness: this.brightness,
+        eyes,
       },
     });
   }

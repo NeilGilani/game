@@ -20,6 +20,7 @@
 
 import type { GazeFeatures } from "../landmarks";
 import { mean } from "../linalg";
+import { type AppearanceFrame, fitAppearance } from "./appearance";
 import { gazeInput } from "./features";
 import {
   type Sample,
@@ -85,6 +86,7 @@ export class PursuitCalibration {
   private readonly geometry: ViewingGeometry;
   private readonly search: SelectOptions;
   private samples: Sample[] = [];
+  private eyeFrames: AppearanceFrame[] = [];
   private iris: number[] = [];
 
   constructor(options: PursuitOptions) {
@@ -130,18 +132,25 @@ export class PursuitCalibration {
     return this.samples.length;
   }
 
-  /** A camera frame seen `ms` after the scan started. Blinks and poorly tracked frames are skipped. */
-  add(ms: number, features: GazeFeatures | null, confidence: number, blink: number | null): void {
+  /**
+   * A camera frame seen `ms` after the scan started, with its eye-image features when the camera
+   * read them (eyeImage.ts). Blinks and poorly tracked frames are skipped.
+   */
+  add(
+    ms: number,
+    features: GazeFeatures | null,
+    confidence: number,
+    blink: number | null,
+    eyes?: Float32Array | null,
+  ): void {
     // Until the eyes have found the light, frames say nothing about where they look.
     if (ms < this.leadInMs * 0.6 || ms > this.durationMs) return;
     if (!features || confidence < 0.5 || (blink ?? 0) >= 0.4) return;
     const target = this.at(ms - this.lagMs);
-    this.samples.push({
-      x: target.x,
-      y: target.y,
-      input: gazeInput(features),
-      group: `g${Math.floor(ms / GROUP_MS)}`,
-    });
+    const group = Math.floor(ms / GROUP_MS);
+    const input = gazeInput(features);
+    this.samples.push({ x: target.x, y: target.y, input, group: `g${group}` });
+    if (eyes) this.eyeFrames.push({ x: target.x, y: target.y, eyes, input, group });
     if (features.irisDiameter) this.iris.push(features.irisDiameter);
   }
 
@@ -171,7 +180,10 @@ export class PursuitCalibration {
         data = cleaned;
       }
     }
-    const errorPt = selection.cv.meanErrorPt;
+    // RealEye's eye images, when the camera read them: used only if they predict held-out
+    // stretches of the path better than the landmarks alone (appearance.ts).
+    const appearance = fitAppearance(this.eyeFrames, data, selection.model.config);
+    const errorPt = selection.cv.meanErrorPt * (appearance?.ratio ?? 1);
     const residuals = data.map((s) => {
       const p = predictModel(selection.model, s.input);
       return p ? (p.x - s.x) ** 2 + (p.y - s.y) ** 2 : 0;
@@ -195,6 +207,7 @@ export class PursuitCalibration {
         trainingTargets: groups.size,
         samples: data,
         geometry: this.geometry,
+        appearance: appearance?.calibration ?? null,
       },
     };
   }

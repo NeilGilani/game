@@ -8,6 +8,7 @@
  * Nothing here has a time limit: the person can rest between targets for as long as they need.
  */
 
+import type { AppearanceCalibration } from "./appearance";
 import type { CalibrationQuality } from "../contracts";
 import { mean } from "../linalg";
 import type { GazeInput } from "./features";
@@ -82,6 +83,8 @@ export interface CalibrationResult {
   trainingTargets: number;
   samples: Sample[];
   geometry: ViewingGeometry;
+  /** RealEye's eye-image model and its blend weight, when the eye images helped (appearance.ts). */
+  appearance?: AppearanceCalibration | null;
 }
 
 export type SessionStep =
