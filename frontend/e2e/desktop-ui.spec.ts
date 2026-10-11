@@ -14,6 +14,10 @@ test.beforeEach(async ({ context }) => {
 
 test("desktop menus navigate, dismiss with Escape and keep the Dock current", async ({ page }) => {
   await page.goto("/#/");
+  await expect(page.locator(".home-titlebar")).toBeVisible();
+  expect(await page.locator("body").evaluate((el) => getComputedStyle(el).backgroundImage)).toContain(
+    "radial-gradient",
+  );
   const dock = page.locator(".dock");
   await expect(dock.getByRole("button", { name: "Home", exact: true })).toHaveAttribute(
     "aria-current",
