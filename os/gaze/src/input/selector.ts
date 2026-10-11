@@ -4,13 +4,16 @@
  * app's InputLayer feeds it camera frames and the page's targets; the benchmark feeds it simulated
  * frames, so both run the same logic.
  *
- * When the magnet moves its lock it has already waited for clear evidence, so the old target's dwell
- * ends at once instead of after the dwell's grace period. Everything else (confidence, refractory
- * period, a selected target not firing again until the eyes leave it) is the dwell engine's rules.
+ * When the magnet moves its lock to another target it has already waited for clear evidence, so the
+ * old target's dwell ends at once instead of after the dwell's grace period. When the lock is merely
+ * released (a glance away), the dwell pauses: if the lock comes back to the same target within the
+ * dwell's grace period, the ring carries on from where it was. Everything else (confidence,
+ * refractory period, a selected target not firing again until the eyes leave it) is the dwell
+ * engine's rules.
  */
 
 import { type DwellConfig, DwellEngine, type DwellEvent } from "./dwell";
-import { type MagnetOptions, TargetMagnet } from "./magnet";
+import { type MagnetOptions, type MagnetResult, TargetMagnet, rectCentre } from "./magnet";
 import type { TargetRect } from "./targets";
 
 export interface SelectorTarget extends TargetRect {
@@ -49,6 +52,19 @@ export interface SelectorOptions {
   weighted: boolean;
 }
 
+/**
+ * How the web app's InputLayer sets the selector up (the person's dwell time, steadiness and snap
+ * preferences go on top). Steadiness reads the lock, as the cursor does: a noisy but on-target gaze
+ * fills the ring without stalling, and frames that don't support the lock pause it instead. In
+ * bench/app.bench.ts the three steadiness rules select the same, and false selections while reading
+ * stay near zero.
+ */
+export const APP_SELECTOR: Partial<SelectorOptions> = {
+  dwell: { dwellMs: 1200, stabilityPx: 60 },
+  magnet: { snapPx: 48 },
+  steadiness: "lock",
+};
+
 export class GazeSelector {
   readonly magnet: TargetMagnet;
   readonly dwell: DwellEngine;
@@ -56,6 +72,7 @@ export class GazeSelector {
   private weighted: boolean;
   private stabilityPx: number;
   private entered: { id: string; t: number } | null = null;
+  private lastMagnet: MagnetResult | null = null;
 
   constructor(options: Partial<SelectorOptions> = {}) {
     this.magnet = new TargetMagnet(options.magnet);
@@ -79,21 +96,33 @@ export class GazeSelector {
     return this.magnet.current;
   }
 
+  /** Where to draw the cursor after the last update: the locked target's centre, else the estimate. */
+  get cursor(): { x: number; y: number } | null {
+    return this.lastMagnet?.cursor ?? null;
+  }
+
+  /** Whether the last update's estimate supported the lock (false: the dwell is paused). */
+  get supported(): boolean {
+    return this.lastMagnet?.supported ?? false;
+  }
+
   /** Forget the lock and any dwell, and block selection for holdMs (e.g. after navigation). */
   reset(now: number, holdMs?: number): void {
     this.magnet.reset();
     this.dwell.reset(now, holdMs);
     this.entered = null;
+    this.lastMagnet = null;
   }
 
   update(s: SelectorSample, targets: readonly SelectorTarget[]): SelectorEvent[] {
     const events: SelectorEvent[] = [];
     const previous = this.magnet.current;
     const m = this.magnet.update(s, targets);
+    this.lastMagnet = m;
     if (m.changed) {
       events.push({ type: "lock", targetId: m.targetId, previous });
       const dwelling = this.dwell.snapshot().targetId;
-      if (dwelling !== null && dwelling !== m.targetId) {
+      if (dwelling !== null && m.targetId !== null && dwelling !== m.targetId) {
         events.push({ type: "cancel", targetId: dwelling, reason: "left" });
         this.dwell.reset(s.t, 0);
         this.entered = null;
@@ -102,10 +131,7 @@ export class GazeSelector {
     const target = m.targetId === null ? undefined : targets.find((t) => t.id === m.targetId);
     let x = s.x;
     let y = s.y;
-    if (this.steadiness === "lock" && target) {
-      x = (target.rect.left + target.rect.right) / 2;
-      y = (target.rect.top + target.rect.bottom) / 2;
-    }
+    if (this.steadiness === "lock" && target) ({ x, y } = rectCentre(target.rect));
     if (this.steadiness === "adaptive") {
       this.dwell.setConfig({ stabilityPx: Math.max(this.stabilityPx, s.errorRadius ?? 0) });
     }

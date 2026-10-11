@@ -4,7 +4,8 @@
  *
  * Safety rules, all covered by tests/dwell.test.ts:
  * - Progress only accumulates while tracking confidence is good and the pointer is steady.
- * - Brief excursions (a saccade, a blink) pause progress instead of resetting it.
+ * - Brief excursions (a saccade, a blink, a glance away) pause progress instead of resetting it;
+ *   it resumes where it was if the pointer is back within the grace period.
  * - After a selection, nothing can be selected for a refractory period, and the selected
  *   target cannot fire again until the pointer has left it.
  * - Losing tracking for longer than the grace period cancels the dwell.
@@ -27,7 +28,7 @@ export const DEFAULT_DWELL: DwellConfig = {
   dwellMs: 1200,
   stabilityPx: 60,
   stabilityWindowMs: 300,
-  graceMs: 250,
+  graceMs: 300,
   refractoryMs: 900,
   minConfidence: 0.5,
 };
@@ -43,8 +44,10 @@ export interface DwellSample {
   dwellScale?: number;
   /**
    * How much this frame counts towards the dwell, 0..1 (default 1). Target magnetism passes 0 while
-   * the highlight holds on a target that another one is now closer to: progress pauses there
-   * instead of completing on evidence that no longer supports it.
+   * the lock holds on a target the estimate no longer supports (a glance away, a wobble towards a
+   * neighbour): progress pauses there instead of completing on evidence that doesn't support it.
+   * A frame with weight 0 doesn't count towards steadiness either, so progress resumes as soon as
+   * the eyes are back.
    */
   weight?: number;
 }
@@ -147,7 +150,8 @@ export class DwellEngine {
     this.awaySince = null;
     const target = this.current;
     if (target === null) return events;
-    this.stable = this.measureStability(sample);
+    const weight = Math.max(0, Math.min(1, sample.weight ?? 1));
+    if (weight > 0) this.stable = this.measureStability(sample);
 
     if (target === this.spent) {
       events.push({ type: "blocked", targetId: target, reason: "spent" });
@@ -157,7 +161,7 @@ export class DwellEngine {
       events.push({ type: "blocked", targetId: target, reason: "refractory" });
       return events;
     }
-    if (this.stable) this.accumulated += dt * Math.max(0, Math.min(1, sample.weight ?? 1));
+    if (this.stable) this.accumulated += dt * weight;
     const needed = this.config.dwellMs * (sample.dwellScale ?? 1);
     const progress = Math.min(1, this.accumulated / needed);
     events.push({ type: "progress", targetId: target, progress });
