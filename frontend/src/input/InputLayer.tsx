@@ -7,7 +7,7 @@
  *
  * With gaze or the head pointer, selection is locked in: GazeSelector picks the most likely target
  * for the pointer and the engine's error radius, holds it with hysteresis, and the cursor sits in
- * the middle of the held target (marked data-dwell-locked) instead of wobbling. A glance away or a
+ * the held target is marked data-dwell-locked while the cursor keeps following the pointer. A glance away or a
  * blink pauses the dwell ring (data-dwell-paused) rather than resetting it.
  *
  * Each target carries a context prior (input/context.ts, os/gaze/src/input/intent.ts priorsOf): what is
@@ -240,7 +240,7 @@ export function InputLayer() {
         }
       }
       // Where the cursor goes: the middle of the held target while there is a lock, else the pointer.
-      let cursorAt = frame.pointer;
+      const cursorAt = frame.pointer;
       let locked = false;
       if (mode === "gaze" && frame.pointer && frame.confidence >= 0.5 && !suspended) {
         setLivePrecision(meter.current.update(now, vision.errorRadius));
@@ -286,16 +286,14 @@ export function InputLayer() {
         const dwelling = sel.dwell.snapshot().targetId;
         const ring = dwelling ? byId.get(dwelling) : undefined;
         if (ring) ring.toggleAttribute("data-dwell-paused", sel.locked !== dwelling || !sel.supported);
-        if (sel.locked && sel.cursor) {
-          cursorAt = sel.cursor;
-          locked = true;
-        }
+        // The held target is highlighted, but the cursor keeps following the eyes (no snapping).
+        locked = !!sel.locked;
       }
       if (cursor) {
         if (cursorAt && prefs.show_gaze_cursor && !suspended) {
           cursor.style.opacity = locked || frame.confidence >= 0.5 ? "1" : "0.35";
           cursor.style.transform = `translate(${cursorAt.x}px, ${cursorAt.y}px)`;
-          cursor.toggleAttribute("data-locked", locked);
+          cursor.removeAttribute("data-locked");
         } else {
           cursor.style.opacity = "0";
           cursor.removeAttribute("data-locked");

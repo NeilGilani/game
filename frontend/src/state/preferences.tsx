@@ -4,7 +4,7 @@ import type { Preferences } from "../api/types";
 import { useConnection } from "./connection";
 
 export const DEFAULT_PREFERENCES: Preferences = {
-  input_mode: "pointer",
+  input_mode: "head",
   dwell_ms: 1200,
   dwell_stability_px: 60,
   target_snap_px: 48,

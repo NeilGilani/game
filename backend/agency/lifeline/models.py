@@ -188,7 +188,7 @@ class Heartbeat(BaseModel):
     camera: str = Field(default="off", max_length=20)
     face_visible: bool = False
     page_visible: bool = True
-    input_mode: str = Field(default="pointer", max_length=20)
+    input_mode: str = Field(default="head", max_length=20)
 
 
 class MonitoringRequest(BaseModel):
