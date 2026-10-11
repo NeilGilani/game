@@ -130,8 +130,11 @@ async def _ask(
 
 
 def _label(request: Request) -> str:
-    status = request.app.state.agency.provider.status()
-    return f"{status.get('label') or 'Cloud model'} ({status.get('model') or 'cloud'})"
+    provider = request.app.state.agency.provider
+    status = provider.status()
+    cloud = provider._cloud() if isinstance(provider, SynapseLayer) else getattr(provider, "primary", provider)
+    model = getattr(cloud, "last_model", None) or status.get("model") or "cloud"
+    return f"{status.get('label') or 'Cloud model'} ({model})"
 
 
 def _strings(data: dict[str, Any], count: int, limit: int) -> list[str]:

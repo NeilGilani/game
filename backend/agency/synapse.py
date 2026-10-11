@@ -347,6 +347,8 @@ class SynapseLayer:
             self.router.history[-1]["lane"] = route.lane
         if hasattr(cloud, "expert_brief"):
             cloud.expert_brief = route.brief()
+        if hasattr(cloud, "lane"):
+            cloud.lane = route.lane
         if hasattr(cloud, "effort"):
             if self.base_effort is None:
                 self.base_effort = cloud.effort
