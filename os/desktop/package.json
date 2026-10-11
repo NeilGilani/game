@@ -7,7 +7,7 @@
   "author": "AGENCY",
   "scripts": {
     "build": "node scripts/build.mjs",
-    "dev": "node scripts/dev.mjs",
+    "dev": "make -C ../.. os-dev",
     "typecheck": "tsc -p tsconfig.json && tsc -p tsconfig.renderer.json && tsc -p tsconfig.e2e.json",
     "test": "vitest run",
     "e2e": "node scripts/build.mjs && playwright test",

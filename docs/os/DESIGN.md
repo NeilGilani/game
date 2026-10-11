@@ -16,7 +16,7 @@ High contrast removes wallpaper, transparency and icon gradients. References:
 and [macOS Tahoe's desktop materials](https://www.apple.com/newsroom/2025/06/macos-tahoe-26-makes-the-mac-more-capable-productive-and-intelligent-than-ever/).
 
 Short MacBook windows show six core words per Talk page instead of twelve. The page size is fixed on entry,
-so choices never rearrange under a steady gaze. Settings pages its seven options into five and two. Narrow
+so choices never rearrange under a steady gaze. Settings pages its six options into five and one. Narrow
 windows stack Home's panes and keep targets large; the content scrolls when it cannot fit on one screen.
 
 ## Materials
@@ -93,8 +93,8 @@ hover never scales anything. **Reduce motion** (Settings) and the system setting
 - `e2e/axe.spec.ts`: axe-core, WCAG 2.2 A/AA rules, every screen, light, dark and high contrast: zero violations.
 - `e2e/screens.spec.ts`: every OS screen at 1440 × 900 and 1280 × 800 fits without scrolling; targets 96 px or more
   (120 on Home), 24 px apart, none clipped.
-- `e2e/design-shots.spec.ts`: review screenshots in `docs/os/design/before/` and `docs/os/design/after/`
-  (`DESIGN_SHOTS=after npx playwright test e2e/design-shots.spec.ts`).
+- `e2e/screens.spec.ts` also saves review screenshots in `frontend/test-results/screens/`.
+  Reference images are in `docs/os/design/after/`.
 
 ## Known gaps
 

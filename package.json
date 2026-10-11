@@ -12,8 +12,9 @@
     "node": ">=20.19"
   },
   "scripts": {
-    "os:dev": "npm run dev -w @agency/desktop",
-    "os:build": "npm run build -w @agency/desktop",
+    "start": "npm run os:dev",
+    "os:dev": "make os-dev",
+    "os:build": "make os-build",
     "os:test": "npm test -w @agency/desktop"
   },
   "allowScripts": {
