@@ -188,10 +188,10 @@ export function Calibrate() {
     return (
       <div className="calibration welcome" data-dwell-scope="modal">
         <div className="welcome-card panel stack" style={{ maxWidth: 820 }}>
-          <h1>The head pointer doesn&apos;t need any setup</h1>
+          <h1>The eye cursor doesn&apos;t need any setup</h1>
           <p>
-            It starts from wherever your head points. If the pointer sits off to one side, point your nose at
-            the middle of the screen and centre it.
+            It follows your eye in the camera. If the cursor sits off to one side, look at the middle of the
+            screen and centre it.
           </p>
           <div className="grid grid-2">
             <button

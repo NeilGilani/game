@@ -13,7 +13,11 @@ const CAMERA_OK_KEY = "agency.cameraConsented";
 
 export const MODE_LABELS: Record<InputMode, { short: string; long: string; camera: boolean }> = {
   gaze: { short: "Eye gaze", long: "Eye gaze with dwell (webcam)", camera: true },
-  head: { short: "Head pointer", long: "Head movement with dwell (webcam, no calibration)", camera: true },
+  head: {
+    short: "Eye cursor",
+    long: "Eye cursor: follows your eye in the camera, hold to select (no calibration)",
+    camera: true,
+  },
   scan_blink: { short: "Blink switch", long: "Scanning, long blink to select (webcam)", camera: true },
   scan_key: {
     short: "Key switch",

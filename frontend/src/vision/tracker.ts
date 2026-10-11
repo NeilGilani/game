@@ -95,6 +95,9 @@ const mediapipe: LandmarkerFactory = async () => {
   }
 };
 
+/** Eye cursor reach: how far the cursor moves per unit of iris movement in the picture (screen widths). */
+const EYE_CURSOR_GAIN = { x: 2, y: 2.5 };
+
 const viewport = () => ({ width: Math.max(1, window.innerWidth), height: Math.max(1, window.innerHeight) });
 
 export class VisionEngine {
@@ -168,11 +171,39 @@ export class VisionEngine {
   /** Gaze or head pointer. Switching to the head pointer centres it on the current pose. */
   setKind(kind: PointerKind): void {
     if (kind !== this.gaze.mode) this.gaze.setMode(kind);
+    this.iris = null;
   }
 
   /** The head pointer: wherever the head points now becomes the middle of the screen. */
   recentre(): void {
     this.gaze.recentreHeadPointer();
+    this.iris = null;
+  }
+
+  /**
+   * The eye cursor (the "head" pointer mode): the iris's position in the camera picture moves the
+   * cursor directly, mirrored, like the classic MediaPipe eye mouse (landmark 475 -> screen). Instant
+   * and predictable, no calibration. It mostly follows small head movements with the eyes; where the
+   * iris was when it started (or was recentred) is the middle of the screen.
+   */
+  private iris: { cx: number; cy: number; x: number; y: number } | null = null;
+
+  private irisCursor(f: FaceFrame): { x: number; y: number } | null {
+    const lm = f.landmarks?.[475];
+    if (!lm) return null;
+    const ix = 1 - lm.x;
+    const iy = lm.y;
+    const w = window.innerWidth;
+    const h = window.innerHeight;
+    if (!this.iris) this.iris = { cx: ix, cy: iy, x: w / 2, y: h / 2 };
+    const tx = Math.max(0, Math.min(w, w / 2 + (ix - this.iris.cx) * w * EYE_CURSOR_GAIN.x));
+    const ty = Math.max(0, Math.min(h, h / 2 + (iy - this.iris.cy) * h * EYE_CURSOR_GAIN.y));
+    // Light smoothing: landmark noise is a few pixels; a still cursor shouldn't shimmer.
+    const d = Math.hypot(tx - this.iris.x, ty - this.iris.y);
+    const a = d < 3 ? 0 : d < 40 ? 0.35 : 0.6;
+    this.iris.x += (tx - this.iris.x) * a;
+    this.iris.y += (ty - this.iris.y) * a;
+    return { x: this.iris.x, y: this.iris.y };
   }
 
   setCalibration(calibration: StoredCalibration | null): void {
@@ -364,23 +395,26 @@ export class VisionEngine {
     let raw: VisionFrame["raw"] = null;
     const sx = window.innerWidth / this.space.width;
     const sy = window.innerHeight / this.space.height;
-    if (d.point && !this.calibrating) {
+    const head = this.gaze.mode === "head";
+    if (head && !this.calibrating) {
+      pointer = d.trackingConfidence >= 0.5 ? this.irisCursor(f) : null;
+      raw = pointer;
+    } else if (d.point && !this.calibrating) {
       pointer = { x: d.point.x * sx, y: d.point.y * sy };
       raw = d.raw ? { x: d.raw.x * sx, y: d.raw.y * sy } : pointer;
     }
-    const head = this.gaze.mode === "head";
     const frame: VisionFrame = {
       t: d.t,
       face: d.face,
       features: d.features,
       blink: d.blink,
-      confidence: pointer ? d.confidence : d.trackingConfidence,
+      confidence: pointer && !head ? d.confidence : d.trackingConfidence,
       trackingConfidence: d.trackingConfidence,
       issues: d.issues,
       landmarks: f.landmarks ? f.landmarks.map((l) => ({ x: l.x, y: l.y })) : null,
       pointer,
       raw,
-      errorRadius: pointer ? d.errorRadiusPt * sx : 0,
+      errorRadius: pointer && !head ? d.errorRadiusPt * sx : 0,
       fixation: head || !!d.smoothed?.fixation,
       eyes: f.eyes ?? null,
     };

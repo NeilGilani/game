@@ -24,7 +24,7 @@ const MODE_ICONS: Record<InputMode, string> = {
 
 const MODE_HELP: Record<InputMode, string> = {
   gaze: "Look at a button and hold your gaze to select it. A 5-second eye scan the first time.",
-  head: "Point with small head movements and hold to select. No calibration: it starts from where your head points.",
+  head: "The cursor follows your eye in the camera, instantly. Hold your look to select. No calibration: where you look when it starts is the middle.",
   scan_blink: "Choices light up in turn; a deliberate long blink selects.",
   scan_key: "Choices light up in turn; press Space (or any switch mapped to it) to select.",
   pointer: "Use a mouse, trackpad, keyboard or touch as usual.",
