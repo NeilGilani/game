@@ -1,0 +1,497 @@
+/* Games (frontend/src/games): the hub tiles, tic-tac-toe, Connect Four and chess. Boards fit the height left
+   between the menu bar and the dock, so neither is ever covered. Targets stay 96 px or more; only playable
+   cells and squares are dwell targets. */
+
+/* ---- Hub ------------------------------------------------------------------------------------------------- */
+.games-hub .flow-options[data-count="3"] {
+  grid-auto-rows: minmax(220px, 340px);
+}
+.game-tile {
+  gap: 12px;
+}
+.game-tile .choice-pic.game-tile-art {
+  width: 132px;
+  height: 120px;
+  border-radius: 28px;
+  background: var(--accent-soft);
+  color: var(--ink);
+}
+.game-tile[data-game="connect4"] .game-tile-art {
+  background: color-mix(in srgb, var(--warn-soft) 80%, var(--surface));
+}
+.game-tile[data-game="chess"] .game-tile-art {
+  background: color-mix(in srgb, var(--ok-soft) 80%, var(--surface));
+}
+.game-tile-glyph {
+  font-family: "Apple Symbols", "Segoe UI Symbol", "DejaVu Sans", "Noto Sans Symbols 2", var(--font);
+  font-size: 88px;
+  line-height: 1;
+  color: var(--ink);
+}
+.art-x {
+  stroke: var(--accent);
+}
+.art-o {
+  stroke: var(--danger);
+}
+.art-frame {
+  fill: #2f5fc4;
+}
+.art-hole {
+  fill: var(--surface);
+}
+.art-you {
+  fill: #f5c400;
+}
+.art-cpu {
+  fill: #e5484d;
+}
+
+/* ---- Game window ------------------------------------------------------------------------------------------ */
+.game {
+  flex: 1;
+  display: grid;
+  grid-template-columns: minmax(0, 1.3fr) minmax(380px, 1fr);
+  gap: 28px;
+  width: 100%;
+  max-width: 1400px;
+  margin: 0 auto;
+  min-height: 0;
+  padding: 20px;
+  background: var(--window-content, var(--glass));
+  border: var(--hairline);
+  border-radius: 20px;
+  box-shadow: var(--window-shadow, var(--shadow));
+}
+.game-board-wrap {
+  container-type: size;
+  min-height: 0;
+  min-width: 0;
+  display: grid;
+  place-items: center;
+}
+.game-side {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-height: 0;
+  min-width: 0;
+}
+.game-eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+}
+.game-level {
+  margin-left: 4px;
+  padding: 2px 10px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  letter-spacing: 0.06em;
+}
+.game-say-box {
+  padding: 16px 20px;
+  border-radius: 20px;
+  border: 2px solid color-mix(in srgb, var(--accent) 40%, var(--line));
+  background: var(--accent-soft);
+}
+.game-say-box[data-tone="wait"] {
+  border-color: var(--line);
+  background: var(--surface-2);
+}
+.game-say-box[data-tone="warn"],
+.game-say-box[data-tone="lose"] {
+  border-color: color-mix(in srgb, var(--danger) 55%, var(--line));
+  background: var(--danger-soft);
+}
+.game-say-box[data-tone="win"] {
+  border-color: color-mix(in srgb, var(--ok) 55%, var(--line));
+  background: var(--ok-soft);
+}
+.game-say {
+  margin: 0;
+  font-size: 1.65rem;
+  font-weight: 700;
+  line-height: 1.22;
+  letter-spacing: -0.01em;
+}
+.game-say-box[data-tone="warn"] .game-say,
+.game-say-box[data-tone="lose"] .game-say {
+  color: var(--danger);
+}
+.game-say-box[data-tone="win"] .game-say {
+  color: var(--ok);
+}
+.game-detail {
+  margin: 6px 0 0;
+  font-size: 1rem;
+  color: var(--ink-2);
+  line-height: 1.35;
+}
+.game-actions {
+  margin-top: auto;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+.game-actions .btn-xl {
+  min-height: 96px;
+  min-width: 0;
+  padding: 0 16px;
+  font-size: 1.15rem;
+}
+.game-score {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin: 0;
+}
+.game-score div {
+  padding: 10px 14px;
+  border-radius: 16px;
+  background: var(--surface-2);
+}
+.game-score dt {
+  font-size: 0.85rem;
+  color: var(--ink-2);
+  font-weight: 650;
+}
+.game-score dd {
+  margin: 0;
+  font-size: 1.6rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---- Tic-tac-toe ------------------------------------------------------------------------------------------ */
+.ttt-board {
+  width: min(100cqw, 100cqh);
+  height: min(100cqw, 100cqh);
+  display: grid;
+  grid-template: repeat(3, minmax(0, 1fr)) / repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+.ttt-cell {
+  position: relative;
+  overflow: hidden;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border-radius: 24px;
+  border: 2px solid var(--line);
+  background: var(--surface);
+  box-shadow: var(--shadow-control, var(--shadow));
+  cursor: pointer;
+  font: inherit;
+  color: var(--ink);
+}
+.ttt-cell:disabled {
+  cursor: default;
+}
+.ttt-cell:not(:disabled):hover {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+.ttt-cell[data-win] {
+  border-color: var(--ok);
+  background: var(--ok-soft);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--ok) 35%, transparent);
+}
+.ttt-mark {
+  width: 72%;
+  height: 72%;
+  fill: none;
+  stroke-width: 11;
+  stroke-linecap: round;
+}
+.ttt-x {
+  stroke: var(--accent);
+}
+.ttt-o {
+  stroke: var(--danger);
+}
+.ttt-cell[data-win] .ttt-mark {
+  stroke: var(--ok);
+}
+
+/* ---- Connect Four ----------------------------------------------------------------------------------------- */
+.c4-board {
+  --c4-w: min(100cqw, calc(100cqh * 7 / 6));
+  width: var(--c4-w);
+  height: calc(var(--c4-w) * 6 / 7);
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 6px;
+  padding: 10px;
+  border-radius: 24px;
+  background: #2f5fc4;
+  box-shadow: var(--shadow);
+}
+.c4-col {
+  position: relative;
+  overflow: hidden;
+  display: grid;
+  grid-template-rows: repeat(6, minmax(0, 1fr));
+  place-items: center;
+  padding: 4px 0;
+  border: 3px solid transparent;
+  border-radius: 18px;
+  background: transparent;
+  cursor: pointer;
+}
+.c4-col:disabled {
+  cursor: default;
+}
+.c4-col:not(:disabled):hover {
+  border-color: #fff;
+  background: rgb(255 255 255 / 14%);
+}
+.c4-hole {
+  width: 84%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: var(--surface);
+  box-shadow: inset 0 3px 6px rgb(0 0 0 / 25%);
+}
+.c4-hole[data-disc="you"] {
+  background: radial-gradient(circle at 35% 30%, #ffe680, #f5c400 60%, #c79a00);
+}
+.c4-hole[data-disc="cpu"] {
+  background: radial-gradient(circle at 35% 30%, #ff9a9d, #e5484d 60%, #a5161b);
+}
+.c4-hole[data-last] {
+  outline: 4px solid #fff;
+  outline-offset: 2px;
+}
+.c4-hole[data-win] {
+  outline: 6px solid #3ce07a;
+  outline-offset: 2px;
+}
+
+/* ---- Chess ------------------------------------------------------------------------------------------------ */
+.chess-board {
+  --sq: calc(min(100cqw, 100cqh) / 8);
+  width: min(100cqw, 100cqh);
+  height: min(100cqw, 100cqh);
+  display: grid;
+  grid-template: repeat(8, minmax(0, 1fr)) / repeat(8, minmax(0, 1fr));
+  border-radius: 14px;
+  overflow: hidden;
+  border: 3px solid #6b4f36;
+  box-shadow: var(--shadow-lift, var(--shadow));
+}
+.chess-sq {
+  --light: #efe3cf;
+  --dark: #b48a64;
+  position: relative;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: var(--light);
+  font: inherit;
+  cursor: default;
+  min-width: 0;
+  min-height: 0;
+}
+.chess-sq[data-dark] {
+  background: var(--dark);
+}
+.chess-sq[data-last] {
+  background: color-mix(in srgb, #f2c94c 55%, var(--light));
+}
+.chess-sq[data-dark][data-last] {
+  background: color-mix(in srgb, #f2c94c 50%, var(--dark));
+}
+.chess-sq[data-can] {
+  cursor: pointer;
+}
+/* Your movable pieces: a soft ring so it's clear which ones you can pick up. */
+.chess-board[data-picking="piece"] .chess-sq[data-can]::after {
+  content: "";
+  position: absolute;
+  inset: 5px;
+  border-radius: 12px;
+  border: 3px solid color-mix(in srgb, var(--accent) 70%, transparent);
+  pointer-events: none;
+}
+.chess-sq[data-can]:hover::after {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+}
+.chess-sq[data-picked] {
+  background: color-mix(in srgb, var(--accent) 45%, var(--light));
+  box-shadow: inset 0 0 0 5px var(--accent);
+}
+.chess-sq[data-target] {
+  background: color-mix(in srgb, #2fbf5a 42%, var(--light));
+}
+.chess-sq[data-dark][data-target] {
+  background: color-mix(in srgb, #1f9d45 50%, var(--dark));
+}
+.chess-sq[data-target]:hover {
+  box-shadow: inset 0 0 0 5px #136b2d;
+}
+.chess-sq[data-check] {
+  background: radial-gradient(circle, #ff4d4d 0%, #ff4d4d55 55%, transparent 75%), var(--light);
+}
+.chess-sq[data-dark][data-check] {
+  background: radial-gradient(circle, #ff4d4d 0%, #ff4d4d55 55%, transparent 75%), var(--dark);
+}
+.chess-dot {
+  position: absolute;
+  width: 30%;
+  height: 30%;
+  border-radius: 50%;
+  background: #136b2d;
+  box-shadow: 0 0 0 3px rgb(255 255 255 / 70%);
+  pointer-events: none;
+}
+.chess-sq[data-capture] .chess-dot {
+  width: 86%;
+  height: 86%;
+  background: transparent;
+  border: 6px solid #136b2d;
+  box-shadow: none;
+}
+.chess-piece {
+  font-family: "Apple Symbols", "Segoe UI Symbol", "DejaVu Sans", "Noto Sans Symbols 2", var(--font);
+  font-size: calc(var(--sq) * 0.78);
+  line-height: 1;
+  position: relative;
+  z-index: 1;
+  pointer-events: none;
+  user-select: none;
+}
+.chess-piece-w {
+  color: #fff;
+  -webkit-text-stroke: 1.5px #1d1d1f;
+  paint-order: stroke fill;
+  text-shadow: 0 2px 3px rgb(0 0 0 / 30%);
+}
+.chess-piece-b {
+  color: #1d1d1f;
+  text-shadow: 0 1px 0 rgb(255 255 255 / 35%);
+}
+.chess-coord {
+  position: absolute;
+  font-size: max(11px, calc(var(--sq) * 0.16));
+  font-weight: 700;
+  color: #6b4f36;
+  pointer-events: none;
+  z-index: 2;
+}
+.chess-sq[data-dark] .chess-coord {
+  color: #f5ead8;
+}
+.chess-rank {
+  top: 3px;
+  left: 5px;
+}
+.chess-file {
+  bottom: 2px;
+  right: 6px;
+}
+.chess-status {
+  display: grid;
+  gap: 12px;
+}
+.chess-turn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+.chess-turn-dot {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 2px solid #1d1d1f;
+  background: #fff;
+}
+.chess-turn[data-whose="cpu"] .chess-turn-dot {
+  background: #1d1d1f;
+  border-color: var(--line-strong);
+}
+.chess-moves {
+  margin-left: auto;
+  font-size: 0.9rem;
+  font-weight: 650;
+  color: var(--ink-2);
+}
+.chess-captured {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 4px 14px;
+  padding: 10px 14px;
+  border-radius: 16px;
+  background: var(--surface-2);
+}
+.chess-captured-label {
+  font-size: 0.85rem;
+  font-weight: 650;
+  color: var(--ink-2);
+}
+.chess-captured-pieces {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  min-height: 34px;
+  font-size: 0.95rem;
+  color: var(--ink-2);
+}
+.chess-taken {
+  font-size: 30px;
+}
+
+/* High contrast: solid colours, thick outlines. */
+:root[data-theme="contrast"] .chess-sq {
+  --light: #fff;
+  --dark: #555;
+}
+:root[data-theme="contrast"] .chess-sq[data-target] {
+  background: #00a83a;
+}
+:root[data-theme="contrast"] .chess-sq[data-picked] {
+  background: #ffe600;
+}
+:root[data-theme="contrast"] .game {
+  background: #000;
+  border-color: #fff;
+  box-shadow: none;
+}
+
+/* Short windows (1280 × 800): tighter spacing, same target sizes. */
+@media (max-height: 860px) {
+  .game {
+    padding: 14px;
+    gap: 22px;
+  }
+  .game-side {
+    gap: 12px;
+  }
+  .game-say {
+    font-size: 1.45rem;
+  }
+  .game-say-box {
+    padding: 12px 16px;
+  }
+  .games-hub .flow-options[data-count="3"] {
+    grid-auto-rows: minmax(200px, 300px);
+  }
+}
+
+/* Narrow windows: the board on top, controls below, and the page scrolls. */
+@media (max-width: 900px) {
+  .game {
+    grid-template-columns: minmax(0, 1fr);
+    flex: 0 0 auto;
+  }
+  .game-board-wrap {
+    height: min(92vw, 70vh);
+  }
+}

@@ -35,6 +35,7 @@ import { PreferencesView, SettingsView, StatusView } from "./screens/SettingsVie
 import { ONBOARDED_KEY, Welcome } from "./screens/Welcome";
 import { MemoryExplorer } from "./memory";
 import { TalkRoute } from "./talk/TalkRoute";
+import { GamesRoute } from "./games/GamesRoute";
 
 function onboarded(): boolean {
   try {
@@ -51,6 +52,7 @@ function Screen({ route }: { route: Route }) {
   if (a === "task" && b) return <TaskScreen key={b} id={b} />;
   if (a === "apps") return <AppsScreen key={route.query.toString()} route={route} />;
   if (a === "talk") return <TalkRoute segments={route.segments.slice(1)} />;
+  if (a === "games") return <GamesRoute key={b ?? "hub"} segments={route.segments.slice(1)} />;
   if (a === "memory") return <MemoryExplorer segments={route.segments.slice(1)} />;
   if (a === "errands") return <Errands />;
   if (a === "onboarding") return <Onboarding />;
