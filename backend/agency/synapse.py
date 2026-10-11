@@ -44,6 +44,15 @@ MODES = {
     "offline": ("Safe-Mode", 0.1),
     "unknown": ("Ultra-Fusion", 1.0),
 }
+# Everyday requests (a short plan, a few replies, a sentence ending, reading a goal) need a fast answer more than
+# deep thought: Synapse sends them down the fast lane, low thinking. Explanations of papers and the like keep the
+# full budget the network allows.
+FAST_PURPOSES = frozenset(
+    {"plan_task", "suggest_replies", "complete_sentence", "interpret_goal", "draft_plan", "answer_question"}
+)
+# After Synapse-Mesh fails to answer, route with the stand-in for this long instead of waiting on it each time.
+SYNAPSE_RETRY_S = 30.0
+
 STATE_OF_MODE = {"Ultra-Fusion": "good", "Lean-Fusion": "slow", "Critical-Fusion": "critical", "Safe-Mode": "offline"}
 
 # What each expert means for Gemini: the lens it should apply, in proportion to the expert's weight.
@@ -94,6 +103,7 @@ class Route:
     method: str
     decision: str  # "gemini" | "gemini-lean" | "built-in"
     reason_ms: float | None
+    lane: str = "deep"  # "fast": low thinking for an everyday request; "deep": the budget the network allows
     at: str = field(default_factory=utcnow)
 
     @property
@@ -111,7 +121,7 @@ class Route:
             why = "the network is offline" if self.mode == "Safe-Mode" else "the network is barely working"
             return f"{self.mode}: {why}, so AGENCY used its built-in plans and wording without waiting for the cloud."
         shares = ", ".join(f"{name} {share:.0%}" for name, share in self.mixture().items()) or "general"
-        light = " with light thinking" if self.decision == "gemini-lean" else ""
+        light = " with light thinking" if self.decision == "gemini-lean" or self.lane == "fast" else ""
         return f"{self.mode}: Gemini{light}, weighted {shares}."
 
     def brief(self) -> str:
@@ -167,6 +177,7 @@ class SynapseRouter:
     connected: bool | None = None
     last_error: str | None = None
     history: list[dict[str, Any]] = field(default_factory=list)
+    down_until: float = 0.0
 
     def __post_init__(self) -> None:
         if self.url:
@@ -191,7 +202,7 @@ class SynapseRouter:
     async def route(self, text: str, purpose: str) -> Route:
         started = time.perf_counter()
         text = (text or "").strip()[:8000] or purpose
-        route = await self._synapse(text, purpose) if self.url else None
+        route = await self._synapse(text, purpose) if self.url and time.monotonic() >= self.down_until else None
         if route is None:
             route = self._stand_in(text, purpose, started)
         # A presenter override of the network always wins, so both screens tell the same story.
@@ -210,6 +221,7 @@ class SynapseRouter:
             response = await self.client.post(f"{self.url}/intent", json={"prompt": text})
         except (httpx.HTTPError, OSError) as exc:
             self.connected, self.last_error = False, f"Synapse-Mesh isn't reachable ({type(exc).__name__})"
+            self.down_until = time.monotonic() + SYNAPSE_RETRY_S
             return None
         if response.status_code == 503 and "offline" in response.text.lower():
             # The edge refuses to route while the cloud kernel is unreachable: that is Safe-Mode.
@@ -329,12 +341,17 @@ class SynapseLayer:
                 cloud.expert_brief = ""
             return False
         self.skipped = None
+        if purpose in FAST_PURPOSES:
+            route.lane = "fast"
+        if self.router.history:
+            self.router.history[-1]["lane"] = route.lane
         if hasattr(cloud, "expert_brief"):
             cloud.expert_brief = route.brief()
         if hasattr(cloud, "effort"):
             if self.base_effort is None:
                 self.base_effort = cloud.effort
-            cloud.effort = "low" if route.decision == "gemini-lean" else self.base_effort
+            fast = route.decision == "gemini-lean" or route.lane == "fast"
+            cloud.effort = "low" if fast else self.base_effort
         return True
 
     def status(self) -> dict[str, Any]:

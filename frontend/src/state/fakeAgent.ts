@@ -37,7 +37,12 @@ const NO_CHOICE = "__none__";
 /** A cloud planner (the web demo's Gemini function): steps for the task, or null to keep the built-in plan. */
 export type RemotePlanner = (
   r: TaskRequest,
-) => Promise<{ steps: { title: string; risk: PlanStepView["risk"]; done: string }[]; label: string } | null>;
+) => Promise<{
+  steps: { title: string; risk: PlanStepView["risk"]; done: string }[];
+  label: string;
+  /** How the planner made it fast, in plain words (shown on the plan). */
+  speed?: string;
+} | null>;
 
 let remotePlanner: RemotePlanner | null = null;
 
@@ -270,7 +275,7 @@ export class FakeAgent {
   private listeners = new Set<Listener>();
   private tasks = new Map<string, Running>();
 
-  constructor(private delayMs = 700) {}
+  constructor(private delayMs = 450) {}
 
   onEvent(listener: Listener): () => void {
     this.listeners.add(listener);
@@ -383,7 +388,10 @@ export class FakeAgent {
       if (t.stopped) return;
       if (plan) {
         script = withPlan(script, plan);
-        planNote = `Planned live by ${plan.label} in ${((performance.now() - started) / 1000).toFixed(1)} s. Practice services carry it out.`;
+        planNote =
+          plan.speed ??
+          `Planned live by ${plan.label} in ${((performance.now() - started) / 1000).toFixed(1)} s.`;
+        planNote += " Practice services carry it out.";
       } else {
         planNote = "Built-in plan (the cloud planner didn't answer).";
       }
