@@ -516,6 +516,13 @@ const watch: FlowDef = {
           icon: "tv",
           end: { type: "launch", bundleId: "com.apple.TV", name: "TV" },
         },
+        {
+          id: "games",
+          label: "Games",
+          sub: "Play with your eyes",
+          icon: "sparkle",
+          end: { type: "route", path: "/games" },
+        },
       ],
     },
     youtube: {

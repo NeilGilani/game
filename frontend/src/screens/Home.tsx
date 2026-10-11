@@ -28,7 +28,7 @@ export const HOME_TILES: Tile[] = [
   { id: "call", label: "Call someone", sub: "Friends & family", icon: "phone", path: "/flow/call" },
   { id: "food", label: "Food", sub: "Order a meal", icon: "food", path: "/flow/food" },
   { id: "messages", label: "Messages", sub: "Send a message", icon: "message", path: "/flow/messages" },
-  { id: "watch", label: "Watch & listen", sub: "Videos & music", icon: "play", path: "/flow/watch" },
+  { id: "watch", label: "Watch & listen", sub: "Videos, music & games", icon: "play", path: "/flow/watch" },
   { id: "browse", label: "Browse", sub: "News, weather, the web", icon: "globe", path: "/flow/browse" },
   { id: "shopping", label: "Shopping", sub: "Compare and buy", icon: "bag", path: "/flow/shopping" },
   { id: "papers", label: "Papers", sub: "Forms & documents", icon: "document", path: "/flow/papers" },
