@@ -7,7 +7,7 @@
  *
  * With gaze or the head pointer, selection is locked in: GazeSelector picks the most likely target
  * for the pointer and the engine's error radius, holds it with hysteresis, and the cursor sits in
- * the held target is marked data-dwell-locked while the cursor keeps following the pointer. A glance away or a
+ * the middle of the held target (marked data-dwell-locked) instead of wobbling. A glance away or a
  * blink pauses the dwell ring (data-dwell-paused) rather than resetting it.
  *
  * Each target carries a context prior (input/context.ts, os/gaze/src/input/intent.ts priorsOf): what is
@@ -113,6 +113,8 @@ export function InputLayer() {
   const { prefs } = usePreferences();
   const announce = useAnnounce();
   const cursorRef = useRef<HTMLDivElement>(null);
+  /** What the camera frames last said about the cursor; drawn on every animation frame. */
+  const shown = useRef<{ on: boolean; lockAt: { x: number; y: number } | null }>({ on: false, lockAt: null });
   const [blinkProgress, setBlinkProgress] = useState(0);
   const [scanPaused, setScanPaused] = useState(false);
 
@@ -240,8 +242,7 @@ export function InputLayer() {
         }
       }
       // Where the cursor goes: the middle of the held target while there is a lock, else the pointer.
-      const cursorAt = frame.pointer;
-      let locked = false;
+      let lockAt: { x: number; y: number } | null = null;
       if (mode === "gaze" && frame.pointer && frame.confidence >= 0.5 && !suspended) {
         setLivePrecision(meter.current.update(now, vision.errorRadius));
       }
@@ -286,23 +287,61 @@ export function InputLayer() {
         const dwelling = sel.dwell.snapshot().targetId;
         const ring = dwelling ? byId.get(dwelling) : undefined;
         if (ring) ring.toggleAttribute("data-dwell-paused", sel.locked !== dwelling || !sel.supported);
-        // The held target is highlighted, but the cursor keeps following the eyes (no snapping).
-        locked = !!sel.locked;
+        if (sel.locked && sel.cursor) lockAt = sel.cursor;
       }
+      const on = !!frame.pointer && prefs.show_gaze_cursor && !suspended;
+      shown.current = { on, lockAt: on ? lockAt : null };
       if (cursor) {
-        if (cursorAt && prefs.show_gaze_cursor && !suspended) {
-          cursor.style.opacity = locked || frame.confidence >= 0.5 ? "1" : "0.35";
-          cursor.style.transform = `translate(${cursorAt.x}px, ${cursorAt.y}px)`;
-          cursor.removeAttribute("data-locked");
-        } else {
-          cursor.style.opacity = "0";
-          cursor.removeAttribute("data-locked");
-        }
+        cursor.style.opacity = on ? (lockAt || frame.confidence >= 0.5 ? "1" : "0.35") : "0";
+        cursor.toggleAttribute("data-locked", on && !!lockAt);
       }
     };
     const off = vision.onFrame(handle);
+
+    // Draw on every animation frame (60 a second), not on camera frames (30): the engine's cursor
+    // glides between frames by itself. Moving onto or off a locked target, or between two, glides
+    // too (160 ms ease-out) instead of jumping.
+    const reduceMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
+    let raf = 0;
+    let drawn: { x: number; y: number } | null = null;
+    let lastLock: { x: number; y: number } | null = null;
+    let blend: { from: { x: number; y: number }; t0: number } | null = null;
+    const draw = () => {
+      raf = requestAnimationFrame(draw);
+      const { on, lockAt } = shown.current;
+      if (!cursor || !on) {
+        drawn = null;
+        return;
+      }
+      const now = performance.now();
+      const goal = lockAt ?? vision.cursorAt(now);
+      if (!goal) return;
+      const switched =
+        !!lockAt !== !!lastLock ||
+        (lockAt && lastLock && (lockAt.x !== lastLock.x || lockAt.y !== lastLock.y));
+      lastLock = lockAt;
+      if (switched && drawn && !reduceMotion) blend = { from: drawn, t0: now };
+      let p = goal;
+      if (blend) {
+        const u = (now - blend.t0) / 160;
+        if (u >= 1) blend = null;
+        else {
+          const e = 1 - (1 - u) ** 3;
+          p = {
+            x: blend.from.x + (goal.x - blend.from.x) * e,
+            y: blend.from.y + (goal.y - blend.from.y) * e,
+          };
+        }
+      }
+      drawn = p;
+      cursor.style.transform = `translate(${p.x}px, ${p.y}px)`;
+    };
+    raf = requestAnimationFrame(draw);
+
     return () => {
       off();
+      cancelAnimationFrame(raf);
+      shown.current = { on: false, lockAt: null };
       sel.reset(performance.now(), 0);
       clearDwellMarks();
       if (cursor) {

@@ -21,7 +21,8 @@
     "test:e2e": "playwright test",
     "bench:browser": "BENCH_SECONDS=15 playwright test",
     "build": "vite build --config engine/vite.config.ts",
-    "bench:intent": "vitest run --config vitest.bench.config.ts bench/intent.bench.ts"
+    "bench:intent": "vitest run --config vitest.bench.config.ts bench/intent.bench.ts",
+    "bench:cursor": "vitest run --config vitest.bench.config.ts bench/cursor.bench.ts"
   },
   "peerDependencies": {
     "@mediapipe/tasks-vision": "0.10.35"
