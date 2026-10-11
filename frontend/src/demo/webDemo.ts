@@ -8,6 +8,7 @@
  * Only in builds made with VITE_WEB_DEMO=1 (`make web-demo`), for the hosted demo link.
  */
 
+import { type RemotePlanner, setRemotePlanner } from "../state/fakeAgent";
 import recorded from "./recorded.json";
 
 /** A reserved address (.invalid never resolves), so a call the stand-in misses fails safely. */
@@ -34,6 +35,27 @@ function replay(value: Json, shiftMs: number): Json {
 }
 
 type Lifeline = "idle" | "countdown" | "calling";
+
+/** Set when the site's Gemini planner answers (see installWebDemo): the status bar then says Gemini plans. */
+let cloudPlanner: { model: string } | null = null;
+
+function withPlanner(value: Json): Json {
+  if (!cloudPlanner || !value || typeof value !== "object") return value;
+  const v = value as { reasoning?: Record<string, unknown> };
+  if (!v.reasoning) return value;
+  return {
+    ...v,
+    reasoning: {
+      ...v.reasoning,
+      mode: "cloud",
+      provider: "google",
+      label: "Gemini",
+      model: cloudPlanner.model,
+      state: "configured",
+      description: `Gemini (${cloudPlanner.model}) plans each task through this site's server; the key never reaches the page. Practice services carry the plans out.`,
+    },
+  };
+}
 
 class StandIn {
   private lifeline: Lifeline = "idle";
@@ -64,11 +86,12 @@ class StandIn {
     const key = `${method} ${path}`;
     switch (key) {
       case "GET /api/health":
+      case "GET /api/runtime":
+        return ok(withPlanner(this.now(rec[key])));
       case "GET /api/approvals":
       case "GET /api/cases":
       case "GET /api/activity":
       case "GET /api/memory/suggestions":
-      case "GET /api/runtime":
       case "GET /api/synapse":
       case "GET /api/lifeline/report":
       case "GET /api/lifeline/outbox":
@@ -137,8 +160,47 @@ class StandIn {
   }
 }
 
+/**
+ * The site's Gemini planner (site/functions/api/agent/plan.ts, a Cloudflare Pages Function holding the key).
+ * The agent asks it to plan each task; if it isn't set up or doesn't answer in time, the built-in plan runs.
+ */
+const planWithGemini: RemotePlanner = async (r) => {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 20_000);
+  try {
+    const res = await fetch("/api/agent/plan", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ goal: r.goal, kind: r.selections?.kind ?? "", selections: r.selections ?? {} }),
+      signal: controller.signal,
+    });
+    if (!res.ok) return null;
+    const body = (await res.json()) as {
+      steps?: { title: string; risk: string; done: string }[];
+      model?: string;
+    };
+    if (!Array.isArray(body.steps)) return null;
+    const steps = body.steps.filter(
+      (s): s is { title: string; risk: "read" | "reversible" | "consequential"; done: string } =>
+        s.risk === "read" || s.risk === "reversible" || s.risk === "consequential",
+    );
+    return steps.length >= 2 ? { steps, label: `Gemini (${body.model ?? "cloud"})` } : null;
+  } catch {
+    return null;
+  } finally {
+    clearTimeout(timer);
+  }
+};
+
 /** Point the app at the in-page stand-in and use the in-page demo agent, memory and apps. */
 export function installWebDemo(): void {
+  setRemotePlanner(planWithGemini);
+  void fetch("/api/agent/plan")
+    .then((r) => (r.ok ? (r.json() as Promise<{ ready?: boolean; model?: string }>) : null))
+    .then((s) => {
+      if (s?.ready) cloudPlanner = { model: s.model ?? "gemini" };
+    })
+    .catch(() => undefined);
   try {
     localStorage.setItem("agency.coordinator", WEB_DEMO_ORIGIN);
     localStorage.setItem("agency.fakes", "memory,agent,native");

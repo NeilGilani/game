@@ -34,6 +34,34 @@ interface Script {
 
 const NO_CHOICE = "__none__";
 
+/** A cloud planner (the web demo's Gemini function): steps for the task, or null to keep the built-in plan. */
+export type RemotePlanner = (
+  r: TaskRequest,
+) => Promise<{ steps: { title: string; risk: PlanStepView["risk"]; done: string }[]; label: string } | null>;
+
+let remotePlanner: RemotePlanner | null = null;
+
+/** Let a cloud model plan the steps; the scripted approval (exact details) and practice services stay. */
+export function setRemotePlanner(planner: RemotePlanner | null): void {
+  remotePlanner = planner;
+}
+
+/** Gemini's steps in place of the built-in ones; the approval moves to Gemini's consequential step. */
+function withPlan(script: Script, plan: NonNullable<Awaited<ReturnType<RemotePlanner>>>): Script {
+  const at = plan.steps.findIndex((s) => s.risk === "consequential");
+  if (script.approval && at < 0) return script; // the task needs an approval Gemini didn't plan: keep ours
+  return {
+    ...script,
+    steps: plan.steps.map((s) => ({
+      title: s.title,
+      risk: s.risk,
+      summary: s.risk === "consequential" && script.approval ? `${s.done} (practice, nothing real)` : s.done,
+    })),
+    ...(script.approval ? { approvalAt: at } : {}),
+    question: at === 0 ? undefined : script.question,
+  };
+}
+
 function sel(r: TaskRequest, key: string, fallback = ""): string {
   return r.selections?.[key] ?? fallback;
 }
@@ -347,7 +375,19 @@ export class FakeAgent {
       approval: null,
     };
     this.tasks.set(id, t);
-    const script = scriptFor(request);
+    let script = scriptFor(request);
+    let planNote: string | null = null;
+    if (remotePlanner) {
+      const started = performance.now();
+      const plan = await remotePlanner(request).catch(() => null);
+      if (t.stopped) return;
+      if (plan) {
+        script = withPlan(script, plan);
+        planNote = `Planned live by ${plan.label} in ${((performance.now() - started) / 1000).toFixed(1)} s. Practice services carry it out.`;
+      } else {
+        planNote = "Built-in plan (the cloud planner didn't answer).";
+      }
+    }
     const steps: PlanStepView[] = script.steps.map((s, i) => ({
       id: `s${i + 1}`,
       title: s.title,
@@ -356,6 +396,14 @@ export class FakeAgent {
     }));
     this.emit({ type: "task.started", taskId: id, goal: request.goal, dryRun: request.dryRun ?? true });
     this.emit({ type: "task.plan", taskId: id, steps });
+    if (planNote)
+      this.emit({
+        type: "task.step",
+        taskId: id,
+        stepId: "synapse:route",
+        status: "done",
+        summary: planNote,
+      });
 
     for (let i = 0; i < steps.length; i++) {
       const step = steps[i]!;
