@@ -187,7 +187,9 @@ const planWithGemini: RemotePlanner = async (r) => {
     );
     const label = `Gemini (${body.model ?? "cloud"})`;
     const speed =
-      typeof body.ms === "number" ? `Fast lane: ${label} planned it in ${(body.ms / 1000).toFixed(1)} s.` : undefined;
+      typeof body.ms === "number"
+        ? `Fast lane: ${label} planned it in ${(body.ms / 1000).toFixed(1)} s.`
+        : undefined;
     return steps.length >= 2 ? { steps, label, ...(speed ? { speed } : {}) } : null;
   } catch {
     return null;

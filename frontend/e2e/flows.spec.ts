@@ -150,15 +150,12 @@ test("apps: in the browser, opening says it needs the AGENCY Mac app, never pret
 
 test("settings hub, talk and onboarding are reachable by big choices", async ({ page }) => {
   await page.goto("/#/settings");
-  for (const n of [
-    "How you choose",
-    "Calibrate my eyes",
-    "Voice",
-    "What AGENCY remembers",
-    "Lifeline",
-    "For a helper",
-  ])
+  for (const n of ["How you choose", "Calibrate my eyes", "Voice", "What AGENCY remembers", "Gaze lab"])
     await expect(page.getByRole("button", { name: new RegExp(n) })).toBeVisible();
+  await pick(page, "More settings");
+  for (const n of ["Lifeline", "For a helper"])
+    await expect(page.getByRole("button", { name: new RegExp(n) })).toBeVisible();
+  await pick(page, "Previous settings");
   await pick(page, /What AGENCY remembers/);
   await pick(page, /Call Jordan/);
   await expect(page.getByText("Forgot Call Jordan.").first()).toBeVisible();
