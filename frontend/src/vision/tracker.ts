@@ -29,7 +29,7 @@ import type { FaceFrame } from "../../../os/gaze/src/providers/types";
 import { type LandmarkerFactory, WebcamProvider } from "../../../os/gaze/src/providers/webcam";
 
 import { type StoredCalibration, storeCalibration } from "./calibrationStore";
-import { NoseCursor } from "./noseCursor";
+import { EyeCursor } from "./eyeCursor";
 import { DEFAULT_FILTER } from "../../../os/gaze/src/lab";
 import { gazeTuning, onGazeTuning } from "./tuning";
 
@@ -173,7 +173,7 @@ export class VisionEngine {
     if (kind !== this.gaze.mode) this.gaze.setMode(kind);
     // The eye cursor needs only landmarks: skip the per-frame eye-image read (a canvas read) it never uses.
     this.camera.setReadEyes(kind !== "head");
-    this.nose.recentre();
+    this.eyesCursor.recentre();
     this.iris = null;
     this.drawnIris = null;
   }
@@ -181,13 +181,13 @@ export class VisionEngine {
   /** The head pointer: wherever the head points now becomes the middle of the screen. */
   recentre(): void {
     this.gaze.recentreHeadPointer();
-    this.nose.recentre();
+    this.eyesCursor.recentre();
     this.iris = null;
     this.drawnIris = null;
   }
 
-  /** The eye cursor (the "head" pointer mode): the nose tip moves it (noseCursor.ts). */
-  private readonly nose = new NoseCursor();
+  /** The eye cursor (the "head" pointer mode): the irises move it (eyeCursor.ts). */
+  private readonly eyesCursor = new EyeCursor();
   /** The eye cursor's latest position (viewport px). */
   private iris: { x: number; y: number } | null = null;
   /** The eye cursor as drawn: a short spring towards the latest position, so it glides between camera frames. */
@@ -419,7 +419,7 @@ export class VisionEngine {
     // The eye cursor needs only a face: looking down (lowered eyelids) must not lose it.
     const headTracking = f.landmarks ? 1 : 0;
     if (head && !this.calibrating) {
-      const at = this.nose.update(f.landmarks, f.aspect, d.t, d.blink);
+      const at = this.eyesCursor.update(f.landmarks, d.t, d.blink);
       this.iris = at ? { x: at.x * window.innerWidth, y: at.y * window.innerHeight } : null;
       pointer = this.iris;
       raw = pointer;
@@ -444,6 +444,11 @@ export class VisionEngine {
     };
     this.last = frame;
     this.emit(frame);
+  }
+
+  /** Test hook only (injectFrame): an injected pointer is where the eye cursor is, so it is drawn and selects. */
+  injected(pointer: { x: number; y: number } | null): void {
+    if (this.gaze.mode === "head") this.iris = pointer;
   }
 
   emit(frame: VisionFrame): void {
@@ -475,6 +480,7 @@ export function injectFrame(engine: VisionEngine, partial: Partial<VisionFrame>)
     ...partial,
   };
   engine.last = frame;
+  engine.injected(frame.pointer);
   engine.emit(frame);
 }
 
