@@ -14,6 +14,10 @@ test.beforeEach(async ({ context }) => {
 
 test("desktop menus navigate, dismiss with Escape and keep the Dock current", async ({ page }) => {
   await page.goto("/#/");
+  await expect(page.locator(".home-titlebar")).toBeVisible();
+  expect(await page.locator("body").evaluate((el) => getComputedStyle(el).backgroundImage)).toContain(
+    "desktop-wallpaper.svg",
+  );
   const dock = page.locator(".dock");
   await expect(dock.getByRole("button", { name: "Home", exact: true })).toHaveAttribute(
     "aria-current",
@@ -43,10 +47,9 @@ test("all Settings remain reachable through large, paged choices", async ({ page
   await page.setViewportSize({ width: 1280, height: 800 });
   await page.goto("/#/settings");
   await expect(page.locator(".flow-options .choice")).toHaveCount(5);
-  await expect(page.getByRole("button", { name: /Gaze lab/ })).toBeVisible();
-  await page.getByRole("button", { name: "More settings" }).click();
-  await expect(page.locator(".flow-options .choice")).toHaveCount(2);
   await expect(page.getByRole("button", { name: /Lifeline.*Contacts/ })).toBeVisible();
+  await page.getByRole("button", { name: "More settings" }).click();
+  await expect(page.locator(".flow-options .choice")).toHaveCount(1);
   await page.getByRole("button", { name: "Previous settings" }).click();
   await expect(page.locator(".flow-options .choice")).toHaveCount(5);
   await page.getByRole("button", { name: "More settings" }).click();
