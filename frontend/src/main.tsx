@@ -14,6 +14,8 @@ try {
     let eyes: SyntheticEyes | null = null;
     (window as unknown as Record<string, unknown>).__agency = {
       inject: (frame: Parameters<typeof injectFrame>[1]) => injectFrame(visionEngine(), frame),
+      // Run with injected frames only (no webcam): the camera reads as on, for recordings and tests.
+      external: () => visionEngine().useExternalFrames(),
       // A simulated person driving the real gaze engine (vision/synthetic.ts), loaded only here.
       eyes: async (options?: SyntheticEyesOptions) => {
         const { SyntheticEyes } = await import("./vision/synthetic");
