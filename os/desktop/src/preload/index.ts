@@ -49,6 +49,7 @@ const api: AgencyApi = {
   gaze: {
     onEvent: (l) => subscribe<GazeEvent>(IPC.gaze, l),
     publish: (event) => ipcRenderer.send(IPC.gaze, event),
+    onPace: (l) => subscribe<number>(IPC.gazePace, l),
   },
   targets: {
     onSnapshot: (l) => subscribe<TargetSnapshot>(IPC.targets, l),

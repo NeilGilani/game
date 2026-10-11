@@ -72,7 +72,8 @@ test("food: choices, a question as cards, change makes a new approval, decline d
   await pick(page, "Front desk");
   await expect(page.getByTestId("approval")).toContainText("Front desk");
   await pick(page, "Decline");
-  await expect(page.getByText(/Nothing was paid/)).toBeVisible();
+  // The visible outcome (a polite live region announces the same words for screen readers).
+  await expect(page.locator(".task-big").getByText(/Nothing was paid/)).toBeVisible();
   await expect(page.getByRole("button", { name: "Try again" })).toBeVisible();
 });
 
@@ -82,7 +83,8 @@ test("call, messages (typed), papers, shopping comparison, browse and watch all 
   await page.goto("/#/flow/call");
   await pick(page, "Jordan");
   await pick(page, "Just to talk");
-  await approve(page, /Yes, call · Jordan/);
+  // Calls are a task pack: the flow hands over to Talk's call screen.
+  await expect(page).toHaveURL(/#\/talk\/call/);
 
   await page.goto("/#/flow/messages");
   await pick(page, "Mom");
@@ -95,7 +97,8 @@ test("call, messages (typed), papers, shopping comparison, browse and watch all 
   await page.goto("/#/flow/papers");
   await pick(page, "Sign a document");
   await pick(page, "Lease renewal");
-  await approve(page, /Yes, sign/);
+  // Documents are a task pack too: signing happens in Talk's papers screen.
+  await expect(page).toHaveURL(/#\/talk\/papers/);
 
   await page.goto("/#/flow/shopping");
   await pick(page, "Medical supplies");
@@ -132,26 +135,27 @@ test("back, paging-free screens, Stop mid-task, and Continue on Home", async ({ 
   await expect(page.getByText("Nothing more will happen with this task.")).toBeVisible();
 });
 
-test("apps: launch from the flow, switch on the Apps screen (simulated in the browser)", async ({ page }) => {
+test("apps: in the browser, opening says it needs the AGENCY Mac app, never pretends", async ({ page }) => {
   await page.goto("/#/flow/apps");
   await pick(page, "Mail");
-  await expect(page.getByRole("heading", { name: /Mail is open \(simulated/ })).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: /Couldn't open Mail: opening Mac apps needs the AGENCY Mac app/ }),
+  ).toBeVisible();
   await page.goto("/#/apps?view=all");
   await pick(page, /Music/);
-  await expect(page.getByText(/Music is open/).first()).toBeVisible();
+  await expect(
+    page.getByText(/Couldn't open Music: opening Mac apps needs the AGENCY Mac app/).first(),
+  ).toBeVisible();
 });
 
 test("settings hub, talk and onboarding are reachable by big choices", async ({ page }) => {
   await page.goto("/#/settings");
-  for (const n of [
-    "How you choose",
-    "Calibrate my eyes",
-    "Voice",
-    "What AGENCY remembers",
-    "Lifeline",
-    "For a helper",
-  ])
+  for (const n of ["How you choose", "Calibrate my eyes", "Voice", "What AGENCY remembers", "Gaze lab"])
     await expect(page.getByRole("button", { name: new RegExp(n) })).toBeVisible();
+  await pick(page, "More settings");
+  for (const n of ["Lifeline", "For a helper"])
+    await expect(page.getByRole("button", { name: new RegExp(n) })).toBeVisible();
+  await pick(page, "Previous settings");
   await pick(page, /What AGENCY remembers/);
   await pick(page, /Call Jordan/);
   await expect(page.getByText("Forgot Call Jordan.").first()).toBeVisible();

@@ -121,7 +121,8 @@ function Welcome() {
           <Icon name="hand" /> AGENCY can do tasks for you, and always asks before anything important.
         </p>
         <p>
-          <Icon name="bell" /> Help is always one look away: Help is top left on every screen.
+          <Icon name="bell" /> Help is always one look away: the red Help button is always at the left of the
+          dock.
         </p>
       </div>
     </>
@@ -177,7 +178,12 @@ function Permissions() {
 function InputChoice({ onChosen }: { onChosen: () => void }) {
   const { prefs, update } = usePreferences();
   const choices = [
-    { mode: "gaze" as const, label: "My eyes", sub: "Look and hold to choose. Calibrate next.", icon: "eye" },
+    {
+      mode: "head" as const,
+      label: "My eyes",
+      sub: "The cursor follows your eyes. Hold to choose.",
+      icon: "eye",
+    },
     {
       mode: "scan_key" as const,
       label: "A switch",
@@ -202,7 +208,7 @@ function InputChoice({ onChosen }: { onChosen: () => void }) {
             aria-pressed={prefs.input_mode === c.mode}
             onClick={() => {
               update({ input_mode: c.mode });
-              if (c.mode === "gaze") navigate("/camera");
+              if (c.mode === "head") navigate("/camera");
               else onChosen();
             }}
             data-dwell

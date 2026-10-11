@@ -1,23 +1,53 @@
 import "@fontsource/atkinson-hyperlegible/400.css";
 import "@fontsource/atkinson-hyperlegible/700.css";
 import "./styles/app.css";
+import "./styles/layout.css";
+import "./styles/polish.css";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { App } from "./App";
+import type { LookTarget, SyntheticEyes, SyntheticEyesOptions } from "./vision/synthetic";
 import { injectFrame, visionEngine } from "./vision/tracker";
 
 try {
   if (localStorage.getItem("agency.testHooks") === "1") {
+    let eyes: SyntheticEyes | null = null;
     (window as unknown as Record<string, unknown>).__agency = {
       inject: (frame: Parameters<typeof injectFrame>[1]) => injectFrame(visionEngine(), frame),
+      // Run with injected frames only (no webcam): the camera reads as on, for recordings and tests.
+      external: () => visionEngine().useExternalFrames(),
+      // A simulated person driving the real gaze engine (vision/synthetic.ts), loaded only here.
+      eyes: async (options?: SyntheticEyesOptions) => {
+        const { SyntheticEyes } = await import("./vision/synthetic");
+        eyes?.stop();
+        eyes = new SyntheticEyes(visionEngine(), options);
+        eyes.start();
+      },
+      lookAt: (target: LookTarget) => eyes?.lookAt(target),
+      closeEyes: (ms: number) => eyes?.close(ms),
+      pointer: () => visionEngine().last?.pointer ?? null,
+      // How many of RealEye's eye-image features the last camera frame had (0: none read).
+      eyeFeatures: () => visionEngine().last?.eyes?.length ?? 0,
     };
   }
 } catch {
   /* storage unavailable */
 }
 
-createRoot(document.getElementById("root")!).render(
-  <StrictMode>
-    <App />
-  </StrictMode>,
+// The hosted web demo (VITE_WEB_DEMO=1) answers coordinator calls in the page; see demo/webDemo.ts.
+const ready =
+  import.meta.env.VITE_WEB_DEMO === "1"
+    ? import("./demo/webDemo").then((m) => m.installWebDemo())
+    : import("./api/client")
+        .then((m) => m.repairCoordinatorUrl())
+        // Gemini plans every Home task through the coordinator (Synapse + Cisco), built-in plans as the fallback.
+        .then(() => Promise.all([import("./state/fakeAgent"), import("./state/assist")]))
+        .then(([agent, assist]) => agent.setRemotePlanner(assist.planWithCoordinator));
+
+void ready.then(() =>
+  createRoot(document.getElementById("root")!).render(
+    <StrictMode>
+      <App />
+    </StrictMode>,
+  ),
 );

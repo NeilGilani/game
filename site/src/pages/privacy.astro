@@ -41,13 +41,19 @@ const contact = CONTACT_EMAIL
         your browsing data removes it.
       </li>
       <li>
+        <strong>The browser demo keeps your camera in your browser.</strong> “Try it in your browser” runs the
+        AGENCY interface in your browser with practice services. Camera video is processed in the browser and
+        never sent. To plan a task you chose, the demo may send the task's text (never video) through this
+        site to Google's Gemini.
+      </li>
+      <li>
         <strong>Which Mac you have stays in your browser.</strong> The page checks your browser's information
         to suggest the Apple silicon or Intel download. That check happens on your device and isn't stored or
         sent.
       </li>
       <li>
-        <strong>Hosting.</strong> The site is hosted on GitHub Pages. GitHub may keep server logs as described
-        in its privacy statement. We don't have access to visitor logs and don't ask for them.
+        <strong>Hosting.</strong> The site is hosted on Cloudflare Pages. Cloudflare may keep server logs as
+        described in its own privacy policy. We don't look at visitor logs.
       </li>
     </ul>
 
@@ -59,13 +65,15 @@ const contact = CONTACT_EMAIL
     <ul>
       <li>
         <strong>Camera video never leaves your Mac.</strong> Frames are processed on the Mac to follow your
-        eyes, then thrown away. They're never stored, and never sent to the AI or anywhere else.
+        eyes, then thrown away. They're never stored, and never sent to the AI or anywhere else. Your eye
+        calibration is saved on the device as numbers, not pictures or video.
       </li>
       <li>
         <strong>The AI sees only what a task needs, only when you start one.</strong> During a task you
-        started, AGENCY may send Anthropic's AI your request and screenshots of the app it's working in.
-        Screenshots aren't kept by default. Anthropic's terms apply to what's sent. Without an API key,
-        nothing is sent to an AI at all.
+        started, AGENCY may send Google's Gemini your request and screenshots of the app it's working in.
+        Every request is routed first by Synapse-Mesh, whose intent Sifter runs on the device. Screenshots
+        aren't kept by default. Google's terms apply to what's sent. Without an API key, nothing is sent to an
+        AI at all.
       </li>
       <li>
         <strong>Memory is local and yours.</strong> What AGENCY learns about your usual choices stays on your

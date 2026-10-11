@@ -1,0 +1,66 @@
+# Deploys the landing page (site/) to Cloudflare Pages, so anyone can find AGENCY and download it.
+#
+# One-time setup (repository owner):
+#   1. Cloudflare dashboard → Workers & Pages → Create → Pages → "Direct Upload" → name the project
+#      `agency-os` (or set the CLOUDFLARE_PAGES_PROJECT variable to your name).
+#   2. Create an API token with the "Cloudflare Pages: Edit" permission (My Profile → API Tokens).
+#   3. GitHub → Settings → Secrets and variables → Actions:
+#        secrets   CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID
+#        variables (optional) CLOUDFLARE_PAGES_PROJECT, SITE_URL (e.g. https://agency-os.pages.dev or your domain),
+#                  CONTACT_EMAIL, RELEASES_REPO
+# Without the secrets this workflow still builds the site and says why it didn't deploy.
+name: Cloudflare Pages
+
+on:
+  push:
+    branches: [main]
+    paths: ["site/**", "package-lock.json", ".github/workflows/cloudflare-pages.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  deployments: write
+
+concurrency:
+  group: cloudflare-pages
+  cancel-in-progress: false
+
+env:
+  PROJECT: ${{ vars.CLOUDFLARE_PAGES_PROJECT || 'agency-os' }}
+  # Cloudflare Pages serves from the root of the domain.
+  SITE_BASE: /
+  SITE_URL: ${{ vars.SITE_URL || format('https://{0}.pages.dev', vars.CLOUDFLARE_PAGES_PROJECT || 'agency-os') }}
+  PUBLIC_RELEASES_REPO: ${{ vars.RELEASES_REPO || github.repository }}
+  PUBLIC_CONTACT_EMAIL: ${{ vars.CONTACT_EMAIL }}
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      # Secrets can't appear in `if:` directly; this flag can.
+      HAS_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN != '' && secrets.CLOUDFLARE_ACCOUNT_ID != '' }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install the site's and the interface's dependencies (npm workspaces; the lockfile is at the root)
+        run: npm ci --workspace site --workspace frontend --no-audit --no-fund
+      - name: Build the web demo into the site (/app/)
+        run: |
+          npm run vendor -w frontend
+          cd frontend && VITE_WEB_DEMO=1 npx vite build --base /app/ --outDir ../site/public/app --emptyOutDir --sourcemap false
+      - name: Build
+        run: npm run build -w site
+      - name: Deploy to Cloudflare Pages
+        if: ${{ env.HAS_TOKEN == 'true' }}
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy site/dist --project-name=${{ env.PROJECT }} --branch=main --commit-dirty=true
+      - name: Not deployed
+        if: ${{ env.HAS_TOKEN != 'true' }}
+        run: |
+          echo "::notice::Built site/dist but did not deploy: add the CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID secrets (see the top of this file)."

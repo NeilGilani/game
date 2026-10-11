@@ -16,8 +16,15 @@ interface Config {
 const config: Config = { base: "", token: "", intervalMs: 5000, body: {}, running: false };
 let timer: ReturnType<typeof setInterval> | null = null;
 
+/** The hosted web demo's in-page stand-in (demo/webDemo.ts) can't reach into this worker. */
+const WEB_DEMO = ".agency.invalid";
+
 async function send(): Promise<void> {
   if (!config.running || !config.base) return;
+  if (config.base.endsWith(WEB_DEMO)) {
+    postMessage({ ok: true, status: 200, at: Date.now() });
+    return;
+  }
   const headers: Record<string, string> = { "Content-Type": "application/json" };
   if (config.token) headers["X-Agency-Token"] = config.token;
   const controller = new AbortController();

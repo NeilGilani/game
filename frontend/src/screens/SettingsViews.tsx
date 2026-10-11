@@ -1,3 +1,4 @@
+import { SynapsePanel } from "../components/Synapse";
 import { useState, type ReactNode } from "react";
 import { accessToken, api, coordinatorUrl, setAccessToken, setCoordinatorUrl } from "../api/client";
 import type { Faults, InputMode, Preferences, ReasoningStatus, Runtime } from "../api/types";
@@ -8,9 +9,10 @@ import { Loading, SimulatedBadge, formatTime } from "../components/status";
 import { useAnnounce } from "../state/announcer";
 import { coordinatorLabel, useConnection } from "../state/connection";
 import { MODE_LABELS, useInput } from "../state/input";
-import { usePreferences } from "../state/preferences";
+import { applyEasyRead, usePreferences } from "../state/preferences";
 import { navigate } from "../state/router";
 import { usePoll } from "../state/usePoll";
+import { describeError, describeEyeModel } from "../vision/calibrationStore";
 
 const MODE_ICONS: Record<InputMode, string> = {
   gaze: "eye",
@@ -21,8 +23,8 @@ const MODE_ICONS: Record<InputMode, string> = {
 };
 
 const MODE_HELP: Record<InputMode, string> = {
-  gaze: "Look at a button and hold your gaze to select it. Needs calibration.",
-  head: "Point with small head movements and hold to select. Needs calibration.",
+  gaze: "Look at a button and hold your gaze to select it. A 5-second eye scan the first time.",
+  head: "The cursor follows your eye in the camera, instantly. Hold your look to select. No calibration: where you look when it starts is the middle.",
   scan_blink: "Choices light up in turn; a deliberate long blink selects.",
   scan_key: "Choices light up in turn; press Space (or any switch mapped to it) to select.",
   pointer: "Use a mouse, trackpad, keyboard or touch as usual.",
@@ -38,7 +40,6 @@ export function ModePicker({ onPicked }: { onPicked?: (mode: InputMode) => void 
           className="tile"
           role="radio"
           aria-checked={prefs.input_mode === m}
-          aria-pressed={prefs.input_mode === m}
           data-dwell
           onClick={() => {
             update({ input_mode: m });
@@ -124,12 +125,15 @@ export function Toggle({
 }) {
   return (
     <button
-      className="tile"
+      className="tile setting-toggle"
       style={{ minHeight: 120 }}
       aria-pressed={value}
       onClick={() => onChange(!value)}
       data-dwell
     >
+      <span className="toggle-track" aria-hidden="true">
+        <span />
+      </span>
       <span className="tile-title">{label}</span>
       <span className="tile-sub">
         {value ? "On" : "Off"}
@@ -214,7 +218,6 @@ export function PreferencesView() {
               style={{ minHeight: 110 }}
               role="radio"
               aria-checked={prefs.theme === t}
-              aria-pressed={prefs.theme === t}
               onClick={() => update({ theme: t })}
               data-dwell
             >
@@ -228,6 +231,7 @@ export function PreferencesView() {
           ))}
         </div>
         <div className="grid grid-3">
+          <EasyReadToggle />
           <Toggle
             label="Reduce motion"
             value={prefs.reduced_motion}
@@ -362,7 +366,7 @@ export function SettingsView() {
           <p>
             <strong>{MODE_LABELS[input.mode].long}</strong>. Camera: {input.status}.{" "}
             {input.calibration
-              ? `Calibrated ${formatTime(input.calibration.createdAt)} (${input.calibration.quality.grade}), stored ${input.calibrationRemembered ? "on this device" : "for this session only"}.`
+              ? `Eyes calibrated ${formatTime(input.calibration.createdAt)} (${input.calibration.result.quality.grade}), stored ${input.calibrationRemembered ? "on this device" : "for this session only"}.`
               : "Not calibrated."}
           </p>
           <div className="row">
@@ -472,7 +476,15 @@ function FaultToggle({
   onChange: (v: boolean) => void;
 }) {
   return (
-    <button className="tile" style={{ minHeight: 130 }} aria-pressed={value} onClick={() => onChange(!value)}>
+    <button
+      className="tile setting-toggle"
+      style={{ minHeight: 130 }}
+      aria-pressed={value}
+      onClick={() => onChange(!value)}
+    >
+      <span className="toggle-track" aria-hidden="true">
+        <span />
+      </span>
       <span className="tile-title">{label}</span>
       <span className="tile-sub">
         {value ? "Armed for the next attempt" : "Off"} · {help}
@@ -514,6 +526,8 @@ export function StatusView() {
           <p>Everything here is reported by the running system, not assumed.</p>
         </div>
       </div>
+
+      <SynapsePanel />
 
       <div className="grid grid-2">
         <section className="panel stack">
@@ -616,7 +630,7 @@ export function StatusView() {
             <dt>Calibration</dt>
             <dd>
               {input.calibration
-                ? `${input.calibration.set}, ${input.calibration.basis}, ${input.calibration.quality.grade} (avg error ${Math.round(input.calibration.quality.meanError * 100)}% of screen)`
+                ? `Eye scan, ${input.calibration.result.quality.grade} (${describeError(input.calibration)}; improves as you use it). ${describeEyeModel(input.calibration)}`
                 : "None"}
             </dd>
           </dl>
@@ -713,5 +727,21 @@ export function StatusView() {
         </ConfirmSheet>
       )}
     </Page>
+  );
+}
+
+/** "Easy-read font": Atkinson Hyperlegible instead of the system font. Kept on this device. */
+function EasyReadToggle() {
+  const [on, setOn] = useState(() => document.documentElement.dataset.font === "easy-read");
+  return (
+    <Toggle
+      label="Easy-read font"
+      value={on}
+      help="Atkinson Hyperlegible"
+      onChange={(v) => {
+        setOn(v);
+        applyEasyRead(v);
+      }}
+    />
   );
 }

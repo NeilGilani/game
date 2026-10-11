@@ -4,9 +4,11 @@
  * screen at 1280 × 800 without scrolling.
  */
 import { useEffect, useState } from "react";
-import { Icon } from "../components/Icon";
+import { AppIcon, BrandMark, Icon } from "../components/Icon";
 import { useLifeline } from "../lifeline/LifelineProvider";
 import { useAgent } from "../state/agent";
+import type { InputMode } from "../api/types";
+import { useInput } from "../state/input";
 import type { Suggestion } from "../state/contracts";
 import { memory } from "../state/memory";
 import { navigate } from "../state/router";
@@ -23,25 +25,67 @@ interface Tile {
 
 export const HOME_TILES: Tile[] = [
   { id: "talk", label: "Talk", sub: "Say something out loud", icon: "speak", path: "/talk" },
-  { id: "call", label: "Call someone", sub: "Jordan, Mom, the clinic", icon: "phone", path: "/flow/call" },
+  { id: "call", label: "Call someone", sub: "Friends & family", icon: "phone", path: "/flow/call" },
   { id: "food", label: "Food", sub: "Order a meal", icon: "food", path: "/flow/food" },
-  { id: "messages", label: "Messages", sub: "Send a quick message", icon: "message", path: "/flow/messages" },
-  { id: "watch", label: "Watch & listen", sub: "YouTube, Netflix, Music", icon: "play", path: "/flow/watch" },
+  { id: "messages", label: "Messages", sub: "Send a message", icon: "message", path: "/flow/messages" },
+  { id: "watch", label: "Watch & listen", sub: "Videos & music", icon: "play", path: "/flow/watch" },
   { id: "browse", label: "Browse", sub: "News, weather, the web", icon: "globe", path: "/flow/browse" },
   { id: "shopping", label: "Shopping", sub: "Compare and buy", icon: "bag", path: "/flow/shopping" },
-  { id: "papers", label: "Papers", sub: "Letters, forms, signing", icon: "document", path: "/flow/papers" },
+  { id: "papers", label: "Papers", sub: "Forms & documents", icon: "document", path: "/flow/papers" },
   { id: "apps", label: "Apps", sub: "Open or switch apps", icon: "grid", path: "/flow/apps" },
   { id: "errands", label: "Errands", sub: "Repairs, rides, cases", icon: "wrench", path: "/errands" },
   {
     id: "lifeline",
     label: "Lifeline",
-    sub: "Help and Watch over me",
+    sub: "Help & care",
     icon: "lifeline",
     path: "/lifeline",
     tone: "lifeline",
   },
   { id: "settings", label: "Settings", sub: "Eyes, voice, memory", icon: "gear", path: "/settings" },
 ];
+
+/** One plain sentence on how to choose, for the input the person is using now. */
+export function howToChoose(mode: InputMode): string {
+  if (mode === "gaze") return "Look at a choice until its ring fills.";
+  if (mode === "head") return "The pointer follows your eyes; hold still until the ring fills.";
+  if (mode === "scan_blink") return "Choices light up in turn: close your eyes briefly on yours.";
+  if (mode === "scan_key") return "Choices light up in turn: press Space on yours.";
+  return "Click a choice, or use the keyboard.";
+}
+
+/** Eye control needs the camera on and a calibration; say so plainly, with one big way to fix it. */
+function needsEyeSetup(input: ReturnType<typeof useInput>): boolean {
+  if (!input.usesCamera) return false;
+  return input.status === "off" || input.status === "error" || input.calibrationNeeded;
+}
+
+function EyeControlCard() {
+  const input = useInput();
+  if (!needsEyeSetup(input)) return null;
+  const cameraOff = input.status === "off" || input.status === "error";
+  const label = cameraOff ? "Turn on camera" : "Calibrate my eyes";
+  const why = cameraOff
+    ? "Your camera stays on this computer."
+    : "Follow the dots to get started. Your mouse still works.";
+  return (
+    <button
+      className="usual usual-continue home-setup"
+      onClick={() => navigate(cameraOff ? "/camera" : "/calibrate")}
+      data-dwell
+      aria-label={`${label}. ${why}`}
+    >
+      <span className="usual-icon">
+        <Icon name="eye" size={30} />
+      </span>
+      <span className="usual-text">
+        <span className="usual-kicker">Start here</span>
+        <span className="usual-title">{label}</span>
+        <span className="usual-why">{why}</span>
+      </span>
+    </button>
+  );
+}
 
 function greeting(): string {
   const h = new Date().getHours();
@@ -76,6 +120,7 @@ function continueText(t: TaskView): string {
 
 export function Home() {
   const agent = useAgent();
+  const input = useInput();
   const ll = useLifeline();
   const usuals = useUsuals();
   const unfinished = agent.tasks.filter((t) => !isFinished(t) || needsPerson(t));
@@ -93,64 +138,82 @@ export function Home() {
     navigate(tile.path);
   };
 
-  // Up to 3 usuals and one Continue card share the first row: 4 fixed slots.
-  const slots = (usuals ?? []).slice(0, resume ? USUALS : USUALS + 1);
+  // Setup, Continue and suggestions share three slots, including while memory loads.
+  const fixed = (resume ? 1 : 0) + (needsEyeSetup(input) ? 1 : 0);
+  const slots = (usuals ?? []).slice(0, Math.max(0, USUALS - fixed));
 
   return (
     <div className="home" aria-label="Home">
-      <div className="home-head">
-        <h1>{greeting()}, Riley.</h1>
-        <p className="muted">
-          {new Date().toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" })}
-          {memory().kind() === "demo" && usuals?.length ? " · Your usuals here are demo examples" : ""}
-        </p>
+      <div className="home-titlebar">
+        <span className="window-lights" aria-hidden="true">
+          <i />
+          <i />
+          <i />
+        </span>
+        <span className="window-title">
+          <Icon name="grid" size={18} /> Home
+        </span>
+        <span className="window-meta">{HOME_TILES.length} apps</span>
       </div>
-
-      <section className="home-usuals" aria-label="Your usuals">
-        {resume && (
-          <button
-            className="usual usual-continue"
-            onClick={() => navigate(`/task/${resume.id}`)}
-            data-dwell
-            aria-label={`Continue: ${resume.goal}. ${continueText(resume)}`}
-          >
-            <span className="usual-icon">
-              <Icon name="resume" size={30} />
-            </span>
-            <span className="usual-text">
-              <span className="usual-kicker">Continue</span>
-              <span className="usual-title">{resume.goal}</span>
-              <span className="usual-why">{continueText(resume)}</span>
-            </span>
-          </button>
-        )}
-        {usuals === null
-          ? Array.from({ length: USUALS }, (_, i) => (
-              <div key={i} className="usual usual-placeholder" aria-hidden />
-            ))
-          : slots.map((s) => (
-              <button
-                key={s.nodeId}
-                className="usual"
-                onClick={() => startUsual(s)}
-                data-dwell
-                aria-label={`Your usual: ${s.label}. ${s.reason}`}
-              >
-                <span className="usual-icon">
-                  <Icon name="sparkle" size={30} />
-                </span>
-                <span className="usual-text">
-                  <span className="usual-kicker">Your usual</span>
-                  <span className="usual-title">{s.label}</span>
-                  <span className="usual-why">{s.reason}</span>
-                </span>
-              </button>
-            ))}
-        {usuals?.length === 0 && !resume && (
-          <p className="usual-empty muted">
-            As you use AGENCY, the things you choose most will appear here, with the reason.
-          </p>
-        )}
+      <section className="widget home-widget" aria-labelledby="home-greeting">
+        <div className="home-widget-head">
+          <div className="home-signature" aria-hidden="true">
+            <BrandMark />
+            <span>Your space.</span>
+          </div>
+          <h1 id="home-greeting">{greeting()}.</h1>
+          <p className="home-howto">{howToChoose(input.mode)}</p>
+        </div>
+        <p className="widget-sub">
+          Your usuals
+          {memory().kind() === "demo" && usuals?.length ? <span className="usual-demo">Demo</span> : null}
+        </p>
+        <div className="home-usuals" aria-label="Your usuals">
+          <EyeControlCard />
+          {resume && (
+            <button
+              className="usual usual-continue"
+              onClick={() => navigate(`/task/${resume.id}`)}
+              data-dwell
+              aria-label={`Continue: ${resume.goal}. ${continueText(resume)}`}
+            >
+              <span className="usual-icon">
+                <Icon name="resume" size={28} />
+              </span>
+              <span className="usual-text">
+                <span className="usual-kicker">Continue</span>
+                <span className="usual-title">{resume.goal}</span>
+                <span className="usual-why">{continueText(resume)}</span>
+              </span>
+            </button>
+          )}
+          {usuals === null
+            ? Array.from({ length: Math.max(0, USUALS - fixed) }, (_, i) => (
+                <div key={i} className="usual usual-placeholder" aria-hidden />
+              ))
+            : slots.map((s) => (
+                <button
+                  key={s.nodeId}
+                  className="usual"
+                  onClick={() => startUsual(s)}
+                  data-dwell
+                  aria-label={`Your usual: ${s.label}. ${s.reason}`}
+                >
+                  <span className="usual-icon">
+                    <Icon name="sparkle" size={28} />
+                  </span>
+                  <span className="usual-text">
+                    <span className="usual-title">{s.label}</span>
+                    <span className="usual-why">{s.reason}</span>
+                  </span>
+                </button>
+              ))}
+          {usuals?.length === 0 && !resume && !needsEyeSetup(input) && (
+            <p className="usual-empty muted">
+              As you use AGENCY, the things you choose most will appear here, with the reason.
+            </p>
+          )}
+        </div>
       </section>
 
       <nav className="home-tiles" aria-label="Everything you can do">
@@ -159,16 +222,19 @@ export function Home() {
             key={tile.id}
             className="home-tile"
             data-tone={tile.tone}
+            data-tile={tile.id}
             onClick={() => open(tile)}
             data-dwell
             aria-label={`${tile.label}: ${tile.id === "lifeline" && watching ? "Watch over me is on" : tile.sub}`}
           >
-            <span className="home-tile-icon">
-              <Icon name={tile.icon} size={34} />
+            <span className="home-tile-icon" aria-hidden>
+              <AppIcon name={tile.icon} size={108} />
             </span>
-            <span className="home-tile-label">{tile.label}</span>
-            <span className="home-tile-sub">
-              {tile.id === "lifeline" && watching ? "Watch over me is on" : tile.sub}
+            <span className="home-tile-caption" aria-hidden>
+              <span className="home-tile-label">{tile.label}</span>
+              <span className="home-tile-sub">
+                {tile.id === "lifeline" && watching ? "Watch over me is on" : tile.sub}
+              </span>
             </span>
           </button>
         ))}

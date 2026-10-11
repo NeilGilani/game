@@ -34,6 +34,40 @@ interface Script {
 
 const NO_CHOICE = "__none__";
 
+/** A cloud planner (the web demo's Gemini function): steps for the task, or null to keep the built-in plan. */
+export type RemotePlanner = (r: TaskRequest) => Promise<{
+  steps: { title: string; risk: PlanStepView["risk"]; done: string }[];
+  label: string;
+  /** How the planner made it fast, in plain words (shown on the plan). */
+  speed?: string;
+} | null>;
+
+let remotePlanner: RemotePlanner | null = null;
+
+/** The longest a task waits for the cloud planner before starting with the built-in plan. */
+export const PLAN_WAIT_MS = 3500;
+
+/** Let a cloud model plan the steps; the scripted approval (exact details) and practice services stay. */
+export function setRemotePlanner(planner: RemotePlanner | null): void {
+  remotePlanner = planner;
+}
+
+/** Gemini's steps in place of the built-in ones; the approval moves to Gemini's consequential step. */
+function withPlan(script: Script, plan: NonNullable<Awaited<ReturnType<RemotePlanner>>>): Script {
+  const at = plan.steps.findIndex((s) => s.risk === "consequential");
+  if (script.approval && at < 0) return script; // the task needs an approval Gemini didn't plan: keep ours
+  return {
+    ...script,
+    steps: plan.steps.map((s) => ({
+      title: s.title,
+      risk: s.risk,
+      summary: s.risk === "consequential" && script.approval ? `${s.done} (practice, nothing real)` : s.done,
+    })),
+    ...(script.approval ? { approvalAt: at } : {}),
+    question: at === 0 ? undefined : script.question,
+  };
+}
+
 function sel(r: TaskRequest, key: string, fallback = ""): string {
   return r.selections?.[key] ?? fallback;
 }
@@ -242,7 +276,7 @@ export class FakeAgent {
   private listeners = new Set<Listener>();
   private tasks = new Map<string, Running>();
 
-  constructor(private delayMs = 700) {}
+  constructor(private delayMs = 450) {}
 
   onEvent(listener: Listener): () => void {
     this.listeners.add(listener);
@@ -347,7 +381,27 @@ export class FakeAgent {
       approval: null,
     };
     this.tasks.set(id, t);
-    const script = scriptFor(request);
+    let script = scriptFor(request);
+    let planNote: string | null = null;
+    if (remotePlanner) {
+      const started = performance.now();
+      // Never keep the person waiting on the cloud: if Gemini hasn't planned within a few seconds (busy, slow
+      // network), the built-in plan starts at once. A task chosen before comes back from Synapse's cache instantly.
+      const plan = await Promise.race([
+        remotePlanner(request).catch(() => null),
+        new Promise<null>((r) => setTimeout(() => r(null), PLAN_WAIT_MS)),
+      ]);
+      if (t.stopped) return;
+      if (plan) {
+        script = withPlan(script, plan);
+        planNote =
+          plan.speed ??
+          `Planned live by ${plan.label} in ${((performance.now() - started) / 1000).toFixed(1)} s.`;
+        planNote += " Practice services carry it out.";
+      } else {
+        planNote = `Built-in plan: Gemini didn't answer within ${PLAN_WAIT_MS / 1000} s, so AGENCY didn't wait.`;
+      }
+    }
     const steps: PlanStepView[] = script.steps.map((s, i) => ({
       id: `s${i + 1}`,
       title: s.title,
@@ -356,6 +410,14 @@ export class FakeAgent {
     }));
     this.emit({ type: "task.started", taskId: id, goal: request.goal, dryRun: request.dryRun ?? true });
     this.emit({ type: "task.plan", taskId: id, steps });
+    if (planNote)
+      this.emit({
+        type: "task.step",
+        taskId: id,
+        stepId: "synapse:route",
+        status: "done",
+        summary: planNote,
+      });
 
     for (let i = 0; i < steps.length; i++) {
       const step = steps[i]!;

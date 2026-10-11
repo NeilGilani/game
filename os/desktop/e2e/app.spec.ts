@@ -89,6 +89,12 @@ test.describe("AGENCY.app", () => {
   test("starts, renders the shell and supervises every process", async () => {
     const shell = await windowByUrl(ctx.app, "agency://shell/");
     await expect(shell.locator("#root")).not.toBeEmpty();
+    await shell.evaluate(() => {
+      localStorage.setItem("agency.onboarded", "1");
+      location.hash = "/";
+    });
+    await expect(shell.locator(".home-titlebar")).toBeVisible();
+    await expect(shell.getByRole("navigation", { name: "Application menu" })).toBeVisible();
     expect(await shell.title()).not.toBe("");
     const status = await shell.evaluate(() => window.agency.host.status());
     expect(status.processes).toMatchObject({ coordinator: "running", native: "fake", agent: "fake" });
@@ -117,8 +123,9 @@ test.describe("AGENCY.app", () => {
     });
     const opened = await shell.evaluate(() => window.open("https://example.com") === null);
     expect(opened).toBe(true);
-    // The camera is refused outside the gaze window.
-    const camera = await shell.evaluate(async () => {
+    // The shell may use the camera (it runs the calibrated eye tracking); the overlay may not.
+    const overlay = await windowByUrl(ctx.app, "agency://overlay/");
+    const camera = await overlay.evaluate(async () => {
       try {
         await navigator.mediaDevices.getUserMedia({ video: true });
         return "granted";

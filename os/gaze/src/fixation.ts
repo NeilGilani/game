@@ -9,9 +9,10 @@
  * - During a fixation it outputs the trimmed mean of the fixation so far, which gets steadier the
  *   longer the person looks, with no lag because the eye isn't moving.
  * - A saccade is a statistical test, not a fixed radius: the mean of the last k samples is
- *   compared with the fixation centre, for k = 1..maxK, against
+ *   compared with the fixation centre, for k = minK..maxK, against
  *   max(minimum, z * noise * sqrt(1/k + 1/n)), where n is the number of samples in the centre.
- *   A big jump is caught on its first frame (k = 1); a small one once a few frames agree. The
+ *   A big jump is caught once two frames agree (minK); a small one once a few do. A single wild
+ *   frame (glare on glasses, a half blink) never moves the output. The
  *   noise level is learned from the person's own fixations, so a steady tracker (mouse, external
  *   tracker) reacts to small moves and a noisy webcam doesn't jump at noise.
  * - On a saccade the output moves to the new place at once instead of sliding there.
@@ -29,6 +30,13 @@ export interface FixationOptions {
   z: number;
   /** Longest run of recent samples tested (frames). */
   maxK: number;
+  /**
+   * Shortest run that can count as a saccade (frames). Real webcams throw single wild frames
+   * (glasses glare, a half blink, a landmark slip); with 1, each of those made the pointer leap
+   * across the screen and back. With 2, a real saccade is caught one frame later (33 ms at
+   * 30 fps) and a lone outlier never moves the pointer.
+   */
+  minK: number;
   /** A fixation is reported once it has lasted this long (ms). */
   minFixationMs: number;
   /** Average over at most this much of the fixation (ms); longer looks follow slow drift. */
@@ -44,6 +52,7 @@ export const DEFAULT_FIXATION: FixationOptions = {
   minSaccadeDeg: 1,
   z: 3.3,
   maxK: 6,
+  minK: 2,
   minFixationMs: 100,
   windowMs: 1000,
   initialNoisePt: 150,
@@ -82,6 +91,16 @@ function trimmedMean(pts: readonly P[]): { x: number; y: number } {
     my = kept.reduce((s, p) => s + p.y, 0) / kept.length;
   }
   return { x: mx, y: my };
+}
+
+/** Coordinate-wise median. */
+function median2(pts: readonly P[]): { x: number; y: number } {
+  const mid = (v: number[]) => {
+    v.sort((a, b) => a - b);
+    const h = Math.floor(v.length / 2);
+    return v.length % 2 ? v[h]! : (v[h - 1]! + v[h]!) / 2;
+  };
+  return { x: mid(pts.map((p) => p.x)), y: mid(pts.map((p) => p.y)) };
 }
 
 export class FixationSmoother {
@@ -131,15 +150,23 @@ export class FixationSmoother {
     if (this.points.length === 1) this.startedAt = t;
     const n = this.points.length;
     const minPt = this.minSaccadePt;
-    for (let k = 1; k <= Math.min(this.o.maxK, n - 3); k++) {
+    for (let k = Math.max(1, this.o.minK); k <= Math.min(this.o.maxK, n - 3); k++) {
       const base = this.points.slice(0, n - k);
       const recent = this.points.slice(n - k);
       const c = trimmedMean(base);
-      const mx = recent.reduce((s, q) => s + q.x, 0) / k;
-      const my = recent.reduce((s, q) => s + q.y, 0) / k;
-      // Both means are uncertain: the recent k samples and the fixation centre (n - k samples).
-      const threshold = Math.max(minPt, this.o.z * this.noise * Math.sqrt(1 / k + 1 / base.length));
-      if (Math.hypot(mx - c.x, my - c.y) > threshold) {
+      let far: boolean;
+      if (k <= 2) {
+        // Short runs: every frame must be far on its own, so one wild frame can never pass.
+        const single = Math.max(minPt, this.o.z * this.noise * Math.sqrt(1 + 1 / base.length));
+        far = recent.every((q) => Math.hypot(q.x - c.x, q.y - c.y) > single);
+      } else {
+        // Longer runs: their median (robust to a wild frame) against the fixation centre. Both are
+        // uncertain; a median is about 1.25 times noisier than a mean.
+        const m = median2(recent);
+        const threshold = Math.max(minPt, this.o.z * this.noise * 1.25 * Math.sqrt(1 / k + 1 / base.length));
+        far = Math.hypot(m.x - c.x, m.y - c.y) > threshold;
+      }
+      if (far) {
         this.points = base;
         this.learnNoise();
         this.points = recent;

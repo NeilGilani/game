@@ -82,6 +82,44 @@ the true eye-to-target distance. "Raw precision" is before smoothing. v1 = curre
 | v2 alone        | 58                  | 98                   | 218     | 108   | 0 of 6                |
 | v2 + continuous | 51                  | 98                   | 197     | 86    | 0 of 6                |
 
+## The drawn cursor: jitter, lag, accuracy, blinks (simulated)
+
+What the person sees, sampled at 60 Hz. "Before" is the cursor as the web app drew it until 2026-10-10: the engine's
+point on each camera frame with a 110 ms CSS transition. "After" is `GazeEngine.cursorAt` (src/cursor.ts) drawn every
+animation frame. Definitions: `bench/cursorMetrics.ts` (jitter = RMS around the fixation's mean from 250 ms after
+landing; step = RMS movement per drawn frame; lag = median time from landing until within 50 px of where the cursor
+settles; blink = largest move from blink start to 150 ms after the eyes open, and while closed only).
+
+Node, `npm run bench:cursor` (10 simulated people per row, 30 fixations each with drift and microsaccades under
+1 degree, natural blinks; raw data `bench/results/cursor.json`):
+
+| camera noise | head    | cursor | jitter px | step px/frame | lag ms | accuracy px | blink move px | moved while closed px |
+| ------------ | ------- | ------ | --------- | ------------- | ------ | ----------- | ------------- | --------------------- |
+| typical      | still   | before | 51.1      | 10.4          | 350    | 83.6        | 112.1         | 20.7                  |
+| typical      | still   | after  | 38.1      | 6.9           | 276    | 66.4        | 27.8          | 8.4                   |
+| typical      | natural | before | 50.9      | 10.5          | 355    | 85.2        | 111.7         | 20.5                  |
+| typical      | natural | after  | 37.3      | 6.7           | 282    | 68.0        | 27.0          | 8.5                   |
+| low          | still   | before | 22.1      | 5.3           | 136    | 38.5        | 124.3         | 13.1                  |
+| low          | still   | after  | 21.7      | 3.7           | 179    | 32.4        | 42.1          | 5.4                   |
+| low          | natural | before | 22.4      | 5.5           | 136    | 40.0        | 122.7         | 12.9                  |
+| low          | natural | after  | 22.6      | 3.8           | 169    | 35.3        | 41.7          | 5.3                   |
+
+Browser, `frontend/e2e/eyes.spec.ts` "the drawn cursor" (one simulated person after the 5-second eye scan, real
+Chromium reading the cursor element every animation frame, 12 saccades, one 200 ms blink; two runs before, three after):
+
+| cursor | jitter px        | step px/frame | lag ms (median of 12) | accuracy px | moved while closed px |
+| ------ | ---------------- | ------------- | --------------------- | ----------- | --------------------- |
+| before | 33.3, 32.9       | 9.6, 9.9      | 260, 256              | 57, 54      | 13, 8                 |
+| after  | 34.8, 33.9, 37.8 | 5.4, 5.4, 4.7 | 349, 294, 374         | 61, 57, 57  | 3, 7, 1               |
+
+Reading it: shake per drawn frame roughly halves everywhere, and blinks no longer drag the cursor (the remaining
+"blink move" is real eye jumps in the 150 ms after the eyes reopen). With a typical webcam, jitter and lag improve
+because the cursor catches jumps the fixation smoother's thresholds miss (the old cursor slid there over about a
+second). With a low-noise camera, lag is about 40 ms longer: the old cursor jumped and finished in 110 ms; the new
+one glides for 120 to 180 ms by design. In the browser run jitter is unchanged and lag varies widely from run to run
+(single saccades from 122 to 568 ms in both versions), so 12 saccades can't separate them; the Node table, with
+167 saccades per row, is the better guide. All of this is simulated: no real person or camera was measured.
+
 ## Real speed (Chromium, Apple M5 Pro)
 
 Headless Chrome for Testing 153, WebGL `ANGLE Metal Renderer: Apple M5 Pro`, MediaPipe Face Landmarker 0.10.35,
@@ -96,3 +134,10 @@ fake camera 640×480 at ~31 fps (still photo), 15 s after a 2 s warm-up.
 Earlier runs while the machine was heavily loaded (load average 9 to 26 from other work) gave 17–29 fps on the CPU
 delegate; the GPU delegate held 30 fps once the frame governor used a token bucket. Engine compute in Node is
 about 0.03 ms per frame (v2) against 0.003 ms (v1); both are negligible next to landmark detection.
+
+## Context priors and prediction (simulated)
+
+`cd os/gaze && npm run bench:intent` (Node, darwin arm64, 2026-10-10, 6 simulated people per head condition, 15 looks
+each, ~20 s). Tables: `bench/results/intent.md`; raw data: `bench/results/intent.json`. The engine reported a median
+error radius of 103 px (10th–90th percentile 85–120 px) during these looks. Summary and interpretation in README.md ›
+"Context, prediction and the Gaze lab". Real-person numbers come only from the Gaze lab; none have been collected yet.

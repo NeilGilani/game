@@ -122,7 +122,7 @@ describe("continuous recalibration", () => {
     expect(Math.hypot(c.current.bx, c.current.by)).toBeLessThan(15);
   });
 
-  it("advises a clean recalibration when quality has dropped to poor", () => {
+  it("asks for a 2-second touch-up, not a rescan, when selections keep landing off the same way", () => {
     const c = new ContinuousCalibrator({ centre, calibratedGrade: "good", maxTotalPt: 0, maxStepPt: 0 });
     let t = 0;
     const events: ContinuousEvent[] = [];
@@ -132,8 +132,88 @@ describe("continuous recalibration", () => {
       events.push(...c.tick(t));
     }
     events.push(...c.tick(t + 10_000));
+    expect(events.filter((e) => e.type === "touch-up").length).toBe(1);
+    expect(events.some((e) => e.type === "recalibrate")).toBe(false);
+    expect(c.quality.at(-1)!.grade).toBe("poor");
+
+    // The touch-up: the eyes on a dot in the middle read 140 right, 100 down of it.
+    const out = c.touchUp(t + 12_000, centre, { x: centre.x + 140, y: centre.y + 100 });
+    expect(out[0]).toMatchObject({ type: "touched-up" });
+    const fixed = c.apply(300 + 140, 300 + 100);
+    expect(Math.hypot(fixed.x - 300, fixed.y - 300)).toBeLessThan(1);
+  });
+
+  it("advises a clean recalibration when the touch-up didn't hold", () => {
+    const c = new ContinuousCalibrator({ centre, calibratedGrade: "good", maxTotalPt: 0, maxStepPt: 0 });
+    let t = 0;
+    for (const [x, y] of spots) {
+      t += 1500;
+      c.selected(`p${t}`, t, rect(x!, y!), looks(x!, y!, { x: 140, y: 100 }, 10, t - 400));
+      c.tick(t);
+    }
+    c.touchUp(t + 1000, centre, { x: centre.x + 140, y: centre.y + 100 });
+    // Afterwards the error isn't a shift at all: a scale error the touch-up can't fix.
+    const events: ContinuousEvent[] = [];
+    for (const [x, y] of [...spots, ...spots]) {
+      t += 1500;
+      const scaled = { x: (x! - centre.x) * 0.6, y: (y! - centre.y) * 0.6 };
+      c.selected(`s${t}`, t, rect(x!, y!), looks(x!, y!, scaled, 10, t - 400));
+      events.push(...c.tick(t));
+    }
+    events.push(...c.tick(t + 10_000));
     const advice = events.filter((e) => e.type === "recalibrate");
     expect(advice.length).toBe(1);
-    expect(c.quality.at(-1)!.grade).toBe("poor");
+    expect(events.some((e) => e.type === "touch-up")).toBe(false);
+  });
+
+  it("advises a clean recalibration when errors are poor but point every which way", () => {
+    const c = new ContinuousCalibrator({ centre, calibratedGrade: "good", maxTotalPt: 0, maxStepPt: 0 });
+    let t = 0;
+    const events: ContinuousEvent[] = [];
+    spots.forEach(([x, y], i) => {
+      t += 1500;
+      const a = (i * 2 * Math.PI) / spots.length;
+      c.selected(
+        `q${t}`,
+        t,
+        rect(x!, y!),
+        looks(x!, y!, { x: 170 * Math.cos(a), y: 170 * Math.sin(a) }, 10, t - 400),
+      );
+      events.push(...c.tick(t));
+    });
+    events.push(...c.tick(t + 10_000));
+    expect(events.filter((e) => e.type === "recalibrate").length).toBe(1);
+    expect(events.some((e) => e.type === "touch-up")).toBe(false);
+  });
+
+  it("refuses a touch-up that would have to move things too far, and says rescan", () => {
+    const c = new ContinuousCalibrator({ centre, calibratedGrade: "good" });
+    const out = c.touchUp(1000, centre, { x: centre.x + 500, y: centre.y + 300 });
+    expect(out[0]).toMatchObject({ type: "recalibrate" });
+    expect(c.current.bx).toBe(0);
+  });
+
+  it("learns how the offset moves with the head from selections made in different positions", () => {
+    // A person whose estimates shift 8 points right per degree of yaw, and who turns now and then.
+    const c = new ContinuousCalibrator({ centre, calibratedGrade: "good" });
+    let t = 0;
+    for (let round = 0; round < 3; round++)
+      spots.forEach(([x, y], i) => {
+        t += 1500;
+        const yaw = [-8, 0, 8, 4, -4][(i + round) % 5]!;
+        const obs = looks(x!, y!, { x: 8 * yaw, y: 0 }, 10, t - 400).map((o) => ({
+          ...o,
+          z: [yaw, 0, 0, 0, 0],
+        }));
+        c.selected(`h${t}`, t, rect(x!, y!), obs);
+        c.tick(t);
+      });
+    c.tick(t + 10_000);
+    expect(c.current.jx[0]).toBeLessThan(-5);
+    const at = c.apply(700 + 80, 480, [10, 0, 0, 0, 0]);
+    expect(Math.hypot(at.x - 700, at.y - 480)).toBeLessThan(30);
+    // With the head where it was during the scan, nothing moves.
+    const home = c.apply(700, 480, [0, 0, 0, 0, 0]);
+    expect(Math.hypot(home.x - 700, home.y - 480)).toBeLessThan(15);
   });
 });

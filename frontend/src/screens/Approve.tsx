@@ -1,3 +1,5 @@
+import type { SynapseRoute } from "../api/types";
+import { RouteLine } from "../components/Synapse";
 import { useEffect, useState } from "react";
 import { api } from "../api/client";
 import type { Approval } from "../api/types";
@@ -91,7 +93,9 @@ export function Approve({ id }: { id: string }) {
     paragraphs: string[];
     source: string;
     label?: string | null;
+    on_device?: boolean;
     model: string | null;
+    route?: SynapseRoute | null;
   } | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -203,6 +207,7 @@ export function Approve({ id }: { id: string }) {
             <button
               className="btn btn-xl btn-primary"
               data-dwell
+              data-approval-gate
               onClick={() =>
                 mustConfirm
                   ? setSheet({ kind: "approve-all", approvals: pending })
@@ -229,7 +234,9 @@ export function Approve({ id }: { id: string }) {
                   <h3>
                     <Icon name={explanation.source === "cloud" ? "sparkle" : "info"} />
                     {explanation.source === "cloud"
-                      ? `Explained by ${explanation.label ?? "the cloud model"} (${explanation.model})`
+                      ? explanation.on_device
+                        ? `Explained on this computer by ${explanation.model ?? "the on-device model"}`
+                        : `Explained by ${explanation.label ?? "the cloud model"} (${explanation.model})`
                       : "In plain terms"}
                   </h3>
                   {explanation.paragraphs.map((p) => (
@@ -240,6 +247,7 @@ export function Approve({ id }: { id: string }) {
                       The details below come from AGENCY's records, not from the model.
                     </p>
                   )}
+                  <RouteLine route={explanation.route} />
                 </section>
               )}
               {editing && current.details.edit ? (
@@ -298,6 +306,7 @@ export function Approve({ id }: { id: string }) {
                 onClick={() => approveOne(current)}
                 disabled={busy || editing}
                 data-dwell
+                data-approval-gate
               >
                 <Icon name="check" /> Approve
               </button>

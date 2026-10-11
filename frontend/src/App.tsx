@@ -1,12 +1,16 @@
-import { useEffect } from "react";
+import { useEffect, useLayoutEffect } from "react";
+import { screenSpring, SPRING } from "./components/motion";
+import { ScanResultBanner } from "./components/ScanResultBanner";
 import { ConnectionBanner, Nav, TopBar } from "./components/Shell";
+import { GazeAssist } from "./input/GazeAssist";
 import { InputLayer } from "./input/InputLayer";
 import { LifelineOverlay } from "./lifeline/LifelineOverlay";
 import { LifelineProvider } from "./lifeline/LifelineProvider";
 import { AgentProvider } from "./state/agent";
 import { AnnouncerProvider } from "./state/announcer";
 import { ConnectionProvider } from "./state/connection";
-import { InputProvider } from "./state/input";
+import { HostBridge } from "./state/hostBridge";
+import { InputProvider, useInput } from "./state/input";
 import { PreferencesProvider, usePreferences } from "./state/preferences";
 import { navigate, useRoute, type Route } from "./state/router";
 import { Approve } from "./screens/Approve";
@@ -18,6 +22,7 @@ import { CreateCase } from "./screens/CreateCase";
 import { AppsScreen } from "./screens/Apps";
 import { Errands } from "./screens/Errands";
 import { FlowScreen } from "./screens/Flow";
+import { GazeLab } from "./screens/GazeLab";
 import { Home } from "./screens/Home";
 import { Onboarding } from "./screens/Onboarding";
 import { HelperSettings, MemorySettings, SettingsHub, VoiceSettings } from "./screens/OsSettings";
@@ -52,6 +57,7 @@ function Screen({ route }: { route: Route }) {
   if (a === "settings" && b === "voice") return <VoiceSettings />;
   if (a === "settings" && b === "memory") return <MemorySettings />;
   if (a === "settings" && b === "helper") return <HelperSettings />;
+  if (a === "settings" && b === "gaze-lab") return <GazeLab />;
   if (a === "settings" && b === "connection") return <SettingsView />;
   if (a === "new" && !b) return <NewTask />;
   if (a === "new" && b === "phrases") return <Phrases />;
@@ -85,6 +91,26 @@ function Screen({ route }: { route: Route }) {
 
 function Shell() {
   const route = useRoute();
+  const { mode } = useInput();
+  const { prefs } = usePreferences();
+  const search = route.query.toString();
+  useLayoutEffect(() => {
+    const screen = document.getElementById("main")?.lastElementChild;
+    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)");
+    if (!(screen instanceof HTMLElement) || prefs.reduced_motion || reduced.matches) return;
+    // Animate the existing screen so Talk drafts and other route-local state survive navigation.
+    // Hands-free modes only fade: the engine measures stationary selection targets.
+    const animation = screen.animate(mode === "pointer" ? screenSpring : [{ opacity: 0 }, { opacity: 1 }], {
+      duration: mode === "pointer" ? SPRING.duration : 160,
+      easing: mode === "pointer" ? "linear" : "ease-out",
+    });
+    const cancel = () => animation.cancel();
+    reduced.addEventListener("change", cancel);
+    return () => {
+      cancel();
+      reduced.removeEventListener("change", cancel);
+    };
+  }, [route.path, search, mode, prefs.reduced_motion]);
   useEffect(() => {
     if (route.path === "/" && !onboarded()) navigate("/welcome");
   }, [route.path]);
@@ -114,7 +140,7 @@ function Shell() {
   // Caregiver tools (cases, approvals, status) keep their side navigation; everything else is the full-width OS.
   const tools = ["new", "cases", "case", "approvals", "status", "errands"].includes(route.segments[0] ?? "");
   return (
-    <div className={tools ? "shell" : "shell shell-os"}>
+    <div className={tools ? "shell" : "shell shell-os"} data-input-mode={mode}>
       <a
         className="sr-only"
         href="#main"
@@ -127,13 +153,22 @@ function Shell() {
       </a>
       <TopBar />
       {tools && <Nav route={route} />}
-      <main className="main" id="main" tabIndex={-1}>
+      <main
+        className="main"
+        id="main"
+        tabIndex={-1}
+        data-zone={
+          route.segments[0] === "lifeline" || route.segments[0] === "talk" ? route.segments[0] : undefined
+        }
+      >
         <ConnectionBanner />
+        <ScanResultBanner />
         {tools && <div style={{ height: 16 }} />}
         <Screen route={route} />
       </main>
       <LifelineOverlay />
       <InputLayer />
+      <GazeAssist />
     </div>
   );
 }
@@ -143,6 +178,7 @@ function WithAnnouncer() {
   return (
     <AnnouncerProvider speak={prefs.speak_feedback}>
       <InputProvider>
+        <HostBridge />
         <LifelineProvider>
           <AgentProvider>
             <Shell />

@@ -40,8 +40,16 @@ make os-test    # type-checks, unit tests and Electron smoke tests (macOS)
 make os-dist    # a .dmg (unsigned unless signing secrets are set)
 ```
 
+`npm start` (or `npm run os:dev`) runs `make os-dev`, rebuilding the interface, OS packages and native helper
+before launching Electron. Run it from the checkout you want to test so the app uses that checkout's code.
+
 The repository is an npm workspace (`frontend`, `os/*`, `site`); `make check` covers the web app and the OS packages.
 The web demo below works exactly as before.
+
+The updated Mac interface is included on `main` in both the desktop app and web demo. To update an existing
+checkout, run `git pull --ff-only`, `make setup`, then `make demo` (browser) or `npm start` (Mac app).
+Restart an already running server and refresh the page. `npm start`, `npm run os:dev`, and `npm run os:build`
+build the current interface and OS packages before launching or packaging, so old build output is not reused.
 
 ## Quick start (MacBook)
 
@@ -66,6 +74,10 @@ make dev
 How Lifeline works and why it's designed this way: see [LIFELINE.md](LIFELINE.md). Using a Raspberry Pi as the
 coordinator: see [DEPLOY_PI.md](DEPLOY_PI.md). Running the 5-minute demo:
 see [DEMO_SCRIPT.md](DEMO_SCRIPT.md). How it's built: see [ARCHITECTURE.md](ARCHITECTURE.md).
+
+**Synapse layer:** with Ray's [Synapse-Mesh](https://github.com/RayB-007/synapse-mesh) edge running on the Mac
+(`AGENCY_SYNAPSE_URL=http://127.0.0.1:8100`, or `make demo-local`), every AI request is routed by its expert
+classifier and Cisco network sentinel before Gemini answers: see [ARCHITECTURE.md](ARCHITECTURE.md#the-synapse-layer-rays-synapse-mesh-over-gemini).
 
 To enable cloud reasoning, put a Gemini API key from [Google AI Studio](https://aistudio.google.com/apikey) in `.env`
 as `GEMINI_API_KEY=...` (copy `.env.example`; the default model is `gemini-3.8-flash`). The status bar then shows

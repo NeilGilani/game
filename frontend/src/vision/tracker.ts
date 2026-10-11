@@ -1,40 +1,65 @@
 /**
- * The live camera pipeline for the web app, built on @agency/gaze (os/gaze): its WebcamProvider
- * runs MediaPipe Face Landmarker on webcam frames in this browser; frames are never stored or
- * uploaded. Each frame produces features, a blink score, quality issues and (once calibrated) a
- * smoothed on-screen pointer estimate in viewport pixels.
+ * The live camera pipeline for the web app, built on @agency/gaze (os/gaze). The WebcamProvider
+ * runs MediaPipe Face Landmarker on webcam frames in this browser. Frames are never stored or
+ * uploaded. Every frame goes through the package's GazeEngine, the same engine AGENCY OS uses:
+ * calibration v2, fixation smoothing, continuous recalibration from everyday selections, and the
+ * head pointer. Each frame produces features, a blink score, quality issues and, once calibrated
+ * (or always, with the head pointer), an on-screen pointer in viewport pixels.
  *
- * AGENCY OS uses the package's GazeEngine instead (global screen points, calibration v2); this
- * file keeps the web app's existing API and behaviour.
+ * The engine works in the viewport the calibration was made in (CSS pixels). If the window is a
+ * different size now, the pointer is scaled to fit, as the old calibration did.
+ *
+ * Measured on simulated frames (os/gaze/bench/results/app.md): the old pipeline (legacy
+ * calibration, One Euro filter, fixation-lock stabilizer) never completed a dwell on AGENCY's
+ * smallest 96 px targets; this one picks the right one 90 % of the time with a still head and 73 %
+ * with natural head movement. Adding the old stabilizer on top made accuracy worse, so it's gone.
  */
 
 import { type CameraErrorKind } from "../../../os/gaze/src/camera";
-import { type CalibrationModel, featureVector, predict } from "../../../os/gaze/src/calibration/legacy";
-import { OpennessBlink } from "../../../os/gaze/src/blink";
-import { type GazeFeatures, extractFeatures } from "../../../os/gaze/src/landmarks";
-import { PointFilter } from "../../../os/gaze/src/oneEuro";
-import {
-  type QualityIssue,
-  assessBrightness,
-  assessFace,
-  trackingConfidence,
-} from "../../../os/gaze/src/quality";
+import { ScanCheck } from "../../../os/gaze/src/calibration/check";
+import { PursuitCalibration } from "../../../os/gaze/src/calibration/pursuit";
+import type { CalibrationResult } from "../../../os/gaze/src/calibration/session";
+import type { TouchUpResult } from "../../../os/gaze/src/calibration/touchup";
+import { type CalibrationRun, type EngineAdvice, GazeEngine } from "../../../os/gaze/src/engine";
+import type { PaceState } from "../../../os/gaze/src/input/pace";
+import type { GazeFeatures } from "../../../os/gaze/src/landmarks";
+import type { QualityIssue } from "../../../os/gaze/src/quality";
+import { singleDisplay } from "../../../os/gaze/src/screen";
 import type { FaceFrame } from "../../../os/gaze/src/providers/types";
 import { type LandmarkerFactory, WebcamProvider } from "../../../os/gaze/src/providers/webcam";
 
+import { type StoredCalibration, storeCalibration } from "./calibrationStore";
+import { EyeCursor } from "./eyeCursor";
+import { DEFAULT_FILTER } from "../../../os/gaze/src/lab";
+import { gazeTuning, onGazeTuning } from "./tuning";
+
 export type VisionStatus = "off" | "starting" | "loading-model" | "running" | "paused" | "error";
+
+/** "gaze": calibrated eye gaze. "head": the pointer follows small head turns, no calibration. */
+export type PointerKind = "gaze" | "head";
 
 export interface VisionFrame {
   t: number;
   face: boolean;
   features: GazeFeatures | null;
   blink: number | null;
+  /** How trustworthy the pointer is on this frame (below 0.5: don't start or continue a dwell). */
   confidence: number;
+  /** Whether the face itself is tracked well (pose, distance, eyes open), pointer or not. */
+  trackingConfidence: number;
   issues: QualityIssue[];
   /** Raw landmarks for the preview overlay only (never persisted). */
   landmarks: { x: number; y: number }[] | null;
-  /** Calibrated, smoothed pointer in viewport pixels, if a model is loaded. */
+  /** Pointer in viewport pixels: calibrated gaze, or the head pointer. Null until there is one. */
   pointer: { x: number; y: number } | null;
+  /** The same estimate before the fixation filter (viewport pixels), for the Gaze lab. Never stored. */
+  raw: { x: number; y: number } | null;
+  /** About two standard deviations of the pointer's error (viewport pixels); 0 when unknown. */
+  errorRadius: number;
+  /** True while the eyes hold still on one place (always true for the head pointer). */
+  fixation: boolean;
+  /** RealEye's eye-image features (os/gaze/src/eyeImage.ts), for the eye scan. Never stored. */
+  eyes: Float32Array | null;
 }
 
 export interface VisionStats {
@@ -71,22 +96,35 @@ const mediapipe: LandmarkerFactory = async () => {
   }
 };
 
+/** Eye cursor reach: how far the cursor moves per unit of iris movement in the picture (screen widths). */
+
+const viewport = () => ({ width: Math.max(1, window.innerWidth), height: Math.max(1, window.innerHeight) });
+
 export class VisionEngine {
   status: VisionStatus = "off";
   error: CameraErrorKind | null = null;
   stats: VisionStats = { fps: 0, delegate: null, modelLoadedMs: null, videoSize: null };
   last: VisionFrame | null = null;
 
+  /** The gaze engine every frame goes through (os/gaze/src/engine.ts). */
+  readonly gaze: GazeEngine;
   private readonly camera: WebcamProvider;
   private paused = false;
   private listeners = new Set<Listener>();
   private statusListeners = new Set<StatusListener>();
-  private model: CalibrationModel | null = null;
-  private filter = new PointFilter({ minCutoff: 0.6, beta: 0.004, dCutoff: 1 });
-  private opennessBlink = new OpennessBlink();
+  private stored: StoredCalibration | null = null;
+  /** The engine's screen: the calibration's viewport, or the current one without a calibration. */
+  private space = { width: 1, height: 1 };
+  private calibrating = false;
+  /** Recent gaze selections (newest last), so a Back or Undo soon after one can be reported. */
+  private selections: { id: string; t: number }[] = [];
+  /** Test hook only: frames come from feed() (a simulated person), not the webcam. */
+  private external = false;
   private loadStarted = 0;
 
   constructor(factory: LandmarkerFactory = mediapipe) {
+    this.space = viewport();
+    this.gaze = new GazeEngine({ screen: singleDisplay(this.space.width, this.space.height) });
     this.camera = new WebcamProvider(async () => {
       this.loadStarted = performance.now();
       const made = await factory();
@@ -100,10 +138,18 @@ export class VisionEngine {
       }
       this.setStatus(s === "running" && this.paused ? "paused" : s, e);
     });
+    window.addEventListener("resize", () => this.fitScreen());
+    // Filter settings the Gaze lab picked from this person's own recording (defaults otherwise).
+    this.gaze.setFilter(gazeTuning().filter ?? DEFAULT_FILTER);
+    onGazeTuning((t) => this.gaze.setFilter(t.filter ?? DEFAULT_FILTER));
   }
 
   get video(): HTMLVideoElement {
     return this.camera.video;
+  }
+
+  get kind(): PointerKind {
+    return this.gaze.mode;
   }
 
   onFrame(listener: Listener): () => void {
@@ -122,22 +168,196 @@ export class VisionEngine {
     for (const l of this.statusListeners) l(status, error);
   }
 
-  setCalibration(model: CalibrationModel | null): void {
-    this.model = model;
-    this.filter.reset();
+  /** Gaze or head pointer. Switching to the head pointer centres it on the current pose. */
+  setKind(kind: PointerKind): void {
+    if (kind !== this.gaze.mode) this.gaze.setMode(kind);
+    // The eye cursor needs only landmarks: skip the per-frame eye-image read (a canvas read) it never uses.
+    this.camera.setReadEyes(kind !== "head");
+    this.eyesCursor.recentre();
+    this.iris = null;
+    this.drawnIris = null;
   }
 
-  get calibration(): CalibrationModel | null {
-    return this.model;
+  /** The head pointer: wherever the head points now becomes the middle of the screen. */
+  recentre(): void {
+    this.gaze.recentreHeadPointer();
+    this.eyesCursor.recentre();
+    this.iris = null;
+    this.drawnIris = null;
   }
 
-  /** Higher sensitivity follows faster movements; lower smooths more. 0..1 */
-  setSmoothing(sensitivity: number): void {
-    const s = Math.max(0, Math.min(1, sensitivity));
-    this.filter.setOptions({ minCutoff: 0.3 + s * 1.2, beta: 0.002 + s * 0.01 });
+  /** The eye cursor (the "head" pointer mode): the irises move it (eyeCursor.ts). */
+  private readonly eyesCursor = new EyeCursor();
+  /** The eye cursor's latest position (viewport px). */
+  private iris: { x: number; y: number } | null = null;
+  /** The eye cursor as drawn: a short spring towards the latest position, so it glides between camera frames. */
+  private drawnIris: { x: number; y: number; t: number } | null = null;
+
+  setCalibration(calibration: StoredCalibration | null): void {
+    this.stored = calibration;
+    this.fitScreen();
+    this.gaze.setCalibration(calibration?.result ?? null);
+  }
+
+  get calibration(): StoredCalibration | null {
+    return this.stored;
+  }
+
+  private fitScreen(): void {
+    if (this.calibrating) return;
+    const next = this.stored ? { width: this.stored.width, height: this.stored.height } : viewport();
+    if (next.width === this.space.width && next.height === this.space.height) return;
+    this.space = next;
+    this.gaze.setScreen(singleDisplay(next.width, next.height));
+  }
+
+  /**
+   * Start calibrating in the current viewport. Show each target of `run.next()` at its x, y (viewport
+   * pixels) and call `run.collect(id)`; finish with `finishCalibration` or `cancelCalibration`.
+   */
+  startCalibration(): CalibrationRun {
+    this.calibrating = true;
+    this.space = viewport();
+    this.gaze.setScreen(singleDisplay(this.space.width, this.space.height));
+    return this.gaze.startCalibration();
+  }
+
+  /**
+   * Start the 5-second eye scan in the current viewport: draw the light at `scan.at(ms)` and hand
+   * in frames with `scan.add`; finish with `finishCalibration(step.result)` or `cancelCalibration`.
+   */
+  startEyeScan(): PursuitCalibration {
+    this.calibrating = true;
+    this.space = viewport();
+    this.gaze.setScreen(singleDisplay(this.space.width, this.space.height));
+    return new PursuitCalibration({ display: { x: 0, y: 0, ...this.space } });
+  }
+
+  /**
+   * The three check dots after the eye scan, in the scan's viewport: draw the dot at `check.at(ms)`,
+   * hand in frames with `check.add`, then `finishCalibration(check.finish())`.
+   */
+  startScanCheck(result: CalibrationResult): ScanCheck {
+    return new ScanCheck(result, { display: { x: 0, y: 0, ...this.space } });
+  }
+
+  /** The finished calibration, ready to store and apply (setCalibration). */
+  finishCalibration(result: CalibrationResult): StoredCalibration {
+    this.gaze.endCalibration();
+    this.calibrating = false;
+    return storeCalibration(result, this.space.width, this.space.height);
+  }
+
+  cancelCalibration(): void {
+    this.gaze.endCalibration();
+    this.calibrating = false;
+    this.fitScreen();
+  }
+
+  /**
+   * A dwell selected this element (viewport rect). Feeds continuous recalibration: the engine
+   * learns from selections that aren't undone, within strict bounds, and only if it helps.
+   */
+  selected(targetId: string, rect: DOMRect, t: number, dwellStartT: number): void {
+    const sx = this.space.width / window.innerWidth;
+    const sy = this.space.height / window.innerHeight;
+    this.gaze.selection(
+      targetId,
+      { x: rect.left * sx, y: rect.top * sy, width: rect.width * sx, height: rect.height * sy },
+      t,
+      dwellStartT,
+    );
+    this.selections = [...this.selections.slice(-3), { id: targetId, t }];
+  }
+
+  /** The person undid a selection soon after making it (Back, Cancel): don't learn from it. */
+  undone(targetId: string, t: number): void {
+    this.gaze.undo(targetId, t);
+  }
+
+  /**
+   * A Back, Cancel or Undo control was just chosen at `t`: the selection before it (within a few
+   * seconds) was a mistake. Continuous recalibration won't learn from it, and pace counts it.
+   */
+  undoPrevious(t: number): void {
+    const prev = [...this.selections].reverse().find((s) => s.t < t - 100 && t - s.t <= 6000);
+    if (!prev) return;
+    this.selections = this.selections.filter((s) => s !== prev);
+    this.gaze.undo(prev.id, t);
+  }
+
+  /** What the engine advises: posture messages, touch-ups, pace changes, a fresh scan. */
+  onAdvice(listener: (a: EngineAdvice) => void): () => void {
+    return this.gaze.onAdvice(listener);
+  }
+
+  /** Dwell and target scales from pace (tiring over a session). */
+  get pace(): PaceState {
+    return this.gaze.paceState;
+  }
+
+  /** The person changed dwell or target settings: pace measures afresh. */
+  rebasePace(): void {
+    this.gaze.rebasePace();
+  }
+
+  /**
+   * The 2-second touch-up: draw a dot at the returned point (viewport pixels) until `done`
+   * resolves. Selection should be suspended meanwhile.
+   */
+  startTouchUp(): { x: number; y: number; done: Promise<TouchUpResult> } {
+    const { target, done } = this.gaze.startTouchUp();
+    return {
+      x: (target.x * window.innerWidth) / this.space.width,
+      y: (target.y * window.innerHeight) / this.space.height,
+      done,
+    };
+  }
+
+  cancelTouchUp(): void {
+    this.gaze.cancelTouchUp();
+  }
+
+  /**
+   * Where to draw the gaze or head cursor now (viewport pixels), for every animation frame: it
+   * glides between camera frames, smooths harder the longer the eyes rest, eases across saccades
+   * and holds still through blinks (os/gaze/src/cursor.ts). Null when there is no pointer.
+   */
+  cursorAt(now: number): { x: number; y: number } | null {
+    if (this.calibrating) return null;
+    if (this.gaze.mode === "head") return this.irisAt(now);
+    const p = this.gaze.cursorAt(now);
+    if (!p) return null;
+    return {
+      x: (p.x * window.innerWidth) / this.space.width,
+      y: (p.y * window.innerHeight) / this.space.height,
+    };
+  }
+
+  /** The eye cursor at display time: a 30 ms spring towards the latest iris position (no other delay). */
+  private irisAt(now: number): { x: number; y: number } | null {
+    const goal = this.iris;
+    if (!goal || !this.last?.pointer)
+      return this.drawnIris ? { x: this.drawnIris.x, y: this.drawnIris.y } : null;
+    const d = this.drawnIris;
+    if (!d) {
+      this.drawnIris = { x: goal.x, y: goal.y, t: now };
+      return { x: goal.x, y: goal.y };
+    }
+    const k = 1 - Math.exp(-Math.max(0, now - d.t) / 30);
+    d.x += (goal.x - d.x) * k;
+    d.y += (goal.y - d.y) * k;
+    d.t = now;
+    return { x: d.x, y: d.y };
+  }
+
+  /** The error circle around the pointer (viewport pixels, about two standard deviations). */
+  get errorRadius(): number {
+    return this.gaze.errorRadiusPt * (window.innerWidth / this.space.width);
   }
 
   async start(): Promise<void> {
+    if (this.external) return;
     if (this.status === "paused") return this.resume();
     if (this.status === "running" || this.status === "starting" || this.status === "loading-model") return;
     this.paused = false;
@@ -161,8 +381,25 @@ export class VisionEngine {
     this.setStatus("running");
   }
 
+  /**
+   * Test hook only (see main.tsx): run without the webcam, with frames delivered through feed().
+   * End-to-end tests use it to drive the real engine with a simulated person (synthetic.ts).
+   */
+  useExternalFrames(): void {
+    this.camera.stop();
+    this.external = true;
+    this.paused = false;
+    this.setStatus("running");
+  }
+
+  /** Process one face frame from outside the webcam (tests). */
+  feed(frame: FaceFrame): void {
+    if (this.external && this.status === "running") this.process(frame);
+  }
+
   stop(): void {
     this.paused = false;
+    this.external = false;
     this.camera.stop();
     this.last = null;
     this.setStatus("off");
@@ -170,41 +407,48 @@ export class VisionEngine {
 
   private process(f: FaceFrame): void {
     if (this.paused) return;
-    this.stats.fps = this.camera.stats().fps;
-    const now = f.t;
-    const landmarks = f.landmarks;
-    const features = extractFeatures(landmarks ?? undefined, f.aspect, f.matrix ?? undefined);
-    let blink = f.blink ?? null;
-    if (blink === null && features) blink = this.opennessBlink.score(features.openness);
-    const issues = assessFace(features);
-    const light = assessBrightness(f.brightness ?? null);
-    if (light) issues.push(light);
-    const confidence = trackingConfidence(features, blink);
-
+    if (!this.external) this.stats.fps = this.camera.stats().fps;
+    this.gaze.handle({ kind: "face", frame: f });
+    const d = this.gaze.last;
+    if (!d) return;
     let pointer: VisionFrame["pointer"] = null;
-    if (this.model && features && confidence >= 0.5) {
-      const p = predict(this.model, featureVector(features, this.model.set));
-      // The camera image is mirrored relative to the person, so screen x comes straight
-      // from the fitted model; calibration learned the sign.
-      const x = Math.max(0, Math.min(1, p.x)) * window.innerWidth;
-      const y = Math.max(0, Math.min(1, p.y)) * window.innerHeight;
-      pointer = this.filter.filter(x, y, now);
-    } else if (this.last?.pointer && confidence < 0.5) {
-      pointer = this.last.pointer; // hold position during a blink or brief loss
+    let raw: VisionFrame["raw"] = null;
+    const sx = window.innerWidth / this.space.width;
+    const sy = window.innerHeight / this.space.height;
+    const head = this.gaze.mode === "head";
+    // The eye cursor needs only a face: looking down (lowered eyelids) must not lose it.
+    const headTracking = f.landmarks ? 1 : 0;
+    if (head && !this.calibrating) {
+      const at = this.eyesCursor.update(f.landmarks, d.t, d.blink);
+      this.iris = at ? { x: at.x * window.innerWidth, y: at.y * window.innerHeight } : null;
+      pointer = this.iris;
+      raw = pointer;
+    } else if (d.point && !this.calibrating) {
+      pointer = { x: d.point.x * sx, y: d.point.y * sy };
+      raw = d.raw ? { x: d.raw.x * sx, y: d.raw.y * sy } : pointer;
     }
-
     const frame: VisionFrame = {
-      t: now,
-      face: !!landmarks,
-      features,
-      blink,
-      confidence,
-      issues,
-      landmarks: landmarks ? landmarks.map((l) => ({ x: l.x, y: l.y })) : null,
+      t: d.t,
+      face: d.face,
+      features: d.features,
+      blink: d.blink,
+      confidence: head ? headTracking : pointer ? d.confidence : d.trackingConfidence,
+      trackingConfidence: head ? headTracking : d.trackingConfidence,
+      issues: d.issues,
+      landmarks: f.landmarks ? f.landmarks.map((l) => ({ x: l.x, y: l.y })) : null,
       pointer,
+      raw,
+      errorRadius: pointer && !head ? d.errorRadiusPt * sx : 0,
+      fixation: head || !!d.smoothed?.fixation,
+      eyes: f.eyes ?? null,
     };
     this.last = frame;
     this.emit(frame);
+  }
+
+  /** Test hook only (injectFrame): an injected pointer is where the eye cursor is, so it is drawn and selects. */
+  injected(pointer: { x: number; y: number } | null): void {
+    if (this.gaze.mode === "head") this.iris = pointer;
   }
 
   emit(frame: VisionFrame): void {
@@ -218,18 +462,25 @@ export class VisionEngine {
  * end-to-end tests can drive dwell selection through the real DOM wiring.
  */
 export function injectFrame(engine: VisionEngine, partial: Partial<VisionFrame>): void {
+  const confidence = partial.confidence ?? 1;
   const frame: VisionFrame = {
     t: performance.now(),
     face: true,
     features: null,
     blink: 0,
-    confidence: 1,
+    confidence,
+    trackingConfidence: confidence,
     issues: [],
     landmarks: null,
     pointer: null,
+    raw: null,
+    errorRadius: 0,
+    fixation: true,
+    eyes: null,
     ...partial,
   };
   engine.last = frame;
+  engine.injected(frame.pointer);
   engine.emit(frame);
 }
 

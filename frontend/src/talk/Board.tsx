@@ -4,14 +4,18 @@
  * own history and phrase predictions from the memory tree.
  */
 
+import { aiComplete } from "../state/assist";
 import { useEffect, useMemo, useState } from "react";
 import { CORE_WORDS, WordModel, applyWord, predictPhrases } from "../../../os/tasks/src/index";
 import type { Suggestion } from "../../../os/contracts/src/memory";
 import { Icon } from "../components/Icon";
+import { likely } from "../input/context";
 import { useTalk } from "./services";
 import { MY_PHRASES, useBoards, useHistory } from "./storage";
 import { BigPager, usePages } from "./ui";
 import { useSpeak } from "./useSpeak";
+
+const AI_FINISH_KEY = "agency.talk.aiFinish";
 
 export function Board() {
   const { memory } = useTalk();
@@ -21,7 +25,13 @@ export function Board() {
   const [message, setMessage] = useState("");
   const [saved, setSaved] = useState<string | null>(null);
   const [memorySuggestions, setMemorySuggestions] = useState<Suggestion[]>([]);
-  const pages = usePages(CORE_WORDS, 12);
+  // Fix the page size on entry so choices never move under a steady gaze.
+  // A short MacBook window shows one row and keeps Previous / Next visible.
+  const [wordsPerPage] = useState(() => (window.innerHeight <= 860 ? 6 : 12));
+  // Reserve room for AI finish, Delete and Clear without wrapping the prediction row.
+  const [predictionCount] = useState(() => (window.innerWidth <= 1366 ? 2 : 3));
+  const [phraseCount] = useState(() => (window.innerWidth >= 1600 ? 2 : 1));
+  const pages = usePages(CORE_WORDS, wordsPerPage);
 
   useEffect(() => {
     let live = true;
@@ -34,7 +44,44 @@ export function Board() {
   const said = useMemo(() => history.items.map((h) => h.text), [history.items]);
   const model = useMemo(() => new WordModel(said), [said]);
   const words = model.next(message, 5);
-  const phrases = message.trim() === "" ? predictPhrases("", said, memorySuggestions, 3) : [];
+  // Core words the person's own word model predicts next are weakly likely targets for eye control.
+  const predicted = new Set(words.map((w) => w.text.toLowerCase()));
+  const phrases = message.trim() === "" ? predictPhrases("", said, memorySuggestions, phraseCount) : [];
+
+  // AI finishes the sentence once it has started: one look speaks a whole sentence instead of a look per word.
+  // Only the started words and recent phrases go to Gemini (through the coordinator, routed by Synapse-Mesh).
+  const [aiOn, setAiOn] = useState(() => {
+    try {
+      return localStorage.getItem(AI_FINISH_KEY) !== "off";
+    } catch {
+      return true;
+    }
+  });
+  const [finishes, setFinishes] = useState<string[]>([]);
+  useEffect(() => {
+    setFinishes([]);
+    const text = message.trim();
+    if (!aiOn || text.split(/\s+/).length < 1 || text === "") return;
+    let live = true;
+    const t = setTimeout(() => {
+      void aiComplete(text, said.slice(-12)).then(
+        (r) => live && r && setFinishes(r.completions.slice(0, phraseCount)),
+      );
+    }, 700);
+    return () => {
+      live = false;
+      clearTimeout(t);
+    };
+  }, [message, aiOn, said, phraseCount]);
+  const toggleAi = () =>
+    setAiOn((on) => {
+      try {
+        localStorage.setItem(AI_FINISH_KEY, on ? "off" : "on");
+      } catch {
+        /* storage unavailable: lasts for this page */
+      }
+      return !on;
+    });
 
   const add = (word: string) => {
     setSaved(null);
@@ -66,6 +113,21 @@ export function Board() {
       </div>
 
       <div className="talk-predict-row" role="group" aria-label="Predictions">
+        {finishes.map((f) => (
+          <button
+            key={`ai-${f}`}
+            className="btn talk-btn talk-phrase-chip"
+            title="Finished by AI from the words you chose"
+            onClick={async () => {
+              await speak(f);
+              setMessage("");
+              setSaved(f);
+            }}
+            data-dwell
+          >
+            <Icon name="sparkle" /> {f}
+          </button>
+        ))}
         {phrases.map((p) => (
           <button
             key={`p-${p.text}`}
@@ -77,7 +139,7 @@ export function Board() {
             <Icon name="sparkle" /> {p.text}
           </button>
         ))}
-        {words.slice(0, phrases.length ? 2 : 5).map((w) => (
+        {words.slice(0, phrases.length || finishes.length ? 1 : predictionCount).map((w) => (
           <button
             key={`w-${w.text}`}
             className="btn talk-btn talk-word-chip"
@@ -89,6 +151,15 @@ export function Board() {
           </button>
         ))}
         <span className="spacer" />
+        <button
+          className="btn talk-btn btn-quiet"
+          onClick={toggleAi}
+          aria-pressed={aiOn}
+          title="When on, the words you've chosen go to Gemini to suggest how to finish the sentence"
+          data-dwell
+        >
+          <Icon name="sparkle" /> AI finish: {aiOn ? "on" : "off"}
+        </button>
         <button className="btn talk-btn btn-quiet" onClick={deleteWord} disabled={!message.trim()} data-dwell>
           <Icon name="back" /> Delete word
         </button>
@@ -104,7 +175,13 @@ export function Board() {
 
       <div className="talk-words" role="group" aria-label="Core words">
         {pages.items.map((w) => (
-          <button key={w.text} className={`talk-word wc-${w.cls}`} onClick={() => add(w.text)} data-dwell>
+          <button
+            key={w.text}
+            className={`talk-word wc-${w.cls}`}
+            onClick={() => add(w.text)}
+            data-dwell
+            {...likely(predicted.has(w.text.toLowerCase()) && "weak")}
+          >
             {w.text}
           </button>
         ))}

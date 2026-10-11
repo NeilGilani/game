@@ -13,23 +13,49 @@
  * - Each update is bounded (maxStepPt per update, maxTotalPt overall, slope within maxSlope).
  * - Never silently make things worse: an update is applied only if its leave-one-out error on
  *   the recent confirmed selections beats the current correction's error on the same ones.
- * - Quality is tracked over time; when it falls into "poor" (or two grades below calibration),
- *   or when half of the recent selections were undone, the engine advises a clean
- *   recalibration instead of patching further.
+ * - Head movement: each selection carries the head's pose change since the scan (head.ts), and
+ *   the correction includes how the offset changes with it (J). J starts at the scan's estimate and
+ *   is refined jointly with the offset, pulled towards the scan's estimate as far as that was sure,
+ *   so selections made leaning in or turned teach it, and an offset is not mistaken for a pose
+ *   effect (or the other way round) when the pose hasn't changed.
+ * - Drift that keeps landing in the same direction is corrected quietly, in bounded steps. When it
+ *   is large (recent selections all off the same way by more than touchUpPt), the engine asks for a
+ *   2-second touch-up (one dot, touchup.ts) instead of a full rescan; touchUp() applies it at once.
+ * - Quality is tracked over time; when it falls into "poor" (or two grades below calibration)
+ *   without a common direction, or soon after a touch-up, or when half of the recent selections
+ *   were undone, the engine advises a clean recalibration instead of patching further.
  */
 
-import { ridge } from "../linalg";
+import { solve } from "../linalg";
+import { HEAD_TERMS, headOffset, priorPrecision } from "./head";
 import { type Grade, gradeForPoints } from "./viewing";
 
 export interface Correction {
-  /** x' = ax * [x - cx, y - cy] + bx, around the display centre (cx, cy). */
+  /** x' = ax * [x - cx, y - cy] + bx + jx . z, around the display centre (cx, cy). */
   ax: [number, number];
   ay: [number, number];
   bx: number;
   by: number;
+  /** Points per unit of head pose change z (head.ts HEAD_TERMS). */
+  jx: number[];
+  jy: number[];
 }
 
-export const IDENTITY: Correction = { ax: [1, 0], ay: [0, 1], bx: 0, by: 0 };
+const NO_HEAD = [0, 0, 0, 0, 0];
+const ZERO_Z: readonly number[] = NO_HEAD;
+
+export const IDENTITY: Correction = { ax: [1, 0], ay: [0, 1], bx: 0, by: 0, jx: NO_HEAD, jy: NO_HEAD };
+
+/** What the scan knew about head sensitivity (HeadModel's estimate): the starting point and prior. */
+export interface HeadPrior {
+  jx: readonly number[];
+  jy: readonly number[];
+  /** Posterior precision from the scan, 5x5 row-major (head.ts). */
+  precision: readonly number[];
+}
+
+/** Largest head sensitivity accepted (points per degree or cm), per term. */
+const MAX_J = [20, 20, 25, 25, 12];
 
 export interface ContinuousOptions {
   /** Centre of the calibrated display (global points). */
@@ -51,6 +77,15 @@ export interface ContinuousOptions {
   slopeSamples: number;
   /** Grade the calibration had when it was made. */
   calibratedGrade: Grade;
+  /** Recent selections all off the same way by more than this (points): ask for a touch-up. */
+  touchUpPt: number;
+  /** How alike their directions must be: |mean error| / mean |error| (1 = all the same way). */
+  touchUpAgreement: number;
+  /** After a touch-up the offset may be this large (points); beyond it, rescan. A shift is what one
+   * dot fixes well whatever its size, so this only guards against nonsense. */
+  maxTouchUpPt: number;
+  /** After a touch-up, poor quality within this long means rescan, not another touch-up (ms). */
+  touchUpWindowMs: number;
 }
 
 export const DEFAULT_CONTINUOUS: Omit<ContinuousOptions, "centre" | "calibratedGrade"> = {
@@ -63,6 +98,10 @@ export const DEFAULT_CONTINUOUS: Omit<ContinuousOptions, "centre" | "calibratedG
   memory: 30,
   minSamples: 4,
   slopeSamples: 20,
+  touchUpPt: 70,
+  touchUpAgreement: 0.75,
+  maxTouchUpPt: 500,
+  touchUpWindowMs: 120_000,
 };
 
 export interface Observation {
@@ -70,6 +109,8 @@ export interface Observation {
   /** The model's (uncorrected) estimate, averaged over the fixation on the target. */
   x: number;
   y: number;
+  /** Head pose change since the scan (head.ts headDelta); none means "same as the scan". */
+  z?: readonly number[];
 }
 
 interface Confirmed {
@@ -77,6 +118,8 @@ interface Confirmed {
   /** Uncorrected estimate. */
   x: number;
   y: number;
+  /** Head pose change when it was made. */
+  z: readonly number[];
   /** Target centre. */
   tx: number;
   ty: number;
@@ -101,22 +144,44 @@ export type ContinuousEvent =
   | { type: "updated"; t: number; correction: Correction; before: number; after: number }
   | { type: "rejected-update"; t: number; before: number; after: number }
   | { type: "quality"; point: QualityPoint }
+  /** Recent selections land off the same way by about offsetPt: a 2-second touch-up will fix it. */
+  | { type: "touch-up"; t: number; reason: string; offsetPt: number }
+  | { type: "touched-up"; t: number; correction: Correction; shiftPt: number }
   | { type: "recalibrate"; t: number; reason: string };
 
-export function applyCorrection(c: Correction, centre: { x: number; y: number }, x: number, y: number) {
+export function applyCorrection(
+  c: Correction,
+  centre: { x: number; y: number },
+  x: number,
+  y: number,
+  z: readonly number[] = ZERO_Z,
+) {
   const dx = x - centre.x;
   const dy = y - centre.y;
+  const h = headOffset(c.jx, c.jy, z);
   return {
-    x: centre.x + c.ax[0] * dx + c.ax[1] * dy + c.bx,
-    y: centre.y + c.ay[0] * dx + c.ay[1] * dy + c.by,
+    x: centre.x + c.ax[0] * dx + c.ax[1] * dy + c.bx + h.x,
+    y: centre.y + c.ay[0] * dx + c.ay[1] * dy + c.by + h.y,
   };
+}
+
+/** Per-coordinate median of equal-length vectors. */
+function medianVector(vs: readonly (readonly number[])[], length: number): number[] {
+  if (vs.length === 0) return new Array<number>(length).fill(0);
+  return Array.from({ length }, (_, k) => {
+    const s = vs.map((v) => v[k] ?? 0).sort((a, b) => a - b);
+    return s[Math.floor(s.length / 2)]!;
+  });
 }
 
 const GRADE_RANK: Record<Grade, number> = { good: 0, fair: 1, poor: 2 };
 
 export class ContinuousCalibrator {
   private o: ContinuousOptions;
+  private head: HeadPrior = { jx: NO_HEAD, jy: NO_HEAD, precision: priorPrecision() };
   private correction: Correction = IDENTITY;
+  private touchUpAdvised = false;
+  private lastTouchUp: number | null = null;
   private pending: Pending[] = [];
   private confirmed: Confirmed[] = [];
   private history: QualityPoint[] = [];
@@ -124,8 +189,19 @@ export class ContinuousCalibrator {
   /** Recent outcomes: true = stood, false = undone. Many undos mean the gaze lands wrong. */
   private outcomes: boolean[] = [];
 
-  constructor(options: Partial<ContinuousOptions> & Pick<ContinuousOptions, "centre" | "calibratedGrade">) {
+  constructor(
+    options: Partial<ContinuousOptions> & Pick<ContinuousOptions, "centre" | "calibratedGrade">,
+    head?: HeadPrior | null,
+  ) {
     this.o = { ...DEFAULT_CONTINUOUS, ...options };
+    this.setHead(head ?? null);
+  }
+
+  private setHead(head: HeadPrior | null): void {
+    this.head = head
+      ? { jx: [...head.jx], jy: [...head.jy], precision: [...head.precision] }
+      : { jx: NO_HEAD, jy: NO_HEAD, precision: priorPrecision() };
+    this.correction = { ...IDENTITY, jx: [...this.head.jx], jy: [...this.head.jy] };
   }
 
   get current(): Correction {
@@ -136,8 +212,9 @@ export class ContinuousCalibrator {
     return this.history;
   }
 
-  apply(x: number, y: number): { x: number; y: number } {
-    return applyCorrection(this.correction, this.o.centre, x, y);
+  /** The corrected estimate for an uncorrected one, with the head's pose change z since the scan. */
+  apply(x: number, y: number, z?: readonly number[]): { x: number; y: number } {
+    return applyCorrection(this.correction, this.o.centre, x, y, z);
   }
 
   /**
@@ -163,6 +240,10 @@ export class ContinuousCalibrator {
       t,
       x: xs[mid]!,
       y: ys[mid]!,
+      z: medianVector(
+        observations.map((o) => o.z ?? ZERO_Z),
+        HEAD_TERMS.length,
+      ),
       tx: rect.x + rect.width / 2,
       ty: rect.y + rect.height / 2,
       weight,
@@ -199,7 +280,7 @@ export class ContinuousCalibrator {
     for (const p of ready) {
       this.outcomes.push(true);
       if (this.outcomes.length > 10) this.outcomes.shift();
-      this.confirmed.push({ t: p.t, x: p.x, y: p.y, tx: p.tx, ty: p.ty, weight: p.weight });
+      this.confirmed.push({ t: p.t, x: p.x, y: p.y, z: p.z, tx: p.tx, ty: p.ty, weight: p.weight });
       events.push({ type: "learned", t, weight: p.weight });
     }
     while (this.confirmed.length > this.o.memory) this.confirmed.shift();
@@ -212,7 +293,7 @@ export class ContinuousCalibrator {
     let s = 0;
     let w = 0;
     for (const q of samples) {
-      const p = applyCorrection(c, this.o.centre, q.x, q.y);
+      const p = applyCorrection(c, this.o.centre, q.x, q.y, q.z);
       s += q.weight * Math.hypot(p.x - q.tx, p.y - q.ty);
       w += q.weight;
     }
@@ -220,44 +301,69 @@ export class ContinuousCalibrator {
   }
 
   /**
-   * Weighted fit of the correction. With few samples only an offset (two numbers: most drift is
-   * a shift); with slopeSamples or more, an affine map shrunk towards "no change".
+   * Weighted fit of the correction. With few samples an offset (most drift is a shift); with
+   * slopeSamples or more, an affine map shrunk towards "no change". Both together with the head
+   * terms, shrunk towards the scan's estimate of them by how sure the scan was: penalised least
+   * squares, which is the Bayesian update with the scan's posterior as the prior.
    */
   private fit(samples: readonly Confirmed[]): Correction | null {
     if (samples.length < 3) return null;
     const c = this.o.centre;
-    const w = samples.map((q) => q.weight);
-    if (samples.length < this.o.slopeSamples) {
-      const total = w.reduce((a, b) => a + b, 0);
-      if (total <= 0) return null;
-      const bx = samples.reduce((a, q, i) => a + w[i]! * (q.tx - q.x), 0) / total;
-      const by = samples.reduce((a, q, i) => a + w[i]! * (q.ty - q.y), 0) / total;
-      return { ax: [1, 0], ay: [0, 1], bx, by };
+    const total = samples.reduce((a, q) => a + q.weight, 0);
+    if (total <= 0) return null;
+    const slopes = samples.length >= this.o.slopeSamples;
+    const nh = HEAD_TERMS.length;
+    const ns = slopes ? 2 : 0;
+    const d = 1 + ns + nh;
+    // Residual noise per unit-weight selection, for weighing the prior (points).
+    const spread = samples
+      .map((q) => {
+        const p = applyCorrection(this.correction, c, q.x, q.y, q.z);
+        return Math.hypot(p.x - q.tx, p.y - q.ty) / Math.SQRT2;
+      })
+      .sort((a, b) => a - b);
+    const sigma = Math.max(20, 1.25 * spread[Math.floor(spread.length / 2)]!);
+    const pen = Array.from({ length: d }, () => new Array<number>(d).fill(0));
+    if (slopes) {
+      pen[1]![1] = 0.5 * total;
+      pen[2]![2] = 0.5 * total;
     }
-    // Design: [1, dx/1000, dy/1000]; target is the residual (target - estimate).
-    const rows = samples.map((q) => [1, (q.x - c.x) / 1000, (q.y - c.y) / 1000]);
-    try {
-      const rx = ridge(
-        rows,
-        samples.map((q) => q.tx - q.x),
-        0.5,
-        w,
-      );
-      const ry = ridge(
-        rows,
-        samples.map((q) => q.ty - q.y),
-        0.5,
-        w,
-      );
-      return {
-        ax: [1 + rx[1]! / 1000, rx[2]! / 1000],
-        ay: [ry[1]! / 1000, 1 + ry[2]! / 1000],
-        bx: rx[0]!,
-        by: ry[0]!,
-      };
-    } catch {
-      return null;
-    }
+    const s2 = sigma * sigma;
+    for (let a = 0; a < nh; a++)
+      for (let b = 0; b < nh; b++) pen[1 + ns + a]![1 + ns + b] = s2 * this.head.precision[a * nh + b]!;
+    const solveAxis = (target: (q: Confirmed) => number, prior: readonly number[]): number[] | null => {
+      const xtx = pen.map((row) => [...row]);
+      const xty = new Array<number>(d).fill(0);
+      // Prior mean for the head terms: penalty (beta - prior)' P (beta - prior) adds P.prior to X'y.
+      for (let a = 0; a < nh; a++)
+        for (let b = 0; b < nh; b++) xty[1 + ns + a]! += pen[1 + ns + a]![1 + ns + b]! * prior[b]!;
+      for (const q of samples) {
+        const row = [1];
+        if (slopes) row.push((q.x - c.x) / 1000, (q.y - c.y) / 1000);
+        for (let k = 0; k < nh; k++) row.push(q.z[k] ?? 0);
+        const y = target(q);
+        for (let a = 0; a < d; a++) {
+          xty[a]! += q.weight * row[a]! * y;
+          for (let b = 0; b < d; b++) xtx[a]![b]! += q.weight * row[a]! * row[b]!;
+        }
+      }
+      try {
+        return solve(xtx, xty);
+      } catch {
+        return null;
+      }
+    };
+    const rx = solveAxis((q) => q.tx - q.x, this.head.jx);
+    const ry = solveAxis((q) => q.ty - q.y, this.head.jy);
+    if (!rx || !ry) return null;
+    return {
+      ax: slopes ? [1 + rx[1]! / 1000, rx[2]! / 1000] : [1, 0],
+      ay: slopes ? [ry[1]! / 1000, 1 + ry[2]! / 1000] : [0, 1],
+      bx: rx[0]!,
+      by: ry[0]!,
+      jx: rx.slice(1 + ns),
+      jy: ry.slice(1 + ns),
+    };
   }
 
   /** Limit how far one update can move things from the current correction. */
@@ -273,11 +379,14 @@ export class ContinuousCalibrator {
       by *= this.o.maxTotalPt / total;
     }
     const s = this.o.maxSlope;
+    const j = (v: readonly number[]) => v.map((x, k) => clamp(x, -MAX_J[k]!, MAX_J[k]!));
     return {
       ax: [clamp(next.ax[0], 1 - s, 1 + s), clamp(next.ax[1], -s, s)],
       ay: [clamp(next.ay[0], -s, s), clamp(next.ay[1], 1 - s, 1 + s)],
       bx,
       by,
+      jx: j(next.jx),
+      jy: j(next.jy),
     };
   }
 
@@ -287,7 +396,7 @@ export class ContinuousCalibrator {
    */
   private plausible(): Confirmed[] {
     const r = this.confirmed.map((q) => {
-      const p = applyCorrection(this.correction, this.o.centre, q.x, q.y);
+      const p = applyCorrection(this.correction, this.o.centre, q.x, q.y, q.z);
       return Math.hypot(p.x - q.tx, p.y - q.ty);
     });
     const sorted = [...r].sort((a, b) => a - b);
@@ -311,7 +420,7 @@ export class ContinuousCalibrator {
       if (!fit) return [];
       const c = this.bound(fit);
       const q = samples[i]!;
-      const p = applyCorrection(c, this.o.centre, q.x, q.y);
+      const p = applyCorrection(c, this.o.centre, q.x, q.y, q.z);
       looSum += q.weight * Math.hypot(p.x - q.tx, p.y - q.ty);
       looW += q.weight;
     }
@@ -332,22 +441,112 @@ export class ContinuousCalibrator {
     this.history.push(point);
     if (this.history.length > 500) this.history.shift();
     const events: ContinuousEvent[] = [{ type: "quality", point }];
+    const drift = this.drift(recent);
+    const recentTouchUp = this.lastTouchUp !== null && t - this.lastTouchUp < this.o.touchUpWindowMs;
+    if (
+      !this.touchUpAdvised &&
+      !this.advised &&
+      !recentTouchUp &&
+      recent.length >= 4 &&
+      drift.offsetPt >= this.o.touchUpPt &&
+      drift.agreement >= this.o.touchUpAgreement
+    ) {
+      this.touchUpAdvised = true;
+      events.push({
+        type: "touch-up",
+        t,
+        offsetPt: drift.offsetPt,
+        reason: `Recent choices all landed about ${Math.round(drift.offsetPt)} points off in the same direction.`,
+      });
+      return events;
+    }
     const dropped = GRADE_RANK[point.grade] - GRADE_RANK[this.o.calibratedGrade] >= 2;
-    if (!this.advised && recent.length >= 5 && (point.grade === "poor" || dropped)) {
+    const sinceTouchUp =
+      this.lastTouchUp === null ? Infinity : recent.filter((q) => q.t > this.lastTouchUp!).length;
+    // A touch-up needs a few selections to show whether it worked; one that didn't means rescan.
+    const waiting = this.touchUpAdvised || (recentTouchUp && sinceTouchUp < 4);
+    if (!this.advised && !waiting && recent.length >= 5 && (point.grade === "poor" || dropped)) {
       this.advised = true;
       events.push({
         type: "recalibrate",
         t,
-        reason: `Eye control has drifted: recent selections were about ${Math.round(errorPt)} points off.`,
+        reason: recentTouchUp
+          ? `The touch-up didn't hold: recent selections were still about ${Math.round(errorPt)} points off.`
+          : `Eye control has drifted: recent selections were about ${Math.round(errorPt)} points off.`,
       });
     }
     return events;
   }
 
-  /** Start again from the calibrated model (after a fresh calibration). */
-  reset(calibratedGrade: Grade, centre = this.o.centre): void {
+  /** Weighted mean error vector of recent selections under the current correction, and how alike their directions are. */
+  private drift(recent: readonly Confirmed[]): { x: number; y: number; offsetPt: number; agreement: number } {
+    let sx = 0;
+    let sy = 0;
+    let len = 0;
+    let w = 0;
+    for (const q of recent) {
+      const p = applyCorrection(this.correction, this.o.centre, q.x, q.y, q.z);
+      const ex = q.tx - p.x;
+      const ey = q.ty - p.y;
+      sx += q.weight * ex;
+      sy += q.weight * ey;
+      len += q.weight * Math.hypot(ex, ey);
+      w += q.weight;
+    }
+    if (w <= 0) return { x: 0, y: 0, offsetPt: 0, agreement: 0 };
+    const offsetPt = Math.hypot(sx / w, sy / w);
+    return { x: sx / w, y: sy / w, offsetPt, agreement: len > 0 ? (offsetPt * w) / len : 0 };
+  }
+
+  /**
+   * The person looked at a touch-up dot at `target`: the uncorrected estimate there was `estimate`
+   * (median over the dot), with head pose change z. Moves the offset so the dot is hit, keeping the
+   * slope and head terms, and starts learning afresh from here (older selections describe how
+   * things were before the drift). Returns the events: "touched-up", or "recalibrate" when the
+   * shift needed is beyond what a touch-up should fix.
+   */
+  touchUp(
+    t: number,
+    target: { x: number; y: number },
+    estimate: { x: number; y: number },
+    z: readonly number[] = ZERO_Z,
+  ): ContinuousEvent[] {
+    this.touchUpAdvised = false;
+    const c = this.correction;
+    const now = applyCorrection(c, this.o.centre, estimate.x, estimate.y, z);
+    const bx = c.bx + (target.x - now.x);
+    const by = c.by + (target.y - now.y);
+    if (Math.hypot(bx, by) > this.o.maxTouchUpPt) {
+      this.advised = true;
+      return [
+        {
+          type: "recalibrate",
+          t,
+          reason: `Eye control is too far off for a touch-up (about ${Math.round(Math.hypot(target.x - now.x, target.y - now.y))} points): a fresh scan will do better.`,
+        },
+      ];
+    }
+    this.correction = { ...c, bx, by };
+    this.lastTouchUp = t;
+    this.confirmed = [{ t, x: estimate.x, y: estimate.y, z: [...z], tx: target.x, ty: target.y, weight: 2 }];
+    this.pending = [];
+    this.history = [];
+    return [
+      {
+        type: "touched-up",
+        t,
+        correction: this.correction,
+        shiftPt: Math.hypot(target.x - now.x, target.y - now.y),
+      },
+    ];
+  }
+
+  /** Start again from the calibrated model (after a fresh calibration), with its head estimate. */
+  reset(calibratedGrade: Grade, centre = this.o.centre, head: HeadPrior | null = null): void {
     this.o = { ...this.o, calibratedGrade, centre };
-    this.correction = IDENTITY;
+    this.setHead(head);
+    this.touchUpAdvised = false;
+    this.lastTouchUp = null;
     this.pending = [];
     this.confirmed = [];
     this.history = [];

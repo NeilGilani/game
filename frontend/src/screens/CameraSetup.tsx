@@ -3,6 +3,7 @@ import { ErrorNote } from "../components/common";
 import { Icon } from "../components/Icon";
 import { Page } from "../components/Shell";
 import { Loading } from "../components/status";
+import { useAnnounce } from "../state/announcer";
 import { MODE_LABELS, useInput } from "../state/input";
 import { usePreferences } from "../state/preferences";
 import { navigate } from "../state/router";
@@ -15,6 +16,7 @@ import type { VisionFrame } from "../vision/tracker";
 interface Snapshot {
   face: boolean;
   eyes: boolean;
+  eyeImages: boolean;
   issues: QualityIssue[];
   confidence: number;
   blink: number | null;
@@ -77,6 +79,7 @@ function Check({ ok, label, pending }: { ok: boolean; label: string; pending?: b
 
 export function CameraSetup() {
   const input = useInput();
+  const announce = useAnnounce();
   const { prefs, update } = usePreferences();
   const stage = useRef<HTMLDivElement>(null);
   const canvas = useRef<HTMLCanvasElement>(null);
@@ -107,8 +110,9 @@ export function CameraSetup() {
         setSnap({
           face: frame.face,
           eyes: !!frame.features,
+          eyeImages: !!frame.eyes,
           issues: frame.issues,
-          confidence: frame.confidence,
+          confidence: frame.trackingConfidence,
           blink: frame.blink,
         });
       }
@@ -120,8 +124,11 @@ export function CameraSetup() {
   const issues = snap?.issues ?? [];
   const lighting = !issues.includes("too-dark") && !issues.includes("too-bright");
   const distance = !issues.includes("too-far") && !issues.includes("too-close");
-  const ready = running && !!snap?.eyes && lighting && distance;
-  const needsCalibration = input.mode === "gaze" || input.mode === "head";
+  // Light and distance are advice: calibration only needs both eyes found (the result says how well it went).
+  const ready = running && !!snap?.eyes;
+  // Eye gaze needs calibrating; the head pointer just starts from wherever the head points now.
+  const needsCalibration = input.mode === "gaze";
+  const headPointer = input.mode === "head";
 
   return (
     <Page label="Camera setup">
@@ -187,6 +194,7 @@ export function CameraSetup() {
               <Check ok={running} pending={!running} label="Camera is on" />
               <Check ok={!!snap?.face} pending={!running} label="Face in view" />
               <Check ok={!!snap?.eyes} pending={!running} label="Both eyes and irises found" />
+              <Check ok={!!snap?.eyeImages} pending={!running} label="Eye images for RealEye's eye model" />
               <Check ok={lighting} pending={!running || !snap} label="Lighting" />
               <Check ok={distance} pending={!running || !snap?.face} label="Distance from screen" />
             </ul>
@@ -237,6 +245,18 @@ export function CameraSetup() {
                 data-dwell
               >
                 <Icon name="target" /> {ready ? "Calibrate now" : "Calibrate (fix the checks first)"}
+              </button>
+            )}
+            {running && headPointer && (
+              <button
+                className="btn btn-xl"
+                onClick={() => {
+                  vision.recentre();
+                  announce("Head pointer centred. Point your nose at the middle of the screen.");
+                }}
+                data-dwell
+              >
+                <Icon name="target" /> Centre the head pointer
               </button>
             )}
             {running && !needsCalibration && (

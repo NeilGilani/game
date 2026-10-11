@@ -319,7 +319,7 @@ class Preferences(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    input_mode: Literal["gaze", "head", "scan_blink", "scan_key", "pointer"] = "pointer"
+    input_mode: Literal["gaze", "head", "scan_blink", "scan_key", "pointer"] = "head"
     dwell_ms: int = Field(default=1200, ge=400, le=4000)
     dwell_stability_px: int = Field(default=60, ge=10, le=300)
     target_snap_px: int = Field(default=48, ge=0, le=200)

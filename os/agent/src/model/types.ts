@@ -65,6 +65,8 @@ export interface ModelTurn {
 export interface SessionOptions {
   system: string;
   tools: ToolSpec[];
+  /** Synapse's network budget: "low" thinking under Lean-Fusion. Providers map it to their own setting. */
+  thinking?: "low";
   /** Offer computer use (only when agency-native is connected). */
   computer: boolean;
   signal: AbortSignal;

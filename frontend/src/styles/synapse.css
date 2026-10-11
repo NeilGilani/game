@@ -1,0 +1,69 @@
+/* The Synapse layer, made visible (components/Synapse.tsx). Uses the shared design tokens. */
+.synapse-route {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  padding: 10px 14px;
+  border-radius: var(--radius-lg);
+  background: var(--accent-soft);
+  color: var(--ink);
+  font-size: 1rem;
+  line-height: 1.4;
+}
+.synapse-route[data-decision="built-in"] {
+  background: var(--warn-soft);
+}
+.synapse-route > span:first-of-type {
+  flex: 1 1 320px;
+}
+.synapse-bars {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+}
+.synapse-bar {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--type-footnote, 0.9rem);
+  color: var(--ink-2);
+}
+.synapse-bar-name {
+  text-transform: capitalize;
+  min-width: 4.5em;
+}
+.synapse-bar-track {
+  width: 72px;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--line);
+  overflow: hidden;
+}
+.synapse-bar-fill {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--accent);
+}
+.synapse-bar-pct {
+  font-variant-numeric: tabular-nums;
+  min-width: 3ch;
+  text-align: right;
+}
+.synapse-demo {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 24px;
+}
+.synapse-demo .btn {
+  min-width: 120px;
+  min-height: 96px;
+}
+.synapse-recent {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 10px;
+}

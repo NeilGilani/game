@@ -81,7 +81,7 @@ describe("replay fixtures", () => {
     const q = final.result.quality;
     expect(q.points).toBeGreaterThanOrEqual(9);
     // Regression bounds for this fixture (see BENCHMARKS.md for what the numbers mean).
-    expect(q.meanErrorPt).toBeLessThan(65); // 51.1 pt when the fixture was made
+    expect(q.meanErrorPt).toBeLessThan(55); // 42.3 pt since the fixture was remade with the viewing-angle fix (51.1 before)
     expect(q.meanErrorDeg).not.toBeNull();
     expect(final.result.distanceCm).toBeGreaterThan(50);
     expect(final.result.distanceCm).toBeLessThan(70);

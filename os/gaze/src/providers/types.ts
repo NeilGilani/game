@@ -22,6 +22,8 @@ export interface FaceFrame {
   aspect: number;
   /** Mean luminance 0..255, measured occasionally. */
   brightness?: number | null;
+  /** RealEye's eye-image features for this frame (../eyeImage.ts), when read. Never stored. */
+  eyes?: Float32Array | null;
 }
 
 export interface PointerFrame {

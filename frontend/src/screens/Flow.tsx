@@ -20,6 +20,8 @@ import {
   type FlowState,
 } from "../flows/engine";
 import { FLOWS } from "../flows/library";
+import { likely } from "../input/context";
+import { PAGE_SIZE, precisionForNewScreen } from "../input/layout";
 import type { FlowDef, FlowOption, FlowOutcome } from "../flows/types";
 import { useAgent } from "../state/agent";
 import { useAnnounce } from "../state/announcer";
@@ -53,6 +55,13 @@ function useUsual(flow: FlowDef): { usual: Suggestion | null; ready: boolean } {
   return state;
 }
 
+/** Where each task pack (os/tasks) has its screens. */
+const PACK_SCREENS: Record<string, string> = {
+  call: "/talk/call",
+  documents: "/talk/papers",
+  ordering: "/talk/shop",
+};
+
 export function FlowScreen({ id }: { id: string }) {
   const flow = FLOWS[id];
   if (!flow) {
@@ -77,7 +86,11 @@ function FlowRunner({ flow }: { flow: FlowDef }) {
   const screen = screenOf(flow, state);
   const prompt = promptOf(screen, state.selections);
   const options = useMemo(() => optionsOf(flow, state, usual), [flow, state, usual]);
-  const page = pageOf(options, state.page);
+  // Choices per page follow how precise eye control is (input/layout.ts), fixed for the whole screen so
+  // nothing moves while the person is looking: 4 when tracking is rough, 6 normally, 8 when it is sharp.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const pageSize = useMemo(() => PAGE_SIZE[precisionForNewScreen()], [state.screenId, state.typing]);
+  const page = pageOf(options, state.page, pageSize);
 
   // New choices under the gaze: pause selection briefly so a lingering look doesn't pick one.
   useEffect(() => {
@@ -100,12 +113,22 @@ function FlowRunner({ flow }: { flow: FlowDef }) {
     if (outcome.type === "route") {
       navigate(outcome.path);
     } else if (outcome.type === "launch") {
-      const result = await apps().launch(outcome.bundleId);
-      const text = result.ok
-        ? `${outcome.name} is open${apps().simulated ? " (simulated in the browser)" : ""}.`
-        : `Couldn't open ${outcome.name}: ${result.error ?? "unknown problem"}.`;
+      // A failed call must still end on a screen that says so: an unanswered outcome would freeze this flow.
+      const text = await apps()
+        .launch(outcome.bundleId)
+        .then(
+          (r) =>
+            r.ok
+              ? `${outcome.name} is open.`
+              : `Couldn't open ${outcome.name}: ${r.error ?? "the Mac didn't say why"}.`,
+          (err: unknown) =>
+            `Couldn't open ${outcome.name}: ${err instanceof Error ? err.message : "something went wrong"}.`,
+        );
       announce(text);
       setLaunched(text);
+    } else if (outcome.pack && PACK_SCREENS[outcome.pack]) {
+      // Task packs (os/tasks) run in Talk, which hosts their pack agent, call simulator and document engine.
+      navigate(PACK_SCREENS[outcome.pack]!);
     } else {
       const taskId = agent.start({
         goal: outcome.goal,
@@ -171,6 +194,7 @@ function FlowRunner({ flow }: { flow: FlowDef }) {
         </div>
       ) : (
         <div
+          key={`${state.screenId}-${state.page}`}
           className={`flow-options ${screen.layout === "compare" ? "flow-compare" : ""}`}
           data-count={page.items.length}
           role="group"
@@ -196,15 +220,11 @@ function FlowRunner({ flow }: { flow: FlowDef }) {
                 className={`choice ${o.id === USUAL_ID ? "choice-usual" : ""}`}
                 onClick={() => pick(o)}
                 data-dwell
+                // The person's usual (memory) is a guess, so only weakly likely.
+                {...likely(o.id === USUAL_ID && "weak")}
               >
                 <span className="choice-pic" aria-hidden>
-                  {o.image ? (
-                    <img src={o.image} alt="" />
-                  ) : o.glyph ? (
-                    <span className="choice-glyph">{o.glyph}</span>
-                  ) : (
-                    <Icon name={o.icon ?? "right"} size={44} />
-                  )}
+                  {o.image ? <img src={o.image} alt="" /> : <Icon name={o.icon ?? flow.icon} size={64} />}
                 </span>
                 <span className="choice-label">{o.label}</span>
                 {o.sub && <span className="choice-sub">{o.sub}</span>}

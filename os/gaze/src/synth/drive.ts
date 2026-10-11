@@ -8,7 +8,7 @@ import { type CalibrationSample, featureVector } from "../calibration/legacy";
 import { type CalibrationSession, type SessionStep } from "../calibration/session";
 import { type GazeFeatures, extractFeatures } from "../landmarks";
 import type { SyntheticFace } from "./face";
-import { GazeScript, type HeadMotion, simulate } from "./scenarios";
+import { GazeScript, type HeadSource, simulate } from "./scenarios";
 
 export interface DriveOptions {
   settleMs?: number;
@@ -29,7 +29,7 @@ export interface DriveResult {
 export function driveCalibration(
   face: SyntheticFace,
   session: CalibrationSession,
-  head: HeadMotion,
+  head: HeadSource,
   display: { x: number; y: number; width: number; height: number },
   options: DriveOptions = {},
 ): DriveResult {

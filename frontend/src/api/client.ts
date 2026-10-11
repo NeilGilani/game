@@ -22,11 +22,15 @@ import type {
   LifelineReport,
   LifelineSettings,
   LifelineStatus,
+  NetworkSnapshot,
+  NetworkState,
   OutboxMessage,
   Preferences,
   ReasoningStatus,
   Situation,
   Runtime,
+  SynapseRoute,
+  SynapseStatus,
   Timeline,
 } from "./types";
 
@@ -53,6 +57,31 @@ function write(key: string, value: string): void {
 /** Empty string means "same origin" (the Vite proxy or the coordinator serving the UI). */
 export function coordinatorUrl(): string {
   return read(COORDINATOR_KEY).replace(/\/+$/, "");
+}
+
+async function answers(base: string): Promise<boolean> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 3000);
+  try {
+    const r = await fetch(`${base}/api/health`, { signal: controller.signal });
+    return r.ok || r.status === 401 || r.status === 403;
+  } catch {
+    return false;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+/**
+ * A saved coordinator address that no longer answers (an old setting, a Pi that's off, a demo
+ * address) while the coordinator that served this page does: go back to this page's own. Run once
+ * at start-up, so "Can't reach the coordinator" never comes from a stale setting.
+ */
+export async function repairCoordinatorUrl(): Promise<void> {
+  const saved = coordinatorUrl();
+  if (!saved || saved === window.location.origin) return;
+  if (await answers(saved)) return;
+  if (await answers("")) write(COORDINATOR_KEY, "");
 }
 
 export function setCoordinatorUrl(url: string): void {
@@ -85,10 +114,31 @@ async function request<T>(path: string, init: RequestInit & { timeoutMs?: number
   const token = accessToken();
   if (token) headers.set("X-Agency-Token", token);
   let response: Response;
+  const method = (init.method ?? "GET").toUpperCase();
   try {
-    response = await fetch(`${coordinatorUrl()}${path}`, { ...init, headers, signal: controller.signal });
-  } catch {
-    throw new ApiError("Can't reach the coordinator.", 0, true);
+    try {
+      response = await fetch(`${coordinatorUrl()}${path}`, { ...init, headers, signal: controller.signal });
+    } catch (first) {
+      if (controller.signal.aborted) throw first;
+      // One quick retry: a dropped connection (Wi-Fi blip, coordinator restarting) usually works the second time.
+      await new Promise((r) => setTimeout(r, 600));
+      response = await fetch(`${coordinatorUrl()}${path}`, { ...init, headers, signal: controller.signal });
+    }
+  } catch (err) {
+    // A timeout is not "unreachable": the coordinator is there but still working (often Gemini thinking).
+    if (controller.signal.aborted)
+      throw new ApiError(
+        `The coordinator is taking too long to answer (${method} ${path}). Try again.`,
+        0,
+        false,
+      );
+    const why = err instanceof Error ? err.message : String(err);
+    console.error(`[AGENCY] ${method} ${coordinatorUrl() || window.location.origin}${path} failed:`, err);
+    throw new ApiError(
+      `Can't reach the coordinator (${method} ${path} at ${coordinatorUrl() || window.location.origin}: ${why}).`,
+      0,
+      true,
+    );
   } finally {
     clearTimeout(timer);
   }
@@ -108,6 +158,13 @@ async function request<T>(path: string, init: RequestInit & { timeoutMs?: number
   }
   return (await response.json()) as T;
 }
+
+/**
+ * Calls that may wait on the cloud model (planning, interpreting, explaining). The coordinator gives
+ * Gemini up to AGENCY_REASONING_TIMEOUT_S (45 s by default, plus a retry) and then falls back to a
+ * built-in plan, so the interface must wait longer than that, never cut it off at 12 s.
+ */
+const AI_TIMEOUT_MS = 120_000;
 
 const post = <T>(path: string, body?: unknown, timeoutMs?: number) =>
   request<T>(path, {
@@ -154,28 +211,37 @@ export function respondUrl(link: string): string {
 export const api = {
   health: () => request<Health>("/api/health", { timeoutMs: 4000 }),
   runtime: () => request<Runtime>("/api/runtime"),
-  checkCloud: () => post<ReasoningStatus>("/api/runtime/check-cloud"),
+  checkCloud: () => post<ReasoningStatus>("/api/runtime/check-cloud", undefined, AI_TIMEOUT_MS),
   catalog: () => request<Catalog>("/api/goals/catalog"),
   interpret: (body: {
     goal_type?: GoalType;
     selections?: Record<string, string>;
     phrases?: string[];
     free_text?: string;
-  }) => post<GoalPreview>("/api/goals/interpret", body),
+  }) => post<GoalPreview>("/api/goals/interpret", body, AI_TIMEOUT_MS),
   createCase: (goal: Goal, useCloudPlan = true) =>
-    post<CaseDetail>("/api/cases", { goal, use_cloud_plan: useCloudPlan }),
+    post<CaseDetail>("/api/cases", { goal, use_cloud_plan: useCloudPlan }, AI_TIMEOUT_MS),
   cases: (status?: "active") => request<CaseListItem[]>(`/api/cases${status ? `?status=${status}` : ""}`),
   case: (id: string) => request<CaseDetail>(`/api/cases/${encodeURIComponent(id)}`),
   timeline: (id: string) => request<Timeline>(`/api/cases/${encodeURIComponent(id)}/timeline`),
   pauseCase: (id: string) => post<CaseDetail>(`/api/cases/${encodeURIComponent(id)}/pause`),
-  resumeCase: (id: string) => post<CaseDetail>(`/api/cases/${encodeURIComponent(id)}/resume`),
+  resumeCase: (id: string) =>
+    post<CaseDetail>(`/api/cases/${encodeURIComponent(id)}/resume`, undefined, AI_TIMEOUT_MS),
   cancelCase: (id: string) => post<CaseDetail>(`/api/cases/${encodeURIComponent(id)}/cancel`),
   answer: (id: string, stepId: string, value: string) =>
-    post<CaseDetail>(`/api/cases/${encodeURIComponent(id)}/steps/${encodeURIComponent(stepId)}/answer`, {
-      value,
-    }),
+    post<CaseDetail>(
+      `/api/cases/${encodeURIComponent(id)}/steps/${encodeURIComponent(stepId)}/answer`,
+      {
+        value,
+      },
+      AI_TIMEOUT_MS,
+    ),
   skip: (id: string, stepId: string) =>
-    post<CaseDetail>(`/api/cases/${encodeURIComponent(id)}/steps/${encodeURIComponent(stepId)}/skip`),
+    post<CaseDetail>(
+      `/api/cases/${encodeURIComponent(id)}/steps/${encodeURIComponent(stepId)}/skip`,
+      undefined,
+      AI_TIMEOUT_MS,
+    ),
   approvals: () => request<Approval[]>("/api/approvals?status=pending"),
   decide: (approvalId: string, decision: "approve" | "reject", note?: string) =>
     post<{ approval: Approval; case: CaseDetail }>(
@@ -184,24 +250,39 @@ export const api = {
         decision,
         note,
       },
+      AI_TIMEOUT_MS,
     ),
   decideBatch: (ids: string[], decision: "approve" | "reject") =>
-    post<{ approvals: Approval[]; cases: CaseDetail[] }>("/api/approvals/batch", {
-      approval_ids: ids,
-      decision,
-    }),
+    post<{ approvals: Approval[]; cases: CaseDetail[] }>(
+      "/api/approvals/batch",
+      {
+        approval_ids: ids,
+        decision,
+      },
+      AI_TIMEOUT_MS,
+    ),
   edit: (approvalId: string, edits: Record<string, string>) =>
-    post<{ approval: Approval; case: CaseDetail }>(`/api/approvals/${encodeURIComponent(approvalId)}/edit`, {
-      edits,
-    }),
+    post<{ approval: Approval; case: CaseDetail }>(
+      `/api/approvals/${encodeURIComponent(approvalId)}/edit`,
+      {
+        edits,
+      },
+      AI_TIMEOUT_MS,
+    ),
   explain: (approvalId: string) =>
     request<{
       paragraphs: string[];
       source: "deterministic" | "cloud";
       label?: string | null;
+      on_device?: boolean;
       model: string | null;
       facts?: string[];
-    }>(`/api/approvals/${encodeURIComponent(approvalId)}/explain`, { timeoutMs: 60000 }),
+      route?: SynapseRoute | null;
+    }>(`/api/approvals/${encodeURIComponent(approvalId)}/explain`, { timeoutMs: AI_TIMEOUT_MS }),
+  synapse: () =>
+    request<SynapseStatus & { network: NetworkSnapshot; recent: SynapseRoute[] }>("/api/synapse"),
+  setNetworkDemo: (state: Exclude<NetworkState, "unknown"> | null) =>
+    request<NetworkSnapshot>("/api/demo/network", { method: "PUT", body: JSON.stringify({ state }) }),
   pauseAll: () => post<{ automation_paused: boolean }>("/api/system/pause"),
   resumeAll: () => post<{ automation_paused: boolean }>("/api/system/resume"),
   preferences: () => request<Preferences>("/api/preferences"),

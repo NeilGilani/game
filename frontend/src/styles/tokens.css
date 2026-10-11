@@ -1,0 +1,203 @@
+/* AGENCY OS design tokens. The single source for colour, materials, type, shape and motion (docs/os/DESIGN.md).
+   Light, dark and high contrast. Every text colour keeps at least 4.5:1 on the glass it sits on. */
+
+:root {
+  /* Type: the system font (SF Pro on a Mac), sized up. Body is 20 px at text size 100%. */
+  --text-scale: 1;
+  --font: -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, "Helvetica Neue", Arial, sans-serif;
+  --font-display:
+    -apple-system, BlinkMacSystemFont, "SF Pro Display", system-ui, "Helvetica Neue", Arial, sans-serif;
+  --type-large-title: 2rem; /* 40 px */
+  --type-title: 1.5rem; /* 30 px */
+  --type-headline: 1.15rem; /* 23 px, semibold */
+  --type-body: 1rem; /* 20 px */
+  --type-footnote: 0.85rem; /* 17 px */
+
+  /* Shape */
+  --radius: 18px;
+  --radius-lg: 28px;
+  --radius-tile: 30%; /* squircle-like tiles via a large relative radius */
+  --gap: 24px;
+  --target: 96px;
+  --menubar: 46px;
+  --topbar: 46px;
+
+  /* Motion: springy, short, and off with reduced motion. */
+  --spring: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --dur-fast: 160ms;
+  --dur: 300ms;
+  --dur-slow: 420ms;
+
+  /* Colour (light). System colours darkened where needed so text passes 4.5:1. */
+  --wallpaper:
+    radial-gradient(1200px 800px at 12% 8%, #cddffc 0%, transparent 60%),
+    radial-gradient(1000px 700px at 92% 18%, #e8dfff 0%, transparent 55%),
+    radial-gradient(1100px 800px at 70% 100%, #e2eff6 0%, transparent 60%),
+    linear-gradient(160deg, #eef2fb, #f7f1f6);
+  --bg: #f2f2f7;
+  --glass: rgb(255 255 255 / 80%);
+  --glass-strong: rgb(255 255 255 / 86%);
+  --glass-blur: blur(30px) saturate(180%);
+  --surface: #ffffff;
+  --surface-2: #ececf1;
+  --ink: #1d1d1f;
+  --ink-2: #48484d;
+  --line: rgb(60 60 67 / 18%);
+  --line-strong: rgb(60 60 67 / 42%);
+  --hairline: 1px solid rgb(0 0 0 / 8%);
+  --accent: #0064d2; /* system blue, accessible on white */
+  --accent-hover: #0057b8;
+  --accent-ink: #ffffff;
+  --accent-soft: #e3eefc;
+  --focus: #f2b400;
+  --ok: #136b2d;
+  --ok-soft: #e1f4e6;
+  --warn: #a64b00; /* system orange, accessible */
+  --warn-soft: #fff1de;
+  --danger: #c4001a; /* system red, accessible */
+  --danger-soft: #fde6e8;
+  --info: #0064d2;
+  --info-soft: #e3eefc;
+  --sim: #6c3fc0;
+  --sim-soft: #efe8fb;
+  --shadow: 0 1px 1px rgb(0 0 0 / 4%), 0 4px 12px rgb(0 0 0 / 6%), 0 16px 40px rgb(0 0 0 / 8%);
+  --material-edge: color-mix(in srgb, var(--ink) 11%, transparent);
+  --material-highlight: rgb(255 255 255 / 65%);
+  --material-chrome: color-mix(in srgb, var(--glass-strong) 88%, transparent);
+  --material-content: color-mix(in srgb, var(--surface) 76%, transparent);
+  --shadow-window: 0 28px 80px rgb(10 20 43 / 18%), 0 3px 12px rgb(0 0 0 / 8%);
+  --shadow-control: inset 0 1px 0 var(--material-highlight), 0 3px 10px rgb(10 20 43 / 5%);
+  --radius-window: 32px;
+  --radius-control: 22px;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --shadow-lift: 0 2px 4px rgb(0 0 0 / 6%), 0 12px 28px rgb(0 0 0 / 12%), 0 30px 60px rgb(0 0 0 / 10%);
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]):not([data-theme="contrast"]) {
+    --wallpaper:
+      radial-gradient(1200px 800px at 12% 8%, #23456d 0%, transparent 60%),
+      radial-gradient(1000px 700px at 92% 18%, #37304f 0%, transparent 55%),
+      radial-gradient(1100px 800px at 70% 100%, #173c43 0%, transparent 60%),
+      linear-gradient(160deg, #090e17, #13151f);
+    --material-highlight: rgb(255 255 255 / 16%);
+    --bg: #090e17;
+    --glass: rgb(29 35 49 / 78%);
+    --glass-strong: rgb(35 42 57 / 92%);
+    --surface: #191e2a;
+    --surface-2: #252d3b;
+    --ink: #f5f5f7;
+    --ink-2: #c7c7cc;
+    --line: rgb(235 235 245 / 16%);
+    --line-strong: rgb(235 235 245 / 38%);
+    --hairline: 1px solid rgb(255 255 255 / 10%);
+    --accent: #4da3ff;
+    --accent-hover: #6fb5ff;
+    --accent-ink: #00152e;
+    --accent-soft: #0f2a4a;
+    --focus: #ffd60a;
+    --ok: #32d74b;
+    --ok-soft: #0f2e17;
+    --warn: #ffb340;
+    --warn-soft: #36260b;
+    --danger: #ff6961;
+    --danger-soft: #3a1414;
+    --info: #4da3ff;
+    --info-soft: #0f2a4a;
+    --sim: #c9a8ff;
+    --sim-soft: #251a3d;
+    --shadow: 0 1px 1px rgb(0 0 0 / 30%), 0 8px 24px rgb(0 0 0 / 35%);
+    --shadow-lift: 0 12px 32px rgb(0 0 0 / 45%);
+    color-scheme: dark;
+  }
+}
+
+:root[data-theme="dark"] {
+  --wallpaper:
+    radial-gradient(1200px 800px at 12% 8%, #23456d 0%, transparent 60%),
+    radial-gradient(1000px 700px at 92% 18%, #37304f 0%, transparent 55%),
+    radial-gradient(1100px 800px at 70% 100%, #173c43 0%, transparent 60%),
+    linear-gradient(160deg, #090e17, #13151f);
+  --material-highlight: rgb(255 255 255 / 16%);
+  --bg: #090e17;
+  --glass: rgb(29 35 49 / 78%);
+  --glass-strong: rgb(35 42 57 / 92%);
+  --surface: #191e2a;
+  --surface-2: #252d3b;
+  --ink: #f5f5f7;
+  --ink-2: #c7c7cc;
+  --line: rgb(235 235 245 / 16%);
+  --line-strong: rgb(235 235 245 / 38%);
+  --hairline: 1px solid rgb(255 255 255 / 10%);
+  --accent: #4da3ff;
+  --accent-hover: #6fb5ff;
+  --accent-ink: #00152e;
+  --accent-soft: #0f2a4a;
+  --focus: #ffd60a;
+  --ok: #32d74b;
+  --ok-soft: #0f2e17;
+  --warn: #ffb340;
+  --warn-soft: #36260b;
+  --danger: #ff6961;
+  --danger-soft: #3a1414;
+  --info: #4da3ff;
+  --info-soft: #0f2a4a;
+  --sim: #c9a8ff;
+  --sim-soft: #251a3d;
+  --shadow: 0 1px 1px rgb(0 0 0 / 30%), 0 8px 24px rgb(0 0 0 / 35%);
+  --shadow-lift: 0 12px 32px rgb(0 0 0 / 45%);
+  color-scheme: dark;
+}
+
+/* High contrast: no glass, no gradients, no transparency. */
+:root[data-theme="contrast"] {
+  --wallpaper: #000000;
+  --bg: #000000;
+  --glass: #000000;
+  --glass-strong: #000000;
+  --glass-blur: none;
+  --surface: #000000;
+  --surface-2: #141414;
+  --ink: #ffffff;
+  --ink-2: #ffffff;
+  --line: #ffffff;
+  --line-strong: #ffffff;
+  --hairline: 2px solid #ffffff;
+  --accent: #ffe600;
+  --accent-hover: #fff27a;
+  --accent-ink: #000000;
+  --accent-soft: #2b2700;
+  --focus: #00e5ff;
+  --ok: #7dff9e;
+  --ok-soft: #002b0e;
+  --warn: #ffd166;
+  --warn-soft: #2e2200;
+  --danger: #ff7b7b;
+  --danger-soft: #330000;
+  --info: #9cc8ff;
+  --info-soft: #001a33;
+  --sim: #e0ccff;
+  --sim-soft: #1c0f33;
+  --shadow: none;
+  --shadow-lift: none;
+  --material-edge: #fff;
+  --material-highlight: transparent;
+  --material-chrome: #000;
+  --material-content: #000;
+  --shadow-window: none;
+  --shadow-control: none;
+  color-scheme: dark;
+}
+
+/* The "Easy-read font" setting. */
+:root[data-font="easy-read"] {
+  --font: "Atkinson Hyperlegible", system-ui, sans-serif;
+  --font-display: "Atkinson Hyperlegible", system-ui, sans-serif;
+}

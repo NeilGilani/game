@@ -111,6 +111,18 @@ export interface NoiseModel {
   /** Jitter on the head rotation (degrees) and translation (cm) reported in the matrix. */
   poseDeg: number;
   poseCm: number;
+  /**
+   * A systematic shift of the detected iris centre, camera pixels [x, y], the same on every frame:
+   * what new glasses (a lens displaces the iris image), a reflection or a change of lighting do to
+   * the landmarks. Zero unless a scenario sets it.
+   */
+  irisBiasPx?: [number, number];
+  /**
+   * An iris shift that grows with head turn, camera pixels per degree of yaw [x, y]: a tracker whose
+   * iris estimate leans as the face turns (real landmark models have pose-dependent biases this
+   * face otherwise lacks). Zero unless a scenario sets it.
+   */
+  irisBiasPerYawPx?: [number, number];
 }
 
 export const TYPICAL_NOISE: NoiseModel = { landmarkPx: 0.6, irisPx: 0.8, poseDeg: 0.6, poseCm: 0.4 };
@@ -233,7 +245,12 @@ export class SyntheticFace {
       const right = unit3(cross(opticalHead, [0, 1, 0]));
       const down = unit3(cross(right, opticalHead));
       const ir = IRIS_DIAMETER_CM / 2;
-      const shift: [number, number] = [g() * n.irisPx, g() * n.irisPx];
+      const perYaw = n.irisBiasPerYawPx ?? [0, 0];
+      const bias = [
+        (n.irisBiasPx?.[0] ?? 0) + perYaw[0] * head.yawDeg,
+        (n.irisBiasPx?.[1] ?? 0) + perYaw[1] * head.yawDeg,
+      ];
+      const shift: [number, number] = [g() * n.irisPx + bias[0]!, g() * n.irisPx + bias[1]!];
       // When the lids are closing the iris landmarks become unreliable, as in MediaPipe.
       const blinkPx = input.closure > 0.5 ? 4 : 0;
       const ringLocal: Vec3[] = [

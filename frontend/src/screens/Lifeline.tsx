@@ -1,3 +1,4 @@
+import { NetworkDemoControls } from "../components/Synapse";
 import { useEffect, useState } from "react";
 import { api, lifelineApi } from "../api/client";
 import type {
@@ -187,8 +188,8 @@ export function LifelineHome() {
             <li>
               <Icon name="bell" size={20} />
               <span>
-                <strong>Look at Help</strong>, top left on every screen. When scanning, it's always the first
-                choice.
+                <strong>Look at Help</strong>, the red button at the left of the dock on every screen. When
+                scanning, it's always the first choice.
               </span>
             </li>
             <li>
@@ -463,6 +464,10 @@ export function LifelineHome() {
               value={!!faults.data?.lifeline_power_cut}
               onChange={(v) => void api.setFaults({ lifeline_power_cut: v }).then(() => faults.reload())}
             />
+            <div className="stack">
+              <strong>Network (Cisco sentinel)</strong>
+              <NetworkDemoControls />
+            </div>
             <Toggle
               label="Freeze this computer"
               help="Stops heartbeats, like a crash or power cut"

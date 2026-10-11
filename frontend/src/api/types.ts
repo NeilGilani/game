@@ -168,6 +168,53 @@ export interface Reasoning {
   model?: string;
   rationale?: string;
   notes: string[];
+  /** How the Synapse layer routed the planning request, when it did. */
+  route?: SynapseRoute | null;
+}
+
+export type NetworkState = "good" | "slow" | "critical" | "offline" | "unknown";
+
+/** The network as AGENCY sees it: Ray's Cisco sentinel, AGENCY's own check, or a presenter control. */
+export interface NetworkSnapshot {
+  state: NetworkState;
+  source: "cisco" | "probe" | "demo" | "none";
+  detail: string;
+  latency_ms: number | null;
+  simulated: boolean;
+  at: string | null;
+  since: string | null;
+  description: string;
+}
+
+/** One routing decision of the Synapse layer (Ray's Synapse-Mesh, or AGENCY's stand-in router). */
+export interface SynapseRoute {
+  purpose: string;
+  router: "synapse" | "agency";
+  mode: "Ultra-Fusion" | "Lean-Fusion" | "Critical-Fusion" | "Safe-Mode" | string;
+  network: NetworkState;
+  network_source: string;
+  simulated_network: boolean;
+  cap: number;
+  experts: Record<string, number>;
+  ideal: Record<string, number>;
+  mixture: Record<string, number>;
+  method: string;
+  decision: "gemini" | "gemini-lean" | "built-in";
+  reason_ms: number | null;
+  note: string;
+  at: string;
+}
+
+export interface SynapseStatus {
+  configured: boolean;
+  connected: boolean | null;
+  router: string;
+  last_error: string | null;
+  routes: number;
+  last_route: Pick<
+    SynapseRoute,
+    "mode" | "router" | "network" | "mixture" | "decision" | "note" | "at" | "purpose"
+  > | null;
 }
 
 export interface CaseRecord {
@@ -241,7 +288,7 @@ export interface Timeline {
 }
 
 export interface ReasoningStatus {
-  mode: "deterministic" | "cloud" | "cloud_degraded";
+  mode: "deterministic" | "cloud" | "cloud_degraded" | "local" | "local_degraded";
   provider: string | null;
   /** Display name of the cloud model family ("Gemini", "Claude"), or null in deterministic mode. */
   label?: string | null;
@@ -274,6 +321,8 @@ export interface Health {
   automation_paused: boolean;
   auth_required: boolean;
   demo_controls: boolean;
+  network?: NetworkSnapshot;
+  synapse?: SynapseStatus;
 }
 
 export interface Integration {

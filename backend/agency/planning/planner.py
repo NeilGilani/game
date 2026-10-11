@@ -348,6 +348,7 @@ async def make_plan(goal: Goal, provider: ReasoningProvider, *, use_cloud: bool 
             try:
                 plan, notes = validate_plan(draft, goal.goal_type)
                 return plan, {
+                    "route": status.get("route"),
                     "mode": "cloud",
                     "planner": f"{status.get('label') or 'the cloud model'} ({status.get('model')}), "
                     "checked by AGENCY's plan validator",
@@ -364,6 +365,12 @@ async def make_plan(goal: Goal, provider: ReasoningProvider, *, use_cloud: bool 
                 )
     elif not provider.available:
         reasoning["notes"].append("Deterministic demo mode: no cloud model is configured.")
+    route = provider.status().get("route") if provider.available and use_cloud else None
+    if route:
+        reasoning["route"] = route
+        if route.get("decision") == "built-in":
+            reasoning["notes"] = [n for n in reasoning["notes"] if not n.startswith("Cloud planning was unavailable")]
+            reasoning["notes"].append(str(route.get("note")))
     plan, notes = validate_plan(baseline, goal.goal_type)
     reasoning["notes"].extend(notes)
     return plan, reasoning

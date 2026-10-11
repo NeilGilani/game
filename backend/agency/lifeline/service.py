@@ -93,8 +93,11 @@ class LifelineService:
         public_url: str,
         dispatch: DispatchProvider | None = None,
         home: HomeProvider | None = None,
+        network: Any = None,
     ) -> None:
         self.db = db
+        # agency.network.NetworkMonitor (Cisco sentinel or AGENCY's own check), when watching is set up.
+        self.network = network
         self.channels = channels
         self.public_url = public_url.rstrip("/")
         self.lock = asyncio.Lock()
@@ -1560,6 +1563,13 @@ class LifelineService:
             problem = self.dispatch.ready_problem(self._dispatch_info())
             if problem:
                 issues.append(problem)
+        net = self.network.snapshot() if self.network is not None else None
+        if net and net["state"] in {"offline", "critical"}:
+            where = " (Cisco sentinel)" if net["source"] == "cisco" else ""
+            issues.append(
+                f"The network is {net['state']}{where}, so alerts to people can't be sent right now. The alarm on this "
+                "computer still works, and AGENCY sends waiting alerts as soon as the network is back."
+            )
         return issues
 
     def status(self) -> dict[str, Any]:
@@ -1574,6 +1584,7 @@ class LifelineService:
             "ready": not self.problems(),
             "problems": self.problems(),
             "channels": {"twilio_configured": self.channels.twilio_configured, "public_url": self.public_url},
+            "network": self.network.snapshot() if self.network is not None else None,
             "monitor": {
                 "armed": bool(state.get("armed")),
                 "armed_at": state.get("armed_at"),

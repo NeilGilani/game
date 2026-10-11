@@ -21,6 +21,7 @@ frontend/playwright-report/
 *.log
 .DS_Store
 frontend/e2e/fixtures/.cache/
+site/public/app/
 
 # AGENCY OS
 os/desktop/out/

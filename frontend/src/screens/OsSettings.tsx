@@ -2,9 +2,9 @@
  * Settings as big choices (input, calibration, voice, memory, Lifeline, caregiver), plus the voice and memory
  * screens, and Talk's place on Home until the Talk screen (frontend/src/talk) lands.
  */
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { accessToken, coordinatorUrl } from "../api/client";
-import { ConfirmSheet } from "../components/common";
+import { ConfirmSheet, SELECTION_RESET_EVENT } from "../components/common";
 import { Icon } from "../components/Icon";
 import { useAnnounce } from "../state/announcer";
 import type { Suggestion } from "../state/contracts";
@@ -36,10 +36,17 @@ const SETTINGS: Choice[] = [
     path: "/camera",
   },
   {
+    id: "gaze-lab",
+    label: "Gaze lab",
+    sub: "Measure your eye control, tune it",
+    icon: "target",
+    path: "/settings/gaze-lab",
+  },
+  {
     id: "voice",
     label: "Voice",
     sub: "The voice that speaks for you",
-    icon: "speak",
+    icon: "voice",
     path: "/settings/voice",
   },
   {
@@ -81,7 +88,7 @@ function ChoiceGrid({ items, label }: { items: Choice[]; label: string }) {
   );
 }
 
-function Bar({ backTo }: { backTo: string }) {
+function Bar({ backTo, children }: { backTo: string; children?: ReactNode }) {
   return (
     <div className="flow-bar" role="group" aria-label="Move around">
       <button className="btn btn-xl" onClick={() => navigate(backTo)} data-dwell>
@@ -90,21 +97,40 @@ function Bar({ backTo }: { backTo: string }) {
       <button className="btn btn-xl" onClick={() => navigate("/")} data-dwell>
         <Icon name="home" /> Home
       </button>
+      {children}
     </div>
   );
 }
 
 export function SettingsHub() {
+  const [page, setPage] = useState(0);
+  const announce = useAnnounce();
+  const pageSize = 5;
+  const pageCount = Math.ceil(SETTINGS.length / pageSize);
+  const changePage = () => {
+    const next = page === 0 ? 1 : 0;
+    window.dispatchEvent(new Event(SELECTION_RESET_EVENT));
+    setPage(next);
+    announce(`Settings page ${next + 1} of ${pageCount}.`);
+    document.getElementById("settings-heading")?.focus({ preventScroll: true });
+  };
   return (
     <div className="flow" aria-label="Settings">
       <div className="flow-head">
         <div className="eyebrow">
-          <Icon name="gear" size={18} /> Settings
+          <Icon name="gear" size={18} /> Settings · {page + 1} of {pageCount}
         </div>
-        <h1>What would you like to change?</h1>
+        <h1 id="settings-heading" tabIndex={-1}>
+          What would you like to change?
+        </h1>
       </div>
-      <ChoiceGrid items={SETTINGS} label="Settings" />
-      <Bar backTo="/" />
+      <ChoiceGrid items={SETTINGS.slice(page * pageSize, (page + 1) * pageSize)} label="Settings" />
+      <Bar backTo="/">
+        <button className="btn btn-xl settings-page" onClick={changePage} data-dwell>
+          {page === 0 ? "More settings" : "Previous settings"}
+          <Icon name={page === 0 ? "right" : "left"} />
+        </button>
+      </Bar>
     </div>
   );
 }
@@ -273,7 +299,7 @@ export function VoiceSettings() {
               data-dwell
             >
               <span className="choice-pic" aria-hidden>
-                <Icon name={choice.id === v.id ? "check" : "speak"} size={44} />
+                <Icon name={choice.id === v.id ? "check" : "voice"} size={44} />
               </span>
               <span className="choice-label">{v.name}</span>
               <span className="choice-sub">

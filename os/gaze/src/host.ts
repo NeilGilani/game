@@ -43,6 +43,11 @@ export type GazeCommand =
   | { type: "calibration.forget" }
   | { type: "selection"; targetId: string; rect: ScreenRect; t: number; dwellStartT: number }
   | { type: "undo"; targetId: string; t: number }
+  /** Show the 2-second touch-up dot now (after a "touch-up" advice); the result comes as advice. */
+  | { type: "touchup.start"; x?: number; y?: number }
+  | { type: "touchup.cancel" }
+  /** The person changed dwell time or target settings: pace measures afresh. */
+  | { type: "pace.rebase" }
   | { type: "precision"; requestId: string; targets: Target[] }
   /** Opt-in only: the person chose to record landmarks (never video) on this Mac. */
   | { type: "record.start"; consent: true; note?: string }
@@ -71,6 +76,8 @@ export type HostMessage =
     }
   | { type: "host.calibration"; step: CalibrationStepMessage }
   | { type: "host.precision"; requestId: string; decision: PrecisionDecision }
+  /** Draw the touch-up dot here (global points) until a "touch-up-result" advice arrives. */
+  | { type: "host.touchup"; x: number; y: number }
   | { type: "host.advice"; advice: EngineAdvice }
   | { type: "host.recording"; recording: Recording }
   | { type: "host.error"; message: string };
@@ -120,6 +127,8 @@ export interface HostOptions {
 export interface EngineHost {
   engine: GazeEngine;
   command(c: GazeCommand): Promise<void>;
+  /** Track at this many frames a second (the desktop slows the engine while its shell tracks for itself). */
+  setFps(fps: number): void;
   stop(): void;
 }
 
@@ -146,6 +155,8 @@ export async function startEngineHost(options: HostOptions): Promise<EngineHost>
   engine.onAdvice((a) => send({ type: "host.advice", advice: a }));
 
   let mouse: MouseProvider | null = null;
+  let webcam: WebcamProvider | null = null;
+  let fps = 30;
   let current = "none";
   let recorder: Recorder | null = null;
   let offRecord: (() => void) | null = null;
@@ -165,6 +176,8 @@ export async function startEngineHost(options: HostOptions): Promise<EngineHost>
   const use = async (provider: GazeProvider | null, name: string) => {
     engine.detach();
     mouse = provider instanceof MouseProvider ? provider : null;
+    webcam = provider instanceof WebcamProvider ? provider : null;
+    webcam?.setTargetFps(fps);
     current = name;
     if (provider) {
       if (provider instanceof WebcamProvider) provider.onStatus(() => status(provider));
@@ -249,6 +262,18 @@ export async function startEngineHost(options: HostOptions): Promise<EngineHost>
         case "undo":
           engine.undo(c.targetId, c.t);
           return;
+        case "touchup.start": {
+          const at = c.x !== undefined && c.y !== undefined ? { x: c.x, y: c.y } : undefined;
+          const { target } = engine.startTouchUp(at);
+          send({ type: "host.touchup", x: target.x, y: target.y });
+          return;
+        }
+        case "touchup.cancel":
+          engine.cancelTouchUp();
+          return;
+        case "pace.rebase":
+          engine.rebasePace();
+          return;
         case "precision":
           send({ type: "host.precision", requestId: c.requestId, decision: engine.precision(c.targets) });
           return;
@@ -277,6 +302,10 @@ export async function startEngineHost(options: HostOptions): Promise<EngineHost>
   return {
     engine,
     command,
+    setFps(next: number) {
+      fps = Math.max(1, next);
+      webcam?.setTargetFps(fps);
+    },
     stop() {
       offRecord?.();
       engine.detach();

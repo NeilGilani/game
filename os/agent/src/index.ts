@@ -16,3 +16,5 @@ export { findApiKey } from "./model/keys";
 export { FakeMemoryClient, HttpMemoryClient, type MemoryClient } from "./memory";
 export { FakeAgent } from "./fake/fakeAgent";
 export type * from "./types";
+
+export { HttpSynapseRouter, parseRoute, type SynapseRoute, type SynapseRouter } from "./synapse";

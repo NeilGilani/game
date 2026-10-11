@@ -16,6 +16,7 @@ import {
   type ToolOutput,
 } from "../model/types";
 import { asUntrusted, detectInjection } from "../policy/injection";
+import type { SynapseRoute } from "../synapse";
 import { redactSecrets } from "../policy/secrets";
 import type { SafetySettings } from "../policy/settings";
 import { ComputerTier } from "../tools/computer";
@@ -35,6 +36,8 @@ export interface ModelRunInput {
   audit: AuditLog;
   suggestions: Suggestion[];
   safety: SafetySettings;
+  /** How the Synapse layer routed this task (expert lenses and network budget), when it did. */
+  route?: SynapseRoute | null;
 }
 
 const CHROME = /^com\.google\.Chrome/;
@@ -51,11 +54,13 @@ export async function runModel(input: ModelRunInput): Promise<RunResult> {
       : null;
   const specs = [...PLAN_TOOLS, ...(tools.bridge ? BRIDGE_TOOLS : []), ...(tools.native ? NATIVE_TOOLS : [])];
   const specByName = new Map(specs.map((s) => [s.name, s]));
+  const route = input.route;
   const session = model.start({
-    system: SYSTEM_PROMPT,
+    system: route?.brief ? `${SYSTEM_PROMPT}\n\n${route.brief}` : SYSTEM_PROMPT,
     tools: specs,
     computer: computer !== null,
     signal: task.abort.signal,
+    ...(route?.decision === "gemini-lean" ? { thinking: "low" as const } : {}),
   });
   const shownInjections = new Set<string>();
   const stepAttempts = new Map<string, number>();

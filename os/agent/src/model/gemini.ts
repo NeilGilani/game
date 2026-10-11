@@ -1,7 +1,7 @@
 /**
  * Google Gemini through the Interactions API (@google/genai), the default provider.
  *
- * - Model `gemini-3.8-flash` by default (configurable), `thinking_level` configurable (low | medium | high).
+ * - Model `gemini-3.8-flash` by default (configurable), `thinking_level` low by default (AGENCY_AGENT_THINKING).
  * - Custom function tools for the plan, the person, the bridge and agency-native; Gemini Computer Use
  *   (`type: "computer_use"`, environment "desktop") as the fallback tier, with Gemini's own prompt-injection
  *   detection switched on, and the predefined actions agency-native can't do faithfully excluded.
@@ -97,7 +97,8 @@ export class GeminiModel implements AgentModel {
 
   constructor(opts: GeminiOptions) {
     this.model = opts.model ?? GEMINI_DEFAULT_MODEL;
-    this.thinkingLevel = opts.thinkingLevel ?? "medium";
+    // Low by default: each turn of a desktop task must come back in seconds, not tens of seconds.
+    this.thinkingLevel = opts.thinkingLevel ?? "low";
     this.prices = opts.prices ?? GEMINI_38_FLASH_PRICES;
     if (opts.transport) {
       this.transport = opts.transport;
@@ -145,7 +146,7 @@ export class GeminiModel implements AgentModel {
           system_instruction: options.system,
           tools,
           generation_config: {
-            thinking_level: this.thinkingLevel,
+            thinking_level: options.thinking ?? this.thinkingLevel,
             tool_choice: "auto",
             max_output_tokens: 16000,
           },

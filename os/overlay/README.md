@@ -65,8 +65,13 @@ happened.
 
 ## Honest status
 
-- **Verified (macOS 26 arm64 dev Mac, Node 26, headless Chromium 1243)**: 50 Vitest tests and 9 Playwright
+- **Verified (macOS 26 arm64 dev Mac, Node 26, headless Chromium 1243)**: 65 Vitest tests and 9 Playwright
   tests over the fake desktop. These are fake gaze and fake targets only.
+- **Design**: styled with the AGENCY OS design system (`docs/os/DESIGN.md`): tokens from
+  `frontend/src/styles/tokens.css`, the shell's icons, glass, opacity-only motion. Before/after screenshots are in
+  `docs/os/design/` (`DESIGN_SHOTS=after npx playwright test e2e/screenshots.spec.ts`). The overlay follows the
+  system light/dark and reduced-motion settings; AGENCY's own theme and Reduce motion settings don't reach the
+  overlay window yet (needs a host API).
 - **Not verified**: inside the real Electron overlay window, which doesn't exist on `main` yet (Instance 1).
   Not tested with real webcam gaze, against real apps, or with real people. Multi-display has the code path
   (each window filters to its own display) but hasn't been tested.

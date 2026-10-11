@@ -96,6 +96,9 @@ export async function openCamera(): Promise<MediaStream> {
   }
   return navigator.mediaDevices.getUserMedia({
     audio: false,
-    video: { facingMode: "user", width: { ideal: 640 }, height: { ideal: 480 }, frameRate: { ideal: 30 } },
+    // 1280x720: at a normal distance the face fills only a small part of a laptop camera's view, and at
+    // 640x480 each iris was a handful of pixels, too few for steady gaze. Face Landmarker crops the face
+    // and scales it to its own input size, so the extra pixels go to the eyes, at little extra cost.
+    video: { facingMode: "user", width: { ideal: 1280 }, height: { ideal: 720 }, frameRate: { ideal: 30 } },
   });
 }

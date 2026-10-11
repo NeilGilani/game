@@ -59,7 +59,7 @@ body,
   line-height: 1.15;
   text-align: center;
   cursor: pointer;
-  box-shadow: var(--shadow);
+  box-shadow: var(--shadow-control);
   overflow: hidden;
   transition:
     background-color var(--dur-fast) var(--ease-out),
@@ -79,6 +79,10 @@ body,
 }
 .ov-btn .ico {
   flex: none;
+}
+:root[data-theme="contrast"] .ov-btn {
+  border-width: 2px;
+  box-shadow: none;
 }
 .ov-btn img {
   width: 56px;
@@ -144,15 +148,20 @@ body,
   place-items: center;
   width: 52px;
   height: 52px;
-  border-radius: 30%;
-  color: #fff;
-  background: linear-gradient(160deg, color-mix(in srgb, var(--accent) 70%, #fff), var(--accent));
-  box-shadow: 0 2px 6px rgb(0 0 0 / 14%);
 }
-:root[data-theme="contrast"] .ov-plate {
-  background: var(--surface);
-  color: var(--ink);
-  border: var(--hairline);
+/* The shell's sculpted art (components/Icon.tsx AppIcon); high contrast swaps in its flat version. */
+.ov-btn svg.app-art {
+  fill: none;
+  stroke: none;
+}
+.app-art-contrast {
+  display: none;
+}
+:root[data-theme="contrast"] .app-art-sculpture {
+  display: none;
+}
+:root[data-theme="contrast"] .app-art-contrast {
+  display: block;
 }
 .ov-btn .ov-n {
   flex: none;
@@ -359,18 +368,8 @@ body,
   font-size: var(--type-footnote);
 }
 
-/* ---- Motion (DESIGN.md): only on a change the person caused; off with reduced motion ---------- */
+/* ---- Motion (DESIGN.md): hands-free, so opacity only and stationary feedback; off with reduced motion ---- */
 
-@keyframes os-zoom-in {
-  from {
-    opacity: 0;
-    transform: scale(0.95);
-  }
-  to {
-    opacity: 1;
-    transform: none;
-  }
-}
 @keyframes os-fade-in {
   from {
     opacity: 0;
@@ -379,31 +378,28 @@ body,
     opacity: 1;
   }
 }
-@keyframes os-launch {
-  0% {
-    transform: scale(1);
+@keyframes os-chosen {
+  from {
+    box-shadow:
+      0 0 0 6px var(--accent),
+      var(--shadow-control);
   }
-  40% {
-    transform: scale(1.06);
-  }
-  100% {
-    transform: scale(1);
+  to {
+    box-shadow: var(--shadow-control);
   }
 }
-/* A panel opens like Launchpad; a new page of choices fades in. Both follow a selection, during the dwell
-   engine's refractory pause, so nothing moves while the person is looking at it. */
+/* A panel and its new choices fade in after a selection, during the dwell engine's refractory pause. Nothing
+   moves or changes size, so a target never shifts under a steady gaze. */
 .ov-panel,
 .ov-keyboard,
-.ov-map {
-  animation: os-zoom-in var(--dur) var(--spring) both;
-}
+.ov-map,
 .ov-btn[data-kind="item"],
 .ov-btn[data-kind="nav"] {
-  animation: os-fade-in var(--dur-fast) var(--ease-out) both;
+  animation: os-fade-in var(--dur) var(--ease-out) both;
 }
-/* The control just chosen "launches" (a short scale pulse). */
+/* The control just chosen glows briefly in place (stationary selection feedback). */
 .ov-btn[data-launched] {
-  animation: os-launch var(--dur-slow) var(--spring);
+  animation: os-chosen var(--dur-slow) var(--ease-out);
 }
 
 @media (prefers-reduced-motion: reduce) {

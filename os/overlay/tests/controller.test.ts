@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { center } from "../src/core/geometry";
 import { GAP, MIN_TARGET } from "../src/core/layout";
 import { gapBetween, overlapArea } from "./reexports";
+import { SHELL_OWNER } from "../src/core/controller";
 import { axTarget, setup, snapshot } from "./helpers";
 
 describe("protected rail", () => {
@@ -420,5 +421,34 @@ describe("modes from main", () => {
     expect(host.stopped).toBe(0); // no echo back to main
     ctrl.applyMode({ type: "paused", on: true });
     expect(ctrl.view().paused).toBe(true);
+  });
+});
+
+describe("over AGENCY's own window", () => {
+  it("draws nothing and presses nothing while the shell is in front, then comes back", () => {
+    const { ctrl, host } = setup();
+    ctrl.setTargets(snapshot([axTarget("row", 600, 400, 200, 100)]));
+    expect(ctrl.buttons().some((b) => b.id === "overlay:help")).toBe(true);
+
+    ctrl.setTargets({ t: 1, owner: SHELL_OWNER, targets: [], truncated: false });
+    expect(ctrl.standingDown()).toBe(true);
+    expect(ctrl.buttons()).toEqual([]);
+    for (let t = 2000; t < 4000; t += 16) {
+      ctrl.handleGaze({
+        type: "sample",
+        sample: { t, x: 700, y: 450, confidence: 0.9, fixation: true, source: "mouse" },
+      });
+      ctrl.tick(t);
+    }
+    const view = ctrl.view();
+    expect(view.cursor).toBeNull();
+    expect(view.panel).toBeNull();
+    expect(view.focus).toBeNull();
+    expect(host.nativeCalls("ax.press")).toHaveLength(0);
+    expect(host.nativeCalls("input.click")).toHaveLength(0);
+
+    ctrl.setTargets(snapshot([axTarget("row", 600, 400, 200, 100)]));
+    expect(ctrl.standingDown()).toBe(false);
+    expect(ctrl.buttons().some((b) => b.id === "overlay:help")).toBe(true);
   });
 });

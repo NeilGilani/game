@@ -1,17 +1,6 @@
-/* Tokens from frontend/src/styles (switch to docs/os/DESIGN.md when it lands). */
+@import "../../../../../frontend/src/styles/tokens.css";
 :root {
-  --ink: #111a26;
-  --muted: #4a4f57;
-  --accent: #0b6b5c;
-  --font: "Atkinson Hyperlegible", -apple-system, system-ui, sans-serif;
-  color-scheme: light dark;
-}
-@media (prefers-color-scheme: dark) {
-  :root {
-    --ink: #eef2f7;
-    --muted: #b8c0cc;
-    --accent: #5fc7b3;
-  }
+  --muted: var(--ink-2);
 }
 html,
 body {
@@ -34,7 +23,7 @@ main {
 h1 {
   margin: 12px 0 4px;
   font-size: 30px;
-  letter-spacing: 0.02em;
+  letter-spacing: -0.04em;
 }
 .version {
   color: var(--accent);

@@ -1,16 +1,28 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import type { InputMode } from "../api/types";
 import type { CameraErrorKind } from "../vision/camera";
-import { type CalibrationModel, type FeatureSet, isCalibrationModel } from "../vision/calibration";
+import { type StoredCalibration, isStoredCalibration } from "../vision/calibrationStore";
 import { type VisionStatus, visionEngine, type VisionEngine } from "../vision/tracker";
 import { usePreferences } from "./preferences";
 
-const CALIBRATION_KEY = "agency.calibration";
+/** Eye calibrations from the gaze engine (v2). The old key held legacy models, which are no longer used. */
+/** v3: scans with RealEye's eye model. Older saved scans are ignored, so the scan runs again by itself. */
+const CALIBRATION_KEY = "agency.calibration.v3";
+const LEGACY_CALIBRATION_KEYS = ["agency.calibration", "agency.calibration.v2"];
 const CAMERA_OK_KEY = "agency.cameraConsented";
 
 export const MODE_LABELS: Record<InputMode, { short: string; long: string; camera: boolean }> = {
-  gaze: { short: "Eye gaze", long: "Eye gaze with dwell (webcam)", camera: true },
-  head: { short: "Head pointer", long: "Head movement with dwell (webcam)", camera: true },
+  // Eye cursor first: it's the default and needs no calibration. Listed in this order everywhere.
+  head: {
+    short: "Eye cursor",
+    long: "Eye cursor: follows your eye in the camera, hold to select (no calibration)",
+    camera: true,
+  },
+  gaze: {
+    short: "Eye gaze (calibrated)",
+    long: "Eye gaze with dwell (webcam), after a 5-second eye scan",
+    camera: true,
+  },
   scan_blink: { short: "Blink switch", long: "Scanning, long blink to select (webcam)", camera: true },
   scan_key: {
     short: "Key switch",
@@ -20,13 +32,7 @@ export const MODE_LABELS: Record<InputMode, { short: string; long: string; camer
   pointer: { short: "Mouse & keys", long: "Mouse, trackpad, keyboard or touch", camera: false },
 };
 
-export function featureSetFor(mode: InputMode): FeatureSet | null {
-  if (mode === "gaze") return "gaze";
-  if (mode === "head") return "head";
-  return null;
-}
-
-function loadCalibration(): { model: CalibrationModel | null; remembered: boolean } {
+function loadCalibration(): { model: StoredCalibration | null; remembered: boolean } {
   for (const [storage, remembered] of [
     [localStorage, true],
     [sessionStorage, false],
@@ -35,7 +41,7 @@ function loadCalibration(): { model: CalibrationModel | null; remembered: boolea
       const raw = storage.getItem(CALIBRATION_KEY);
       if (!raw) continue;
       const parsed: unknown = JSON.parse(raw);
-      if (isCalibrationModel(parsed)) return { model: parsed, remembered };
+      if (isStoredCalibration(parsed)) return { model: parsed, remembered };
     } catch {
       /* ignore corrupt or unavailable storage */
     }
@@ -51,10 +57,11 @@ interface InputState {
   vision: VisionEngine;
   status: VisionStatus;
   error: CameraErrorKind | null;
-  calibration: CalibrationModel | null;
+  /** The eye calibration (eye gaze only; the head pointer needs none). */
+  calibration: StoredCalibration | null;
   calibrationRemembered: boolean;
   calibrationNeeded: boolean;
-  setCalibration: (model: CalibrationModel | null, remember: boolean) => void;
+  setCalibration: (model: StoredCalibration | null, remember: boolean) => void;
   eyeControlPaused: boolean;
   setEyeControlPaused: (paused: boolean) => void;
   tracking: Tracking;
@@ -98,31 +105,33 @@ export function InputProvider({ children }: { children: ReactNode }) {
     [vision],
   );
 
-  const set = featureSetFor(mode);
-  const usable = calibration && set && calibration.set === set ? calibration : null;
   useEffect(() => {
-    vision.setCalibration(usable);
-  }, [vision, usable]);
+    vision.setCalibration(calibration);
+  }, [vision, calibration]);
 
+  // The head pointer needs no calibration: it starts centred on the current head pose.
   useEffect(() => {
-    vision.setSmoothing(Math.max(0, Math.min(1, 1 - (prefs.dwell_stability_px - 10) / 290)));
-  }, [vision, prefs.dwell_stability_px]);
+    vision.setKind(mode === "head" ? "head" : "gaze");
+  }, [vision, mode]);
 
-  // Start the camera automatically for camera modes once the person has granted access before.
+  // Start the camera automatically for camera modes once the person has granted access before. The hosted web
+  // demo starts it straight away (the browser asks first), so a visitor begins with the eye cursor; the mouse still works.
   useEffect(() => {
-    let consented = false;
+    let consented = import.meta.env.VITE_WEB_DEMO === "1";
     try {
-      consented = localStorage.getItem(CAMERA_OK_KEY) === "1";
+      consented ||= localStorage.getItem(CAMERA_OK_KEY) === "1";
     } catch {
-      consented = false;
+      /* storage unavailable */
     }
     if (usesCamera && consented && vision.status === "off") void vision.start();
   }, [usesCamera, vision]);
 
-  const setCalibration = useCallback((model: CalibrationModel | null, remember: boolean) => {
+  const setCalibration = useCallback((model: StoredCalibration | null, remember: boolean) => {
     try {
-      localStorage.removeItem(CALIBRATION_KEY);
-      sessionStorage.removeItem(CALIBRATION_KEY);
+      for (const storage of [localStorage, sessionStorage]) {
+        storage.removeItem(CALIBRATION_KEY);
+        for (const key of LEGACY_CALIBRATION_KEYS) storage.removeItem(key);
+      }
       if (model) (remember ? localStorage : sessionStorage).setItem(CALIBRATION_KEY, JSON.stringify(model));
     } catch {
       /* storage unavailable: keep in memory only */
@@ -136,9 +145,9 @@ export function InputProvider({ children }: { children: ReactNode }) {
     vision,
     status,
     error,
-    calibration: usable,
+    calibration,
     calibrationRemembered: remembered,
-    calibrationNeeded: !!set && !usable,
+    calibrationNeeded: mode === "gaze" && !calibration,
     setCalibration,
     eyeControlPaused,
     setEyeControlPaused,

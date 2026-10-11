@@ -9,3 +9,5 @@ google-genai>=2.29,<3
 anthropic>=1.10,<2
 # Memory encryption at rest (AES-256-GCM). Versions pinned in constraints.txt, incl. the Intel-Mac line.
 cryptography>=45
+# HTTP client for the optional on-device model (Synapse-Mesh); also used by the cloud SDKs.
+httpx>=0.27,<1

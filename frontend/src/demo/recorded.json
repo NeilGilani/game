@@ -1,0 +1,3003 @@
+{
+  "captured_at": 1791681492.9453292,
+  "GET /api/health": {
+    "status": "ok",
+    "service": "agency-coordinator",
+    "version": "0.1.0",
+    "time": "2026-10-11T01:18:12.974Z",
+    "started_at": "2026-10-11T01:18:05.342Z",
+    "node": {
+      "role": "web-demo",
+      "hostname": "your browser",
+      "system": "Web",
+      "machine": "browser",
+      "device_model": null,
+      "is_raspberry_pi": false,
+      "python": "n/a"
+    },
+    "database": {
+      "ok": true,
+      "schema_version": 5
+    },
+    "reasoning": {
+      "mode": "deterministic",
+      "provider": null,
+      "label": null,
+      "model": null,
+      "state": "not_configured",
+      "description": "Deterministic demo mode: built-in plans and rules. Cloud reasoning is switched off (AGENCY_REASONING=deterministic)."
+    },
+    "network": {
+      "state": "unknown",
+      "source": "none",
+      "detail": "",
+      "latency_ms": null,
+      "simulated": false,
+      "at": null,
+      "since": null,
+      "description": "Network watching isn't set up."
+    },
+    "synapse": {
+      "configured": false,
+      "connected": null,
+      "router": "AGENCY stand-in router",
+      "last_error": null,
+      "routes": 0,
+      "last_route": null
+    },
+    "automation_paused": false,
+    "auth_required": false,
+    "demo_controls": true
+  },
+  "GET /api/approvals": [],
+  "GET /api/cases": [],
+  "GET /api/activity": [],
+  "GET /api/lifeline/status": {
+    "server_time": "2026-10-11T01:18:12.983Z",
+    "settings": {
+      "consent": true,
+      "consent_note": "Recorded for the fictional demo profile. A real user confirms this themselves in Lifeline setup.",
+      "consented_at": "2026-10-11T01:18:05.229Z",
+      "contacts": [
+        {
+          "id": "jordan",
+          "name": "Jordan",
+          "role": "caregiver",
+          "channel": "demo",
+          "address": "",
+          "priority": 1,
+          "enabled": true
+        },
+        {
+          "id": "morgan",
+          "name": "Morgan",
+          "role": "neighbour",
+          "channel": "demo",
+          "address": "",
+          "priority": 2,
+          "enabled": true
+        },
+        {
+          "id": "monitoring",
+          "name": "Demo Monitoring Center",
+          "role": "monitoring_service",
+          "channel": "demo",
+          "address": "",
+          "priority": 3,
+          "enabled": true
+        }
+      ],
+      "cancel_window_s": 8,
+      "ack_timeout_s": 45,
+      "watchdog_timeout_s": 30,
+      "checkin_interval_min": 0,
+      "checkin_response_s": 90,
+      "alert_on_signal_unavailable": false,
+      "signal_grace_s": 180,
+      "responder": {
+        "person_name": "Riley",
+        "address": "Demo address: 100 Example Street, Apt 2 (fictional). Key safe by the door, code with Jordan.",
+        "communication": "Can't speak. Answers yes/no with eye movements: look up for yes, close eyes for no.",
+        "breathing": "Uses a home ventilator (BiPAP) at night and when tired. Check the mask and tubing first.",
+        "medical": "ALS (fictional demo profile).",
+        "allergies": "Penicillin (demo).",
+        "medications": "Riluzole (demo).",
+        "advance_directive": "Copy on the fridge (demo).",
+        "notes": "Please talk to Riley directly. They can hear and understand everything."
+      },
+      "emergency_number": "911",
+      "critical_alert_everyone": true,
+      "plans": {
+        "breathing": [
+          "If Riley isn't breathing or won't respond, call 911 now.",
+          "Check the mask is on and sealed. Re-seat it if it has slipped.",
+          "Check the tubing is connected at the mask and at the ventilator.",
+          "Check the ventilator is on, plugged in and not alarming.",
+          "Ask Riley if breathing is better now."
+        ],
+        "choking": [
+          "If Riley isn't breathing or won't respond, call 911 now.",
+          "Sit Riley upright if you can.",
+          "Use the suction machine the way Riley's care team showed you.",
+          "Ask Riley if it is better now."
+        ],
+        "equipment": [
+          "Read the alarm message on the ventilator screen.",
+          "Check it is plugged in and the power is on. Switch to the backup battery if needed.",
+          "Check the mask and tubing connections.",
+          "If the ventilator won't run and Riley is struggling to breathe, call 911."
+        ],
+        "general": [
+          "Go to Riley straight away.",
+          "Talk to Riley and ask yes/no questions: Riley looks up for yes and closes their eyes for no.",
+          "If Riley isn't breathing or won't respond, call 911 now.",
+          "Check the ventilator mask and tubing."
+        ],
+        "other": ["Go to Riley and ask yes/no questions to find out what's wrong."],
+        "pain": [
+          "Ask Riley yes/no questions to find where it hurts.",
+          "Help Riley change position if that is part of the care plan.",
+          "If the pain is in the chest or severe, call 911."
+        ],
+        "position": [
+          "Check Riley isn't trapped, slipping or pressed against anything.",
+          "Reposition Riley the way the care team showed you.",
+          "Ask Riley if it is better now."
+        ]
+      },
+      "plans_note": "Example care plan for the fictional demo profile. A real plan must be written with the person's care team.",
+      "dispatch": {
+        "consent": true,
+        "consented_at": "2026-10-11T01:18:05.229Z",
+        "auto_after_s": 90,
+        "address": {
+          "line1": "100 Example Street",
+          "line2": "Apt 2",
+          "city": "Santa Cruz",
+          "state": "CA",
+          "zip": "95060"
+        },
+        "phone": "+18315550142",
+        "entry": "Key safe by the front door (demo). The door can also be unlocked remotely.",
+        "pin": "4321"
+      },
+      "home": {
+        "lights_on_alert": true,
+        "unlock_for_responders": true,
+        "unlock_for_emergency_services": true,
+        "relock_after_min": 15,
+        "watch_power": true,
+        "power_critical_minutes": 20
+      }
+    },
+    "ready": true,
+    "problems": [],
+    "channels": {
+      "twilio_configured": false,
+      "public_url": "http://127.0.0.1:8000"
+    },
+    "network": {
+      "state": "unknown",
+      "source": "none",
+      "detail": "",
+      "latency_ms": null,
+      "simulated": false,
+      "at": null,
+      "since": null,
+      "description": "Network watching isn't set up."
+    },
+    "monitor": {
+      "armed": false,
+      "armed_at": null,
+      "last_heartbeat_at": null,
+      "seconds_since_heartbeat": null,
+      "last_heartbeat": null,
+      "signal_unready_since": null,
+      "next_checkin_at": null,
+      "checkin_pending_since": null,
+      "checkin_last_ok_at": null
+    },
+    "open_alert": null,
+    "recent": [],
+    "rescue": {
+      "situations": [
+        {
+          "key": "breathing",
+          "label": "Breathing or mask",
+          "urgency": "critical"
+        },
+        {
+          "key": "choking",
+          "label": "Choking or secretions",
+          "urgency": "critical"
+        },
+        {
+          "key": "equipment",
+          "label": "Ventilator or equipment",
+          "urgency": "critical"
+        },
+        {
+          "key": "pain",
+          "label": "Pain",
+          "urgency": "urgent"
+        },
+        {
+          "key": "position",
+          "label": "Position or discomfort",
+          "urgency": "urgent"
+        },
+        {
+          "key": "other",
+          "label": "Something else",
+          "urgency": "urgent"
+        }
+      ],
+      "questions": [
+        {
+          "key": "breathing",
+          "text": "Is it your breathing?"
+        },
+        {
+          "key": "better",
+          "text": "Is it getting better?"
+        },
+        {
+          "key": "pain",
+          "text": "Are you in pain?"
+        },
+        {
+          "key": "ambulance",
+          "text": "Do you want an ambulance?"
+        },
+        {
+          "key": "hurry",
+          "text": "Should I hurry?"
+        },
+        {
+          "key": "ok",
+          "text": "Are you OK right now?"
+        }
+      ]
+    },
+    "dispatch": {
+      "provider": "Demo Emergency Dispatch",
+      "simulated": true,
+      "sandbox": false,
+      "ready": true
+    },
+    "home": {
+      "provider": "Demo Smart Home",
+      "simulated": true,
+      "has_lock": true,
+      "has_lights": true,
+      "has_power": true,
+      "state": {
+        "provider": "Demo Smart Home",
+        "simulated": true,
+        "door": "locked",
+        "lights": "off",
+        "power": {
+          "mains": true,
+          "battery_minutes": 45.0
+        }
+      }
+    }
+  },
+  "GET /api/lifeline/report": {
+    "alerts": 0,
+    "tests": 0,
+    "real": 0,
+    "cancelled_in_countdown": 0,
+    "acknowledged": 0,
+    "local_only": 0,
+    "open": 0,
+    "median_seconds_to_acknowledged": null,
+    "max_seconds_to_acknowledged": null,
+    "by_kind": {
+      "help": 0,
+      "watchdog": 0,
+      "checkin_missed": 0,
+      "signal_unavailable": 0,
+      "power_lost": 0
+    },
+    "emergency_services_requested": 0
+  },
+  "GET /api/lifeline/settings": {
+    "consent": true,
+    "consent_note": "Recorded for the fictional demo profile. A real user confirms this themselves in Lifeline setup.",
+    "consented_at": "2026-10-11T01:18:05.229Z",
+    "contacts": [
+      {
+        "id": "jordan",
+        "name": "Jordan",
+        "role": "caregiver",
+        "channel": "demo",
+        "address": "",
+        "priority": 1,
+        "enabled": true
+      },
+      {
+        "id": "morgan",
+        "name": "Morgan",
+        "role": "neighbour",
+        "channel": "demo",
+        "address": "",
+        "priority": 2,
+        "enabled": true
+      },
+      {
+        "id": "monitoring",
+        "name": "Demo Monitoring Center",
+        "role": "monitoring_service",
+        "channel": "demo",
+        "address": "",
+        "priority": 3,
+        "enabled": true
+      }
+    ],
+    "cancel_window_s": 8,
+    "ack_timeout_s": 45,
+    "watchdog_timeout_s": 30,
+    "checkin_interval_min": 0,
+    "checkin_response_s": 90,
+    "alert_on_signal_unavailable": false,
+    "signal_grace_s": 180,
+    "responder": {
+      "person_name": "Riley",
+      "address": "Demo address: 100 Example Street, Apt 2 (fictional). Key safe by the door, code with Jordan.",
+      "communication": "Can't speak. Answers yes/no with eye movements: look up for yes, close eyes for no.",
+      "breathing": "Uses a home ventilator (BiPAP) at night and when tired. Check the mask and tubing first.",
+      "medical": "ALS (fictional demo profile).",
+      "allergies": "Penicillin (demo).",
+      "medications": "Riluzole (demo).",
+      "advance_directive": "Copy on the fridge (demo).",
+      "notes": "Please talk to Riley directly. They can hear and understand everything."
+    },
+    "emergency_number": "911",
+    "critical_alert_everyone": true,
+    "plans": {
+      "breathing": [
+        "If Riley isn't breathing or won't respond, call 911 now.",
+        "Check the mask is on and sealed. Re-seat it if it has slipped.",
+        "Check the tubing is connected at the mask and at the ventilator.",
+        "Check the ventilator is on, plugged in and not alarming.",
+        "Ask Riley if breathing is better now."
+      ],
+      "choking": [
+        "If Riley isn't breathing or won't respond, call 911 now.",
+        "Sit Riley upright if you can.",
+        "Use the suction machine the way Riley's care team showed you.",
+        "Ask Riley if it is better now."
+      ],
+      "equipment": [
+        "Read the alarm message on the ventilator screen.",
+        "Check it is plugged in and the power is on. Switch to the backup battery if needed.",
+        "Check the mask and tubing connections.",
+        "If the ventilator won't run and Riley is struggling to breathe, call 911."
+      ],
+      "general": [
+        "Go to Riley straight away.",
+        "Talk to Riley and ask yes/no questions: Riley looks up for yes and closes their eyes for no.",
+        "If Riley isn't breathing or won't respond, call 911 now.",
+        "Check the ventilator mask and tubing."
+      ],
+      "other": ["Go to Riley and ask yes/no questions to find out what's wrong."],
+      "pain": [
+        "Ask Riley yes/no questions to find where it hurts.",
+        "Help Riley change position if that is part of the care plan.",
+        "If the pain is in the chest or severe, call 911."
+      ],
+      "position": [
+        "Check Riley isn't trapped, slipping or pressed against anything.",
+        "Reposition Riley the way the care team showed you.",
+        "Ask Riley if it is better now."
+      ]
+    },
+    "plans_note": "Example care plan for the fictional demo profile. A real plan must be written with the person's care team.",
+    "dispatch": {
+      "consent": true,
+      "consented_at": "2026-10-11T01:18:05.229Z",
+      "auto_after_s": 90,
+      "address": {
+        "line1": "100 Example Street",
+        "line2": "Apt 2",
+        "city": "Santa Cruz",
+        "state": "CA",
+        "zip": "95060"
+      },
+      "phone": "+18315550142",
+      "entry": "Key safe by the front door (demo). The door can also be unlocked remotely.",
+      "pin": "4321"
+    },
+    "home": {
+      "lights_on_alert": true,
+      "unlock_for_responders": true,
+      "unlock_for_emergency_services": true,
+      "relock_after_min": 15,
+      "watch_power": true,
+      "power_critical_minutes": 20
+    }
+  },
+  "GET /api/memory/suggestions": [],
+  "GET /api/preferences": {
+    "input_mode": "head",
+    "dwell_ms": 1200,
+    "dwell_stability_px": 60,
+    "target_snap_px": 48,
+    "scan_interval_ms": 1500,
+    "blink_ms": 450,
+    "text_scale": 1.0,
+    "theme": "system",
+    "reduced_motion": false,
+    "show_gaze_cursor": true,
+    "confirm_consequential": true,
+    "auto_fallback_to_scan": true,
+    "speak_feedback": false
+  },
+  "GET /api/runtime": {
+    "node": {
+      "role": "web-demo",
+      "hostname": "your browser",
+      "system": "Web",
+      "machine": "browser",
+      "device_model": null,
+      "is_raspberry_pi": false,
+      "python": "n/a"
+    },
+    "database": {
+      "path": "this browser (web demo)",
+      "schema_version": 5
+    },
+    "reasoning": {
+      "mode": "deterministic",
+      "provider": null,
+      "label": null,
+      "model": null,
+      "state": "not_configured",
+      "description": "Deterministic demo mode: built-in plans and rules. Cloud reasoning is switched off (AGENCY_REASONING=deterministic).",
+      "last_ok_at": null,
+      "last_error": null,
+      "calls": 0,
+      "synapse": {
+        "configured": false,
+        "connected": null,
+        "router": "AGENCY stand-in router",
+        "last_error": null,
+        "last_route": null,
+        "routes": 0
+      },
+      "network": {
+        "state": "unknown",
+        "source": "none",
+        "detail": "",
+        "latency_ms": null,
+        "simulated": false,
+        "at": null,
+        "since": null,
+        "description": "Network watching isn't set up."
+      },
+      "route": null,
+      "history": []
+    },
+    "integrations": [
+      {
+        "key": "repair",
+        "name": "Demo Repair Provider",
+        "description": "A simulated mobility-equipment repair shop with technicians and appointment slots.",
+        "simulated": true,
+        "base_path": "/api/demo-services/repair",
+        "real_world_effects": false
+      },
+      {
+        "key": "funding",
+        "name": "Demo Funding Service",
+        "description": "A simulated assistance program and benefits office. It never approves funding by itself.",
+        "simulated": true,
+        "base_path": "/api/demo-services/funding",
+        "real_world_effects": false
+      },
+      {
+        "key": "calendar",
+        "name": "Demo Calendar",
+        "description": "A simulated personal calendar plus a demo clinic's open appointment times.",
+        "simulated": true,
+        "base_path": "/api/demo-services/calendar",
+        "real_world_effects": false
+      },
+      {
+        "key": "home",
+        "name": "Demo Smart Home",
+        "description": "A simulated front-door lock, hall light and ventilator outlet with a backup battery (Lifeline).",
+        "simulated": true,
+        "base_path": "/api/demo-services/home",
+        "real_world_effects": false
+      },
+      {
+        "key": "dispatch",
+        "name": "Demo Emergency Dispatch",
+        "description": "A simulated staffed dispatch centre for Lifeline. It never contacts real emergency services.",
+        "simulated": true,
+        "base_path": "/api/lifeline",
+        "real_world_effects": false
+      },
+      {
+        "key": "messaging",
+        "name": "Demo Messaging Service",
+        "description": "A simulated outbox. Messages are stored here and are never delivered to real people.",
+        "simulated": true,
+        "base_path": "/api/demo-services/messaging",
+        "real_world_effects": false
+      }
+    ],
+    "automation_paused": false,
+    "held_on_start": [],
+    "privacy": {
+      "camera_processing": "In the browser on this device. No frames, face or eye data are sent to the coordinator or the cloud.",
+      "sent_to_cloud_when_configured": "Goal text and selections, the fictional demo profile summary, the tool catalog and plan.",
+      "stored": "Cases, plans, approvals, tool calls and audit events in SQLite on the coordinator."
+    },
+    "settings": {
+      "step_delay_ms": 120,
+      "allowed_origins": [
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+        "http://localhost:4173",
+        "http://127.0.0.1:4173",
+        "http://localhost:8000",
+        "http://127.0.0.1:8000"
+      ],
+      "auth_required": false,
+      "demo_controls": true
+    }
+  },
+  "GET /api/synapse": {
+    "configured": false,
+    "connected": null,
+    "router": "AGENCY stand-in router",
+    "last_error": null,
+    "last_route": null,
+    "routes": 0,
+    "network": {
+      "state": "unknown",
+      "source": "none",
+      "detail": "",
+      "latency_ms": null,
+      "simulated": false,
+      "at": null,
+      "since": null,
+      "description": "Network watching isn't set up."
+    },
+    "recent": []
+  },
+  "GET /api/lifeline/alerts": [],
+  "GET /api/lifeline/outbox": {
+    "simulated": true,
+    "real_world_delivery": false,
+    "messages": []
+  },
+  "POST /api/lifeline/help": {
+    "alert": {
+      "id": "alert_58ca3bfe",
+      "kind": "help",
+      "source": "help_button",
+      "is_test": false,
+      "status": "pending_cancel",
+      "message": "Help requested",
+      "created_at": "2026-10-11T01:18:13.002Z",
+      "activates_at": "2026-10-11T01:18:21.002Z",
+      "activated_at": null,
+      "level": -1,
+      "cycle": 0,
+      "next_escalation_at": null,
+      "acknowledged_at": null,
+      "acknowledged_by": null,
+      "resolved_at": null,
+      "resolved_by": null,
+      "local_only": false,
+      "updated_at": "2026-10-11T01:18:13.002Z",
+      "situation": null,
+      "urgency": "standard",
+      "critical_since": null,
+      "detail": null,
+      "what": "Riley pressed Help at 1:18:13 AM",
+      "situation_label": "Not said yet",
+      "notifications": [],
+      "events": [
+        {
+          "id": 1,
+          "ts": "2026-10-11T01:18:13.002Z",
+          "kind": "signal",
+          "actor": "user",
+          "message": "Riley pressed Help at 1:18:13 AM. Starting in 8 s unless cancelled.",
+          "data": {
+            "kind": "help",
+            "source": "help_button",
+            "test": false
+          }
+        }
+      ],
+      "waiting_on": [],
+      "metrics": {
+        "seconds_to_first_contact": null,
+        "seconds_to_acknowledged": null,
+        "people_alerted": 0
+      },
+      "questions": [],
+      "pending_question": null,
+      "plan": {
+        "key": "general",
+        "label": "First steps",
+        "steps": [
+          {
+            "index": 0,
+            "key": "general:0",
+            "label": "Go to Riley straight away.",
+            "done_by": null,
+            "done_at": null
+          },
+          {
+            "index": 1,
+            "key": "general:1",
+            "label": "Talk to Riley and ask yes/no questions: Riley looks up for yes and closes their eyes for no.",
+            "done_by": null,
+            "done_at": null
+          },
+          {
+            "index": 2,
+            "key": "general:2",
+            "label": "If Riley isn't breathing or won't respond, call 911 now.",
+            "done_by": null,
+            "done_at": null
+          },
+          {
+            "index": 3,
+            "key": "general:3",
+            "label": "Check the ventilator mask and tubing.",
+            "done_by": null,
+            "done_at": null
+          }
+        ]
+      },
+      "plans_note": "Example care plan for the fictional demo profile. A real plan must be written with the person's care team.",
+      "dispatch": null,
+      "arrivals": [],
+      "door_unlocked_for": null,
+      "door_relocks_at": null,
+      "handoff": [
+        {
+          "label": "Communication",
+          "text": "Can't speak. Answers yes/no with eye movements: look up for yes, close eyes for no."
+        },
+        {
+          "label": "What happened",
+          "text": "Riley pressed Help at 1:18:13 AM."
+        },
+        {
+          "label": "Breathing and equipment",
+          "text": "Uses a home ventilator (BiPAP) at night and when tired. Check the mask and tubing first."
+        },
+        {
+          "label": "Medical",
+          "text": "ALS (fictional demo profile)."
+        },
+        {
+          "label": "Allergies",
+          "text": "Penicillin (demo)."
+        },
+        {
+          "label": "Medications",
+          "text": "Riluzole (demo)."
+        },
+        {
+          "label": "Advance directive",
+          "text": "Copy on the fridge (demo)."
+        }
+      ]
+    },
+    "created": true
+  },
+  "status_open": {
+    "server_time": "2026-10-11T01:18:13.004Z",
+    "settings": {
+      "consent": true,
+      "consent_note": "Recorded for the fictional demo profile. A real user confirms this themselves in Lifeline setup.",
+      "consented_at": "2026-10-11T01:18:05.229Z",
+      "contacts": [
+        {
+          "id": "jordan",
+          "name": "Jordan",
+          "role": "caregiver",
+          "channel": "demo",
+          "address": "",
+          "priority": 1,
+          "enabled": true
+        },
+        {
+          "id": "morgan",
+          "name": "Morgan",
+          "role": "neighbour",
+          "channel": "demo",
+          "address": "",
+          "priority": 2,
+          "enabled": true
+        },
+        {
+          "id": "monitoring",
+          "name": "Demo Monitoring Center",
+          "role": "monitoring_service",
+          "channel": "demo",
+          "address": "",
+          "priority": 3,
+          "enabled": true
+        }
+      ],
+      "cancel_window_s": 8,
+      "ack_timeout_s": 45,
+      "watchdog_timeout_s": 30,
+      "checkin_interval_min": 0,
+      "checkin_response_s": 90,
+      "alert_on_signal_unavailable": false,
+      "signal_grace_s": 180,
+      "responder": {
+        "person_name": "Riley",
+        "address": "Demo address: 100 Example Street, Apt 2 (fictional). Key safe by the door, code with Jordan.",
+        "communication": "Can't speak. Answers yes/no with eye movements: look up for yes, close eyes for no.",
+        "breathing": "Uses a home ventilator (BiPAP) at night and when tired. Check the mask and tubing first.",
+        "medical": "ALS (fictional demo profile).",
+        "allergies": "Penicillin (demo).",
+        "medications": "Riluzole (demo).",
+        "advance_directive": "Copy on the fridge (demo).",
+        "notes": "Please talk to Riley directly. They can hear and understand everything."
+      },
+      "emergency_number": "911",
+      "critical_alert_everyone": true,
+      "plans": {
+        "breathing": [
+          "If Riley isn't breathing or won't respond, call 911 now.",
+          "Check the mask is on and sealed. Re-seat it if it has slipped.",
+          "Check the tubing is connected at the mask and at the ventilator.",
+          "Check the ventilator is on, plugged in and not alarming.",
+          "Ask Riley if breathing is better now."
+        ],
+        "choking": [
+          "If Riley isn't breathing or won't respond, call 911 now.",
+          "Sit Riley upright if you can.",
+          "Use the suction machine the way Riley's care team showed you.",
+          "Ask Riley if it is better now."
+        ],
+        "equipment": [
+          "Read the alarm message on the ventilator screen.",
+          "Check it is plugged in and the power is on. Switch to the backup battery if needed.",
+          "Check the mask and tubing connections.",
+          "If the ventilator won't run and Riley is struggling to breathe, call 911."
+        ],
+        "general": [
+          "Go to Riley straight away.",
+          "Talk to Riley and ask yes/no questions: Riley looks up for yes and closes their eyes for no.",
+          "If Riley isn't breathing or won't respond, call 911 now.",
+          "Check the ventilator mask and tubing."
+        ],
+        "other": ["Go to Riley and ask yes/no questions to find out what's wrong."],
+        "pain": [
+          "Ask Riley yes/no questions to find where it hurts.",
+          "Help Riley change position if that is part of the care plan.",
+          "If the pain is in the chest or severe, call 911."
+        ],
+        "position": [
+          "Check Riley isn't trapped, slipping or pressed against anything.",
+          "Reposition Riley the way the care team showed you.",
+          "Ask Riley if it is better now."
+        ]
+      },
+      "plans_note": "Example care plan for the fictional demo profile. A real plan must be written with the person's care team.",
+      "dispatch": {
+        "consent": true,
+        "consented_at": "2026-10-11T01:18:05.229Z",
+        "auto_after_s": 90,
+        "address": {
+          "line1": "100 Example Street",
+          "line2": "Apt 2",
+          "city": "Santa Cruz",
+          "state": "CA",
+          "zip": "95060"
+        },
+        "phone": "+18315550142",
+        "entry": "Key safe by the front door (demo). The door can also be unlocked remotely.",
+        "pin": "4321"
+      },
+      "home": {
+        "lights_on_alert": true,
+        "unlock_for_responders": true,
+        "unlock_for_emergency_services": true,
+        "relock_after_min": 15,
+        "watch_power": true,
+        "power_critical_minutes": 20
+      }
+    },
+    "ready": true,
+    "problems": [],
+    "channels": {
+      "twilio_configured": false,
+      "public_url": "http://127.0.0.1:8000"
+    },
+    "network": {
+      "state": "unknown",
+      "source": "none",
+      "detail": "",
+      "latency_ms": null,
+      "simulated": false,
+      "at": null,
+      "since": null,
+      "description": "Network watching isn't set up."
+    },
+    "monitor": {
+      "armed": false,
+      "armed_at": null,
+      "last_heartbeat_at": null,
+      "seconds_since_heartbeat": null,
+      "last_heartbeat": null,
+      "signal_unready_since": null,
+      "next_checkin_at": null,
+      "checkin_pending_since": null,
+      "checkin_last_ok_at": null
+    },
+    "open_alert": {
+      "id": "alert_58ca3bfe",
+      "kind": "help",
+      "source": "help_button",
+      "is_test": false,
+      "status": "pending_cancel",
+      "message": "Help requested",
+      "created_at": "2026-10-11T01:18:13.002Z",
+      "activates_at": "2026-10-11T01:18:21.002Z",
+      "activated_at": null,
+      "level": -1,
+      "cycle": 0,
+      "next_escalation_at": null,
+      "acknowledged_at": null,
+      "acknowledged_by": null,
+      "resolved_at": null,
+      "resolved_by": null,
+      "local_only": false,
+      "updated_at": "2026-10-11T01:18:13.002Z",
+      "situation": null,
+      "urgency": "standard",
+      "critical_since": null,
+      "detail": null,
+      "what": "Riley pressed Help at 1:18:13 AM",
+      "situation_label": "Not said yet",
+      "notifications": [],
+      "events": [
+        {
+          "id": 1,
+          "ts": "2026-10-11T01:18:13.002Z",
+          "kind": "signal",
+          "actor": "user",
+          "message": "Riley pressed Help at 1:18:13 AM. Starting in 8 s unless cancelled.",
+          "data": {
+            "kind": "help",
+            "source": "help_button",
+            "test": false
+          }
+        }
+      ],
+      "waiting_on": [],
+      "metrics": {
+        "seconds_to_first_contact": null,
+        "seconds_to_acknowledged": null,
+        "people_alerted": 0
+      },
+      "questions": [],
+      "pending_question": null,
+      "plan": {
+        "key": "general",
+        "label": "First steps",
+        "steps": [
+          {
+            "index": 0,
+            "key": "general:0",
+            "label": "Go to Riley straight away.",
+            "done_by": null,
+            "done_at": null
+          },
+          {
+            "index": 1,
+            "key": "general:1",
+            "label": "Talk to Riley and ask yes/no questions: Riley looks up for yes and closes their eyes for no.",
+            "done_by": null,
+            "done_at": null
+          },
+          {
+            "index": 2,
+            "key": "general:2",
+            "label": "If Riley isn't breathing or won't respond, call 911 now.",
+            "done_by": null,
+            "done_at": null
+          },
+          {
+            "index": 3,
+            "key": "general:3",
+            "label": "Check the ventilator mask and tubing.",
+            "done_by": null,
+            "done_at": null
+          }
+        ]
+      },
+      "plans_note": "Example care plan for the fictional demo profile. A real plan must be written with the person's care team.",
+      "dispatch": null,
+      "arrivals": [],
+      "door_unlocked_for": null,
+      "door_relocks_at": null,
+      "handoff": [
+        {
+          "label": "Communication",
+          "text": "Can't speak. Answers yes/no with eye movements: look up for yes, close eyes for no."
+        },
+        {
+          "label": "What happened",
+          "text": "Riley pressed Help at 1:18:13 AM."
+        },
+        {
+          "label": "Breathing and equipment",
+          "text": "Uses a home ventilator (BiPAP) at night and when tired. Check the mask and tubing first."
+        },
+        {
+          "label": "Medical",
+          "text": "ALS (fictional demo profile)."
+        },
+        {
+          "label": "Allergies",
+          "text": "Penicillin (demo)."
+        },
+        {
+          "label": "Medications",
+          "text": "Riluzole (demo)."
+        },
+        {
+          "label": "Advance directive",
+          "text": "Copy on the fridge (demo)."
+        }
+      ]
+    },
+    "recent": [
+      {
+        "id": "alert_58ca3bfe",
+        "kind": "help",
+        "source": "help_button",
+        "is_test": false,
+        "status": "pending_cancel",
+        "message": "Help requested",
+        "created_at": "2026-10-11T01:18:13.002Z",
+        "activates_at": "2026-10-11T01:18:21.002Z",
+        "activated_at": null,
+        "level": -1,
+        "cycle": 0,
+        "next_escalation_at": null,
+        "acknowledged_at": null,
+        "acknowledged_by": null,
+        "resolved_at": null,
+        "resolved_by": null,
+        "local_only": false,
+        "updated_at": "2026-10-11T01:18:13.002Z",
+        "situation": null,
+        "urgency": "standard",
+        "critical_since": null,
+        "detail": null,
+        "what": "Riley pressed Help at 1:18:13 AM",
+        "metrics": {
+          "seconds_to_first_contact": null,
+          "seconds_to_acknowledged": null,
+          "people_alerted": 0
+        }
+      }
+    ],
+    "rescue": {
+      "situations": [
+        {
+          "key": "breathing",
+          "label": "Breathing or mask",
+          "urgency": "critical"
+        },
+        {
+          "key": "choking",
+          "label": "Choking or secretions",
+          "urgency": "critical"
+        },
+        {
+          "key": "equipment",
+          "label": "Ventilator or equipment",
+          "urgency": "critical"
+        },
+        {
+          "key": "pain",
+          "label": "Pain",
+          "urgency": "urgent"
+        },
+        {
+          "key": "position",
+          "label": "Position or discomfort",
+          "urgency": "urgent"
+        },
+        {
+          "key": "other",
+          "label": "Something else",
+          "urgency": "urgent"
+        }
+      ],
+      "questions": [
+        {
+          "key": "breathing",
+          "text": "Is it your breathing?"
+        },
+        {
+          "key": "better",
+          "text": "Is it getting better?"
+        },
+        {
+          "key": "pain",
+          "text": "Are you in pain?"
+        },
+        {
+          "key": "ambulance",
+          "text": "Do you want an ambulance?"
+        },
+        {
+          "key": "hurry",
+          "text": "Should I hurry?"
+        },
+        {
+          "key": "ok",
+          "text": "Are you OK right now?"
+        }
+      ]
+    },
+    "dispatch": {
+      "provider": "Demo Emergency Dispatch",
+      "simulated": true,
+      "sandbox": false,
+      "ready": true
+    },
+    "home": {
+      "provider": "Demo Smart Home",
+      "simulated": true,
+      "has_lock": true,
+      "has_lights": true,
+      "has_power": true,
+      "state": {
+        "provider": "Demo Smart Home",
+        "simulated": true,
+        "door": "locked",
+        "lights": "off",
+        "power": {
+          "mains": true,
+          "battery_minutes": 45.0
+        }
+      }
+    }
+  },
+  "alert_open": {
+    "id": "alert_58ca3bfe",
+    "kind": "help",
+    "source": "help_button",
+    "is_test": false,
+    "status": "pending_cancel",
+    "message": "Help requested",
+    "created_at": "2026-10-11T01:18:13.002Z",
+    "activates_at": "2026-10-11T01:18:21.002Z",
+    "activated_at": null,
+    "level": -1,
+    "cycle": 0,
+    "next_escalation_at": null,
+    "acknowledged_at": null,
+    "acknowledged_by": null,
+    "resolved_at": null,
+    "resolved_by": null,
+    "local_only": false,
+    "updated_at": "2026-10-11T01:18:13.002Z",
+    "situation": null,
+    "urgency": "standard",
+    "critical_since": null,
+    "detail": null,
+    "what": "Riley pressed Help at 1:18:13 AM",
+    "situation_label": "Not said yet",
+    "notifications": [],
+    "events": [
+      {
+        "id": 1,
+        "ts": "2026-10-11T01:18:13.002Z",
+        "kind": "signal",
+        "actor": "user",
+        "message": "Riley pressed Help at 1:18:13 AM. Starting in 8 s unless cancelled.",
+        "data": {
+          "kind": "help",
+          "source": "help_button",
+          "test": false
+        }
+      }
+    ],
+    "waiting_on": [],
+    "metrics": {
+      "seconds_to_first_contact": null,
+      "seconds_to_acknowledged": null,
+      "people_alerted": 0
+    },
+    "questions": [],
+    "pending_question": null,
+    "plan": {
+      "key": "general",
+      "label": "First steps",
+      "steps": [
+        {
+          "index": 0,
+          "key": "general:0",
+          "label": "Go to Riley straight away.",
+          "done_by": null,
+          "done_at": null
+        },
+        {
+          "index": 1,
+          "key": "general:1",
+          "label": "Talk to Riley and ask yes/no questions: Riley looks up for yes and closes their eyes for no.",
+          "done_by": null,
+          "done_at": null
+        },
+        {
+          "index": 2,
+          "key": "general:2",
+          "label": "If Riley isn't breathing or won't respond, call 911 now.",
+          "done_by": null,
+          "done_at": null
+        },
+        {
+          "index": 3,
+          "key": "general:3",
+          "label": "Check the ventilator mask and tubing.",
+          "done_by": null,
+          "done_at": null
+        }
+      ]
+    },
+    "plans_note": "Example care plan for the fictional demo profile. A real plan must be written with the person's care team.",
+    "dispatch": null,
+    "arrivals": [],
+    "door_unlocked_for": null,
+    "door_relocks_at": null,
+    "handoff": [
+      {
+        "label": "Communication",
+        "text": "Can't speak. Answers yes/no with eye movements: look up for yes, close eyes for no."
+      },
+      {
+        "label": "What happened",
+        "text": "Riley pressed Help at 1:18:13 AM."
+      },
+      {
+        "label": "Breathing and equipment",
+        "text": "Uses a home ventilator (BiPAP) at night and when tired. Check the mask and tubing first."
+      },
+      {
+        "label": "Medical",
+        "text": "ALS (fictional demo profile)."
+      },
+      {
+        "label": "Allergies",
+        "text": "Penicillin (demo)."
+      },
+      {
+        "label": "Medications",
+        "text": "Riluzole (demo)."
+      },
+      {
+        "label": "Advance directive",
+        "text": "Copy on the fridge (demo)."
+      }
+    ]
+  },
+  "POST now": {
+    "id": "alert_58ca3bfe",
+    "kind": "help",
+    "source": "help_button",
+    "is_test": false,
+    "status": "active",
+    "message": "Help requested",
+    "created_at": "2026-10-11T01:18:13.002Z",
+    "activates_at": "2026-10-11T01:18:21.002Z",
+    "activated_at": "2026-10-11T01:18:13.010Z",
+    "level": 0,
+    "cycle": 0,
+    "next_escalation_at": "2026-10-11T01:18:58.010Z",
+    "acknowledged_at": null,
+    "acknowledged_by": null,
+    "resolved_at": null,
+    "resolved_by": null,
+    "local_only": false,
+    "updated_at": "2026-10-11T01:18:13.010Z",
+    "situation": null,
+    "urgency": "standard",
+    "critical_since": null,
+    "detail": null,
+    "what": "Riley pressed Help at 1:18:13 AM",
+    "situation_label": "Not said yet",
+    "notifications": [
+      {
+        "id": "ntf_9320d6fa80",
+        "alert_id": "alert_58ca3bfe",
+        "contact_id": "jordan",
+        "contact_name": "Jordan",
+        "contact_role": "caregiver",
+        "channel": "demo",
+        "purpose": "alert",
+        "level": 0,
+        "cycle": 0,
+        "status": "delivered",
+        "body": "AGENCY ALERT: Riley pressed Help at 1:18:13 AM. Please check on Riley now. Respond here: http://127.0.0.1:8000/respond/bWF4AmrNZGTxv6lAS2IS3C5P",
+        "provider_ref": "simulated",
+        "error": null,
+        "response": null,
+        "responded_at": null,
+        "created_at": "2026-10-11T01:18:13.010Z",
+        "sent_at": "2026-10-11T01:18:13.011Z",
+        "arrived_at": null,
+        "has_link": true
+      }
+    ],
+    "events": [
+      {
+        "id": 1,
+        "ts": "2026-10-11T01:18:13.002Z",
+        "kind": "signal",
+        "actor": "user",
+        "message": "Riley pressed Help at 1:18:13 AM. Starting in 8 s unless cancelled.",
+        "data": {
+          "kind": "help",
+          "source": "help_button",
+          "test": false
+        }
+      },
+      {
+        "id": 2,
+        "ts": "2026-10-11T01:18:13.010Z",
+        "kind": "call_now",
+        "actor": "user",
+        "message": "Riley chose to call now instead of waiting.",
+        "data": {}
+      },
+      {
+        "id": 3,
+        "ts": "2026-10-11T01:18:13.010Z",
+        "kind": "activated",
+        "actor": "system",
+        "message": "Alert started. Contacting Jordan (caregiver).",
+        "data": {}
+      },
+      {
+        "id": 4,
+        "ts": "2026-10-11T01:18:13.010Z",
+        "kind": "lights_on",
+        "actor": "system",
+        "message": "Turned the lights on so helpers can see.",
+        "data": {}
+      },
+      {
+        "id": 5,
+        "ts": "2026-10-11T01:18:13.011Z",
+        "kind": "notified",
+        "actor": "system",
+        "message": "Alert sent to Jordan (caregiver) by simulated phone. Waiting for an answer.",
+        "data": {
+          "channel": "demo",
+          "contact": "jordan",
+          "notification": "ntf_9320d6fa80"
+        }
+      }
+    ],
+    "waiting_on": ["Jordan"],
+    "metrics": {
+      "seconds_to_first_contact": 0.0,
+      "seconds_to_acknowledged": null,
+      "people_alerted": 1
+    },
+    "questions": [],
+    "pending_question": null,
+    "plan": {
+      "key": "general",
+      "label": "First steps",
+      "steps": [
+        {
+          "index": 0,
+          "key": "general:0",
+          "label": "Go to Riley straight away.",
+          "done_by": null,
+          "done_at": null
+        },
+        {
+          "index": 1,
+          "key": "general:1",
+          "label": "Talk to Riley and ask yes/no questions: Riley looks up for yes and closes their eyes for no.",
+          "done_by": null,
+          "done_at": null
+        },
+        {
+          "index": 2,
+          "key": "general:2",
+          "label": "If Riley isn't breathing or won't respond, call 911 now.",
+          "done_by": null,
+          "done_at": null
+        },
+        {
+          "index": 3,
+          "key": "general:3",
+          "label": "Check the ventilator mask and tubing.",
+          "done_by": null,
+          "done_at": null
+        }
+      ]
+    },
+    "plans_note": "Example care plan for the fictional demo profile. A real plan must be written with the person's care team.",
+    "dispatch": null,
+    "arrivals": [],
+    "door_unlocked_for": null,
+    "door_relocks_at": null,
+    "handoff": [
+      {
+        "label": "Communication",
+        "text": "Can't speak. Answers yes/no with eye movements: look up for yes, close eyes for no."
+      },
+      {
+        "label": "What happened",
+        "text": "Riley pressed Help at 1:18:13 AM."
+      },
+      {
+        "label": "Breathing and equipment",
+        "text": "Uses a home ventilator (BiPAP) at night and when tired. Check the mask and tubing first."
+      },
+      {
+        "label": "Medical",
+        "text": "ALS (fictional demo profile)."
+      },
+      {
+        "label": "Allergies",
+        "text": "Penicillin (demo)."
+      },
+      {
+        "label": "Medications",
+        "text": "Riluzole (demo)."
+      },
+      {
+        "label": "Advance directive",
+        "text": "Copy on the fridge (demo)."
+      }
+    ]
+  },
+  "status_calling": {
+    "server_time": "2026-10-11T01:18:14.514Z",
+    "settings": {
+      "consent": true,
+      "consent_note": "Recorded for the fictional demo profile. A real user confirms this themselves in Lifeline setup.",
+      "consented_at": "2026-10-11T01:18:05.229Z",
+      "contacts": [
+        {
+          "id": "jordan",
+          "name": "Jordan",
+          "role": "caregiver",
+          "channel": "demo",
+          "address": "",
+          "priority": 1,
+          "enabled": true
+        },
+        {
+          "id": "morgan",
+          "name": "Morgan",
+          "role": "neighbour",
+          "channel": "demo",
+          "address": "",
+          "priority": 2,
+          "enabled": true
+        },
+        {
+          "id": "monitoring",
+          "name": "Demo Monitoring Center",
+          "role": "monitoring_service",
+          "channel": "demo",
+          "address": "",
+          "priority": 3,
+          "enabled": true
+        }
+      ],
+      "cancel_window_s": 8,
+      "ack_timeout_s": 45,
+      "watchdog_timeout_s": 30,
+      "checkin_interval_min": 0,
+      "checkin_response_s": 90,
+      "alert_on_signal_unavailable": false,
+      "signal_grace_s": 180,
+      "responder": {
+        "person_name": "Riley",
+        "address": "Demo address: 100 Example Street, Apt 2 (fictional). Key safe by the door, code with Jordan.",
+        "communication": "Can't speak. Answers yes/no with eye movements: look up for yes, close eyes for no.",
+        "breathing": "Uses a home ventilator (BiPAP) at night and when tired. Check the mask and tubing first.",
+        "medical": "ALS (fictional demo profile).",
+        "allergies": "Penicillin (demo).",
+        "medications": "Riluzole (demo).",
+        "advance_directive": "Copy on the fridge (demo).",
+        "notes": "Please talk to Riley directly. They can hear and understand everything."
+      },
+      "emergency_number": "911",
+      "critical_alert_everyone": true,
+      "plans": {
+        "breathing": [
+          "If Riley isn't breathing or won't respond, call 911 now.",
+          "Check the mask is on and sealed. Re-seat it if it has slipped.",
+          "Check the tubing is connected at the mask and at the ventilator.",
+          "Check the ventilator is on, plugged in and not alarming.",
+          "Ask Riley if breathing is better now."
+        ],
+        "choking": [
+          "If Riley isn't breathing or won't respond, call 911 now.",
+          "Sit Riley upright if you can.",
+          "Use the suction machine the way Riley's care team showed you.",
+          "Ask Riley if it is better now."
+        ],
+        "equipment": [
+          "Read the alarm message on the ventilator screen.",
+          "Check it is plugged in and the power is on. Switch to the backup battery if needed.",
+          "Check the mask and tubing connections.",
+          "If the ventilator won't run and Riley is struggling to breathe, call 911."
+        ],
+        "general": [
+          "Go to Riley straight away.",
+          "Talk to Riley and ask yes/no questions: Riley looks up for yes and closes their eyes for no.",
+          "If Riley isn't breathing or won't respond, call 911 now.",
+          "Check the ventilator mask and tubing."
+        ],
+        "other": ["Go to Riley and ask yes/no questions to find out what's wrong."],
+        "pain": [
+          "Ask Riley yes/no questions to find where it hurts.",
+          "Help Riley change position if that is part of the care plan.",
+          "If the pain is in the chest or severe, call 911."
+        ],
+        "position": [
+          "Check Riley isn't trapped, slipping or pressed against anything.",
+          "Reposition Riley the way the care team showed you.",
+          "Ask Riley if it is better now."
+        ]
+      },
+      "plans_note": "Example care plan for the fictional demo profile. A real plan must be written with the person's care team.",
+      "dispatch": {
+        "consent": true,
+        "consented_at": "2026-10-11T01:18:05.229Z",
+        "auto_after_s": 90,
+        "address": {
+          "line1": "100 Example Street",
+          "line2": "Apt 2",
+          "city": "Santa Cruz",
+          "state": "CA",
+          "zip": "95060"
+        },
+        "phone": "+18315550142",
+        "entry": "Key safe by the front door (demo). The door can also be unlocked remotely.",
+        "pin": "4321"
+      },
+      "home": {
+        "lights_on_alert": true,
+        "unlock_for_responders": true,
+        "unlock_for_emergency_services": true,
+        "relock_after_min": 15,
+        "watch_power": true,
+        "power_critical_minutes": 20
+      }
+    },
+    "ready": true,
+    "problems": [],
+    "channels": {
+      "twilio_configured": false,
+      "public_url": "http://127.0.0.1:8000"
+    },
+    "network": {
+      "state": "unknown",
+      "source": "none",
+      "detail": "",
+      "latency_ms": null,
+      "simulated": false,
+      "at": null,
+      "since": null,
+      "description": "Network watching isn't set up."
+    },
+    "monitor": {
+      "armed": false,
+      "armed_at": null,
+      "last_heartbeat_at": null,
+      "seconds_since_heartbeat": null,
+      "last_heartbeat": null,
+      "signal_unready_since": null,
+      "next_checkin_at": null,
+      "checkin_pending_since": null,
+      "checkin_last_ok_at": null
+    },
+    "open_alert": {
+      "id": "alert_58ca3bfe",
+      "kind": "help",
+      "source": "help_button",
+      "is_test": false,
+      "status": "active",
+      "message": "Help requested",
+      "created_at": "2026-10-11T01:18:13.002Z",
+      "activates_at": "2026-10-11T01:18:21.002Z",
+      "activated_at": "2026-10-11T01:18:13.010Z",
+      "level": 0,
+      "cycle": 0,
+      "next_escalation_at": "2026-10-11T01:18:58.010Z",
+      "acknowledged_at": null,
+      "acknowledged_by": null,
+      "resolved_at": null,
+      "resolved_by": null,
+      "local_only": false,
+      "updated_at": "2026-10-11T01:18:13.010Z",
+      "situation": null,
+      "urgency": "standard",
+      "critical_since": null,
+      "detail": null,
+      "what": "Riley pressed Help at 1:18:13 AM",
+      "situation_label": "Not said yet",
+      "notifications": [
+        {
+          "id": "ntf_9320d6fa80",
+          "alert_id": "alert_58ca3bfe",
+          "contact_id": "jordan",
+          "contact_name": "Jordan",
+          "contact_role": "caregiver",
+          "channel": "demo",
+          "purpose": "alert",
+          "level": 0,
+          "cycle": 0,
+          "status": "delivered",
+          "body": "AGENCY ALERT: Riley pressed Help at 1:18:13 AM. Please check on Riley now. Respond here: http://127.0.0.1:8000/respond/bWF4AmrNZGTxv6lAS2IS3C5P",
+          "provider_ref": "simulated",
+          "error": null,
+          "response": null,
+          "responded_at": null,
+          "created_at": "2026-10-11T01:18:13.010Z",
+          "sent_at": "2026-10-11T01:18:13.011Z",
+          "arrived_at": null,
+          "has_link": true
+        }
+      ],
+      "events": [
+        {
+          "id": 1,
+          "ts": "2026-10-11T01:18:13.002Z",
+          "kind": "signal",
+          "actor": "user",
+          "message": "Riley pressed Help at 1:18:13 AM. Starting in 8 s unless cancelled.",
+          "data": {
+            "kind": "help",
+            "source": "help_button",
+            "test": false
+          }
+        },
+        {
+          "id": 2,
+          "ts": "2026-10-11T01:18:13.010Z",
+          "kind": "call_now",
+          "actor": "user",
+          "message": "Riley chose to call now instead of waiting.",
+          "data": {}
+        },
+        {
+          "id": 3,
+          "ts": "2026-10-11T01:18:13.010Z",
+          "kind": "activated",
+          "actor": "system",
+          "message": "Alert started. Contacting Jordan (caregiver).",
+          "data": {}
+        },
+        {
+          "id": 4,
+          "ts": "2026-10-11T01:18:13.010Z",
+          "kind": "lights_on",
+          "actor": "system",
+          "message": "Turned the lights on so helpers can see.",
+          "data": {}
+        },
+        {
+          "id": 5,
+          "ts": "2026-10-11T01:18:13.011Z",
+          "kind": "notified",
+          "actor": "system",
+          "message": "Alert sent to Jordan (caregiver) by simulated phone. Waiting for an answer.",
+          "data": {
+            "channel": "demo",
+            "contact": "jordan",
+            "notification": "ntf_9320d6fa80"
+          }
+        }
+      ],
+      "waiting_on": ["Jordan"],
+      "metrics": {
+        "seconds_to_first_contact": 0.0,
+        "seconds_to_acknowledged": null,
+        "people_alerted": 1
+      },
+      "questions": [],
+      "pending_question": null,
+      "plan": {
+        "key": "general",
+        "label": "First steps",
+        "steps": [
+          {
+            "index": 0,
+            "key": "general:0",
+            "label": "Go to Riley straight away.",
+            "done_by": null,
+            "done_at": null
+          },
+          {
+            "index": 1,
+            "key": "general:1",
+            "label": "Talk to Riley and ask yes/no questions: Riley looks up for yes and closes their eyes for no.",
+            "done_by": null,
+            "done_at": null
+          },
+          {
+            "index": 2,
+            "key": "general:2",
+            "label": "If Riley isn't breathing or won't respond, call 911 now.",
+            "done_by": null,
+            "done_at": null
+          },
+          {
+            "index": 3,
+            "key": "general:3",
+            "label": "Check the ventilator mask and tubing.",
+            "done_by": null,
+            "done_at": null
+          }
+        ]
+      },
+      "plans_note": "Example care plan for the fictional demo profile. A real plan must be written with the person's care team.",
+      "dispatch": null,
+      "arrivals": [],
+      "door_unlocked_for": null,
+      "door_relocks_at": null,
+      "handoff": [
+        {
+          "label": "Communication",
+          "text": "Can't speak. Answers yes/no with eye movements: look up for yes, close eyes for no."
+        },
+        {
+          "label": "What happened",
+          "text": "Riley pressed Help at 1:18:13 AM."
+        },
+        {
+          "label": "Breathing and equipment",
+          "text": "Uses a home ventilator (BiPAP) at night and when tired. Check the mask and tubing first."
+        },
+        {
+          "label": "Medical",
+          "text": "ALS (fictional demo profile)."
+        },
+        {
+          "label": "Allergies",
+          "text": "Penicillin (demo)."
+        },
+        {
+          "label": "Medications",
+          "text": "Riluzole (demo)."
+        },
+        {
+          "label": "Advance directive",
+          "text": "Copy on the fridge (demo)."
+        }
+      ]
+    },
+    "recent": [
+      {
+        "id": "alert_58ca3bfe",
+        "kind": "help",
+        "source": "help_button",
+        "is_test": false,
+        "status": "active",
+        "message": "Help requested",
+        "created_at": "2026-10-11T01:18:13.002Z",
+        "activates_at": "2026-10-11T01:18:21.002Z",
+        "activated_at": "2026-10-11T01:18:13.010Z",
+        "level": 0,
+        "cycle": 0,
+        "next_escalation_at": "2026-10-11T01:18:58.010Z",
+        "acknowledged_at": null,
+        "acknowledged_by": null,
+        "resolved_at": null,
+        "resolved_by": null,
+        "local_only": false,
+        "updated_at": "2026-10-11T01:18:13.010Z",
+        "situation": null,
+        "urgency": "standard",
+        "critical_since": null,
+        "detail": null,
+        "what": "Riley pressed Help at 1:18:13 AM",
+        "metrics": {
+          "seconds_to_first_contact": 0.0,
+          "seconds_to_acknowledged": null,
+          "people_alerted": 1
+        }
+      }
+    ],
+    "rescue": {
+      "situations": [
+        {
+          "key": "breathing",
+          "label": "Breathing or mask",
+          "urgency": "critical"
+        },
+        {
+          "key": "choking",
+          "label": "Choking or secretions",
+          "urgency": "critical"
+        },
+        {
+          "key": "equipment",
+          "label": "Ventilator or equipment",
+          "urgency": "critical"
+        },
+        {
+          "key": "pain",
+          "label": "Pain",
+          "urgency": "urgent"
+        },
+        {
+          "key": "position",
+          "label": "Position or discomfort",
+          "urgency": "urgent"
+        },
+        {
+          "key": "other",
+          "label": "Something else",
+          "urgency": "urgent"
+        }
+      ],
+      "questions": [
+        {
+          "key": "breathing",
+          "text": "Is it your breathing?"
+        },
+        {
+          "key": "better",
+          "text": "Is it getting better?"
+        },
+        {
+          "key": "pain",
+          "text": "Are you in pain?"
+        },
+        {
+          "key": "ambulance",
+          "text": "Do you want an ambulance?"
+        },
+        {
+          "key": "hurry",
+          "text": "Should I hurry?"
+        },
+        {
+          "key": "ok",
+          "text": "Are you OK right now?"
+        }
+      ]
+    },
+    "dispatch": {
+      "provider": "Demo Emergency Dispatch",
+      "simulated": true,
+      "sandbox": false,
+      "ready": true
+    },
+    "home": {
+      "provider": "Demo Smart Home",
+      "simulated": true,
+      "has_lock": true,
+      "has_lights": true,
+      "has_power": true,
+      "state": {
+        "provider": "Demo Smart Home",
+        "simulated": true,
+        "door": "locked",
+        "lights": "off",
+        "power": {
+          "mains": true,
+          "battery_minutes": 45.0
+        }
+      }
+    }
+  },
+  "alert_calling": {
+    "id": "alert_58ca3bfe",
+    "kind": "help",
+    "source": "help_button",
+    "is_test": false,
+    "status": "active",
+    "message": "Help requested",
+    "created_at": "2026-10-11T01:18:13.002Z",
+    "activates_at": "2026-10-11T01:18:21.002Z",
+    "activated_at": "2026-10-11T01:18:13.010Z",
+    "level": 0,
+    "cycle": 0,
+    "next_escalation_at": "2026-10-11T01:18:58.010Z",
+    "acknowledged_at": null,
+    "acknowledged_by": null,
+    "resolved_at": null,
+    "resolved_by": null,
+    "local_only": false,
+    "updated_at": "2026-10-11T01:18:13.010Z",
+    "situation": null,
+    "urgency": "standard",
+    "critical_since": null,
+    "detail": null,
+    "what": "Riley pressed Help at 1:18:13 AM",
+    "situation_label": "Not said yet",
+    "notifications": [
+      {
+        "id": "ntf_9320d6fa80",
+        "alert_id": "alert_58ca3bfe",
+        "contact_id": "jordan",
+        "contact_name": "Jordan",
+        "contact_role": "caregiver",
+        "channel": "demo",
+        "purpose": "alert",
+        "level": 0,
+        "cycle": 0,
+        "status": "delivered",
+        "body": "AGENCY ALERT: Riley pressed Help at 1:18:13 AM. Please check on Riley now. Respond here: http://127.0.0.1:8000/respond/bWF4AmrNZGTxv6lAS2IS3C5P",
+        "provider_ref": "simulated",
+        "error": null,
+        "response": null,
+        "responded_at": null,
+        "created_at": "2026-10-11T01:18:13.010Z",
+        "sent_at": "2026-10-11T01:18:13.011Z",
+        "arrived_at": null,
+        "has_link": true
+      }
+    ],
+    "events": [
+      {
+        "id": 1,
+        "ts": "2026-10-11T01:18:13.002Z",
+        "kind": "signal",
+        "actor": "user",
+        "message": "Riley pressed Help at 1:18:13 AM. Starting in 8 s unless cancelled.",
+        "data": {
+          "kind": "help",
+          "source": "help_button",
+          "test": false
+        }
+      },
+      {
+        "id": 2,
+        "ts": "2026-10-11T01:18:13.010Z",
+        "kind": "call_now",
+        "actor": "user",
+        "message": "Riley chose to call now instead of waiting.",
+        "data": {}
+      },
+      {
+        "id": 3,
+        "ts": "2026-10-11T01:18:13.010Z",
+        "kind": "activated",
+        "actor": "system",
+        "message": "Alert started. Contacting Jordan (caregiver).",
+        "data": {}
+      },
+      {
+        "id": 4,
+        "ts": "2026-10-11T01:18:13.010Z",
+        "kind": "lights_on",
+        "actor": "system",
+        "message": "Turned the lights on so helpers can see.",
+        "data": {}
+      },
+      {
+        "id": 5,
+        "ts": "2026-10-11T01:18:13.011Z",
+        "kind": "notified",
+        "actor": "system",
+        "message": "Alert sent to Jordan (caregiver) by simulated phone. Waiting for an answer.",
+        "data": {
+          "channel": "demo",
+          "contact": "jordan",
+          "notification": "ntf_9320d6fa80"
+        }
+      }
+    ],
+    "waiting_on": ["Jordan"],
+    "metrics": {
+      "seconds_to_first_contact": 0.0,
+      "seconds_to_acknowledged": null,
+      "people_alerted": 1
+    },
+    "questions": [],
+    "pending_question": null,
+    "plan": {
+      "key": "general",
+      "label": "First steps",
+      "steps": [
+        {
+          "index": 0,
+          "key": "general:0",
+          "label": "Go to Riley straight away.",
+          "done_by": null,
+          "done_at": null
+        },
+        {
+          "index": 1,
+          "key": "general:1",
+          "label": "Talk to Riley and ask yes/no questions: Riley looks up for yes and closes their eyes for no.",
+          "done_by": null,
+          "done_at": null
+        },
+        {
+          "index": 2,
+          "key": "general:2",
+          "label": "If Riley isn't breathing or won't respond, call 911 now.",
+          "done_by": null,
+          "done_at": null
+        },
+        {
+          "index": 3,
+          "key": "general:3",
+          "label": "Check the ventilator mask and tubing.",
+          "done_by": null,
+          "done_at": null
+        }
+      ]
+    },
+    "plans_note": "Example care plan for the fictional demo profile. A real plan must be written with the person's care team.",
+    "dispatch": null,
+    "arrivals": [],
+    "door_unlocked_for": null,
+    "door_relocks_at": null,
+    "handoff": [
+      {
+        "label": "Communication",
+        "text": "Can't speak. Answers yes/no with eye movements: look up for yes, close eyes for no."
+      },
+      {
+        "label": "What happened",
+        "text": "Riley pressed Help at 1:18:13 AM."
+      },
+      {
+        "label": "Breathing and equipment",
+        "text": "Uses a home ventilator (BiPAP) at night and when tired. Check the mask and tubing first."
+      },
+      {
+        "label": "Medical",
+        "text": "ALS (fictional demo profile)."
+      },
+      {
+        "label": "Allergies",
+        "text": "Penicillin (demo)."
+      },
+      {
+        "label": "Medications",
+        "text": "Riluzole (demo)."
+      },
+      {
+        "label": "Advance directive",
+        "text": "Copy on the fridge (demo)."
+      }
+    ]
+  },
+  "POST resolve": {
+    "id": "alert_58ca3bfe",
+    "kind": "help",
+    "source": "help_button",
+    "is_test": false,
+    "status": "resolved",
+    "message": "Help requested",
+    "created_at": "2026-10-11T01:18:13.002Z",
+    "activates_at": "2026-10-11T01:18:21.002Z",
+    "activated_at": "2026-10-11T01:18:13.010Z",
+    "level": 0,
+    "cycle": 0,
+    "next_escalation_at": null,
+    "acknowledged_at": null,
+    "acknowledged_by": null,
+    "resolved_at": "2026-10-11T01:18:14.525Z",
+    "resolved_by": "Riley",
+    "local_only": false,
+    "updated_at": "2026-10-11T01:18:14.525Z",
+    "situation": null,
+    "urgency": "standard",
+    "critical_since": null,
+    "detail": null,
+    "what": "Riley pressed Help at 1:18:13 AM",
+    "situation_label": "Not said yet",
+    "notifications": [
+      {
+        "id": "ntf_9320d6fa80",
+        "alert_id": "alert_58ca3bfe",
+        "contact_id": "jordan",
+        "contact_name": "Jordan",
+        "contact_role": "caregiver",
+        "channel": "demo",
+        "purpose": "alert",
+        "level": 0,
+        "cycle": 0,
+        "status": "delivered",
+        "body": "AGENCY ALERT: Riley pressed Help at 1:18:13 AM. Please check on Riley now. Respond here: http://127.0.0.1:8000/respond/bWF4AmrNZGTxv6lAS2IS3C5P",
+        "provider_ref": "simulated",
+        "error": null,
+        "response": null,
+        "responded_at": null,
+        "created_at": "2026-10-11T01:18:13.010Z",
+        "sent_at": "2026-10-11T01:18:13.011Z",
+        "arrived_at": null,
+        "has_link": true
+      },
+      {
+        "id": "ntf_f34f50260a",
+        "alert_id": "alert_58ca3bfe",
+        "contact_id": "jordan",
+        "contact_name": "Jordan",
+        "contact_role": "caregiver",
+        "channel": "demo",
+        "purpose": "all_clear",
+        "level": -1,
+        "cycle": -1,
+        "status": "delivered",
+        "body": "AGENCY Lifeline: all clear. Riley is safe (ended by Riley at 1:18:14 AM).",
+        "provider_ref": "simulated",
+        "error": null,
+        "response": null,
+        "responded_at": null,
+        "created_at": "2026-10-11T01:18:14.526Z",
+        "sent_at": "2026-10-11T01:18:14.526Z",
+        "arrived_at": null,
+        "has_link": false
+      }
+    ],
+    "events": [
+      {
+        "id": 1,
+        "ts": "2026-10-11T01:18:13.002Z",
+        "kind": "signal",
+        "actor": "user",
+        "message": "Riley pressed Help at 1:18:13 AM. Starting in 8 s unless cancelled.",
+        "data": {
+          "kind": "help",
+          "source": "help_button",
+          "test": false
+        }
+      },
+      {
+        "id": 2,
+        "ts": "2026-10-11T01:18:13.010Z",
+        "kind": "call_now",
+        "actor": "user",
+        "message": "Riley chose to call now instead of waiting.",
+        "data": {}
+      },
+      {
+        "id": 3,
+        "ts": "2026-10-11T01:18:13.010Z",
+        "kind": "activated",
+        "actor": "system",
+        "message": "Alert started. Contacting Jordan (caregiver).",
+        "data": {}
+      },
+      {
+        "id": 4,
+        "ts": "2026-10-11T01:18:13.010Z",
+        "kind": "lights_on",
+        "actor": "system",
+        "message": "Turned the lights on so helpers can see.",
+        "data": {}
+      },
+      {
+        "id": 5,
+        "ts": "2026-10-11T01:18:13.011Z",
+        "kind": "notified",
+        "actor": "system",
+        "message": "Alert sent to Jordan (caregiver) by simulated phone. Waiting for an answer.",
+        "data": {
+          "channel": "demo",
+          "contact": "jordan",
+          "notification": "ntf_9320d6fa80"
+        }
+      },
+      {
+        "id": 6,
+        "ts": "2026-10-11T01:18:14.526Z",
+        "kind": "resolved",
+        "actor": "user",
+        "message": "Alert ended by Riley: Riley is safe.",
+        "data": {}
+      },
+      {
+        "id": 7,
+        "ts": "2026-10-11T01:18:14.526Z",
+        "kind": "all_clear",
+        "actor": "system",
+        "message": "All-clear sent to Jordan (caregiver).",
+        "data": {}
+      }
+    ],
+    "waiting_on": [],
+    "metrics": {
+      "seconds_to_first_contact": 0.0,
+      "seconds_to_acknowledged": null,
+      "people_alerted": 1
+    },
+    "questions": [],
+    "pending_question": null,
+    "plan": {
+      "key": "general",
+      "label": "First steps",
+      "steps": [
+        {
+          "index": 0,
+          "key": "general:0",
+          "label": "Go to Riley straight away.",
+          "done_by": null,
+          "done_at": null
+        },
+        {
+          "index": 1,
+          "key": "general:1",
+          "label": "Talk to Riley and ask yes/no questions: Riley looks up for yes and closes their eyes for no.",
+          "done_by": null,
+          "done_at": null
+        },
+        {
+          "index": 2,
+          "key": "general:2",
+          "label": "If Riley isn't breathing or won't respond, call 911 now.",
+          "done_by": null,
+          "done_at": null
+        },
+        {
+          "index": 3,
+          "key": "general:3",
+          "label": "Check the ventilator mask and tubing.",
+          "done_by": null,
+          "done_at": null
+        }
+      ]
+    },
+    "plans_note": "Example care plan for the fictional demo profile. A real plan must be written with the person's care team.",
+    "dispatch": null,
+    "arrivals": [],
+    "door_unlocked_for": null,
+    "door_relocks_at": null,
+    "handoff": [
+      {
+        "label": "Communication",
+        "text": "Can't speak. Answers yes/no with eye movements: look up for yes, close eyes for no."
+      },
+      {
+        "label": "What happened",
+        "text": "Riley pressed Help at 1:18:13 AM."
+      },
+      {
+        "label": "Breathing and equipment",
+        "text": "Uses a home ventilator (BiPAP) at night and when tired. Check the mask and tubing first."
+      },
+      {
+        "label": "Medical",
+        "text": "ALS (fictional demo profile)."
+      },
+      {
+        "label": "Allergies",
+        "text": "Penicillin (demo)."
+      },
+      {
+        "label": "Medications",
+        "text": "Riluzole (demo)."
+      },
+      {
+        "label": "Advance directive",
+        "text": "Copy on the fridge (demo)."
+      }
+    ]
+  },
+  "status_after": {
+    "server_time": "2026-10-11T01:18:14.529Z",
+    "settings": {
+      "consent": true,
+      "consent_note": "Recorded for the fictional demo profile. A real user confirms this themselves in Lifeline setup.",
+      "consented_at": "2026-10-11T01:18:05.229Z",
+      "contacts": [
+        {
+          "id": "jordan",
+          "name": "Jordan",
+          "role": "caregiver",
+          "channel": "demo",
+          "address": "",
+          "priority": 1,
+          "enabled": true
+        },
+        {
+          "id": "morgan",
+          "name": "Morgan",
+          "role": "neighbour",
+          "channel": "demo",
+          "address": "",
+          "priority": 2,
+          "enabled": true
+        },
+        {
+          "id": "monitoring",
+          "name": "Demo Monitoring Center",
+          "role": "monitoring_service",
+          "channel": "demo",
+          "address": "",
+          "priority": 3,
+          "enabled": true
+        }
+      ],
+      "cancel_window_s": 8,
+      "ack_timeout_s": 45,
+      "watchdog_timeout_s": 30,
+      "checkin_interval_min": 0,
+      "checkin_response_s": 90,
+      "alert_on_signal_unavailable": false,
+      "signal_grace_s": 180,
+      "responder": {
+        "person_name": "Riley",
+        "address": "Demo address: 100 Example Street, Apt 2 (fictional). Key safe by the door, code with Jordan.",
+        "communication": "Can't speak. Answers yes/no with eye movements: look up for yes, close eyes for no.",
+        "breathing": "Uses a home ventilator (BiPAP) at night and when tired. Check the mask and tubing first.",
+        "medical": "ALS (fictional demo profile).",
+        "allergies": "Penicillin (demo).",
+        "medications": "Riluzole (demo).",
+        "advance_directive": "Copy on the fridge (demo).",
+        "notes": "Please talk to Riley directly. They can hear and understand everything."
+      },
+      "emergency_number": "911",
+      "critical_alert_everyone": true,
+      "plans": {
+        "breathing": [
+          "If Riley isn't breathing or won't respond, call 911 now.",
+          "Check the mask is on and sealed. Re-seat it if it has slipped.",
+          "Check the tubing is connected at the mask and at the ventilator.",
+          "Check the ventilator is on, plugged in and not alarming.",
+          "Ask Riley if breathing is better now."
+        ],
+        "choking": [
+          "If Riley isn't breathing or won't respond, call 911 now.",
+          "Sit Riley upright if you can.",
+          "Use the suction machine the way Riley's care team showed you.",
+          "Ask Riley if it is better now."
+        ],
+        "equipment": [
+          "Read the alarm message on the ventilator screen.",
+          "Check it is plugged in and the power is on. Switch to the backup battery if needed.",
+          "Check the mask and tubing connections.",
+          "If the ventilator won't run and Riley is struggling to breathe, call 911."
+        ],
+        "general": [
+          "Go to Riley straight away.",
+          "Talk to Riley and ask yes/no questions: Riley looks up for yes and closes their eyes for no.",
+          "If Riley isn't breathing or won't respond, call 911 now.",
+          "Check the ventilator mask and tubing."
+        ],
+        "other": ["Go to Riley and ask yes/no questions to find out what's wrong."],
+        "pain": [
+          "Ask Riley yes/no questions to find where it hurts.",
+          "Help Riley change position if that is part of the care plan.",
+          "If the pain is in the chest or severe, call 911."
+        ],
+        "position": [
+          "Check Riley isn't trapped, slipping or pressed against anything.",
+          "Reposition Riley the way the care team showed you.",
+          "Ask Riley if it is better now."
+        ]
+      },
+      "plans_note": "Example care plan for the fictional demo profile. A real plan must be written with the person's care team.",
+      "dispatch": {
+        "consent": true,
+        "consented_at": "2026-10-11T01:18:05.229Z",
+        "auto_after_s": 90,
+        "address": {
+          "line1": "100 Example Street",
+          "line2": "Apt 2",
+          "city": "Santa Cruz",
+          "state": "CA",
+          "zip": "95060"
+        },
+        "phone": "+18315550142",
+        "entry": "Key safe by the front door (demo). The door can also be unlocked remotely.",
+        "pin": "4321"
+      },
+      "home": {
+        "lights_on_alert": true,
+        "unlock_for_responders": true,
+        "unlock_for_emergency_services": true,
+        "relock_after_min": 15,
+        "watch_power": true,
+        "power_critical_minutes": 20
+      }
+    },
+    "ready": true,
+    "problems": [],
+    "channels": {
+      "twilio_configured": false,
+      "public_url": "http://127.0.0.1:8000"
+    },
+    "network": {
+      "state": "unknown",
+      "source": "none",
+      "detail": "",
+      "latency_ms": null,
+      "simulated": false,
+      "at": null,
+      "since": null,
+      "description": "Network watching isn't set up."
+    },
+    "monitor": {
+      "armed": false,
+      "armed_at": null,
+      "last_heartbeat_at": null,
+      "seconds_since_heartbeat": null,
+      "last_heartbeat": null,
+      "signal_unready_since": null,
+      "next_checkin_at": null,
+      "checkin_pending_since": null,
+      "checkin_last_ok_at": null
+    },
+    "open_alert": null,
+    "recent": [
+      {
+        "id": "alert_58ca3bfe",
+        "kind": "help",
+        "source": "help_button",
+        "is_test": false,
+        "status": "resolved",
+        "message": "Help requested",
+        "created_at": "2026-10-11T01:18:13.002Z",
+        "activates_at": "2026-10-11T01:18:21.002Z",
+        "activated_at": "2026-10-11T01:18:13.010Z",
+        "level": 0,
+        "cycle": 0,
+        "next_escalation_at": null,
+        "acknowledged_at": null,
+        "acknowledged_by": null,
+        "resolved_at": "2026-10-11T01:18:14.525Z",
+        "resolved_by": "Riley",
+        "local_only": false,
+        "updated_at": "2026-10-11T01:18:14.525Z",
+        "situation": null,
+        "urgency": "standard",
+        "critical_since": null,
+        "detail": null,
+        "what": "Riley pressed Help at 1:18:13 AM",
+        "metrics": {
+          "seconds_to_first_contact": 0.0,
+          "seconds_to_acknowledged": null,
+          "people_alerted": 1
+        }
+      }
+    ],
+    "rescue": {
+      "situations": [
+        {
+          "key": "breathing",
+          "label": "Breathing or mask",
+          "urgency": "critical"
+        },
+        {
+          "key": "choking",
+          "label": "Choking or secretions",
+          "urgency": "critical"
+        },
+        {
+          "key": "equipment",
+          "label": "Ventilator or equipment",
+          "urgency": "critical"
+        },
+        {
+          "key": "pain",
+          "label": "Pain",
+          "urgency": "urgent"
+        },
+        {
+          "key": "position",
+          "label": "Position or discomfort",
+          "urgency": "urgent"
+        },
+        {
+          "key": "other",
+          "label": "Something else",
+          "urgency": "urgent"
+        }
+      ],
+      "questions": [
+        {
+          "key": "breathing",
+          "text": "Is it your breathing?"
+        },
+        {
+          "key": "better",
+          "text": "Is it getting better?"
+        },
+        {
+          "key": "pain",
+          "text": "Are you in pain?"
+        },
+        {
+          "key": "ambulance",
+          "text": "Do you want an ambulance?"
+        },
+        {
+          "key": "hurry",
+          "text": "Should I hurry?"
+        },
+        {
+          "key": "ok",
+          "text": "Are you OK right now?"
+        }
+      ]
+    },
+    "dispatch": {
+      "provider": "Demo Emergency Dispatch",
+      "simulated": true,
+      "sandbox": false,
+      "ready": true
+    },
+    "home": {
+      "provider": "Demo Smart Home",
+      "simulated": true,
+      "has_lock": true,
+      "has_lights": true,
+      "has_power": true,
+      "state": {
+        "provider": "Demo Smart Home",
+        "simulated": true,
+        "door": "locked",
+        "lights": "off",
+        "power": {
+          "mains": true,
+          "battery_minutes": 45.0
+        }
+      }
+    }
+  },
+  "POST /api/lifeline/help 2": {
+    "alert": {
+      "id": "alert_55fedc89",
+      "kind": "help",
+      "source": "eye_signal",
+      "is_test": false,
+      "status": "pending_cancel",
+      "message": "Help requested",
+      "created_at": "2026-10-11T01:18:14.532Z",
+      "activates_at": "2026-10-11T01:18:22.532Z",
+      "activated_at": null,
+      "level": -1,
+      "cycle": 0,
+      "next_escalation_at": null,
+      "acknowledged_at": null,
+      "acknowledged_by": null,
+      "resolved_at": null,
+      "resolved_by": null,
+      "local_only": false,
+      "updated_at": "2026-10-11T01:18:14.532Z",
+      "situation": null,
+      "urgency": "standard",
+      "critical_since": null,
+      "detail": null,
+      "what": "Riley signalled for help with their eyes at 1:18:14 AM",
+      "situation_label": "Not said yet",
+      "notifications": [],
+      "events": [
+        {
+          "id": 8,
+          "ts": "2026-10-11T01:18:14.532Z",
+          "kind": "signal",
+          "actor": "user",
+          "message": "Riley signalled for help with their eyes at 1:18:14 AM. Starting in 8 s unless cancelled.",
+          "data": {
+            "kind": "help",
+            "source": "eye_signal",
+            "test": false
+          }
+        }
+      ],
+      "waiting_on": [],
+      "metrics": {
+        "seconds_to_first_contact": null,
+        "seconds_to_acknowledged": null,
+        "people_alerted": 0
+      },
+      "questions": [],
+      "pending_question": null,
+      "plan": {
+        "key": "general",
+        "label": "First steps",
+        "steps": [
+          {
+            "index": 0,
+            "key": "general:0",
+            "label": "Go to Riley straight away.",
+            "done_by": null,
+            "done_at": null
+          },
+          {
+            "index": 1,
+            "key": "general:1",
+            "label": "Talk to Riley and ask yes/no questions: Riley looks up for yes and closes their eyes for no.",
+            "done_by": null,
+            "done_at": null
+          },
+          {
+            "index": 2,
+            "key": "general:2",
+            "label": "If Riley isn't breathing or won't respond, call 911 now.",
+            "done_by": null,
+            "done_at": null
+          },
+          {
+            "index": 3,
+            "key": "general:3",
+            "label": "Check the ventilator mask and tubing.",
+            "done_by": null,
+            "done_at": null
+          }
+        ]
+      },
+      "plans_note": "Example care plan for the fictional demo profile. A real plan must be written with the person's care team.",
+      "dispatch": null,
+      "arrivals": [],
+      "door_unlocked_for": null,
+      "door_relocks_at": null,
+      "handoff": [
+        {
+          "label": "Communication",
+          "text": "Can't speak. Answers yes/no with eye movements: look up for yes, close eyes for no."
+        },
+        {
+          "label": "What happened",
+          "text": "Riley signalled for help with their eyes at 1:18:14 AM."
+        },
+        {
+          "label": "Breathing and equipment",
+          "text": "Uses a home ventilator (BiPAP) at night and when tired. Check the mask and tubing first."
+        },
+        {
+          "label": "Medical",
+          "text": "ALS (fictional demo profile)."
+        },
+        {
+          "label": "Allergies",
+          "text": "Penicillin (demo)."
+        },
+        {
+          "label": "Medications",
+          "text": "Riluzole (demo)."
+        },
+        {
+          "label": "Advance directive",
+          "text": "Copy on the fridge (demo)."
+        }
+      ]
+    },
+    "created": true
+  },
+  "POST cancel": {
+    "id": "alert_55fedc89",
+    "kind": "help",
+    "source": "eye_signal",
+    "is_test": false,
+    "status": "cancelled",
+    "message": "Help requested",
+    "created_at": "2026-10-11T01:18:14.532Z",
+    "activates_at": "2026-10-11T01:18:22.532Z",
+    "activated_at": null,
+    "level": -1,
+    "cycle": 0,
+    "next_escalation_at": null,
+    "acknowledged_at": null,
+    "acknowledged_by": null,
+    "resolved_at": "2026-10-11T01:18:14.535Z",
+    "resolved_by": "Riley",
+    "local_only": false,
+    "updated_at": "2026-10-11T01:18:14.535Z",
+    "situation": null,
+    "urgency": "standard",
+    "critical_since": null,
+    "detail": null,
+    "what": "Riley signalled for help with their eyes at 1:18:14 AM",
+    "situation_label": "Not said yet",
+    "notifications": [],
+    "events": [
+      {
+        "id": 8,
+        "ts": "2026-10-11T01:18:14.532Z",
+        "kind": "signal",
+        "actor": "user",
+        "message": "Riley signalled for help with their eyes at 1:18:14 AM. Starting in 8 s unless cancelled.",
+        "data": {
+          "kind": "help",
+          "source": "eye_signal",
+          "test": false
+        }
+      },
+      {
+        "id": 9,
+        "ts": "2026-10-11T01:18:14.535Z",
+        "kind": "cancelled",
+        "actor": "user",
+        "message": "Cancelled by Riley during the countdown. No one was contacted.",
+        "data": {}
+      }
+    ],
+    "waiting_on": [],
+    "metrics": {
+      "seconds_to_first_contact": null,
+      "seconds_to_acknowledged": null,
+      "people_alerted": 0
+    },
+    "questions": [],
+    "pending_question": null,
+    "plan": {
+      "key": "general",
+      "label": "First steps",
+      "steps": [
+        {
+          "index": 0,
+          "key": "general:0",
+          "label": "Go to Riley straight away.",
+          "done_by": null,
+          "done_at": null
+        },
+        {
+          "index": 1,
+          "key": "general:1",
+          "label": "Talk to Riley and ask yes/no questions: Riley looks up for yes and closes their eyes for no.",
+          "done_by": null,
+          "done_at": null
+        },
+        {
+          "index": 2,
+          "key": "general:2",
+          "label": "If Riley isn't breathing or won't respond, call 911 now.",
+          "done_by": null,
+          "done_at": null
+        },
+        {
+          "index": 3,
+          "key": "general:3",
+          "label": "Check the ventilator mask and tubing.",
+          "done_by": null,
+          "done_at": null
+        }
+      ]
+    },
+    "plans_note": "Example care plan for the fictional demo profile. A real plan must be written with the person's care team.",
+    "dispatch": null,
+    "arrivals": [],
+    "door_unlocked_for": null,
+    "door_relocks_at": null,
+    "handoff": [
+      {
+        "label": "Communication",
+        "text": "Can't speak. Answers yes/no with eye movements: look up for yes, close eyes for no."
+      },
+      {
+        "label": "What happened",
+        "text": "Riley signalled for help with their eyes at 1:18:14 AM."
+      },
+      {
+        "label": "Breathing and equipment",
+        "text": "Uses a home ventilator (BiPAP) at night and when tired. Check the mask and tubing first."
+      },
+      {
+        "label": "Medical",
+        "text": "ALS (fictional demo profile)."
+      },
+      {
+        "label": "Allergies",
+        "text": "Penicillin (demo)."
+      },
+      {
+        "label": "Medications",
+        "text": "Riluzole (demo)."
+      },
+      {
+        "label": "Advance directive",
+        "text": "Copy on the fridge (demo)."
+      }
+    ]
+  },
+  "status_idle": {
+    "server_time": "2026-10-11T01:18:14.537Z",
+    "settings": {
+      "consent": true,
+      "consent_note": "Recorded for the fictional demo profile. A real user confirms this themselves in Lifeline setup.",
+      "consented_at": "2026-10-11T01:18:05.229Z",
+      "contacts": [
+        {
+          "id": "jordan",
+          "name": "Jordan",
+          "role": "caregiver",
+          "channel": "demo",
+          "address": "",
+          "priority": 1,
+          "enabled": true
+        },
+        {
+          "id": "morgan",
+          "name": "Morgan",
+          "role": "neighbour",
+          "channel": "demo",
+          "address": "",
+          "priority": 2,
+          "enabled": true
+        },
+        {
+          "id": "monitoring",
+          "name": "Demo Monitoring Center",
+          "role": "monitoring_service",
+          "channel": "demo",
+          "address": "",
+          "priority": 3,
+          "enabled": true
+        }
+      ],
+      "cancel_window_s": 8,
+      "ack_timeout_s": 45,
+      "watchdog_timeout_s": 30,
+      "checkin_interval_min": 0,
+      "checkin_response_s": 90,
+      "alert_on_signal_unavailable": false,
+      "signal_grace_s": 180,
+      "responder": {
+        "person_name": "Riley",
+        "address": "Demo address: 100 Example Street, Apt 2 (fictional). Key safe by the door, code with Jordan.",
+        "communication": "Can't speak. Answers yes/no with eye movements: look up for yes, close eyes for no.",
+        "breathing": "Uses a home ventilator (BiPAP) at night and when tired. Check the mask and tubing first.",
+        "medical": "ALS (fictional demo profile).",
+        "allergies": "Penicillin (demo).",
+        "medications": "Riluzole (demo).",
+        "advance_directive": "Copy on the fridge (demo).",
+        "notes": "Please talk to Riley directly. They can hear and understand everything."
+      },
+      "emergency_number": "911",
+      "critical_alert_everyone": true,
+      "plans": {
+        "breathing": [
+          "If Riley isn't breathing or won't respond, call 911 now.",
+          "Check the mask is on and sealed. Re-seat it if it has slipped.",
+          "Check the tubing is connected at the mask and at the ventilator.",
+          "Check the ventilator is on, plugged in and not alarming.",
+          "Ask Riley if breathing is better now."
+        ],
+        "choking": [
+          "If Riley isn't breathing or won't respond, call 911 now.",
+          "Sit Riley upright if you can.",
+          "Use the suction machine the way Riley's care team showed you.",
+          "Ask Riley if it is better now."
+        ],
+        "equipment": [
+          "Read the alarm message on the ventilator screen.",
+          "Check it is plugged in and the power is on. Switch to the backup battery if needed.",
+          "Check the mask and tubing connections.",
+          "If the ventilator won't run and Riley is struggling to breathe, call 911."
+        ],
+        "general": [
+          "Go to Riley straight away.",
+          "Talk to Riley and ask yes/no questions: Riley looks up for yes and closes their eyes for no.",
+          "If Riley isn't breathing or won't respond, call 911 now.",
+          "Check the ventilator mask and tubing."
+        ],
+        "other": ["Go to Riley and ask yes/no questions to find out what's wrong."],
+        "pain": [
+          "Ask Riley yes/no questions to find where it hurts.",
+          "Help Riley change position if that is part of the care plan.",
+          "If the pain is in the chest or severe, call 911."
+        ],
+        "position": [
+          "Check Riley isn't trapped, slipping or pressed against anything.",
+          "Reposition Riley the way the care team showed you.",
+          "Ask Riley if it is better now."
+        ]
+      },
+      "plans_note": "Example care plan for the fictional demo profile. A real plan must be written with the person's care team.",
+      "dispatch": {
+        "consent": true,
+        "consented_at": "2026-10-11T01:18:05.229Z",
+        "auto_after_s": 90,
+        "address": {
+          "line1": "100 Example Street",
+          "line2": "Apt 2",
+          "city": "Santa Cruz",
+          "state": "CA",
+          "zip": "95060"
+        },
+        "phone": "+18315550142",
+        "entry": "Key safe by the front door (demo). The door can also be unlocked remotely.",
+        "pin": "4321"
+      },
+      "home": {
+        "lights_on_alert": true,
+        "unlock_for_responders": true,
+        "unlock_for_emergency_services": true,
+        "relock_after_min": 15,
+        "watch_power": true,
+        "power_critical_minutes": 20
+      }
+    },
+    "ready": true,
+    "problems": [],
+    "channels": {
+      "twilio_configured": false,
+      "public_url": "http://127.0.0.1:8000"
+    },
+    "network": {
+      "state": "unknown",
+      "source": "none",
+      "detail": "",
+      "latency_ms": null,
+      "simulated": false,
+      "at": null,
+      "since": null,
+      "description": "Network watching isn't set up."
+    },
+    "monitor": {
+      "armed": false,
+      "armed_at": null,
+      "last_heartbeat_at": null,
+      "seconds_since_heartbeat": null,
+      "last_heartbeat": null,
+      "signal_unready_since": null,
+      "next_checkin_at": null,
+      "checkin_pending_since": null,
+      "checkin_last_ok_at": null
+    },
+    "open_alert": null,
+    "recent": [
+      {
+        "id": "alert_55fedc89",
+        "kind": "help",
+        "source": "eye_signal",
+        "is_test": false,
+        "status": "cancelled",
+        "message": "Help requested",
+        "created_at": "2026-10-11T01:18:14.532Z",
+        "activates_at": "2026-10-11T01:18:22.532Z",
+        "activated_at": null,
+        "level": -1,
+        "cycle": 0,
+        "next_escalation_at": null,
+        "acknowledged_at": null,
+        "acknowledged_by": null,
+        "resolved_at": "2026-10-11T01:18:14.535Z",
+        "resolved_by": "Riley",
+        "local_only": false,
+        "updated_at": "2026-10-11T01:18:14.535Z",
+        "situation": null,
+        "urgency": "standard",
+        "critical_since": null,
+        "detail": null,
+        "what": "Riley signalled for help with their eyes at 1:18:14 AM",
+        "metrics": {
+          "seconds_to_first_contact": null,
+          "seconds_to_acknowledged": null,
+          "people_alerted": 0
+        }
+      },
+      {
+        "id": "alert_58ca3bfe",
+        "kind": "help",
+        "source": "help_button",
+        "is_test": false,
+        "status": "resolved",
+        "message": "Help requested",
+        "created_at": "2026-10-11T01:18:13.002Z",
+        "activates_at": "2026-10-11T01:18:21.002Z",
+        "activated_at": "2026-10-11T01:18:13.010Z",
+        "level": 0,
+        "cycle": 0,
+        "next_escalation_at": null,
+        "acknowledged_at": null,
+        "acknowledged_by": null,
+        "resolved_at": "2026-10-11T01:18:14.525Z",
+        "resolved_by": "Riley",
+        "local_only": false,
+        "updated_at": "2026-10-11T01:18:14.525Z",
+        "situation": null,
+        "urgency": "standard",
+        "critical_since": null,
+        "detail": null,
+        "what": "Riley pressed Help at 1:18:13 AM",
+        "metrics": {
+          "seconds_to_first_contact": 0.0,
+          "seconds_to_acknowledged": null,
+          "people_alerted": 1
+        }
+      }
+    ],
+    "rescue": {
+      "situations": [
+        {
+          "key": "breathing",
+          "label": "Breathing or mask",
+          "urgency": "critical"
+        },
+        {
+          "key": "choking",
+          "label": "Choking or secretions",
+          "urgency": "critical"
+        },
+        {
+          "key": "equipment",
+          "label": "Ventilator or equipment",
+          "urgency": "critical"
+        },
+        {
+          "key": "pain",
+          "label": "Pain",
+          "urgency": "urgent"
+        },
+        {
+          "key": "position",
+          "label": "Position or discomfort",
+          "urgency": "urgent"
+        },
+        {
+          "key": "other",
+          "label": "Something else",
+          "urgency": "urgent"
+        }
+      ],
+      "questions": [
+        {
+          "key": "breathing",
+          "text": "Is it your breathing?"
+        },
+        {
+          "key": "better",
+          "text": "Is it getting better?"
+        },
+        {
+          "key": "pain",
+          "text": "Are you in pain?"
+        },
+        {
+          "key": "ambulance",
+          "text": "Do you want an ambulance?"
+        },
+        {
+          "key": "hurry",
+          "text": "Should I hurry?"
+        },
+        {
+          "key": "ok",
+          "text": "Are you OK right now?"
+        }
+      ]
+    },
+    "dispatch": {
+      "provider": "Demo Emergency Dispatch",
+      "simulated": true,
+      "sandbox": false,
+      "ready": true
+    },
+    "home": {
+      "provider": "Demo Smart Home",
+      "simulated": true,
+      "has_lock": true,
+      "has_lights": true,
+      "has_power": true,
+      "state": {
+        "provider": "Demo Smart Home",
+        "simulated": true,
+        "door": "locked",
+        "lights": "off",
+        "power": {
+          "mains": true,
+          "battery_minutes": 45.0
+        }
+      }
+    }
+  },
+  "POST heartbeat": {
+    "ok": true,
+    "server_time": "2026-10-11T01:18:14.540Z"
+  }
+}

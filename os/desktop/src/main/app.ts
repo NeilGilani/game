@@ -3,7 +3,7 @@
  * agency-native, the agent and the coordinator; routes gaze, targets, agent events, Lifeline and Stop.
  */
 
-import { existsSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import {
   BrowserWindow,
@@ -61,7 +61,7 @@ import { applyPermissionHandlers, applySecurity } from "./security";
 import { loadSettings, saveSettings, type AppSettings } from "./settings";
 import { stopAll } from "./stop";
 import { Supervisor } from "./supervisor";
-import { sanitizeTargets, TargetMerger, toGlobal } from "./targets";
+import { readBundleId, sanitizeTargets, TargetMerger, toGlobal } from "./targets";
 
 const log = createLogger("main");
 const SHELL_URL = `${SCHEME}://shell/`;
@@ -89,6 +89,9 @@ interface OverlayWin {
   /** Clickable regions in global points, when the overlay manages click-through by regions. */
   regions: ScreenRect[];
 }
+
+/** No gaze sample for this long: hand the pointer back to the mouse. */
+const GAZE_STALE_MS = 3_000;
 
 export class AgencyApp {
   readonly settingsFile: string;
@@ -122,6 +125,8 @@ export class AgencyApp {
   private axTimer: ReturnType<typeof setInterval> | null = null;
   private statusTimer: ReturnType<typeof setInterval> | null = null;
   private engineSeenAt = 0;
+  private gazeWatch: ReturnType<typeof setInterval> | null = null;
+  private readonly selfBundleId = readBundleId(process.execPath, (p) => readFileSync(p, "utf8"));
 
   constructor(readonly opts: AppOptions) {
     setLogDir(opts.logDir);
@@ -173,12 +178,14 @@ export class AgencyApp {
       "agency://host",
       ...(this.opts.shellDevUrl ? [new URL(this.opts.shellDevUrl).origin] : []),
     ];
-    applySecurity(app, { allowedOrigins, isGaze: (c) => this.roleOf(c) === "gaze", log });
-    applyPermissionHandlers(session.defaultSession, {
-      allowedOrigins,
-      isGaze: (c) => this.roleOf(c) === "gaze",
-      log,
-    });
+    // The shell runs the calibrated eye-tracking pipeline (the same one as the web app) and shares the pointer
+    // with the overlay; the hidden engine window only exists with AGENCY_GAZE=engine. Frames stay in the window.
+    const mayUseCamera = (c: WebContents) => {
+      const role = this.roleOf(c);
+      return role === "shell" || role === "gaze";
+    };
+    applySecurity(app, { allowedOrigins, mayUseCamera, log });
+    applyPermissionHandlers(session.defaultSession, { allowedOrigins, mayUseCamera, log });
 
     protocol.handle(
       SCHEME,
@@ -223,6 +230,7 @@ export class AgencyApp {
     if (this.axTimer) clearInterval(this.axTimer);
     if (this.statusTimer) clearInterval(this.statusTimer);
     if (this.regionTimer) clearInterval(this.regionTimer);
+    if (this.gazeWatch) clearInterval(this.gazeWatch);
     await Promise.allSettled([...this.supervisors.map((s) => s.stop()), this.bridge?.stop()]);
   }
 
@@ -365,7 +373,20 @@ export class AgencyApp {
   }
 
   private startGaze(): void {
-    if (process.env.AGENCY_GAZE !== "mouse") {
+    const mode = process.env.AGENCY_GAZE ?? "shell";
+    if (mode === "shell") {
+      // Default: the shell's calibrated camera pipeline publishes the pointer (onShellGaze). The mouse works
+      // until it does, and again whenever it stops (camera off, eye control paused).
+      this.setState("gaze", "starting");
+      this.useMouseGaze();
+      this.gazeWatch = setInterval(() => {
+        if (this.gazeSource === "engine" && Date.now() - this.engineSeenAt > GAZE_STALE_MS) {
+          log.info("eye tracking stopped publishing; the mouse moves the pointer until it is back");
+          this.setState("gaze", "starting");
+          this.useMouseGaze();
+        }
+      }, 1_000);
+    } else if (mode === "engine") {
       const win = new BrowserWindow({
         show: false,
         width: 320,
@@ -374,6 +395,7 @@ export class AgencyApp {
       });
       this.gazeWin = win;
       this.track(win, "gaze");
+      win.webContents.on("did-finish-load", () => this.paceGaze());
       void win.loadURL(`${SCHEME}://gaze/${this.opts.paths.gazeDir.entry}`);
       this.setState("gaze", "starting");
       win.webContents.on("render-process-gone", () => {
@@ -433,6 +455,16 @@ export class AgencyApp {
     return this.opts.paths.shellDir ? SHELL_URL : `${SCHEME}://host/shell-missing/index.html`;
   }
 
+  /**
+   * The shell tracks the eyes itself with its own camera pipeline. While it's in front, the hidden gaze window (which
+   * serves the overlay over other apps) idles at 5 frames a second instead of running a second full face tracker
+   * on the same camera; it goes back to 30 as soon as another app is in front.
+   */
+  private paceGaze(): void {
+    const fps = this.shell && !this.shell.isDestroyed() && this.shell.isFocused() ? 5 : 30;
+    if (this.gazeWin && !this.gazeWin.isDestroyed()) this.gazeWin.webContents.send(IPC.gazePace, fps);
+  }
+
   private createShell(): void {
     const win = new BrowserWindow({
       title: "AGENCY",
@@ -450,13 +482,20 @@ export class AgencyApp {
             backgroundColor: "#00000000",
           }
         : { backgroundColor: "#f7f5f0" }),
-      webPreferences: this.webPreferences("shell"),
+      // Not throttled in the background: it keeps tracking the eyes while another app is in front.
+      webPreferences: this.webPreferences("shell", { backgroundThrottling: false }),
     });
     this.shell = win;
     this.track(win, "shell");
     win.once("ready-to-show", () => win.show());
-    win.on("focus", () => this.scheduleTargets());
-    win.on("blur", () => this.scheduleTargets());
+    win.on("focus", () => {
+      this.scheduleTargets();
+      this.paceGaze();
+    });
+    win.on("blur", () => {
+      this.scheduleTargets();
+      this.paceGaze();
+    });
     win.webContents.on("render-process-gone", (_e, details) => {
       log.error(`shell renderer gone (${details.reason}); reloading`);
       setTimeout(() => !win.isDestroyed() && void win.loadURL(this.shellUrl()), 500);
@@ -714,16 +753,53 @@ export class AgencyApp {
     if (this.shell && !this.shell.isDestroyed()) this.shell.webContents.send(IPC.gaze, ev);
   }
 
-  private onEngineEvent(ev: GazeEvent): void {
+  /**
+   * Gaze from the shell's calibrated pipeline. Rects arrive in the shell's client coordinates (CSS pixels); the
+   * overlay needs global screen points. Only samples and tracking are taken: the shell raises its own Lifeline
+   * help signal through the coordinator, so it isn't sent twice.
+   */
+  private onShellGaze(sender: WebContents, ev: GazeEvent): void {
+    if (ev.type !== "sample" && ev.type !== "tracking") return;
+    const win = BrowserWindow.fromWebContents(sender);
+    if (!win || win.isDestroyed()) return;
+    if (ev.type === "sample") {
+      const s = ev.sample;
+      if (![s.x, s.y, s.t, s.confidence].every((n) => Number.isFinite(n))) return;
+      const b = win.getContentBounds();
+      const zoom = sender.getZoomFactor();
+      const global: GazeEvent = {
+        type: "sample",
+        sample: { ...s, x: b.x + s.x * zoom, y: b.y + s.y * zoom, source: "webcam-gaze" },
+      };
+      this.takeEngine();
+      this.lastTracking.face = true;
+      for (const o of this.overlays.values())
+        if (!o.win.isDestroyed()) o.win.webContents.send(IPC.gaze, global);
+      return;
+    }
+    this.lastTracking = { ...this.lastTracking, state: ev.state, face: ev.state !== "lost" };
+    for (const o of this.overlays.values()) if (!o.win.isDestroyed()) o.win.webContents.send(IPC.gaze, ev);
+  }
+
+  /** Real gaze is arriving: the mouse stops standing in for it. */
+  private takeEngine(): void {
+    this.engineSeenAt = Date.now();
     if (this.gazeSource !== "engine") {
       this.gazeSource = "engine";
       this.mouse.end();
       this.setState("gaze", "running");
-      log.info("gaze engine is publishing; mouse fallback off");
+      log.info("eye tracking is publishing; mouse fallback off");
     }
-    this.engineSeenAt = Date.now();
-    if (ev.type === "sample" || ev.type === "tracking")
-      this.lastTracking.face = ev.type === "sample" ? true : ev.state !== "lost";
+  }
+
+  private onEngineEvent(ev: GazeEvent): void {
+    // Only real samples replace the mouse: an uncalibrated engine sends tracking and blinks but no pointer.
+    if (ev.type === "sample") {
+      this.takeEngine();
+      this.lastTracking.face = true;
+    } else if (ev.type === "tracking") {
+      this.lastTracking.face = ev.state !== "lost";
+    }
     this.routeGaze(ev);
   }
 
@@ -744,7 +820,13 @@ export class AgencyApp {
   }
 
   private async refreshAxTargets(): Promise<void> {
-    if (!this.native?.rpc.connected || this.shellFrontmost()) return;
+    if (!this.native?.rpc.connected) return;
+    if (this.shellFrontmost()) {
+      // Don't keep another app's (or our own) old targets around while AGENCY is in front.
+      this.merger.clear("ax");
+      this.scheduleTargets();
+      return;
+    }
     try {
       const snap = await this.native.call("ax.targets", { maxCount: 300, includeWeb: true }, 1_000);
       this.merger.update("ax", snap);
@@ -758,7 +840,7 @@ export class AgencyApp {
     if (this.targetTimer) return;
     this.targetTimer = setTimeout(() => {
       this.targetTimer = null;
-      const snap: TargetSnapshot = this.merger.merged(Date.now(), this.shellFrontmost());
+      const snap: TargetSnapshot = this.merger.merged(Date.now(), this.shellFrontmost(), this.selfBundleId);
       for (const o of this.overlays.values())
         if (!o.win.isDestroyed()) o.win.webContents.send(IPC.targets, snap);
     }, 50);
@@ -819,7 +901,11 @@ export class AgencyApp {
       e.returnValue = this.roleOf(e.sender);
     });
 
-    on(IPC.gaze, ["gaze"], (_e, ev) => this.onEngineEvent(ev as GazeEvent));
+    on(IPC.gaze, ["gaze", "shell"], (e, ev) => {
+      if (!ev || typeof ev !== "object") return;
+      if (this.roleOf(e.sender) === "shell") this.onShellGaze(e.sender, ev as GazeEvent);
+      else this.onEngineEvent(ev as GazeEvent);
+    });
 
     on(IPC.shellTargets, ["shell"], (e, targets) => {
       const win = BrowserWindow.fromWebContents(e.sender);

@@ -150,7 +150,7 @@ function OverlayBtn({
   style: CSSProperties;
   paused: boolean;
   scan: boolean;
-  /** Increments each time this control is chosen: plays the "launch" pulse (DESIGN.md: Motion). */
+  /** Increments each time this control is chosen: briefly highlights it in place (DESIGN.md: Motion). */
   launch: number;
   onActivate(id: string): void;
 }) {

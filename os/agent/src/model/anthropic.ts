@@ -100,7 +100,7 @@ export class AnthropicModel implements AgentModel {
           tools: options.computer ? [...tools, COMPUTER_TOOLSET] : tools,
           messages: [...messages],
           thinking: { type: "adaptive" },
-          output_config: { effort: this.effort },
+          output_config: { effort: options.thinking ?? this.effort },
           cache_control: { type: "ephemeral" },
           ...(this.fallbacks
             ? { betas: ["server-side-fallback-2026-07-01"], fallbacks: "default" as const }

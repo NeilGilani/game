@@ -1,6 +1,6 @@
 /**
  * Mac apps: switch to an open one or open another, through agency-native. Eight big tiles a page, never scrolled.
- * In a browser the list is a simulated example and opening only pretends, and the screen says so.
+ * In a browser the list is a simulated example and opening says plainly that it needs the AGENCY Mac app.
  */
 import { useEffect, useState } from "react";
 import { usePaged } from "../components/common";
@@ -43,17 +43,22 @@ export function AppsScreen({ route }: { route: Route }) {
 
   const open = async (app: AppInfo) => {
     void memory().record({ path: ["apps", app.name], surface: "apps", outcome: "chosen" });
-    const r = app.running ? await apps().activate(app.bundleId) : await apps().launch(app.bundleId);
-    const text = r.ok
-      ? `${app.name} is ${app.running ? "in front" : "open"}${apps().simulated ? " (simulated in the browser)" : ""}.`
-      : `Couldn't open ${app.name}.`;
+    const source = apps();
+    const text = await (app.running ? source.activate(app.bundleId) : source.launch(app.bundleId)).then(
+      (r) =>
+        r.ok
+          ? `${app.name} is ${app.running ? "in front" : "open"}.`
+          : `Couldn't open ${app.name}: ${r.error ?? "the Mac didn't say why"}.`,
+      (err: unknown) =>
+        `Couldn't open ${app.name}: ${err instanceof Error ? err.message : "something went wrong"}.`,
+    );
     setNotice(text);
     announce(text);
     void load();
   };
 
   return (
-    <div className="flow" aria-label="Apps">
+    <div className="flow apps-flow" aria-label="Apps">
       <div className="flow-head">
         <div className="eyebrow">
           <Icon name="grid" size={18} /> Apps

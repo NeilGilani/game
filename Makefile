@@ -14,7 +14,7 @@ SHELL := /bin/bash
 PY := backend/.venv/bin/python
 PI ?= agency-pi.local
 
-.PHONY: help setup setup-backend setup-frontend dev demo backend frontend dev-pi test test-backend test-frontend \
+.PHONY: site-gemini-key free-port help setup setup-backend setup-frontend dev demo demo-local site-deploy web-demo backend frontend dev-pi test test-backend test-frontend \
         lint typecheck build check e2e e2e-fixtures reset-demo pi-setup pi-start pi-stop pi-status pi-logs clean \
         os-check os-dev os-build os-dist os-test os-e2e sidecar sandbox
 
@@ -59,9 +59,31 @@ dev:
 	  (cd frontend && npm run dev) & \
 	  wait
 
-demo: build
+# An old coordinator still holding port 8000 would keep serving old code: stop it first (only AGENCY's own).
+free-port:
+	@pids=$$(lsof -ti tcp:8000 -sTCP:LISTEN 2>/dev/null); \
+	for pid in $$pids; do \
+	  if ps -o command= -p $$pid | grep -q "agency.main"; then \
+	    echo "Stopping an older AGENCY coordinator on port 8000 (pid $$pid)"; kill $$pid; sleep 1; \
+	  else \
+	    echo "Port 8000 is used by another program:"; ps -o pid=,command= -p $$pid; \
+	    echo "Quit it, or run: kill $$pid"; exit 1; \
+	  fi; \
+	done
+
+demo: build free-port
 	@echo "AGENCY is running at http://localhost:8000  (Ctrl-C to stop)"
 	cd backend && .venv/bin/uvicorn agency.main:app --host 127.0.0.1 --port 8000
+
+# AGENCY plus the on-device model (Synapse-Mesh) on port 8100. See LOCAL_MODEL.md.
+SYNAPSE_DIR ?= $(HOME)/synapse
+demo-local: build free-port
+	@test -x "$(SYNAPSE_DIR)/.venv/bin/python" || { echo "Synapse-Mesh isn't set up in $(SYNAPSE_DIR). See LOCAL_MODEL.md (or pass SYNAPSE_DIR=/path/to/synapse-mesh)."; exit 1; }
+	@echo "AGENCY: http://localhost:8000   On-device model: http://127.0.0.1:8100   (Ctrl-C stops both)"
+	@trap 'kill 0' EXIT; \
+	  (cd "$(SYNAPSE_DIR)/backend" && ../.venv/bin/python -m uvicorn synapse_mesh.api:app --host 127.0.0.1 --port 8100) & \
+	  (cd backend && AGENCY_LOCAL_MODEL_URL=$${AGENCY_LOCAL_MODEL_URL:-http://127.0.0.1:8100} .venv/bin/uvicorn agency.main:app --host 127.0.0.1 --port 8000) & \
+	  wait
 
 dev-pi:
 	@echo "Interface on http://localhost:5173, coordinator on the Pi at http://$(PI):8000"
@@ -164,3 +186,27 @@ pi-logs:
 clean:
 	rm -rf os/desktop/out os/desktop/dist os/desktop/test-results os/sidecar/build os/sidecar/dist
 	rm -rf frontend/dist frontend/test-results frontend/playwright-report backend/.pytest_cache backend/.mypy_cache backend/.ruff_cache
+
+# Landing page on Cloudflare Pages straight from this Mac (opens a browser to log in to Cloudflare the first time).
+# CI does the same on every push to main once the CLOUDFLARE_* secrets are set (.github/workflows/cloudflare-pages.yml).
+CF_PROJECT ?= agency-os
+# The web demo at /app/ on the same site: the real interface with an in-page stand-in for the coordinator
+# (frontend/src/demo/webDemo.ts). The camera and eye tracking run in the visitor's browser; nothing is sent.
+web-demo:
+	npm run vendor -w frontend
+	cd frontend && VITE_WEB_DEMO=1 npx vite build --base /app/ --outDir ../site/public/app --emptyOutDir --sourcemap false
+
+# The web demo's Gemini planner reads GEMINI_API_KEY as a Cloudflare secret (never in the page): run once.
+site-gemini-key:
+	npx --yes wrangler@4 pages secret put GEMINI_API_KEY --project-name=$(CF_PROJECT)
+
+site-deploy: web-demo
+	npm install --workspace site --no-audit --no-fund
+	SITE_BASE=/ SITE_URL=$${SITE_URL:-https://$(CF_PROJECT).pages.dev} npm run build -w site
+	@# Creates the project with "main" as its production branch; harmless if it already exists.
+	-npx --yes wrangler@4 pages project create $(CF_PROJECT) --production-branch=main
+	@# From site/, so Cloudflare also deploys site/functions (the web demo's Gemini planner).
+	cd site && npx --yes wrangler@4 pages deploy dist --project-name=$(CF_PROJECT) --branch=main --commit-dirty=true
+	@# site/dist is tracked in git (built for GitHub Pages); put it back so git pull keeps working.
+	git checkout -- site/dist && git clean -fdq site/dist
+	@echo "Deployed. Open the https://...pages.dev address printed above (the first deploy can take a minute)."

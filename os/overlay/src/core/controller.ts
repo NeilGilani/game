@@ -84,6 +84,9 @@ export interface Notice {
   tone: "info" | "warn" | "ok";
 }
 
+/** Target snapshot owner while AGENCY's own shell is frontmost (set by the desktop app). */
+export const SHELL_OWNER = "agency.shell";
+
 export interface OverlayView {
   display: ScreenRect;
   paused: boolean;
@@ -221,7 +224,20 @@ export class OverlayController {
   }
 
   setTargets(snapshot: TargetSnapshot): void {
+    const wasStandingDown = this.standingDown();
     this.snapshot = snapshot;
+    if (this.standingDown() !== wasStandingDown) {
+      // AGENCY's own window came to the front (or left it): it has its own Help, Stop, cursor and dwell,
+      // so the overlay draws nothing over it and frees the screen.
+      this.panel = null;
+      this.picker = null;
+      this.cluster = null;
+      this.keyboardOpen = false;
+      this.scrolling = null;
+      this.dwell.reset(this.gaze?.t ?? 0, 0);
+      this.changed(true);
+      return;
+    }
     // The field the keyboard types into keeps its identity across refreshes; drop it if it vanished.
     if (this.field && snapshot.owner !== null) {
       const still = snapshot.targets.find((t) => t.id === this.field?.id);
@@ -329,6 +345,7 @@ export class OverlayController {
   /** Every button the overlay draws right now, in scan order (rail first). */
   buttons(): OverlayButton[] {
     if (this.cachedButtons) return this.cachedButtons;
+    if (this.standingDown()) return (this.cachedButtons = []);
     const out: OverlayButton[] = [...this.railButtons()];
     if (!this.paused) {
       out.push(...this.panelButtons());
@@ -405,7 +422,16 @@ export class OverlayController {
 
   // ---------------------------------------------------------------- internals: gaze
 
+  /** True while AGENCY's own shell is in front: it runs its own dwell, Help and Stop. */
+  standingDown(): boolean {
+    return this.snapshot.owner === SHELL_OWNER;
+  }
+
   private onSample(t: number, x: number, y: number, confidence: number): void {
+    if (this.standingDown()) {
+      this.gaze = null;
+      return;
+    }
     this.gaze = { t, x, y, confidence };
     const p = { x, y };
     const onDisplay = contains(this.display, p);

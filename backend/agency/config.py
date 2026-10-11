@@ -117,7 +117,7 @@ def load_settings(**overrides: object) -> Settings:
         ).lower(),
         anthropic_fallbacks=_bool("AGENCY_ANTHROPIC_FALLBACKS", True),
         reasoning_timeout_s=float(
-            os.environ.get("AGENCY_REASONING_TIMEOUT_S") or os.environ.get("AGENCY_ANTHROPIC_TIMEOUT_S") or "45"
+            os.environ.get("AGENCY_REASONING_TIMEOUT_S") or os.environ.get("AGENCY_ANTHROPIC_TIMEOUT_S") or "25"
         ),
         frontend_dist=frontend_dist,
         public_url=os.environ.get("AGENCY_PUBLIC_URL") or None,
