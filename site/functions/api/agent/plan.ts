@@ -122,7 +122,13 @@ export const onRequestPost = async ({ request, env }: Context): Promise<Response
         contents: [
           { role: "user", parts: [{ text: `Task: ${goal}\nKind: ${kind}\nChoices: ${selections}` }] },
         ],
-        generationConfig: { responseMimeType: "application/json", maxOutputTokens: 1024, temperature: 0.4 },
+        generationConfig: {
+          responseMimeType: "application/json",
+          maxOutputTokens: 1024,
+          temperature: 0.4,
+          // A short plan needs a fast answer, not deep thought (Gemini 3 models take a thinking level).
+          ...(model.startsWith("gemini-3") ? { thinkingConfig: { thinkingLevel: "low" } } : {}),
+        },
       }),
     },
   ).catch(() => null);

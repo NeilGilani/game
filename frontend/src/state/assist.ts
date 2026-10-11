@@ -27,9 +27,28 @@ async function post<T>(path: string, body: unknown, timeoutMs: number): Promise<
   }
 }
 
+/** What the coordinator reports about an answer's speed (backend/agency/assist.py _speed). */
+interface Speed {
+  ms: number;
+  route_ms?: number | null;
+  lane?: string | null;
+  mode?: string | null;
+  cached?: boolean;
+}
+
+/** One line for the plan: how Synapse made this fast (routing time, lane, cache), in plain words. */
+export function speedNote(label: string, speed: Speed | undefined): string | undefined {
+  if (!speed) return undefined;
+  const secs = (speed.ms / 1000).toFixed(1);
+  if (speed.cached) return `Synapse cache: same task as before, planned in ${secs} s with no cloud wait.`;
+  const routed = typeof speed.route_ms === "number" ? ` routed in ${Math.max(1, Math.round(speed.route_ms))} ms,` : "";
+  const lane = speed.lane === "fast" ? "fast lane" : (speed.mode ?? "routed");
+  return `Synapse ${lane}:${routed} ${label} planned it in ${secs} s.`;
+}
+
 /** Gemini plans each Home task through the coordinator (Synapse routes it; the network budget may say built-in). */
 export const planWithCoordinator: RemotePlanner = async (r) => {
-  const out = await post<{ steps: { title: string; risk: string; done: string }[]; label: string }>(
+  const out = await post<{ steps: { title: string; risk: string; done: string }[]; label: string; speed?: Speed }>(
     "/api/assist/plan",
     { goal: r.goal.slice(0, 200), kind: r.selections?.kind ?? "", selections: r.selections ?? {} },
     30_000,
@@ -39,7 +58,7 @@ export const planWithCoordinator: RemotePlanner = async (r) => {
     (s): s is { title: string; risk: "read" | "reversible" | "consequential"; done: string } =>
       s.risk === "read" || s.risk === "reversible" || s.risk === "consequential",
   );
-  return steps.length >= 2 ? { steps, label: out.label } : null;
+  return steps.length >= 2 ? { steps, label: out.label, speed: speedNote(out.label, out.speed) } : null;
 };
 
 /** Four replies to what someone just said, in the person's own style. Null: use the on-device suggestions. */

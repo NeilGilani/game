@@ -178,13 +178,17 @@ const planWithGemini: RemotePlanner = async (r) => {
     const body = (await res.json()) as {
       steps?: { title: string; risk: string; done: string }[];
       model?: string;
+      ms?: number;
     };
     if (!Array.isArray(body.steps)) return null;
     const steps = body.steps.filter(
       (s): s is { title: string; risk: "read" | "reversible" | "consequential"; done: string } =>
         s.risk === "read" || s.risk === "reversible" || s.risk === "consequential",
     );
-    return steps.length >= 2 ? { steps, label: `Gemini (${body.model ?? "cloud"})` } : null;
+    const label = `Gemini (${body.model ?? "cloud"})`;
+    const speed =
+      typeof body.ms === "number" ? `Fast lane: ${label} planned it in ${(body.ms / 1000).toFixed(1)} s.` : undefined;
+    return steps.length >= 2 ? { steps, label, ...(speed ? { speed } : {}) } : null;
   } catch {
     return null;
   } finally {

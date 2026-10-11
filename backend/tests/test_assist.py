@@ -66,3 +66,16 @@ def test_no_cloud_means_on_device(tmp_path) -> None:
     with make_client(tmp_path, provider=DisabledProvider()) as client:
         assert client.post("/api/assist/replies", json={"heard": "hi"}).status_code == 503
         assert client.post("/api/assist/complete", json={"text": "I"}).status_code == 503
+
+
+def test_same_request_is_answered_from_synapse_cache(tmp_path) -> None:
+    from agency import assist
+
+    assist._cache.clear()
+    cloud = FakeCloud({"plan_task": PLAN})
+    with make_client(tmp_path, provider=cloud) as client:
+        first = client.post("/api/assist/plan", json={"goal": "Order pad thai again", "kind": "food"}).json()
+        again = client.post("/api/assist/plan", json={"goal": "Order pad thai again", "kind": "food"}).json()
+    assert first["speed"]["cached"] is False and again["speed"]["cached"] is True
+    assert again["steps"] == first["steps"]
+    assert len(cloud.prompts) == 1  # Gemini was asked once

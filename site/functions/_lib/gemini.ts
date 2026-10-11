@@ -53,6 +53,8 @@ export async function gemini(env: Env, system: string, user: string, maxTokens =
           responseMimeType: "application/json",
           maxOutputTokens: maxTokens,
           temperature: 0.5,
+          // Replies and sentence endings need speed, not deep thought (Gemini 3 models take a thinking level).
+          ...(model.startsWith("gemini-3") ? { thinkingConfig: { thinkingLevel: "low" } } : {}),
         },
       }),
     },

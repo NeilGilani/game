@@ -140,7 +140,9 @@ def test_synapse_routes_the_plan_and_gemini_gets_its_expert_mixture(tmp_path: Pa
     system = system_instruction(gemini.bodies[-1])
     assert "Synapse-Mesh routed this request (Ultra-Fusion)" in system
     assert "medical (60%)" in system and "legal (30%)" in system and "Clinical lens" in system
-    assert gemini.bodies[-1]["generationConfig"]["thinkingConfig"] == {"thinking_level": "MEDIUM"}
+    # A plan is an everyday request: Synapse's fast lane asks for low thinking even on a good network.
+    assert route["lane"] == "fast"
+    assert gemini.bodies[-1]["generationConfig"]["thinkingConfig"] == {"thinking_level": "LOW"}
     assert health["synapse"]["connected"] is True and health["synapse"]["router"] == "Synapse-Mesh"
     assert health["synapse"]["last_route"]["mode"] == "Ultra-Fusion"
 
