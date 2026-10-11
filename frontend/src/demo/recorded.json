@@ -420,7 +420,7 @@
   },
   "GET /api/memory/suggestions": [],
   "GET /api/preferences": {
-    "input_mode": "pointer",
+    "input_mode": "head",
     "dwell_ms": 1200,
     "dwell_stability_px": 60,
     "target_snap_px": 48,

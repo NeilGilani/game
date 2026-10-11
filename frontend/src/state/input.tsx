@@ -109,13 +109,14 @@ export function InputProvider({ children }: { children: ReactNode }) {
     vision.setKind(mode === "head" ? "head" : "gaze");
   }, [vision, mode]);
 
-  // Start the camera automatically for camera modes once the person has granted access before.
+  // Start the camera automatically for camera modes once the person has granted access before. The hosted web
+  // demo starts it straight away (the browser asks first), so a visitor begins with the eye cursor; the mouse still works.
   useEffect(() => {
-    let consented = false;
+    let consented = import.meta.env.VITE_WEB_DEMO === "1";
     try {
-      consented = localStorage.getItem(CAMERA_OK_KEY) === "1";
+      consented ||= localStorage.getItem(CAMERA_OK_KEY) === "1";
     } catch {
-      consented = false;
+      /* storage unavailable */
     }
     if (usesCamera && consented && vision.status === "off") void vision.start();
   }, [usesCamera, vision]);
