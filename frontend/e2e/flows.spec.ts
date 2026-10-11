@@ -135,13 +135,17 @@ test("back, paging-free screens, Stop mid-task, and Continue on Home", async ({ 
   await expect(page.getByText("Nothing more will happen with this task.")).toBeVisible();
 });
 
-test("apps: launch from the flow, switch on the Apps screen (simulated in the browser)", async ({ page }) => {
+test("apps: in the browser, opening says it needs the AGENCY Mac app, never pretends", async ({ page }) => {
   await page.goto("/#/flow/apps");
   await pick(page, "Mail");
-  await expect(page.getByRole("heading", { name: /Mail is open \(simulated/ })).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: /Couldn't open Mail: opening Mac apps needs the AGENCY Mac app/ }),
+  ).toBeVisible();
   await page.goto("/#/apps?view=all");
   await pick(page, /Music/);
-  await expect(page.getByText(/Music is open/).first()).toBeVisible();
+  await expect(
+    page.getByText(/Couldn't open Music: opening Mac apps needs the AGENCY Mac app/).first(),
+  ).toBeVisible();
 });
 
 test("settings hub, talk and onboarding are reachable by big choices", async ({ page }) => {

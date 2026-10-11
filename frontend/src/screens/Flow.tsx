@@ -113,10 +113,17 @@ function FlowRunner({ flow }: { flow: FlowDef }) {
     if (outcome.type === "route") {
       navigate(outcome.path);
     } else if (outcome.type === "launch") {
-      const result = await apps().launch(outcome.bundleId);
-      const text = result.ok
-        ? `${outcome.name} is open${apps().simulated ? " (simulated in the browser)" : ""}.`
-        : `Couldn't open ${outcome.name}: ${result.error ?? "unknown problem"}.`;
+      // A failed call must still end on a screen that says so: an unanswered outcome would freeze this flow.
+      const text = await apps()
+        .launch(outcome.bundleId)
+        .then(
+          (r) =>
+            r.ok
+              ? `${outcome.name} is open.`
+              : `Couldn't open ${outcome.name}: ${r.error ?? "the Mac didn't say why"}.`,
+          (err: unknown) =>
+            `Couldn't open ${outcome.name}: ${err instanceof Error ? err.message : "something went wrong"}.`,
+        );
       announce(text);
       setLaunched(text);
     } else if (outcome.pack && PACK_SCREENS[outcome.pack]) {
