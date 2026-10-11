@@ -30,7 +30,7 @@ make os-dist    # a .dmg in os/desktop/dist (needs make sidecar; signs only with
 | Preload | `src/preload/index.ts` | Exposes `window.agency` (`AgencyApi` in `os/contracts/src/host.ts`) and nothing else |
 | Shell window | `agency://shell/` | `frontend/dist`, full screen. `/api` and `/respond` are proxied to the coordinator with the token added by main, so the token never reaches a renderer and Pi mode needs no CORS |
 | Overlay windows | `agency://overlay/` | One per display: transparent, frameless, `screen-saver` level, all Spaces including full-screen apps, click-through (`setIgnoreMouseEvents(true, {forward: true})`) except while the pointer is over its own targets. `os/overlay/dist` when built, else the built-in fallback (gaze cursor, dwell, Help, Stop) |
-| Gaze host | `agency://gaze/engine.html` | Hidden window, `backgroundThrottling: false`, the only window allowed the camera (video only). `os/gaze/dist` when built; until it publishes, main uses the mouse as the gaze source |
+| Gaze host | `agency://gaze/engine.html` | Optional hidden engine window (`AGENCY_GAZE=engine`), `backgroundThrottling: false`. By default the shell tracks the camera and shares its calibrated pointer; main uses the mouse until gaze samples arrive |
 | agency-native | child process, JSON-RPC over stdio | `os/native-macos` build, `Contents/MacOS/agency-native` when packaged, `fakes/fake-native.cjs` in development |
 | Agent | `utilityProcess` | `os/agent/dist/agent-utility.mjs`, or `fakes/fake-agent.cjs` in development |
 | Coordinator | child process | `backend/.venv` in development, the PyInstaller sidecar when packaged (`os/sidecar`), or a Raspberry Pi |
@@ -46,7 +46,7 @@ package is reported as `absent` in `window.agency.host.status()`.
   navigation and redirects outside `agency://shell` / `agency://host` blocked.
 - CSP on every response from `agency://` (`src/main/protocol.ts`): `default-src 'self'`, scripts only from the app
   (plus `'wasm-unsafe-eval'` for MediaPipe), no plugins, no framing.
-- Permissions: the camera (video only) for the gaze window, nothing else for anyone.
+- Permissions: the camera (video only) for the shell and gaze window, nothing else for anyone.
 - IPC: main checks the sender's role on every channel. Native methods per role are listed in `NATIVE_ALLOWED`
   (`os/contracts/src/host.ts`); no renderer can capture the screen or reach the coordinator token.
 
