@@ -17,13 +17,14 @@ const link = (path: string) => `${base}${path}`;
 const sections = [
   { href: `${home}#how`, label: "How it works" },
   { href: `${home}#features`, label: "Features" },
+  { href: `${home}#compare`, label: "Compare" },
   { href: `${home}#safety`, label: "Safety" },
   { href: `${home}#download`, label: "Download" },
   { href: `${home}#faq`, label: "FAQ" },
   { href: link("setup/"), label: "Setup guide", page: "setup" },
 ];
 // The header shows the main sections; the setup guide is in the menu, the download section and the footer.
-const headerSections = sections.slice(0, 5);
+const headerSections = sections.slice(0, 6);
 const canonical = new URL(Astro.url.pathname, Astro.site);
 ---
 
@@ -37,8 +38,8 @@ const canonical = new URL(Astro.url.pathname, Astro.site);
     <link rel="canonical" href={canonical} />
     <link rel="icon" href={link("favicon.svg")} type="image/svg+xml" />
     <meta name="color-scheme" content="light dark" />
-    <meta name="theme-color" content="#fbf5ea" media="(prefers-color-scheme: light)" />
-    <meta name="theme-color" content="#15110d" media="(prefers-color-scheme: dark)" />
+    <meta name="theme-color" content="#f5f7fb" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#05070f" media="(prefers-color-scheme: dark)" />
     <meta name="referrer" content="no-referrer" />
     <meta property="og:title" content={title} />
     <meta property="og:description" content={description} />
@@ -62,6 +63,7 @@ const canonical = new URL(Astro.url.pathname, Astro.site);
     </script>
   </head>
   <body>
+    <div class="backdrop" aria-hidden="true"></div>
     <a class="skip-link btn" href="#main">
       Skip to content
     </a>
@@ -69,7 +71,9 @@ const canonical = new URL(Astro.url.pathname, Astro.site);
       <div class="wrap">
         <a class="brand" href={home} aria-current={current === "home" ? "page" : undefined}>
           <Logo />
-          <span>AGENCY OS</span>
+          <span>
+            AGENCY <span class="brand-os">OS</span>
+          </span>
         </a>
         <nav class="site-nav" aria-label="Sections">
           <ul>
@@ -114,7 +118,10 @@ const canonical = new URL(Astro.url.pathname, Astro.site);
         <div class="footer-grid">
           <div>
             <h2>AGENCY OS</h2>
-            <p>A home and accessibility layer for the Mac, for people who can move only their eyes.</p>
+            <p>
+              An eye-controlled Mac for people who can only move their eyes. Built for the UCSC AI Hackathon,
+              Cloud AI track.
+            </p>
           </div>
           <nav aria-label="About this site">
             <h2>About</h2>
@@ -158,9 +165,9 @@ const canonical = new URL(Astro.url.pathname, Astro.site);
           </nav>
         </div>
         <p class="fine">
-          AGENCY OS is not a medical device and not an emergency service. In the box, every outside effect is
-          simulated until someone deliberately sets up real ones. This site has no trackers, no analytics and
-          no cookies.
+          AGENCY OS is not a medical device and Lifeline is not an emergency service. Out of the box, shops,
+          phones and messages are practice versions until someone deliberately sets up real ones. This site
+          has no trackers, no analytics and no cookies.
         </p>
       </div>
     </footer>

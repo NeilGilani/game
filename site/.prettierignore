@@ -6,3 +6,4 @@ test-results
 playwright-report
 public/screenshots/*.png
 package-lock.json
+public/app
