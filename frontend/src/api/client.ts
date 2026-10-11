@@ -114,13 +114,31 @@ async function request<T>(path: string, init: RequestInit & { timeoutMs?: number
   const token = accessToken();
   if (token) headers.set("X-Agency-Token", token);
   let response: Response;
+  const method = (init.method ?? "GET").toUpperCase();
   try {
-    response = await fetch(`${coordinatorUrl()}${path}`, { ...init, headers, signal: controller.signal });
-  } catch {
+    try {
+      response = await fetch(`${coordinatorUrl()}${path}`, { ...init, headers, signal: controller.signal });
+    } catch (first) {
+      if (controller.signal.aborted) throw first;
+      // One quick retry: a dropped connection (Wi-Fi blip, coordinator restarting) usually works the second time.
+      await new Promise((r) => setTimeout(r, 600));
+      response = await fetch(`${coordinatorUrl()}${path}`, { ...init, headers, signal: controller.signal });
+    }
+  } catch (err) {
     // A timeout is not "unreachable": the coordinator is there but still working (often Gemini thinking).
     if (controller.signal.aborted)
-      throw new ApiError("The coordinator is taking too long to answer. Try again.", 0, false);
-    throw new ApiError("Can't reach the coordinator.", 0, true);
+      throw new ApiError(
+        `The coordinator is taking too long to answer (${method} ${path}). Try again.`,
+        0,
+        false,
+      );
+    const why = err instanceof Error ? err.message : String(err);
+    console.error(`[AGENCY] ${method} ${coordinatorUrl() || window.location.origin}${path} failed:`, err);
+    throw new ApiError(
+      `Can't reach the coordinator (${method} ${path} at ${coordinatorUrl() || window.location.origin}: ${why}).`,
+      0,
+      true,
+    );
   } finally {
     clearTimeout(timer);
   }
