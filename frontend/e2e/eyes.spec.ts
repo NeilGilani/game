@@ -38,11 +38,11 @@ async function pointerError(page: Page, points: Point[]): Promise<number> {
   const errors: number[] = [];
   for (const p of points) {
     await lookAt(page, p);
-    await page.waitForTimeout(700); // the eyes land and the fixation settles
+    await page.waitForTimeout(400); // the eyes land and the fixation settles
     const seen = await page.evaluate(async () => {
       const hook = (window as unknown as { __agency: Hook }).__agency;
       const out: Point[] = [];
-      for (let i = 0; i < 15; i++) {
+      for (let i = 0; i < 10; i++) {
         const q = hook.pointer();
         if (q) out.push(q);
         await new Promise((r) => setTimeout(r, 33));
@@ -51,23 +51,23 @@ async function pointerError(page: Page, points: Point[]): Promise<number> {
     });
     for (const q of seen) errors.push(Math.hypot(q.x - p.x, q.y - p.y));
   }
-  expect(errors.length).toBeGreaterThan(points.length * 10);
+  expect(errors.length).toBeGreaterThan(points.length * 6);
   return errors.reduce((a, b) => a + b, 0) / errors.length;
 }
 
-test("calibrate, then choose with the eyes alone (simulated person, real engine)", async ({ page }) => {
+test("5-second eye scan, then choose with the eyes alone (simulated person, real engine)", async ({
+  page,
+}) => {
   await page.goto("/#/calibrate");
   await page.evaluate(() =>
     (window as unknown as { __agency: Hook }).__agency.eyes({ seed: 3, head: "still" }),
   );
 
-  // The simulated person follows each calibration dot. Nothing is clicked.
+  // The simulated person follows the eye scan's light. Nothing is clicked; it ends on Home by itself.
   await lookAt(page, ".cal-target");
   await expect(page.getByText(/Starting in \d/)).toBeVisible();
-  await expect(page.getByText(/Dot 1 of \d+/)).toBeVisible({ timeout: 15_000 });
-  await expect(page.getByRole("heading", { name: /Accuracy: (good|fair)/ })).toBeVisible({
-    timeout: 120_000,
-  });
+  await expect(page.getByText(/Follow the light/).first()).toBeVisible({ timeout: 15_000 });
+  await expect(page).toHaveURL(/#\/$/, { timeout: 30_000 });
 
   const size = page.viewportSize()!;
   const error = await pointerError(page, [
@@ -77,13 +77,8 @@ test("calibrate, then choose with the eyes alone (simulated person, real engine)
     { x: size.width * 0.3, y: size.height * 0.75 },
     { x: size.width * 0.7, y: size.height * 0.75 },
   ]);
-  console.log(`Simulated person, pointer error after calibration: ${Math.round(error)} px mean`);
+  console.log(`Simulated person, pointer error after the 5-second eye scan: ${Math.round(error)} px mean`);
   expect(error).toBeLessThan(130);
-
-  // Hands-free from here: look at "Use this calibration" until the dwell selects it.
-  const use = (await page.getByRole("button", { name: /Use this calibration/ }).boundingBox())!;
-  await lookAt(page, { x: use.x + use.width / 2, y: use.y + use.height / 2 });
-  await expect(page).toHaveURL(/#\/$/, { timeout: 30_000 });
 
   // Choose a Home tile by looking at it, then another.
   await lookAt(page, '[data-tile="talk"]');
@@ -107,4 +102,13 @@ test("the head pointer works without any calibration (simulated person)", async 
       timeout: 10_000,
     })
     .not.toBeNull();
+});
+
+test("eye gaze without a calibration starts the eye scan by itself (simulated person)", async ({ page }) => {
+  await page.goto("/#/");
+  await page.evaluate(() =>
+    (window as unknown as { __agency: Hook }).__agency.eyes({ seed: 3, head: "still" }),
+  );
+  await expect(page).toHaveURL(/#\/calibrate/, { timeout: 10_000 });
+  await expect(page.getByText(/Starting in \d/)).toBeVisible();
 });

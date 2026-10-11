@@ -3105,3 +3105,8 @@ h2 {
   padding-top: 4px;
   padding-bottom: 0;
 }
+
+/* The eye scan's light: positioned by transform every frame, so it glides without layout work. */
+.cal-light {
+  will-change: transform;
+}

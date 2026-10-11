@@ -122,7 +122,8 @@ export function CameraSetup() {
   const issues = snap?.issues ?? [];
   const lighting = !issues.includes("too-dark") && !issues.includes("too-bright");
   const distance = !issues.includes("too-far") && !issues.includes("too-close");
-  const ready = running && !!snap?.eyes && lighting && distance;
+  // Light and distance are advice: calibration only needs both eyes found (the result says how well it went).
+  const ready = running && !!snap?.eyes;
   // Eye gaze needs calibrating; the head pointer just starts from wherever the head points now.
   const needsCalibration = input.mode === "gaze";
   const headPointer = input.mode === "head";

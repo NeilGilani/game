@@ -16,6 +16,7 @@
  */
 
 import { type CameraErrorKind } from "../../../os/gaze/src/camera";
+import { PursuitCalibration } from "../../../os/gaze/src/calibration/pursuit";
 import type { CalibrationResult } from "../../../os/gaze/src/calibration/session";
 import { type CalibrationRun, GazeEngine } from "../../../os/gaze/src/engine";
 import type { GazeFeatures } from "../../../os/gaze/src/landmarks";
@@ -185,6 +186,17 @@ export class VisionEngine {
     this.space = viewport();
     this.gaze.setScreen(singleDisplay(this.space.width, this.space.height));
     return this.gaze.startCalibration();
+  }
+
+  /**
+   * Start the 5-second eye scan in the current viewport: draw the light at `scan.at(ms)` and hand
+   * in frames with `scan.add`; finish with `finishCalibration(step.result)` or `cancelCalibration`.
+   */
+  startEyeScan(): PursuitCalibration {
+    this.calibrating = true;
+    this.space = viewport();
+    this.gaze.setScreen(singleDisplay(this.space.width, this.space.height));
+    return new PursuitCalibration({ display: { x: 0, y: 0, ...this.space } });
   }
 
   /** The finished calibration, ready to store and apply (setCalibration). */

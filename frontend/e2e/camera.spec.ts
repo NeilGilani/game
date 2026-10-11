@@ -35,7 +35,10 @@ test.describe("with a fake webcam", () => {
   );
 
   test("finds the face and irises, then reports honest calibration quality", async ({ page, context }) => {
-    await context.addInitScript(() => localStorage.removeItem("agency.onboarded"));
+    await context.addInitScript(() => {
+      localStorage.removeItem("agency.onboarded");
+      localStorage.setItem("agency.testHooks", "1");
+    });
     await page.goto("/#/");
     await expect(page).toHaveURL(/#\/welcome/);
     await page.getByRole("radio", { name: /Eye gaze/ }).click();
@@ -47,13 +50,15 @@ test.describe("with a fake webcam", () => {
     await expect(page.getByText(/Tracking confidence \d+%/)).toBeVisible();
     await expect(page.getByText(/Eye gaze · needs calibration/)).toBeVisible();
 
-    // Calibration starts by itself after a countdown (no click needed for eye-only users).
+    // The 5-second eye scan starts by itself after a countdown (no click needed for eye-only users).
     await page.getByRole("button", { name: /Calibrate now/ }).click();
     await expect(page.getByText(/Starting in \d/)).toBeVisible({ timeout: 20_000 });
-    await expect(page.getByText(/Dot 1 of \d+/)).toBeVisible({ timeout: 20_000 });
-    // A still photo can't follow the dots, so the honest answer is "poor" with a fallback offered.
-    await expect(page.getByRole("heading", { name: /Accuracy: poor/ })).toBeVisible({ timeout: 120_000 });
-    await expect(page.getByText(/Not reliable enough for dwell selection/)).toBeVisible();
-    await expect(page.getByRole("button", { name: /Use blink scanning/ })).toBeVisible();
+    await expect(page.getByText(/Follow the light/).first()).toBeVisible({ timeout: 20_000 });
+    // A still photo can't follow the light, so the result is honest: a poor scan or a request to try again.
+    await expect(
+      page
+        .getByText(/The eye scan didn't work/)
+        .or(page.getByRole("navigation", { name: /Everything you can do/ })),
+    ).toBeVisible({ timeout: 60_000 });
   });
 });

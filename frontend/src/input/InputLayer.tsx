@@ -11,11 +11,14 @@ import { SELECTION_RESET_EVENT } from "../components/common";
 import { useAnnounce } from "../state/announcer";
 import { MODE_LABELS, useInput } from "../state/input";
 import { usePreferences } from "../state/preferences";
+import { navigate } from "../state/router";
 import { BlinkSwitch } from "../vision/blink";
 import type { VisionFrame } from "../vision/tracker";
 import { DwellEngine, type DwellEvent } from "./dwell";
 import { ScanEngine, type ScanEvent } from "./scan";
 import { findTarget, type TargetRect } from "./targets";
+
+const AUTO_CALIBRATE_KEY = "agency.autoCalibrated";
 
 const ids = new WeakMap<Element, string>();
 let nextId = 1;
@@ -144,9 +147,12 @@ export function InputLayer() {
       const now = frame.t;
       // Tracking state and automatic fallback to scanning. This follows the face, not the pointer:
       // the pointer's own confidence also dips on the frame of each eye jump, which isn't a loss.
-      // While selection is suspended (calibration dots) there is no pointer by design: not a loss.
-      if (suspended) {
+      // While selection is suspended (calibration dots), or eye gaze isn't calibrated yet, there is
+      // no pointer by design: that's not a loss, and it must never switch the person to scanning.
+      const expectPointer = mode === "head" || !!calibration;
+      if (suspended || !expectPointer) {
         lowSince.current = null;
+        setTracking(frame.trackingConfidence >= 0.5 ? "ok" : "weak");
       } else if (frame.trackingConfidence < 0.5 || !frame.pointer) {
         lowSince.current ??= now;
         goodSince.current = null;
@@ -215,6 +221,37 @@ export function InputLayer() {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pointerMode, vision, prefs, suspended, eyeControlPaused, fallbackActive, calibration]);
+
+  // --- Eye gaze without a calibration: start calibrating by itself ----------------------
+  // Someone who can only move their eyes can't click "Calibrate". Once the camera sees a face for a
+  // moment, calibration opens on its own (once per session; the Home card stays if they leave it).
+  useEffect(() => {
+    if (mode !== "gaze" || calibration || input.status !== "running") return;
+    let seenSince: number | null = null;
+    return vision.onFrame((frame) => {
+      const route = window.location.hash.replace(/^#/, "") || "/";
+      const busy = /^\/(calibrate|camera|welcome|onboarding|lifeline|respond)/.test(route);
+      let done = false;
+      try {
+        done = sessionStorage.getItem(AUTO_CALIBRATE_KEY) === "1";
+      } catch {
+        done = false;
+      }
+      if (done || busy || !frame.features) {
+        seenSince = null;
+        return;
+      }
+      seenSince ??= frame.t;
+      if (frame.t - seenSince < 1500) return;
+      try {
+        sessionStorage.setItem(AUTO_CALIBRATE_KEY, "1");
+      } catch {
+        /* storage unavailable: still calibrate */
+      }
+      announce("Let's teach AGENCY your eyes: follow the dots.");
+      navigate("/calibrate");
+    });
+  }, [mode, calibration, input.status, vision, announce]);
 
   // --- Scanning with a key or a long blink --------------------------------------------
   useEffect(() => {
