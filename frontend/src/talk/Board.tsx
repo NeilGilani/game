@@ -28,6 +28,9 @@ export function Board() {
   // Fix the page size on entry so choices never move under a steady gaze.
   // A short MacBook window shows one row and keeps Previous / Next visible.
   const [wordsPerPage] = useState(() => (window.innerHeight <= 860 ? 6 : 12));
+  // Reserve room for AI finish, Delete and Clear without wrapping the prediction row.
+  const [predictionCount] = useState(() => (window.innerWidth <= 1366 ? 2 : 3));
+  const [phraseCount] = useState(() => (window.innerWidth >= 1600 ? 2 : 1));
   const pages = usePages(CORE_WORDS, wordsPerPage);
 
   useEffect(() => {
@@ -43,7 +46,7 @@ export function Board() {
   const words = model.next(message, 5);
   // Core words the person's own word model predicts next are weakly likely targets for eye control.
   const predicted = new Set(words.map((w) => w.text.toLowerCase()));
-  const phrases = message.trim() === "" ? predictPhrases("", said, memorySuggestions, 3) : [];
+  const phrases = message.trim() === "" ? predictPhrases("", said, memorySuggestions, phraseCount) : [];
 
   // AI finishes the sentence once it has started: one look speaks a whole sentence instead of a look per word.
   // Only the started words and recent phrases go to Gemini (through the coordinator, routed by Synapse-Mesh).
@@ -61,13 +64,15 @@ export function Board() {
     if (!aiOn || text.split(/\s+/).length < 1 || text === "") return;
     let live = true;
     const t = setTimeout(() => {
-      void aiComplete(text, said.slice(-12)).then((r) => live && r && setFinishes(r.completions.slice(0, 2)));
+      void aiComplete(text, said.slice(-12)).then(
+        (r) => live && r && setFinishes(r.completions.slice(0, phraseCount)),
+      );
     }, 700);
     return () => {
       live = false;
       clearTimeout(t);
     };
-  }, [message, aiOn, said]);
+  }, [message, aiOn, said, phraseCount]);
   const toggleAi = () =>
     setAiOn((on) => {
       try {
@@ -134,7 +139,7 @@ export function Board() {
             <Icon name="sparkle" /> {p.text}
           </button>
         ))}
-        {words.slice(0, phrases.length || finishes.length ? 2 : 5).map((w) => (
+        {words.slice(0, phrases.length || finishes.length ? 1 : predictionCount).map((w) => (
           <button
             key={`w-${w.text}`}
             className="btn talk-btn talk-word-chip"
