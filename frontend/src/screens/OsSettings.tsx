@@ -46,7 +46,7 @@ const SETTINGS: Choice[] = [
     id: "voice",
     label: "Voice",
     sub: "The voice that speaks for you",
-    icon: "speak",
+    icon: "voice",
     path: "/settings/voice",
   },
   {
@@ -299,7 +299,7 @@ export function VoiceSettings() {
               data-dwell
             >
               <span className="choice-pic" aria-hidden>
-                <Icon name={choice.id === v.id ? "check" : "speak"} size={44} />
+                <Icon name={choice.id === v.id ? "check" : "voice"} size={44} />
               </span>
               <span className="choice-label">{v.name}</span>
               <span className="choice-sub">

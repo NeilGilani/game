@@ -1,168 +1,398 @@
-/* Soft desktop materials. Motion decorates icons, never changes a button's hit area. */
+/* AGENCY materials and motion. Geometry and assistive targets belong to app/layout;
+   this layer is shared by every real screen, without per-control backdrop filters. */
 :root {
-  --chrome-surface: color-mix(in srgb, var(--glass-strong) 88%, transparent);
-  --window-content: color-mix(in srgb, var(--surface) 96%, transparent);
-  --window-shadow: 0 32px 90px rgb(8 23 55 / 20%), 0 4px 16px rgb(0 0 0 / 8%);
-  --polish-edge: color-mix(in srgb, var(--ink) 10%, transparent);
-  --polish-hover: color-mix(in srgb, var(--accent) 7%, transparent);
+  --chrome-surface: var(--material-chrome);
+  --window-content: var(--material-content);
+  --window-shadow: var(--shadow-window);
+  --polish-edge: var(--material-edge);
+  --polish-hover: color-mix(in srgb, var(--accent) 9%, transparent);
 }
-
 body {
-  background:
-    linear-gradient(var(--desktop-shade), var(--desktop-shade)) fixed,
-    radial-gradient(ellipse at 16% 8%, #c6ecff 0%, transparent 48%) fixed,
-    radial-gradient(ellipse at 88% 18%, #a6b7f5 0%, transparent 54%) fixed,
-    radial-gradient(ellipse at 72% 100%, #dfbde7 0%, transparent 52%) fixed,
-    linear-gradient(145deg, #5198ca, #526aba 54%, #7c77ba) fixed;
+  background: var(--wallpaper) fixed;
 }
-
 .menubar {
+  background: var(--chrome-surface);
   -webkit-backdrop-filter: var(--glass-blur);
   backdrop-filter: var(--glass-blur);
   box-shadow: 0 1px 0 var(--polish-edge);
 }
-
-.shell-os .main > .home {
-  max-width: 1280px;
-  border-radius: 28px;
+.menubar-brand {
+  font-weight: 650;
+  letter-spacing: -0.035em;
+}
+h1 {
+  letter-spacing: -0.04em;
+  font-weight: 650;
+}
+h2,
+h3 {
+  letter-spacing: -0.025em;
+}
+.eyebrow {
+  letter-spacing: 0.05em;
+  font-weight: 600;
+  color: var(--ink-2);
 }
 
+/* One polished window material; emergency screens keep their opaque surfaces. */
+.shell-os .main > .home,
+.main > .flow,
+.main > .talk-page,
+.main > .task,
+.main > .page:not(.ll-page) {
+  border-radius: var(--radius-window);
+  border: 1px solid var(--polish-edge);
+  background: var(--window-content);
+  box-shadow:
+    inset 0 1px 0 var(--material-highlight),
+    var(--window-shadow);
+}
+.main > .page:not(.talk-page):not(.ll-page),
+.main > .task {
+  padding: 24px;
+}
+.main[data-zone="lifeline"] > .page {
+  background: var(--surface);
+}
+.shell-os .main > .home {
+  max-width: 1380px;
+  background: var(--chrome-surface);
+}
 .home-titlebar {
   border-bottom-color: var(--polish-edge);
 }
-
+.window-title {
+  font-weight: 600;
+}
+.window-meta {
+  font-size: 0.75rem;
+}
 .home-widget {
-  border-radius: 0 0 0 28px;
+  border-radius: 0 0 0 var(--radius-window);
+  background: linear-gradient(
+    155deg,
+    color-mix(in srgb, var(--accent-soft) 45%, transparent),
+    transparent 72%
+  );
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
 }
-
+.home-widget-head {
+  gap: 10px;
+}
+.home-signature {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--ink-2);
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+.home-signature .brand-mark {
+  width: 28px;
+  height: 28px;
+}
+.home-widget h1 {
+  font-size: 1.65rem;
+  line-height: 1.1;
+  font-weight: 650;
+}
+.home-howto {
+  line-height: 1.45;
+}
+.widget-sub {
+  font-size: 0.7rem;
+  letter-spacing: 0.075em;
+}
 .home-tiles {
-  border-radius: 0 0 28px;
+  border-radius: 0 0 var(--radius-window);
+  background: var(--window-content);
 }
-
 .home-usuals .usual {
-  border-color: var(--polish-edge);
-  border-radius: 22px;
-  background: color-mix(in srgb, var(--glass-strong) 70%, transparent);
-  box-shadow:
-    inset 0 1px 0 var(--icon-gloss),
-    0 2px 6px rgb(0 0 0 / 3%);
+  border: 1px solid var(--polish-edge);
+  border-radius: var(--radius-control);
+  background: var(--glass-strong);
+  box-shadow: var(--shadow-control);
 }
-
 .home-usuals .usual-continue {
-  background: var(--warn-soft);
+  background: color-mix(in srgb, var(--warn-soft) 72%, var(--surface));
 }
-
 .home-tile {
   border-radius: 24px;
 }
-
-.home-tile-icon {
-  border-radius: 28%;
-  box-shadow:
-    inset 0 1px 1px rgb(255 255 255 / 45%),
-    0 5px 12px rgb(0 0 0 / 12%);
-}
-
 .home-tile-label {
   font-weight: 600;
-  letter-spacing: -0.015em;
+  letter-spacing: -0.025em;
+}
+.home-tile-sub {
+  color: var(--ink-2);
+}
+/* The SVG owns its bevel, lighting and silhouette: don't put it inside a second icon. */
+.home .home-tile-icon,
+.home .home-tile[data-tone="lifeline"] .home-tile-icon,
+.shell .choice-pic:has(.app-art),
+.shell .tile-icon:has(.app-art),
+.shell .usual-icon:has(.app-art) {
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+  padding: 0;
+  color: var(--ink);
+}
+.home .home-tile-icon::before {
+  display: none;
+}
+.home-tile-icon > .app-art {
+  width: 100%;
+  height: 100%;
+}
+.shell .choice-pic:has(.app-art) {
+  width: 80px;
+  height: 80px;
+}
+.shell .choice-pic > .app-art {
+  width: 80px;
+  height: 80px;
+}
+.shell .tile-icon > .app-art,
+.shell .usual-icon > .app-art {
+  width: 48px;
+  height: 48px;
+}
+.app-art {
+  overflow: visible;
+  flex-shrink: 0;
+}
+.app-art-contrast {
+  display: none;
 }
 
+/* Floating navigation with quiet selection illumination. */
 .topbar.dock {
-  border-radius: 32px;
+  border-radius: 30px;
   background: var(--chrome-surface);
   box-shadow:
-    inset 0 1px 0 var(--icon-gloss),
-    0 12px 36px rgb(8 23 55 / 18%);
+    inset 0 1px 0 var(--material-highlight),
+    0 10px 30px rgb(8 23 55 / 16%);
 }
-
+.topbar.dock .dock-btn > .app-art {
+  width: 52px;
+  height: 52px;
+  padding: 0;
+  background: transparent;
+  box-shadow: none;
+  border-radius: 0;
+}
 .dock-btn[aria-current="page"] {
   background: var(--polish-hover);
 }
-
-.main > .flow,
-.main > .talk-page {
+.nav {
+  margin: 18px 0 18px 18px;
+  padding: 12px;
+  border: 1px solid var(--polish-edge);
   border-radius: 28px;
+  background: var(--chrome-surface);
+  box-shadow: var(--window-shadow);
+}
+.nav-item {
+  border-radius: 20px;
+  gap: 12px;
+  font-weight: 550;
+  position: relative;
+}
+.nav-item .app-art {
+  width: 44px;
+  height: 44px;
+}
+.nav-item[aria-current="page"] {
+  background: var(--accent-soft);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 25%, transparent);
+}
+.nav-item[aria-current="page"]::before {
+  content: "";
+  position: absolute;
+  left: -5px;
+  width: 3px;
+  height: 28px;
+  background: var(--accent);
+  border-radius: 8px;
 }
 
-.shell .panel,
-.shell .choice,
-.shell .app-tile,
-.shell .tile {
-  border-radius: 24px;
-  box-shadow:
-    inset 0 1px 0 var(--icon-gloss),
-    0 3px 12px rgb(0 0 0 / 5%);
-}
-
-.shell .btn:not(.dock-btn) {
+/* Inner controls are readable material surfaces. Blur belongs to window chrome only. */
+.shell :is(.panel, .choice, .app-tile, .tile, .task-plan, .task-now, .perm) {
+  border-radius: var(--radius-control);
   border-color: var(--polish-edge);
-  box-shadow:
-    inset 0 1px 0 var(--icon-gloss),
-    0 2px 4px rgb(0 0 0 / 4%);
+  background: var(--glass-strong);
+  box-shadow: var(--shadow-control);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
 }
-
-.shell .btn-primary {
-  border-color: var(--accent);
+.shell :is(.panel-warn) {
+  background: var(--warn-soft);
 }
-
-.shell .btn-danger,
-.shell .btn-solid-danger,
-.shell .choice-danger {
+.shell :is(.panel-danger, .choice-danger) {
+  background: var(--danger-soft);
   border-color: var(--danger);
 }
+.shell :is(.panel-accent, .choice-usual) {
+  background: var(--accent-soft);
+}
+.shell .btn:not(.dock-btn) {
+  border-color: var(--polish-edge);
+  border-radius: var(--radius-control);
+  box-shadow: var(--shadow-control);
+}
+.shell .tile-primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-ink);
+}
+.shell .tile-primary .tile-sub {
+  color: var(--accent-ink);
+  opacity: 1;
+}
+.shell .tile-primary:hover {
+  background: var(--accent-hover);
+  color: var(--accent-ink);
+}
+.shell .btn-primary {
+  border-color: var(--accent);
+  background: var(--accent);
+}
+.shell :is(.btn-danger, .btn-solid-danger) {
+  border-color: var(--danger);
+}
+.shell .btn-solid-danger {
+  background: #c4001a;
+  border-color: #c4001a;
+  color: #fff;
+}
+.shell :is(input:not([type="checkbox"]):not([type="range"]), textarea, select) {
+  border-radius: 18px;
+  border-color: var(--line-strong);
+  box-shadow: inset 0 2px 4px rgb(0 0 0 / 3%);
+}
+.setting-toggle {
+  padding-right: 90px;
+}
+.toggle-track {
+  position: absolute;
+  right: 20px;
+  top: 24px;
+  width: 52px;
+  height: 32px;
+  border-radius: 24px;
+  background: var(--surface-2);
+  border: 1px solid var(--line-strong);
+  box-shadow: inset 0 1px 3px rgb(0 0 0 / 10%);
+}
+.toggle-track > span {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--ink-2);
+  transition:
+    transform var(--dur) var(--spring),
+    background-color var(--dur-fast);
+}
+.setting-toggle[aria-pressed="true"] .toggle-track {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+.setting-toggle[aria-pressed="true"] .toggle-track > span {
+  transform: translateX(20px);
+  background: var(--accent-ink);
+}
+.setting-toggle .tile-check {
+  display: none;
+}
 
-.talk-page .talk-word,
-.talk-page .talk-phrase,
-.talk-page .talk-option,
-.talk-page .talk-key {
+/* The communication board preserves its semantic word colours and large fixed targets. */
+.talk-page :is(.talk-word, .talk-phrase, .talk-option, .talk-key, .talk-tab) {
   border-width: 1px;
-  border-radius: 22px;
-  box-shadow:
-    inset 0 1px 0 var(--icon-gloss),
-    0 2px 6px rgb(0 0 0 / 4%);
+  border-radius: 20px;
+  box-shadow: var(--shadow-control);
   font-weight: 600;
 }
-
-.talk-page .talk-message {
-  border: 1px solid var(--polish-edge);
-  box-shadow: inset 0 2px 6px rgb(0 0 0 / 3%);
+.talk-page .talk-tab[aria-current="page"] {
+  border: 2px solid var(--accent);
 }
-
+.talk-page .talk-tab-urgent {
+  border: 2px solid var(--danger);
+  background: var(--danger-soft);
+}
+.talk-page .talk-message {
+  border: 1px solid var(--line-strong);
+  box-shadow: inset 0 2px 6px rgb(0 0 0 / 3%);
+  font-weight: 550;
+}
 .talk-page .talk-predict-row > .talk-phrase-chip {
   flex: 1 1 0;
   min-width: 120px;
 }
-
 .talk-page .talk-predict-row:has(> .talk-phrase-chip) > .spacer {
   display: none;
 }
-
-.desktop-menu-popover {
-  transform-origin: top left;
-  animation: polish-menu-in var(--dur-fast) var(--ease-out);
+.talk-page .talk-speak {
+  background: var(--accent);
+  color: var(--accent-ink);
+  border: 1px solid var(--accent);
 }
 
-@keyframes polish-menu-in {
+.sheet-backdrop {
+  background: rgb(8 15 30 / 45%);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+}
+.sheet {
+  background: var(--surface);
+  border: 1px solid var(--polish-edge);
+  border-radius: 32px;
+  box-shadow:
+    inset 0 1px 0 var(--material-highlight),
+    var(--shadow-lift);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+.welcome-card {
+  border-radius: 36px;
+  background: var(--glass-strong);
+  border: 1px solid var(--polish-edge);
+  box-shadow: var(--window-shadow);
+}
+.desktop-menu-popover {
+  border-radius: 20px;
+  background: var(--chrome-surface);
+  transform-origin: top left;
+  animation: material-enter var(--dur-fast) var(--spring);
+}
+.desktop-menu-popover a {
+  border-radius: 12px;
+}
+/* Shell enters pages with cancellable WAAPI motion; nested choices only fade. */
+.main > :is(.home, .flow, .task, .page) {
+  animation: none;
+}
+.flow-options {
+  animation: material-fade var(--dur-fast) var(--ease-out);
+}
+.sheet {
+  animation: material-enter var(--dur) var(--spring);
+}
+@keyframes material-enter {
   from {
     opacity: 0;
-    transform: translateY(-4px) scale(0.98);
+    transform: translateY(8px) scale(0.985);
   }
   to {
     opacity: 1;
     transform: none;
   }
 }
-
-/* Shell handles screen motion without remounting route state. Nested choices only fade. */
-.main > .home,
-.main > .flow,
-.main > .task,
-.main > .page {
-  animation: none;
-}
-
-@keyframes polish-choices-in {
+@keyframes material-fade {
   from {
     opacity: 0;
   }
@@ -170,12 +400,8 @@ body {
     opacity: 1;
   }
 }
-
-.flow-options {
-  animation: polish-choices-in var(--dur-fast) var(--ease-out);
-}
-
-.shell :is(.btn, .choice, .home-tile, .usual, .app-tile, .nav-item, .talk-tab, .talk-word, .talk-phrase),
+.shell
+  :is(.btn, .choice, .home-tile, .usual, .app-tile, .nav-item, .tile, .talk-tab, .talk-word, .talk-phrase),
 .desktop-menu :is(button, a) {
   transition:
     background-color var(--dur-fast) var(--ease-out),
@@ -183,69 +409,102 @@ body {
     color var(--dur-fast) var(--ease-out),
     box-shadow var(--dur) var(--ease-out);
 }
-
 .home-tile-icon,
 .dock-btn > .ico,
 .choice-pic,
-.app-icon {
+.app-icon,
+.nav-item > .app-art {
   transition: transform var(--dur) var(--spring);
 }
-
-/* Pointer-only feedback: the large button and its label stay fixed. */
 @media (hover: hover) and (pointer: fine) {
   .shell[data-input-mode="pointer"] .home-tile:not([data-tone="lifeline"]):hover .home-tile-icon,
   .shell[data-input-mode="pointer"] .app-tile:hover .app-icon,
-  .shell[data-input-mode="pointer"] .choice:not(.choice-danger):hover .choice-pic {
+  .shell[data-input-mode="pointer"] .choice:not(.choice-danger):hover .choice-pic,
+  .shell[data-input-mode="pointer"] .nav-item:hover > .app-art {
     transform: translateY(-3px) scale(1.035);
   }
-
   .shell[data-input-mode="pointer"] .dock-btn:not(.help-btn):not(.pause-agent):hover > .ico {
-    transform: translateY(-5px) scale(1.1);
+    transform: translateY(-4px) scale(1.08);
   }
-
   .shell[data-input-mode="pointer"] .home-tile:not([data-tone="lifeline"]):active .home-tile-icon,
-  .shell[data-input-mode="pointer"] .dock-btn:not(.help-btn):not(.pause-agent):active > .ico {
+  .shell[data-input-mode="pointer"] .dock-btn:not(.help-btn):not(.pause-agent):active > .ico,
+  .shell[data-input-mode="pointer"] .choice:not(.choice-danger):active .choice-pic {
     transform: scale(0.96);
-    transition-duration: 90ms;
+    transition-duration: 80ms;
   }
-
-  .home-usuals .usual:hover,
-  .shell .choice:not(.choice-danger):hover,
-  .shell .app-tile:hover {
-    background: color-mix(in srgb, var(--surface) 92%, var(--accent));
+  .shell :is(.usual, .choice, .app-tile, .tile):not(.choice-danger):not(.tile-primary):hover {
+    background: color-mix(in srgb, var(--surface) 94%, var(--accent));
+    border-color: color-mix(in srgb, var(--accent) 35%, var(--line));
   }
 }
-
-/* Selection feedback must not displace a target in any hands-free input mode. */
+/* Gaze and scanning never inherit target displacement. */
 .shell:not([data-input-mode="pointer"]) [data-selected-flash] {
   animation: none;
 }
-
-.shell:not([data-input-mode="pointer"]) .desktop-menu-popover {
-  animation-name: polish-choices-in;
+.shell:not([data-input-mode="pointer"]) :is(.desktop-menu-popover, .sheet) {
+  animation-name: material-fade;
 }
-
+@media (max-height: 860px) and (min-width: 1101px) {
+  .home-signature {
+    display: none;
+  }
+}
 @media (max-width: 1100px) {
   .home-widget {
     border-radius: 0;
   }
   .home-tiles {
-    border-radius: 0 0 28px 28px;
+    border-radius: 0 0 var(--radius-window) var(--radius-window);
+  }
+  .nav {
+    margin: 12px;
   }
 }
-
-/* Preserve opaque emergency surfaces and visible high-contrast outlines. */
-:root[data-theme="contrast"] body {
+@media (max-width: 650px) {
+  .main > .page:not(.talk-page):not(.ll-page),
+  .main > .task {
+    padding: 16px;
+  }
+  .home-titlebar {
+    padding-inline: 14px;
+  }
+  .home-signature {
+    display: none;
+  }
+  .home-widget h1 {
+    font-size: 1.5rem;
+  }
+  .home-tiles {
+    padding: 12px;
+  }
+  .nav {
+    box-shadow: none;
+  }
+}
+/* Contrast art is an unambiguous glyph with no gradients or translucent material. */
+:root[data-theme="contrast"] .app-art-sculpture {
+  display: none;
+}
+:root[data-theme="contrast"] .app-art-contrast {
+  display: block;
+}
+:root[data-theme="contrast"]
+  :is(
+    .main > .home,
+    .main > .flow,
+    .main > .page,
+    .main > .task,
+    .home-widget,
+    .home-tiles,
+    .topbar.dock,
+    .nav,
+    .sheet,
+    .welcome-card
+  ) {
   background: #000;
+  border-color: #fff;
+  box-shadow: none;
 }
-
-:root[data-theme="contrast"] {
-  --chrome-surface: #000;
-  --window-content: #000;
-  --window-shadow: none;
-  --polish-edge: #fff;
-}
-
 :root[data-theme="contrast"]
   .shell
   :is(
@@ -263,24 +522,50 @@ body {
   border: 2px solid var(--line);
   box-shadow: none;
 }
-
+:root[data-theme="contrast"] .shell .btn-solid-danger {
+  background: var(--danger);
+  color: #000;
+}
 :root[data-theme="contrast"] .home-usuals .usual {
   background: #000;
   border: 2px solid #fff;
 }
-
-:root[data-theme="contrast"] .topbar.dock,
-:root[data-theme="contrast"] .home-tile-icon {
-  box-shadow: none;
+:root[data-theme="contrast"] .home .home-tile-icon {
+  border: 2px solid #fff;
+  border-radius: 22px;
 }
-
-:root[data-reduced-motion] :is(.home-tile-icon, .dock-btn > .ico, .choice-pic, .app-icon),
-:root[data-theme="contrast"] :is(.home-tile-icon, .dock-btn > .ico, .choice-pic, .app-icon) {
+:root[data-theme="contrast"] .home .home-tile[data-tone="lifeline"] .home-tile-icon {
+  background: var(--danger);
+  color: #000;
+}
+:root[data-theme="contrast"] .sheet-backdrop {
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  background: #000;
+}
+:root[data-theme="contrast"] .toggle-track {
+  border: 2px solid var(--ink);
+}
+:root[data-reduced-motion] *,
+:root[data-reduced-motion] *::before,
+:root[data-reduced-motion] *::after {
+  animation: none !important;
+  transition: none !important;
+}
+:root[data-reduced-motion]
+  :is(.home-tile-icon, .dock-btn > .ico, .choice-pic, .app-icon, .nav-item > .app-art),
+:root[data-theme="contrast"]
+  :is(.home-tile-icon, .dock-btn > .ico, .choice-pic, .app-icon, .nav-item > .app-art) {
   transform: none !important;
 }
-
 @media (prefers-reduced-motion: reduce) {
-  :is(.home-tile-icon, .dock-btn > .ico, .choice-pic, .app-icon) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+  :is(.home-tile-icon, .dock-btn > .ico, .choice-pic, .app-icon, .nav-item > .app-art) {
     transform: none !important;
   }
 }

@@ -1,10 +1,10 @@
+@import "../../../../../frontend/src/styles/tokens.css";
 :root {
-  --help: #b3261e;
+  --help: #c4001a;
   --stop: #1f1f1f;
   --ring: #ffd23f;
   --text-on-dark: #ffffff;
   --cursor: rgba(255, 210, 63, 0.9);
-  --font: "Atkinson Hyperlegible", -apple-system, system-ui, sans-serif;
 }
 
 html,
@@ -37,7 +37,7 @@ body {
   color: var(--text-on-dark);
   font: 700 26px/1 var(--font);
   box-shadow: 0 6px 24px rgba(0, 0, 0, 0.35);
-  opacity: 0.92;
+  opacity: 1;
   cursor: pointer;
   padding: 0;
 }

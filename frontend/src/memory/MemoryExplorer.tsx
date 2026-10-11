@@ -7,9 +7,10 @@
  *
  * Mounted by the shell at #/memory/...; pass the route segments after "memory".
  */
-import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import { lifelineApi } from "../api/client";
-import { ConfirmSheet, ErrorNote, SELECTION_RESET_EVENT } from "../components/common";
+import { ConfirmSheet, ErrorNote } from "../components/common";
+import { useDialogFocus } from "../components/useDialogFocus";
 import { Icon } from "../components/Icon";
 import { navigate } from "../state/router";
 import { memoryApi, type MemoryApi } from "./api";
@@ -594,13 +595,13 @@ function ActionSheet({
   children: ReactNode;
   onClose: () => void;
 }) {
-  useEffect(() => {
-    window.dispatchEvent(new Event(SELECTION_RESET_EVENT));
-  }, []);
+  const ref = useRef<HTMLDivElement>(null);
+  useDialogFocus(ref, onClose);
   return (
     <div className="sheet-backdrop">
       <div
         className="sheet"
+        ref={ref}
         role="dialog"
         aria-modal="true"
         aria-labelledby="actions-title"
@@ -609,7 +610,7 @@ function ActionSheet({
         <h2 id="actions-title">{title}</h2>
         <div className="mem-actions mem-actions-sheet">
           {children}
-          <button className="btn btn-xl btn-quiet" onClick={onClose} data-dwell>
+          <button className="btn btn-xl btn-quiet" onClick={onClose} data-dwell data-autofocus>
             <Icon name="back" /> Go back
           </button>
         </div>
@@ -631,13 +632,13 @@ function RenameSheet({
   onCancel: () => void;
   onSave: () => void;
 }) {
-  useEffect(() => {
-    window.dispatchEvent(new Event(SELECTION_RESET_EVENT));
-  }, []);
+  const ref = useRef<HTMLDivElement>(null);
+  useDialogFocus(ref, busy ? undefined : onCancel);
   return (
     <div className="sheet-backdrop">
       <div
         className="sheet"
+        ref={ref}
         role="dialog"
         aria-modal="true"
         aria-labelledby="rename-title"
@@ -650,11 +651,10 @@ function RenameSheet({
             className="mem-input"
             value={name}
             maxLength={120}
-            autoFocus
+            data-autofocus
             onChange={(e) => onName(e.target.value)}
             onKeyDown={(e) => {
               if (e.key === "Enter" && name.trim()) onSave();
-              if (e.key === "Escape") onCancel();
             }}
           />
         </label>

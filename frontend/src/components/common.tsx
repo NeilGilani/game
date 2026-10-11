@@ -1,5 +1,6 @@
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useRef, useState, type ReactNode } from "react";
 import { Icon } from "./Icon";
+import { useDialogFocus } from "./useDialogFocus";
 
 /** Fired when new choices appear under the person's gaze (dialogs, screen changes). */
 export const SELECTION_RESET_EVENT = "agency:selection-reset";
@@ -79,22 +80,7 @@ export function ConfirmSheet({
   tone?: "primary" | "danger";
 }) {
   const ref = useRef<HTMLDivElement>(null);
-  const cancelRef = useRef(onCancel);
-  cancelRef.current = onCancel;
-  useEffect(() => {
-    const previous = document.activeElement as HTMLElement | null;
-    ref.current?.querySelector<HTMLElement>("[data-autofocus]")?.focus();
-    // Pause hands-free selection briefly so a lingering gaze can't confirm by accident.
-    window.dispatchEvent(new Event(SELECTION_RESET_EVENT));
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") cancelRef.current();
-    };
-    window.addEventListener("keydown", onKey);
-    return () => {
-      window.removeEventListener("keydown", onKey);
-      previous?.focus?.();
-    };
-  }, []);
+  useDialogFocus(ref, busy ? undefined : onCancel);
   return (
     <div className="sheet-backdrop">
       <div

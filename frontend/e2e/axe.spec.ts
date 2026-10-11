@@ -17,6 +17,14 @@ const SCREENS = [
   "/#/settings/memory",
   "/#/settings/voice",
   "/#/talk",
+  "/#/talk/phrases",
+  "/#/talk/listen",
+  "/#/talk/history",
+  "/#/talk/voice",
+  "/#/talk/emergency",
+  "/#/memory",
+  "/#/camera",
+  "/#/status",
   "/#/onboarding",
   "/#/errands",
   "/#/lifeline",
@@ -34,6 +42,7 @@ for (const theme of ["light", "dark", "contrast"]) {
     for (const path of SCREENS) {
       await page.goto(path);
       await page.waitForTimeout(1300);
+      await expect(page.locator("html")).toHaveAttribute("data-theme", theme);
       const result = await new AxeBuilder({ page })
         .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"])
         .analyze();

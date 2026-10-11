@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect } from "react";
+import { screenSpring, SPRING } from "./components/motion";
 import { ScanResultBanner } from "./components/ScanResultBanner";
 import { ConnectionBanner, Nav, TopBar } from "./components/Shell";
 import { GazeAssist } from "./input/GazeAssist";
@@ -99,15 +100,10 @@ function Shell() {
     if (!(screen instanceof HTMLElement) || prefs.reduced_motion || reduced.matches) return;
     // Animate the existing screen so Talk drafts and other route-local state survive navigation.
     // Hands-free modes only fade: the engine measures stationary selection targets.
-    const animation = screen.animate(
-      mode === "pointer"
-        ? [
-            { opacity: 0, transform: "translateY(8px) scale(0.992)" },
-            { opacity: 1, transform: "none" },
-          ]
-        : [{ opacity: 0 }, { opacity: 1 }],
-      { duration: 320, easing: "cubic-bezier(0.16, 1, 0.3, 1)" },
-    );
+    const animation = screen.animate(mode === "pointer" ? screenSpring : [{ opacity: 0 }, { opacity: 1 }], {
+      duration: mode === "pointer" ? SPRING.duration : 160,
+      easing: mode === "pointer" ? "linear" : "ease-out",
+    });
     const cancel = () => animation.cancel();
     reduced.addEventListener("change", cancel);
     return () => {

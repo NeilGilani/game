@@ -224,13 +224,7 @@ function FlowRunner({ flow }: { flow: FlowDef }) {
                 {...likely(o.id === USUAL_ID && "weak")}
               >
                 <span className="choice-pic" aria-hidden>
-                  {o.image ? (
-                    <img src={o.image} alt="" />
-                  ) : o.glyph ? (
-                    <span className="choice-glyph">{o.glyph}</span>
-                  ) : (
-                    <Icon name={o.icon ?? "right"} size={44} />
-                  )}
+                  {o.image ? <img src={o.image} alt="" /> : <Icon name={o.icon ?? flow.icon} size={64} />}
                 </span>
                 <span className="choice-label">{o.label}</span>
                 {o.sub && <span className="choice-sub">{o.sub}</span>}

@@ -125,12 +125,15 @@ export function Toggle({
 }) {
   return (
     <button
-      className="tile"
+      className="tile setting-toggle"
       style={{ minHeight: 120 }}
       aria-pressed={value}
       onClick={() => onChange(!value)}
       data-dwell
     >
+      <span className="toggle-track" aria-hidden="true">
+        <span />
+      </span>
       <span className="tile-title">{label}</span>
       <span className="tile-sub">
         {value ? "On" : "Off"}
@@ -473,7 +476,15 @@ function FaultToggle({
   onChange: (v: boolean) => void;
 }) {
   return (
-    <button className="tile" style={{ minHeight: 130 }} aria-pressed={value} onClick={() => onChange(!value)}>
+    <button
+      className="tile setting-toggle"
+      style={{ minHeight: 130 }}
+      aria-pressed={value}
+      onClick={() => onChange(!value)}
+    >
+      <span className="toggle-track" aria-hidden="true">
+        <span />
+      </span>
       <span className="tile-title">{label}</span>
       <span className="tile-sub">
         {value ? "Armed for the next attempt" : "Off"} · {help}
