@@ -18,6 +18,17 @@
 import { type GazeInput, gazeInput } from "./calibration/features";
 import { ContinuousCalibrator, type ContinuousEvent } from "./calibration/continuous";
 import { predictBlend } from "./calibration/appearance";
+import {
+  type HeadModel,
+  POSTURE_MESSAGES,
+  type PostureIssue,
+  PostureMonitor,
+  type PostureOptions,
+  fitHeadModel,
+  headDelta,
+  poseOf,
+} from "./calibration/head";
+import { TouchUp, type TouchUpResult } from "./calibration/touchup";
 import { predictModel } from "./calibration/model";
 import {
   type CalibrationResult,
@@ -39,6 +50,7 @@ import { FixationSmoother, type FixationOptions, type SmoothedPoint } from "./fi
 import { FrameRateGovernor, type FrameRateOptions } from "./frameRate";
 import { HeadPointer, type HeadPointerOptions } from "./headPointer";
 import { HelpPattern, type PatternOptions, type PatternState } from "./helpPattern";
+import { type PaceChange, PaceMonitor, type PaceOptions, type PaceState } from "./input/pace";
 import { type GazeFeatures, extractFeatures } from "./landmarks";
 import {
   DEFAULT_PRECISION,
@@ -65,6 +77,8 @@ export interface EngineOptions {
   frameRate?: Partial<FrameRateOptions>;
   headPointer?: Partial<HeadPointerOptions>;
   precision?: Partial<PrecisionOptions>;
+  posture?: Partial<PostureOptions>;
+  pace?: Partial<PaceOptions>;
   /** Clock for latency (performance.now in a browser). Replays and tests can pass their own. */
   clock?: () => number;
 }
@@ -86,13 +100,29 @@ export interface FrameDetail {
   point: { x: number; y: number } | null;
   smoothed: SmoothedPoint | null;
   help: PatternState;
+  /** Moved far from where they were during the scan: what to tell them (null: fine, or no scan). */
+  posture: PostureIssue | null;
   errorRadiusPt: number;
   /** Camera capture to event, ms, when the provider reports capture times. */
   latencyMs: number | null;
 }
 
 export type EngineAdvice =
-  { type: "recalibrate"; t: number; reason: string } | { type: "continuous"; event: ContinuousEvent };
+  | { type: "recalibrate"; t: number; reason: string }
+  | { type: "continuous"; event: ContinuousEvent }
+  /** Gaze has drifted one way: show the 2-second touch-up dot (startTouchUp) instead of a rescan. */
+  | { type: "touch-up"; t: number; reason: string }
+  | { type: "touch-up-result"; t: number; result: TouchUpResult; applied: boolean }
+  /** The person moved far from their scan position (message in plain words), or is back (null). */
+  | { type: "posture"; t: number; issue: PostureIssue | null; message: string | null }
+  /** Selecting got harder or easier: new dwell and target scales (input/pace.ts). */
+  | PaceChange;
+
+interface TouchUpRun {
+  touchUp: TouchUp;
+  startT: number | null;
+  resolve: (r: TouchUpResult) => void;
+}
 
 export class TrackingMonitor {
   private state: TrackingState = "lost";
@@ -226,6 +256,10 @@ export class GazeEngine {
   private provider: GazeProvider | null = null;
   private calibrationResult: CalibrationResult | null = null;
   private continuous: ContinuousCalibrator | null = null;
+  private head: HeadModel | null = null;
+  private posture: PostureMonitor;
+  private pace: PaceMonitor;
+  private touchUpRun: TouchUpRun | null = null;
   private smoother: FixationSmoother;
   private pointerSmoother: FixationSmoother;
   private blinkSwitch: BlinkSwitch;
@@ -237,7 +271,7 @@ export class GazeEngine {
   private run: CalibrationRun | null = null;
   private lastHelpCount = 0;
   private lastPoint: { x: number; y: number } | null = null;
-  private observations: { t: number; x: number; y: number }[] = [];
+  private observations: { t: number; x: number; y: number; z: number[] }[] = [];
   private irisWindow: number[] = [];
   private latencies: number[] = [];
   private frameTimes: number[] = [];
@@ -257,6 +291,8 @@ export class GazeEngine {
     this.help = new HelpPattern(options.help);
     this.governor = new FrameRateGovernor(options.frameRate);
     this.headPointer = new HeadPointer(options.screen.cameraDisplay.bounds, options.headPointer);
+    this.posture = new PostureMonitor(options.posture);
+    this.pace = new PaceMonitor(options.pace);
   }
 
   get geometry(): ViewingGeometry {
@@ -355,11 +391,21 @@ export class GazeEngine {
     this.calibrationResult = result;
     this.liveGrade = null;
     this.smoother.reset();
+    this.cancelTouchUp("A new calibration replaced it.");
+    // How this person's gaze offset moves with the head, from the scan's own frames (head.ts).
+    this.head = result ? fitHeadModel(result.samples, result.model.config) : null;
+    const posture = this.posture.current;
+    this.posture.reset();
+    if (posture) this.advise({ type: "posture", t: this.lastDetail?.t ?? 0, issue: null, message: null });
     if (result) {
       const d = this.o.screen.cameraDisplay.bounds;
       const centre = { x: d.x + d.width / 2, y: d.y + d.height / 2 };
-      if (this.continuous) this.continuous.reset(result.quality.grade, centre);
-      else this.continuous = new ContinuousCalibrator({ centre, calibratedGrade: result.quality.grade });
+      if (this.continuous) this.continuous.reset(result.quality.grade, centre, this.head);
+      else
+        this.continuous = new ContinuousCalibrator(
+          { centre, calibratedGrade: result.quality.grade },
+          this.head,
+        );
       if (result.distanceCm) this.smoother.setOptions({ distanceCm: result.distanceCm });
       this.emit({ type: "calibration", quality: result.quality });
     } else {
@@ -383,6 +429,79 @@ export class GazeEngine {
     this.run = null;
   }
 
+  /** The head model fitted for the current calibration (null without one, or without a metric pose). */
+  get headModel(): HeadModel | null {
+    return this.head;
+  }
+
+  /** What the person has been told about their position (null: nothing). */
+  get postureIssue(): PostureIssue | null {
+    return this.posture.current;
+  }
+
+  /** Current dwell and target scales from the pace monitor. */
+  get paceState(): PaceState {
+    return this.pace.state;
+  }
+
+  /** The person changed dwell or target settings: pace measures afresh from here. */
+  rebasePace(): void {
+    this.pace.rebase();
+  }
+
+  /**
+   * The 2-second touch-up: show a dot at `target` (default: the middle of the calibrated display)
+   * until `done` resolves. The engine's own frames over the last 1.3 s shift the correction so the
+   * dot is hit. Resolves with the result; a failed touch-up changes nothing.
+   */
+  startTouchUp(target?: { x: number; y: number }): {
+    target: { x: number; y: number };
+    done: Promise<TouchUpResult>;
+  } {
+    const d = this.o.screen.cameraDisplay.bounds;
+    const at = target ?? { x: d.x + d.width / 2, y: d.y + d.height / 2 };
+    this.cancelTouchUp("Cancelled.");
+    const touchUp = new TouchUp({ target: at });
+    const done = new Promise<TouchUpResult>((resolve) => {
+      this.touchUpRun = { touchUp, startT: null, resolve };
+    });
+    return { target: at, done };
+  }
+
+  cancelTouchUp(reason = "Cancelled."): void {
+    const run = this.touchUpRun;
+    this.touchUpRun = null;
+    run?.resolve({ kind: "failed", reason });
+  }
+
+  private touchUpFrame(
+    t: number,
+    est: { x: number; y: number } | null,
+    z: number[],
+    tracking: number,
+    blink: number | null,
+  ): void {
+    const run = this.touchUpRun;
+    if (!run) return;
+    run.startT ??= t;
+    const ms = t - run.startT;
+    run.touchUp.add(ms, est, z, tracking, blink);
+    if (ms < run.touchUp.durationMs) return;
+    this.touchUpRun = null;
+    const result = run.touchUp.finish();
+    let applied = false;
+    if (result.kind === "done" && this.continuous) {
+      for (const e of this.continuous.touchUp(t, result.target, result.estimate, result.z)) {
+        this.advise({ type: "continuous", event: e });
+        if (e.type === "touched-up") applied = true;
+        if (e.type === "recalibrate") this.advise({ type: "recalibrate", t: e.t, reason: e.reason });
+      }
+      if (applied) this.smoother.reset();
+    }
+    this.advise({ type: "touch-up-result", t, result, applied });
+    run.resolve(result);
+  }
+
   /**
    * Per-axis error of the current estimate (points): measured accuracy (recent confirmed
    * selections, else the calibration's validation error) combined with the smoother's remaining
@@ -391,7 +510,9 @@ export class GazeEngine {
   get errorSigmaPt(): number {
     if (this.provider?.kind === "pointer" && this.provider.id === "mouse") return 2;
     const recent = this.continuous?.quality.at(-1)?.errorPt;
-    const accuracy = sigmaFromMeanError(recent ?? this.calibrationResult?.quality.meanErrorPt ?? 120);
+    let accuracy = sigmaFromMeanError(recent ?? this.calibrationResult?.quality.meanErrorPt ?? 120);
+    // Far from the scan's position estimates are less certain: a wider circle, and the picker reaches further.
+    if (this.posture.current && this.mode === "gaze") accuracy *= 1.5;
     const noise = (this.lastDetail?.smoothed?.outputNoisePt ?? 30) / Math.SQRT2;
     return Math.hypot(accuracy, noise);
   }
@@ -425,6 +546,8 @@ export class GazeEngine {
    * selection is learned only if it isn't undone within a few seconds.
    */
   selection(targetId: string, rect: ScreenRect, t: number, dwellStartT: number): void {
+    const pace = this.pace.selected(t, t - dwellStartT);
+    if (pace) this.advise(pace);
     if (!this.continuous || this.mode !== "gaze") return;
     const obs = this.observations.filter((o) => o.t >= dwellStartT + 250 && o.t <= t);
     for (const e of this.continuous.selected(targetId, t, rect, obs))
@@ -432,6 +555,8 @@ export class GazeEngine {
   }
 
   undo(targetId: string, t: number): void {
+    const pace = this.pace.undone(t);
+    if (pace) this.advise(pace);
     if (!this.continuous) return;
     for (const e of this.continuous.undone(targetId, t)) this.advise({ type: "continuous", event: e });
   }
@@ -498,6 +623,7 @@ export class GazeEngine {
       point,
       smoothed,
       help: { counted: 0, closed: false, holdProgress: 0, fired: false },
+      posture: null,
       errorRadiusPt: this.errorRadiusPt,
       latencyMs,
     });
@@ -555,21 +681,26 @@ export class GazeEngine {
     let smoothed: SmoothedPoint | null = null;
     let point: { x: number; y: number } | null = null;
     let source: InputSource = "webcam-gaze";
+    let touchUp: { est: { x: number; y: number } | null; z: number[] } = { est: null, z: [0, 0, 0, 0, 0] };
     if (features && tracking >= 0.5) {
       if (this.mode === "head") {
         source = "webcam-head";
         raw = this.headPointer.update(t, features.pose);
         point = this.o.screen.clamp(raw.x, raw.y);
       } else if (this.calibrationResult) {
+        const input = gazeInput(features);
+        this.postureFrame(t, input);
         const est = predictBlend(
-          predictModel(this.calibrationResult.model, gazeInput(features)),
+          predictModel(this.calibrationResult.model, input),
           this.calibrationResult.appearance,
           frame.eyes,
         );
+        const z = headDelta(this.head, input);
+        touchUp = { est, z };
         if (est) {
-          this.observations.push({ t, x: est.x, y: est.y });
+          this.observations.push({ t, x: est.x, y: est.y, z });
           while (this.observations.length && t - this.observations[0]!.t > 6000) this.observations.shift();
-          raw = this.continuous ? this.continuous.apply(est.x, est.y) : est;
+          raw = this.continuous ? this.continuous.apply(est.x, est.y, z) : est;
           smoothed = this.smoother.update(t, raw.x, raw.y);
           point = this.o.screen.clamp(smoothed.x, smoothed.y);
         }
@@ -577,6 +708,9 @@ export class GazeEngine {
     } else if (this.mode === "head") {
       source = "webcam-head";
     }
+
+    // Every face frame moves the touch-up's clock on, usable or not (eyes closed through it: it fails).
+    this.touchUpFrame(t, touchUp.est, touchUp.z, tracking, blink);
 
     const outside = point ? this.o.screen.outsideCalibrated(raw?.x ?? point.x, raw?.y ?? point.y) : 0;
     let confidence = point ? sampleConfidence(tracking, smoothed, outside) : 0;
@@ -613,9 +747,16 @@ export class GazeEngine {
       point,
       smoothed,
       help,
+      posture: this.mode === "gaze" ? this.posture.current : null,
       errorRadiusPt: this.errorRadiusPt,
       latencyMs,
     });
+  }
+
+  private postureFrame(t: number, input: GazeInput): void {
+    const changed = this.posture.update(t, input.normalized ? poseOf(input) : null, this.head?.ref ?? null);
+    if (changed === undefined) return;
+    this.advise({ type: "posture", t, issue: changed, message: changed ? POSTURE_MESSAGES[changed] : null });
   }
 
   private continuousTick(t: number): void {
@@ -623,6 +764,7 @@ export class GazeEngine {
     for (const e of this.continuous.tick(t)) {
       this.advise({ type: "continuous", event: e });
       if (e.type === "recalibrate") this.advise({ type: "recalibrate", t: e.t, reason: e.reason });
+      if (e.type === "touch-up") this.advise({ type: "touch-up", t: e.t, reason: e.reason });
       if (e.type === "quality" && this.calibrationResult) {
         const q = this.calibrationResult.quality;
         const shown = this.liveGrade ?? q.grade;

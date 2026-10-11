@@ -10,7 +10,7 @@
  * claims clinical or eye-tracker precision.
  */
 
-import { type Mat3, type Vec3, mulMat3Vec, transpose3 } from "./linalg";
+import { type Mat3, type Vec3, add3, mulMat3Vec, transpose3 } from "./linalg";
 
 export interface Landmark {
   x: number;
@@ -196,11 +196,19 @@ export function normalizedEyeFeatures(
   eye: EyeIndices,
   aspect: number,
   rotation: Mat3,
+  eyePositionCm?: Vec3,
 ): EyeFeatures | null {
   const inv = transpose3(rotation);
+  // A camera sees an eye that isn't straight in front of it from the side: depth leaks into image x
+  // and y in proportion to how far off-axis the eye is. Undo that slant (exact to first order), so a
+  // head that moves sideways or down without turning keeps the same eye-in-head features.
+  const sx = eyePositionCm && eyePositionCm[2] > 1 ? eyePositionCm[0] / eyePositionCm[2] : 0;
+  const sy = eyePositionCm && eyePositionCm[2] > 1 ? eyePositionCm[1] / eyePositionCm[2] : 0;
   const raw = (i: number): Vec3 | null => {
     const l = landmarks[i];
-    return l ? [l.x * aspect, l.y, (l.z ?? 0) * aspect] : null;
+    if (!l) return null;
+    const z = (l.z ?? 0) * aspect;
+    return [l.x * aspect + sx * z, l.y + sy * z, z];
   };
   const a = raw(eye.outer);
   const b = raw(eye.inner);
@@ -261,9 +269,13 @@ export function extractFeatures(
   const rotation = transform?.rotation ?? null;
   const dl = irisDiameter(landmarks, LEFT_EYE, aspect);
   const dr = irisDiameter(landmarks, RIGHT_EYE, aspect);
+  const t = transform?.translationCm;
+  // Eye centres in the camera frame (the matrix's origin sits between the eyes; ~6.3 cm apart).
+  const eyeAt = (side: number): Vec3 | undefined =>
+    rotation && t ? add3(t, mulMat3Vec(rotation, [side * 3.15, 0, 0])) : undefined;
   return {
-    leftN: rotation ? normalizedEyeFeatures(landmarks, LEFT_EYE, aspect, rotation) : null,
-    rightN: rotation ? normalizedEyeFeatures(landmarks, RIGHT_EYE, aspect, rotation) : null,
+    leftN: rotation ? normalizedEyeFeatures(landmarks, LEFT_EYE, aspect, rotation, eyeAt(1)) : null,
+    rightN: rotation ? normalizedEyeFeatures(landmarks, RIGHT_EYE, aspect, rotation, eyeAt(-1)) : null,
     rotation,
     translationCm: transform?.translationCm ?? null,
     irisDiameter: dl !== null && dr !== null ? (dl + dr) / 2 : (dl ?? dr ?? 0),

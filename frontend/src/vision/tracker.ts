@@ -18,7 +18,9 @@
 import { type CameraErrorKind } from "../../../os/gaze/src/camera";
 import { PursuitCalibration } from "../../../os/gaze/src/calibration/pursuit";
 import type { CalibrationResult } from "../../../os/gaze/src/calibration/session";
-import { type CalibrationRun, GazeEngine } from "../../../os/gaze/src/engine";
+import type { TouchUpResult } from "../../../os/gaze/src/calibration/touchup";
+import { type CalibrationRun, type EngineAdvice, GazeEngine } from "../../../os/gaze/src/engine";
+import type { PaceState } from "../../../os/gaze/src/input/pace";
 import type { GazeFeatures } from "../../../os/gaze/src/landmarks";
 import type { QualityIssue } from "../../../os/gaze/src/quality";
 import { singleDisplay } from "../../../os/gaze/src/screen";
@@ -104,6 +106,8 @@ export class VisionEngine {
   /** The engine's screen: the calibration's viewport, or the current one without a calibration. */
   private space = { width: 1, height: 1 };
   private calibrating = false;
+  /** Recent gaze selections (newest last), so a Back or Undo soon after one can be reported. */
+  private selections: { id: string; t: number }[] = [];
   /** Test hook only: frames come from feed() (a simulated person), not the webcam. */
   private external = false;
   private loadStarted = 0;
@@ -227,11 +231,55 @@ export class VisionEngine {
       t,
       dwellStartT,
     );
+    this.selections = [...this.selections.slice(-3), { id: targetId, t }];
   }
 
   /** The person undid a selection soon after making it (Back, Cancel): don't learn from it. */
   undone(targetId: string, t: number): void {
     this.gaze.undo(targetId, t);
+  }
+
+  /**
+   * A Back, Cancel or Undo control was just chosen at `t`: the selection before it (within a few
+   * seconds) was a mistake. Continuous recalibration won't learn from it, and pace counts it.
+   */
+  undoPrevious(t: number): void {
+    const prev = [...this.selections].reverse().find((s) => s.t < t - 100 && t - s.t <= 6000);
+    if (!prev) return;
+    this.selections = this.selections.filter((s) => s !== prev);
+    this.gaze.undo(prev.id, t);
+  }
+
+  /** What the engine advises: posture messages, touch-ups, pace changes, a fresh scan. */
+  onAdvice(listener: (a: EngineAdvice) => void): () => void {
+    return this.gaze.onAdvice(listener);
+  }
+
+  /** Dwell and target scales from pace (tiring over a session). */
+  get pace(): PaceState {
+    return this.gaze.paceState;
+  }
+
+  /** The person changed dwell or target settings: pace measures afresh. */
+  rebasePace(): void {
+    this.gaze.rebasePace();
+  }
+
+  /**
+   * The 2-second touch-up: draw a dot at the returned point (viewport pixels) until `done`
+   * resolves. Selection should be suspended meanwhile.
+   */
+  startTouchUp(): { x: number; y: number; done: Promise<TouchUpResult> } {
+    const { target, done } = this.gaze.startTouchUp();
+    return {
+      x: (target.x * window.innerWidth) / this.space.width,
+      y: (target.y * window.innerHeight) / this.space.height,
+      done,
+    };
+  }
+
+  cancelTouchUp(): void {
+    this.gaze.cancelTouchUp();
   }
 
   /** The error circle around the pointer (viewport pixels, about two standard deviations). */

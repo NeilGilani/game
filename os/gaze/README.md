@@ -19,6 +19,9 @@ frames are processed in memory in the engine window and never stored or sent any
 | Calibration v2           | `src/calibration/*`                                                             | 9 to 16 adaptive points; left, right, binocular and fused per-eye models; a physics-based eye-ray model; leave-one-target-out cross-validation over degree (1–3) and ridge strength with the one-standard-error rule; outlier rejection; held-out validation in **points and degrees** (viewing distance from the 11.7 mm iris); honest good / fair / poor grades                                                                                                                |
 | Eye images (RealEye)     | `src/eyeImage.ts`, `src/calibration/appearance.ts`                              | RealEye Webcam EyeTracker Light Open's extractor (two 40x20 grey eye crops and 30 landmark coordinates per frame, read from a small region around the eyes) and their kind of ridge model, fitted on the 5-second scan. Cross-validation on held-out stretches of the scan picks the ridge strength and the blend with the landmark model; the eye images are used only when they beat the landmarks alone by 3 % (AGPL-3.0 or RealEye's commercial license, see THIRD_PARTY.md) |
 | Continuous recalibration | `src/calibration/continuous.ts`                                                 | Confirmed (not undone) selections become weighted samples for a bounded correction; an update is applied only if it beats the current one on held-out selections; quality is tracked; advises a clean recalibration when it drops                                                                                                                                                                                                                                                |
+| Head movement            | `src/calibration/head.ts`                                                       | Per-person sensitivity of the gaze offset to yaw, pitch and position, estimated from the scan (kept only if it predicts held-out stretches) and refined by continuous recalibration; plain-words posture messages when the person has moved far from the scan                                                                                                                                                                                                                    |
+| Touch-up                 | `src/calibration/touchup.ts`                                                    | 2-second one-dot fix when selections keep landing off the same way; replaces a full rescan for drift                                                                                                                                                                                                                                                                                                                                                                             |
+| Pace                     | `src/input/pace.ts`                                                             | Dwells getting slower or more getting undone: dwell +15 % and targets +12 % per step (two steps at most), back down after a long easy run                                                                                                                                                                                                                                                                                                                                        |
 | Fixations and smoothing  | `src/fixation.ts`                                                               | Multi-scale dispersion test (I-DT family) with a learned noise level; output is the fixation's trimmed mean (steady) and jumps on saccades (no slide); I-VT labeller for comparison                                                                                                                                                                                                                                                                                              |
 | Confidence               | `src/engine.ts`                                                                 | Below 0.5 means "don't dwell": face, eyes open, pose, saccade frames, off the calibrated display                                                                                                                                                                                                                                                                                                                                                                                 |
 | Precision helpers        | `src/precision.ts`                                                              | Per-target probability under the measured error → direct, a "which one?" picker (big labelled buttons, ≥96 pt, 24 pt gaps, "None of these"), or a 2–4× magnifier with mapping back                                                                                                                                                                                                                                                                                               |
@@ -98,11 +101,46 @@ keep flowing at about 30 fps after the camera preview is removed from the page. 
 to the overlay. The engine drops to 15 fps while eye control is paused and 10 fps when nobody is in view, never
 lower (the help signal must keep working).
 
+## Head movement, drift and fatigue
+
+Everything in this section was measured on **simulated** people (`tests/head.test.ts`, `tests/touchup.test.ts`,
+`tests/pace.test.ts`), not real ones.
+
+- **Head movement.** Eye positions are now measured with the camera's viewing angle undone as well as the head's
+  rotation (`landmarks.ts`): an eye that isn't straight in front of the camera is seen from the side, and before this
+  a head that moved sideways or down without turning looked like eyes that had turned. After a still-head 5-second
+  scan, the mean error on held-out points moved from 65 pt at the scan's pose to 60 to 84 pt after leaning in or back
+  12 cm, slouching 5 cm, turning 10 degrees, tilting 8 degrees or shifting 6 cm (4 people, through the engine). In a
+  model-only comparison on 6 people, slouching went from 127 to 73 pt and shifting 6 cm sideways from 159 to 87 pt
+  with the change. The replay fixture's calibration improved from 51 to 42 pt.
+- **Head sensitivity (J).** How much the remaining offset moves per degree or centimetre is estimated per person from
+  the scan's held-out errors, but a few seconds of small head movement rarely tell a head effect from noise: in
+  simulation the estimate never passed its held-out check, so it stayed at zero rather than guess. Continuous
+  recalibration then learns it from everyday selections made in different positions. With a tracker whose iris
+  estimate leans 0.04 px per degree of head turn (real landmark models have such biases; the synthetic face otherwise
+  doesn't), selections made facing the screen and turned cut the turned error from 104 to 67 pt; facing the screen it
+  went from 66 to 72 pt.
+- **Posture messages.** One instruction at a time, after 1.5 s out of range, gone after 1 s back in range: "Lean back
+  a little.", "Come a little closer to the screen.", "Sit up a little.", "Move a little to your left.", "Turn your head
+  back towards the screen.", "Lift your chin a little." and so on. Limits sit where simulated error climbs past about
+  1.4x the scan pose's: 18 degrees of turn, 14 of tilt, a quarter of the viewing distance, 9 cm up or down, 10 cm
+  sideways. While a message is up, the error circle widens by half.
+- **Drift.** Selections landing off in the same direction are corrected quietly in bounded steps (a 0.2 px iris shift:
+  89 to 54 pt). When they agree in direction and are more than 70 pt off, the engine asks for the 2-second touch-up
+  instead of a rescan: with a 1.2 px iris shift (as new glasses or a reflection might cause) the error went from 67 to
+  372 pt and back to 77 pt after the touch-up (4 people). A rescan is advised only when errors are poor without a
+  common direction, or a touch-up didn't hold.
+- **Fatigue.** A simulated person whose gaze wobbles more and lapses more often over a session got the first step
+  (dwell x1.15, targets x1.12) at selection 38, when dwells took 1.35x as long as at the start; a steady person,
+  however slow, got none.
+
 ## What was not measured
 
 - **Real people.** No accuracy, precision, selection or false-activation number has been measured with a real
   person, let alone a person with ALS, nystagmus, ptosis, glasses or uneven lighting. The synthetic face has none of
   MediaPipe's real systematic errors, so the simulated accuracy is an upper bound. The noise levels are assumptions.
+- Head movement, drift, posture limits and fatigue with real people: the limits and thresholds above come from the
+  synthetic face, whose only pose-dependent errors are the ones a scenario adds.
 - A real webcam: the speed test used a fake camera playing a still photo.
 - The engine inside the Electron app: `engine.html` builds, and CI's macOS job loads it, but the gaze window has no
   calibration channel yet (`INTEGRATION_REQUEST.md`), so calibration v2 can't be run in the OS today.

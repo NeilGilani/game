@@ -22,8 +22,13 @@ const AMPLITUDE: Record<HeadMotionKind, { cm: number; deg: number }> = {
   moving: { cm: 5, deg: 10 },
 };
 
+/** Anything that says where the head is at a given time (ms). */
+export interface HeadSource {
+  at(tMs: number): HeadState;
+}
+
 /** Slow, smooth head movement: a sum of low-frequency sinusoids with random phases. */
-export class HeadMotion {
+export class HeadMotion implements HeadSource {
   private phases: number[];
   private readonly amp: { cm: number; deg: number };
   readonly base: Vec3;
@@ -150,7 +155,7 @@ export interface SimFrame {
 export function* simulate(
   face: SyntheticFace,
   script: GazeScript,
-  head: HeadMotion,
+  head: HeadSource,
   options: { fps?: number; startMs?: number; seed?: number } = {},
 ): Generator<SimFrame> {
   const fps = options.fps ?? 30;
@@ -191,4 +196,63 @@ export function readingFixations(
     }
   }
   return out;
+}
+
+/**
+ * A change of posture after calibration, on top of the person's ordinary small movements:
+ * translation (cm, camera frame: x towards the camera's right, which is the person's left; y down;
+ * z away from the camera) and rotation (degrees, as HeadState: positive yaw turns the face to the
+ * person's right, positive pitch tilts it down).
+ */
+export interface PostureChange {
+  d?: [number, number, number];
+  yawDeg?: number;
+  pitchDeg?: number;
+  rollDeg?: number;
+}
+
+/** Head motion scenarios: how real people move during a session. All simulated. */
+export const POSTURES = {
+  /** Leans in towards the screen (12 cm closer). */
+  leanIn: { d: [0, 0, -12] },
+  /** Leans back in the chair (12 cm further). */
+  leanBack: { d: [0, 0, 12] },
+  /** Slumps: the head drops 5 cm and tilts down a little. */
+  slouch: { d: [0, 5, 0], pitchDeg: 6 },
+  /** Turns the head towards something to one side of the screen. */
+  turnRight: { yawDeg: 10 },
+  turnLeft: { yawDeg: -10 },
+  /** Chin up / chin down. */
+  chinUp: { pitchDeg: -8 },
+  chinDown: { pitchDeg: 8 },
+  /** Shifts sideways in the chair (6 cm to the person's right). */
+  shiftRight: { d: [-6, 0, 0] },
+} as const satisfies Record<string, PostureChange>;
+
+export type PostureName = keyof typeof POSTURES;
+
+/**
+ * Ordinary head motion with a posture change eased in from `fromMs` over `rampMs` (a person
+ * settling into a new position, or slowly sliding down in the chair when rampMs is minutes long).
+ */
+export class PostureShift implements HeadSource {
+  constructor(
+    private readonly base: HeadSource,
+    private readonly change: PostureChange,
+    private readonly fromMs: number,
+    private readonly rampMs = 1500,
+  ) {}
+
+  at(tMs: number): HeadState {
+    const h = this.base.at(tMs);
+    const u = Math.max(0, Math.min(1, (tMs - this.fromMs) / Math.max(1, this.rampMs)));
+    const k = u * u * (3 - 2 * u);
+    const d = this.change.d ?? [0, 0, 0];
+    return {
+      position: [h.position[0] + k * d[0], h.position[1] + k * d[1], h.position[2] + k * d[2]],
+      yawDeg: h.yawDeg + k * (this.change.yawDeg ?? 0),
+      pitchDeg: h.pitchDeg + k * (this.change.pitchDeg ?? 0),
+      rollDeg: h.rollDeg + k * (this.change.rollDeg ?? 0),
+    };
+  }
 }

@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { ScanResultBanner } from "./components/ScanResultBanner";
 import { ConnectionBanner, Nav, TopBar } from "./components/Shell";
+import { GazeAssist } from "./input/GazeAssist";
 import { InputLayer } from "./input/InputLayer";
 import { LifelineOverlay } from "./lifeline/LifelineOverlay";
 import { LifelineProvider } from "./lifeline/LifelineProvider";
@@ -144,6 +145,7 @@ function Shell() {
       </main>
       <LifelineOverlay />
       <InputLayer />
+      <GazeAssist />
     </div>
   );
 }
