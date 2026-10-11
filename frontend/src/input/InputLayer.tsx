@@ -108,6 +108,9 @@ function flash(el: HTMLElement): void {
   window.setTimeout(() => el.removeAttribute("data-selected-flash"), 450);
 }
 
+/** How far outside a control the eye cursor can still choose it (px). */
+const EYE_CURSOR_SNAP_PX = 6;
+
 export function InputLayer() {
   const input = useInput();
   const { prefs } = usePreferences();
@@ -154,7 +157,9 @@ export function InputLayer() {
     selector.current.setOptions({
       // Pace (os/gaze/src/input/pace.ts) lengthens the dwell a little when choosing gets harder.
       dwell: { dwellMs: prefs.dwell_ms * vision.pace.dwellScale, stabilityPx: prefs.dwell_stability_px },
-      magnet: { snapPx: prefs.target_snap_px },
+      // The eye cursor is exactly where it is drawn: only what is under it can be chosen (a few px of
+      // slack). Gaze, with its error circle, keeps the person's snap distance.
+      magnet: { snapPx: mode === "head" ? EYE_CURSOR_SNAP_PX : prefs.target_snap_px },
     });
     scan.current.setConfig({ intervalMs: prefs.scan_interval_ms });
     blink.current.setOptions({ holdMs: prefs.blink_ms });
@@ -164,6 +169,7 @@ export function InputLayer() {
     prefs.dwell_stability_px,
     prefs.target_snap_px,
     prefs.scan_interval_ms,
+    mode,
     prefs.blink_ms,
   ]);
 
@@ -249,13 +255,15 @@ export function InputLayer() {
       }
       if (!suspended && !fallbackActive && frame.pointer) {
         const { list, byId } = refreshTargets(now, eyeControlPaused);
+        // The eye cursor selects where it is drawn, with no error circle (that belongs to calibrated gaze).
+        const at = (mode === "head" && vision.cursorAt(now)) || frame.pointer;
         const events: SelectorEvent[] = sel.update(
           {
             t: now,
-            x: frame.pointer.x,
-            y: frame.pointer.y,
+            x: at.x,
+            y: at.y,
             confidence: frame.confidence,
-            errorRadius: vision.errorRadius,
+            errorRadius: mode === "head" ? 0 : vision.errorRadius,
           },
           list,
         );

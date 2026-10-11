@@ -172,13 +172,17 @@ export class VisionEngine {
   /** Gaze or head pointer. Switching to the head pointer centres it on the current pose. */
   setKind(kind: PointerKind): void {
     if (kind !== this.gaze.mode) this.gaze.setMode(kind);
+    // The eye cursor needs only landmarks: skip the per-frame eye-image read (a canvas read) it never uses.
+    this.camera.setReadEyes(kind !== "head");
     this.iris = null;
+    this.drawnIris = null;
   }
 
   /** The head pointer: wherever the head points now becomes the middle of the screen. */
   recentre(): void {
     this.gaze.recentreHeadPointer();
     this.iris = null;
+    this.drawnIris = null;
   }
 
   /**
@@ -188,8 +192,10 @@ export class VisionEngine {
    * iris was when it started (or was recentred) is the middle of the screen.
    */
   private iris: { cx: number; cy: number; x: number; y: number } | null = null;
-  /** The eye cursor as drawn: glides between camera frames and holds still through blinks. */
+  /** Used only to tell blinks (the eye cursor holds still through them). */
   private readonly eyeCursor = new GazeCursor();
+  /** The eye cursor as drawn: a short spring towards the latest iris position, so it glides between camera frames. */
+  private drawnIris: { x: number; y: number; t: number } | null = null;
 
   private irisCursor(f: FaceFrame): { x: number; y: number } | null {
     const lm = f.landmarks?.[475];
@@ -201,9 +207,10 @@ export class VisionEngine {
     if (!this.iris) this.iris = { cx: ix, cy: iy, x: w / 2, y: h / 2 };
     const tx = Math.max(0, Math.min(w, w / 2 + (ix - this.iris.cx) * w * EYE_CURSOR_GAIN.x));
     const ty = Math.max(0, Math.min(h, h / 2 + (iy - this.iris.cy) * h * EYE_CURSOR_GAIN.y));
-    // Light smoothing: landmark noise is a few pixels; a still cursor shouldn't shimmer.
+    // Light smoothing: landmark noise is a few pixels, so a still cursor shouldn't shimmer, but a real
+    // movement goes through at once (the eye cursor must feel instant).
     const d = Math.hypot(tx - this.iris.x, ty - this.iris.y);
-    const a = d < 3 ? 0 : d < 40 ? 0.35 : 0.6;
+    const a = d < 4 ? 0 : d < 30 ? 0.5 : 0.85;
     this.iris.x += (tx - this.iris.x) * a;
     this.iris.y += (ty - this.iris.y) * a;
     return { x: this.iris.x, y: this.iris.y };
@@ -341,13 +348,29 @@ export class VisionEngine {
    */
   cursorAt(now: number): { x: number; y: number } | null {
     if (this.calibrating) return null;
-    if (this.gaze.mode === "head") return this.eyeCursor.at(now);
+    if (this.gaze.mode === "head") return this.irisAt(now);
     const p = this.gaze.cursorAt(now);
     if (!p) return null;
     return {
       x: (p.x * window.innerWidth) / this.space.width,
       y: (p.y * window.innerHeight) / this.space.height,
     };
+  }
+
+  /** The eye cursor at display time: a 30 ms spring towards the latest iris position (no other delay). */
+  private irisAt(now: number): { x: number; y: number } | null {
+    const goal = this.iris;
+    if (!goal || !this.last?.pointer) return this.drawnIris ? { x: this.drawnIris.x, y: this.drawnIris.y } : null;
+    const d = this.drawnIris;
+    if (!d) {
+      this.drawnIris = { x: goal.x, y: goal.y, t: now };
+      return { x: goal.x, y: goal.y };
+    }
+    const k = 1 - Math.exp(-Math.max(0, now - d.t) / 30);
+    d.x += (goal.x - d.x) * k;
+    d.y += (goal.y - d.y) * k;
+    d.t = now;
+    return { x: d.x, y: d.y };
   }
 
   /** The error circle around the pointer (viewport pixels, about two standard deviations). */
@@ -416,10 +439,11 @@ export class VisionEngine {
     const sy = window.innerHeight / this.space.height;
     const head = this.gaze.mode === "head";
     if (head && !this.calibrating) {
-      pointer = d.trackingConfidence >= 0.5 ? this.irisCursor(f) : null;
+      // Through a blink the cursor holds where it was (closing eyes move the iris landmark).
+      const blinking = this.eyeCursor.blinking(d.blink);
+      pointer =
+        d.trackingConfidence < 0.5 ? null : blinking && this.iris ? { x: this.iris.x, y: this.iris.y } : this.irisCursor(f);
       raw = pointer;
-      if (pointer && !this.eyeCursor.blinking(d.blink)) this.eyeCursor.follow(d.t, pointer);
-      else this.eyeCursor.hold(d.t);
     } else if (d.point && !this.calibrating) {
       pointer = { x: d.point.x * sx, y: d.point.y * sy };
       raw = d.raw ? { x: d.raw.x * sx, y: d.raw.y * sy } : pointer;

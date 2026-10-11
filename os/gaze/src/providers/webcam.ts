@@ -85,6 +85,8 @@ export class WebcamProvider implements GazeProvider {
   private lastBrightnessAt = -Infinity;
   private brightness: number | null = null;
   private readonly eyeReader = new EyeImageReader();
+  /** Read RealEye's eye images each frame (the calibrated gaze model needs them; the eye cursor doesn't). */
+  private readEyes = true;
   private statusListeners = new Set<(s: WebcamStatus, e: CameraErrorKind | null) => void>();
 
   constructor(
@@ -111,6 +113,11 @@ export class WebcamProvider implements GazeProvider {
     this.status = status;
     this.error = error;
     for (const l of this.statusListeners) l(status, error);
+  }
+
+  /** Turn the per-frame eye-image read on or off (a canvas read and feature extraction every frame). */
+  setReadEyes(on: boolean): void {
+    this.readEyes = on;
   }
 
   setTargetFps(fps: number): void {
@@ -279,7 +286,9 @@ export class WebcamProvider implements GazeProvider {
     const landmarks = result.faceLandmarks[0] ?? null;
     const matrix = result.facialTransformationMatrixes?.[0]?.data;
     // Same task as detectForVideo, so the same camera frame.
-    const eyes = this.eyeReader.read(this.video, this.video.videoWidth, this.video.videoHeight, landmarks);
+    const eyes = this.readEyes
+      ? this.eyeReader.read(this.video, this.video.videoWidth, this.video.videoHeight, landmarks)
+      : null;
     this.onFrame?.({
       kind: "face",
       frame: {
