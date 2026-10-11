@@ -221,7 +221,15 @@ export function installWebDemo(): void {
         body = null;
       }
     }
-    const result = standIn.handle(method, new URL(url).pathname, body);
+    const path = new URL(url).pathname;
+    // Talk's AI (replies, finishing sentences) goes to the site's own Gemini functions (site/functions/api/assist).
+    if (method === "POST" && (path === "/api/assist/replies" || path === "/api/assist/complete"))
+      return realFetch(path, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: init?.body ?? null,
+      });
+    const result = standIn.handle(method, path, body);
     return new Response(JSON.stringify(result.body), {
       status: result.status,
       headers: { "content-type": "application/json" },
