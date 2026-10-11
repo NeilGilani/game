@@ -46,6 +46,11 @@ before launching Electron. Run it from the checkout you want to test so the app 
 The repository is an npm workspace (`frontend`, `os/*`, `site`); `make check` covers the web app and the OS packages.
 The web demo below works exactly as before.
 
+The updated Mac interface is included on `main` in both the desktop app and web demo. To update an existing
+checkout, run `git pull --ff-only`, `make setup`, then `make demo` (browser) or `npm start` (Mac app).
+Restart an already running server and refresh the page. `npm start`, `npm run os:dev`, and `npm run os:build`
+build the current interface and OS packages before launching or packaging, so old build output is not reused.
+
 ## Quick start (MacBook)
 
 Requires Python 3.11+ (`brew install python@3.12`, or `uv`) and Node 20.19+ (`brew install node`).
