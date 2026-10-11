@@ -23,11 +23,11 @@
   --topbar: 46px;
 
   /* Motion: springy, short, and off with reduced motion. */
-  --spring: cubic-bezier(0.32, 1.25, 0.5, 1);
-  --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
-  --dur-fast: 200ms;
-  --dur: 280ms;
-  --dur-slow: 350ms;
+  --spring: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --dur-fast: 180ms;
+  --dur: 320ms;
+  --dur-slow: 420ms;
 
   /* Colour (light). System colours darkened where needed so text passes 4.5:1. */
   --wallpaper:
