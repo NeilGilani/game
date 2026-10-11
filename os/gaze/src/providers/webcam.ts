@@ -57,6 +57,20 @@ export function blinkFromCategories(
   return left === null || right === null ? null : (left + right) / 2;
 }
 
+/** How much the eyes are squinted (cheeks raised, eyes narrowed), 0..1: a deliberate gesture, unlike a blink. */
+export function squintFromCategories(
+  categories: readonly { categoryName: string; score: number }[] | undefined,
+): number | null {
+  if (!categories || categories.length === 0) return null;
+  let left: number | null = null;
+  let right: number | null = null;
+  for (const c of categories) {
+    if (c.categoryName === "eyeSquintLeft") left = c.score;
+    if (c.categoryName === "eyeSquintRight") right = c.score;
+  }
+  return left === null || right === null ? null : (left + right) / 2;
+}
+
 export class WebcamProvider implements GazeProvider {
   readonly id = "webcam";
   readonly kind = "face" as const;
@@ -297,6 +311,7 @@ export class WebcamProvider implements GazeProvider {
         landmarks,
         matrix: matrix ? Array.from(matrix) : null,
         blink: blinkFromCategories(result.faceBlendshapes?.[0]?.categories),
+        squint: squintFromCategories(result.faceBlendshapes?.[0]?.categories),
         aspect: this.video.videoWidth / Math.max(1, this.video.videoHeight),
         brightness: this.brightness,
         eyes,
