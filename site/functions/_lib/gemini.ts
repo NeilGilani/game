@@ -11,7 +11,7 @@ export interface Context {
   env: Env;
 }
 
-export const MODEL = "gemini-3.8-flash";
+export const MODEL = "gemini-3.5-flash-lite"; // about a second; GEMINI_MODEL overrides
 const PER_MINUTE = 12;
 const seen = new Map<string, number[]>();
 
