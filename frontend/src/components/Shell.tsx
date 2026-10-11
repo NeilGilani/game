@@ -84,7 +84,7 @@ export function TopBar() {
     const field = document.querySelector<HTMLElement>("#main textarea, #main input:not([type=checkbox])");
     if (field) {
       field.focus();
-      announce("Ready to type. Use the eye keyboard, or a helper's keyboard.");
+      announce("Ready to type: look at the letters on the eye keyboard.");
     } else announce("There's nothing to type into on this screen.");
   };
 

@@ -184,7 +184,12 @@ export class AgencyApp {
       const role = this.roleOf(c);
       return role === "shell" || role === "gaze";
     };
-    applySecurity(app, { allowedOrigins, mayUseCamera, log });
+    applySecurity(app, {
+      allowedOrigins,
+      mayUseCamera,
+      log,
+      openExternal: (url) => void electronShell.openExternal(url),
+    });
     applyPermissionHandlers(session.defaultSession, { allowedOrigins, mayUseCamera, log });
 
     protocol.handle(

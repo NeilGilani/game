@@ -373,3 +373,14 @@ describe("dotenv (development only)", () => {
     expect(env.PATH).toBeUndefined();
   });
 });
+
+describe("pages opened from Watch & listen and Browse", () => {
+  it("opens only well-known https sites in the browser", async () => {
+    const { isExternalAllowed } = await import("../src/main/security");
+    expect(isExternalAllowed("https://www.youtube.com/watch?v=jfKfPfyJRdk")).toBe(true);
+    expect(isExternalAllowed("https://www.netflix.com/browse")).toBe(true);
+    expect(isExternalAllowed("http://www.youtube.com/")).toBe(false);
+    expect(isExternalAllowed("https://youtube.com.evil.example/")).toBe(false);
+    expect(isExternalAllowed("file:///etc/passwd")).toBe(false);
+  });
+});

@@ -526,19 +526,31 @@ const watch: FlowDef = {
           id: "continue",
           label: "Continue watching",
           icon: "play",
-          end: browseEnd("Open YouTube in Chrome and continue my last video"),
+          end: {
+            type: "open",
+            url: "https://www.youtube.com/feed/history",
+            name: "YouTube (continue watching)",
+          },
         },
         {
           id: "subs",
           label: "My subscriptions",
           icon: "list",
-          end: browseEnd("Open my YouTube subscriptions in Chrome"),
+          end: {
+            type: "open",
+            url: "https://www.youtube.com/feed/subscriptions",
+            name: "Your YouTube subscriptions",
+          },
         },
         {
           id: "calm",
           label: "Something calm",
           icon: "sparkle",
-          end: browseEnd("Find a calm nature video on YouTube in Chrome"),
+          end: {
+            type: "open",
+            url: "https://www.youtube.com/watch?v=rUxyKA_-grg",
+            name: "A calm video on YouTube",
+          },
         },
       ],
       text: {
@@ -546,7 +558,11 @@ const watch: FlowDef = {
         label: "Search",
         placeholder: "What to search for",
         maxLength: 80,
-        end: browseEnd((s) => `Search YouTube for "${s.search ?? ""}" in Chrome`),
+        end: {
+          type: "open",
+          url: (s) => `https://www.youtube.com/results?search_query=${encodeURIComponent(s.search ?? "")}`,
+          name: "YouTube search",
+        },
       },
     },
     netflix: {
@@ -558,9 +574,14 @@ const watch: FlowDef = {
           id: "continue",
           label: "Continue watching",
           icon: "play",
-          end: browseEnd("Open Netflix in Chrome and continue watching"),
+          end: { type: "open", url: "https://www.netflix.com/browse", name: "Netflix" },
         },
-        { id: "list", label: "My list", icon: "list", end: browseEnd("Open my list on Netflix in Chrome") },
+        {
+          id: "list",
+          label: "My list",
+          icon: "list",
+          end: { type: "open", url: "https://www.netflix.com/browse/my-list", name: "Your Netflix list" },
+        },
       ],
     },
     music: {
@@ -572,14 +593,18 @@ const watch: FlowDef = {
           label: "Morning playlist",
           icon: "play",
           set: { playlist: "Morning playlist" },
-          end: musicEnd(),
+          end: {
+            type: "open",
+            url: "https://www.youtube.com/watch?v=5yx6BWlEVcY",
+            name: "Your morning playlist",
+          },
         },
         {
           id: "calm",
           label: "Calm music",
           icon: "sparkle",
           set: { playlist: "Calm music" },
-          end: musicEnd(),
+          end: { type: "open", url: "https://www.youtube.com/watch?v=jfKfPfyJRdk", name: "Calm music" },
         },
         {
           id: "open",
@@ -591,18 +616,6 @@ const watch: FlowDef = {
     },
   },
 };
-
-function browseEnd(goal: string | ((s: Selections) => string)) {
-  return { type: "task" as const, goal, selections: { kind: "watch" } };
-}
-
-function musicEnd() {
-  return {
-    type: "task" as const,
-    goal: (s: Selections) => `Play ${s.playlist ?? "music"} in the Music app`,
-    selections: { kind: "watch", app: "Music" },
-  };
-}
 
 // ---- Browse -----------------------------------------------------------------------------------------------------
 
@@ -623,28 +636,28 @@ const browse: FlowDef = {
           label: "News",
           icon: "news",
           set: { where: "the news" },
-          end: siteEnd("Open the news in Chrome"),
+          end: { type: "open", url: "https://news.google.com", name: "The news" },
         },
         {
           id: "weather",
           label: "Weather",
           icon: "weather",
           set: { where: "the weather" },
-          end: siteEnd("Show today's weather in Chrome"),
+          end: { type: "open", url: "https://weather.com", name: "Today's weather" },
         },
         {
           id: "wiki",
           label: "Wikipedia",
           icon: "book",
           set: { where: "Wikipedia" },
-          end: siteEnd("Open Wikipedia in Chrome"),
+          end: { type: "open", url: "https://www.wikipedia.org", name: "Wikipedia" },
         },
         {
           id: "mail",
           label: "My email",
           icon: "mail",
           set: { where: "your email" },
-          end: siteEnd("Open my email in Chrome"),
+          end: { type: "open", url: "https://mail.google.com", name: "Your email" },
         },
       ],
       text: {
@@ -652,15 +665,15 @@ const browse: FlowDef = {
         label: "Search the web",
         placeholder: "What to look for",
         maxLength: 120,
-        end: siteEnd((s) => `Search the web for "${s.search ?? ""}" in Chrome`),
+        end: {
+          type: "open",
+          url: (s) => `https://www.google.com/search?q=${encodeURIComponent(s.search ?? "")}`,
+          name: "Web search",
+        },
       },
     },
   },
 };
-
-function siteEnd(goal: string | ((s: Selections) => string)) {
-  return { type: "task" as const, goal, selections: { kind: "browse", where: "Chrome" } };
-}
 
 // ---- Apps -------------------------------------------------------------------------------------------------------
 
