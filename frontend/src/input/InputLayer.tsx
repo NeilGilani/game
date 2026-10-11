@@ -242,7 +242,8 @@ export function InputLayer() {
         }
       }
       // Where the cursor goes: the middle of the held target while there is a lock, else the pointer.
-      let lockAt: { x: number; y: number } | null = null;
+      // The held target is highlighted, but the cursor keeps following the eyes (no snapping).
+      let held = false;
       if (mode === "gaze" && frame.pointer && frame.confidence >= 0.5 && !suspended) {
         setLivePrecision(meter.current.update(now, vision.errorRadius));
       }
@@ -287,13 +288,13 @@ export function InputLayer() {
         const dwelling = sel.dwell.snapshot().targetId;
         const ring = dwelling ? byId.get(dwelling) : undefined;
         if (ring) ring.toggleAttribute("data-dwell-paused", sel.locked !== dwelling || !sel.supported);
-        if (sel.locked && sel.cursor) lockAt = sel.cursor;
+        held = !!sel.locked;
       }
       const on = !!frame.pointer && prefs.show_gaze_cursor && !suspended;
-      shown.current = { on, lockAt: on ? lockAt : null };
+      shown.current = { on, lockAt: null };
       if (cursor) {
-        cursor.style.opacity = on ? (lockAt || frame.confidence >= 0.5 ? "1" : "0.35") : "0";
-        cursor.toggleAttribute("data-locked", on && !!lockAt);
+        cursor.style.opacity = on ? (held || frame.confidence >= 0.5 ? "1" : "0.35") : "0";
+        cursor.removeAttribute("data-locked");
       }
     };
     const off = vision.onFrame(handle);
