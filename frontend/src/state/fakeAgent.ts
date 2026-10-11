@@ -35,9 +35,7 @@ interface Script {
 const NO_CHOICE = "__none__";
 
 /** A cloud planner (the web demo's Gemini function): steps for the task, or null to keep the built-in plan. */
-export type RemotePlanner = (
-  r: TaskRequest,
-) => Promise<{
+export type RemotePlanner = (r: TaskRequest) => Promise<{
   steps: { title: string; risk: PlanStepView["risk"]; done: string }[];
   label: string;
   /** How the planner made it fast, in plain words (shown on the plan). */
@@ -45,6 +43,9 @@ export type RemotePlanner = (
 } | null>;
 
 let remotePlanner: RemotePlanner | null = null;
+
+/** The longest a task waits for the cloud planner before starting with the built-in plan. */
+export const PLAN_WAIT_MS = 3500;
 
 /** Let a cloud model plan the steps; the scripted approval (exact details) and practice services stay. */
 export function setRemotePlanner(planner: RemotePlanner | null): void {
@@ -384,7 +385,12 @@ export class FakeAgent {
     let planNote: string | null = null;
     if (remotePlanner) {
       const started = performance.now();
-      const plan = await remotePlanner(request).catch(() => null);
+      // Never keep the person waiting on the cloud: if Gemini hasn't planned within a few seconds (busy, slow
+      // network), the built-in plan starts at once. A task chosen before comes back from Synapse's cache instantly.
+      const plan = await Promise.race([
+        remotePlanner(request).catch(() => null),
+        new Promise<null>((r) => setTimeout(() => r(null), PLAN_WAIT_MS)),
+      ]);
       if (t.stopped) return;
       if (plan) {
         script = withPlan(script, plan);
@@ -393,7 +399,7 @@ export class FakeAgent {
           `Planned live by ${plan.label} in ${((performance.now() - started) / 1000).toFixed(1)} s.`;
         planNote += " Practice services carry it out.";
       } else {
-        planNote = "Built-in plan (the cloud planner didn't answer).";
+        planNote = `Built-in plan: Gemini didn't answer within ${PLAN_WAIT_MS / 1000} s, so AGENCY didn't wait.`;
       }
     }
     const steps: PlanStepView[] = script.steps.map((s, i) => ({
