@@ -6,6 +6,12 @@
  * accuracy: real faces, cameras and light add error the model doesn't have.
  */
 import { type Page, expect, test } from "@playwright/test";
+import {
+  type CursorSample,
+  type Interval,
+  type LookedAt,
+  cursorMetrics,
+} from "../../os/gaze/bench/cursorMetrics";
 import { Coordinator } from "./backend";
 
 const coordinator = new Coordinator();
@@ -25,8 +31,9 @@ test.beforeEach(async ({ context }) => {
 
 type Point = { x: number; y: number };
 interface Hook {
-  eyes: (options?: { seed?: number; head?: "still" | "natural" }) => Promise<void>;
+  eyes: (options?: { seed?: number; head?: "still" | "natural"; lagMs?: number }) => Promise<void>;
   lookAt: (target: string | Point) => void;
+  closeEyes: (ms: number) => void;
   pointer: () => Point | null;
 }
 
@@ -90,6 +97,94 @@ test("5-second eye scan, then choose with the eyes alone (simulated person, real
   // Choose a Home tile by looking at it, then another.
   await lookAt(page, '[data-tile="talk"]');
   await expect(page).toHaveURL(/#\/talk/, { timeout: 15_000 });
+});
+
+/**
+ * The cursor as drawn: every animation frame, read the cursor element's computed position (what the
+ * screen shows, CSS transitions included) while the simulated person looks at a series of points
+ * and blinks once. Definitions: os/gaze/bench/cursorMetrics.ts. SIMULATED person, real browser.
+ */
+async function measureDrawnCursor(page: Page, points: Point[], dwellMs: number, blinkAt: number) {
+  return page.evaluate(
+    async ({ points, dwellMs, blinkAt }) => {
+      const hook = (window as unknown as { __agency: Hook }).__agency;
+      const el = document.querySelector<HTMLElement>(".gaze-cursor")!;
+      const drawn: CursorSample[] = [];
+      let on = true;
+      const sample = (t: number) => {
+        const style = getComputedStyle(el);
+        if (Number(style.opacity) > 0) {
+          const m = new DOMMatrixReadOnly(style.transform);
+          drawn.push({ t, x: m.m41, y: m.m42 });
+        }
+        if (on) requestAnimationFrame(sample);
+      };
+      requestAnimationFrame(sample);
+      const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+      const looks: LookedAt[] = [];
+      const blinks: Interval[] = [];
+      for (let i = 0; i < points.length; i++) {
+        const p = points[i]!;
+        hook.lookAt(p);
+        const start = performance.now();
+        if (i === blinkAt) {
+          await sleep(dwellMs / 2);
+          hook.closeEyes(200);
+          blinks.push({ start: performance.now(), end: performance.now() + 200 });
+          await sleep(dwellMs / 2);
+        } else {
+          await sleep(dwellMs);
+        }
+        looks.push({ x: p.x, y: p.y, start, end: performance.now() });
+      }
+      on = false;
+      return { drawn, looks, blinks };
+    },
+    { points, dwellMs, blinkAt },
+  );
+}
+
+test("the drawn cursor: jitter, lag and accuracy (simulated person, real browser)", async ({
+  page,
+  context,
+}) => {
+  // A dwell long enough that looking around Home never selects anything mid-measurement.
+  await context.addInitScript(() =>
+    localStorage.setItem(
+      "agency.preferences",
+      JSON.stringify({ input_mode: "gaze", show_gaze_cursor: true, dwell_ms: 60_000 }),
+    ),
+  );
+  await page.goto("/#/calibrate");
+  // No pursuit lag: the eyes jump the moment lookAt is called, so lag is measured from then.
+  await page.evaluate(() =>
+    (window as unknown as { __agency: Hook }).__agency.eyes({ seed: 3, head: "still", lagMs: 0 }),
+  );
+  await lookAt(page, ".cal-target");
+  await expect(page).toHaveURL(/#\/$/, { timeout: 45_000 });
+  await page.waitForTimeout(1500); // the pause after the scan ends
+
+  const { width: w, height: h } = page.viewportSize()!;
+  const points = [
+    { x: w * 0.2, y: h * 0.25 },
+    { x: w * 0.8, y: h * 0.3 },
+    { x: w * 0.35, y: h * 0.7 },
+    { x: w * 0.7, y: h * 0.75 },
+    { x: w * 0.5, y: h * 0.45 },
+    { x: w * 0.15, y: h * 0.6 },
+    { x: w * 0.85, y: h * 0.55 },
+    { x: w * 0.45, y: h * 0.2 },
+  ];
+  const run = await measureDrawnCursor(page, points, 1500, 4);
+  const m = cursorMetrics(run.drawn, run.looks, run.blinks);
+  console.log(
+    `Simulated person, drawn cursor: jitter ${m.jitterPx.toFixed(1)} px RMS, step ${m.stepPx.toFixed(1)} px/frame, ` +
+      `lag ${Math.round(m.lagMs)} ms (median of ${m.saccades}), accuracy ${Math.round(m.accuracyPx)} px, ` +
+      `blink move ${Math.round(m.blinkMovePx)} px, drawn at ${Math.round(m.drawnFps)} fps`,
+  );
+  expect(m.fixations).toBeGreaterThanOrEqual(6);
+  expect(m.saccades).toBeGreaterThanOrEqual(6);
+  expect(m.accuracyPx).toBeLessThan(130);
 });
 
 test("the head pointer works without any calibration (simulated person)", async ({ page, context }) => {

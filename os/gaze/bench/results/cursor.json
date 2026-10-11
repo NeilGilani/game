@@ -1,0 +1,37 @@
+{
+  "simulated": true,
+  "rows": [
+    {
+      "head": "still",
+      "cursor": "before: camera frames + CSS transition",
+      "people": 10,
+      "jitterPx": 50.00534587665802,
+      "jitterSd": 7.005076536178488,
+      "stepPx": 10.215787286874065,
+      "lagMs": 338.4475559355709,
+      "lagSd": 74.69912110074262,
+      "accuracyPx": 81.54836626516979,
+      "blinkMovePx": 116.8388931015493,
+      "fixations": 210,
+      "saccades": 167,
+      "blinks": 77,
+      "drawnFps": 60
+    },
+    {
+      "head": "natural",
+      "cursor": "before: camera frames + CSS transition",
+      "people": 10,
+      "jitterPx": 52.99239015681012,
+      "jitterSd": 7.751651033263674,
+      "stepPx": 10.558344458428527,
+      "lagMs": 369.0841176068625,
+      "lagSd": 87.04229217090118,
+      "accuracyPx": 92.44488198764132,
+      "blinkMovePx": 110.40707087578089,
+      "fixations": 210,
+      "saccades": 167,
+      "blinks": 77,
+      "drawnFps": 60
+    }
+  ]
+}
