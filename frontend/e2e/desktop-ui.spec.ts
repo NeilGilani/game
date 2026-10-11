@@ -95,5 +95,15 @@ for (const size of [
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(size.width);
     await page.getByRole("button", { name: "Settings: Eyes, voice, memory" }).click();
     await expect(page).toHaveURL(/#\/settings$/);
+    await page.goto("/#/apps?view=all");
+    await expect(page.locator(".app-tile")).toHaveCount(8);
+    const appLayout = await page.evaluate(() => ({
+      width: document.documentElement.scrollWidth,
+      gap:
+        document.querySelector(".apps-flow .flow-bar")!.getBoundingClientRect().top -
+        Array.from(document.querySelectorAll(".app-tile")).at(-1)!.getBoundingClientRect().bottom,
+    }));
+    expect(appLayout.width).toBeLessThanOrEqual(size.width);
+    expect(appLayout.gap).toBeGreaterThanOrEqual(23.5);
   });
 }
