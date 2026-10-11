@@ -451,16 +451,10 @@ code,
   pointer-events: none;
   z-index: 1000;
   opacity: 0;
-  /* Glide between camera frames (about 30 a second) instead of hopping. */
-  transition:
-    transform 110ms cubic-bezier(0.2, 0.8, 0.2, 1),
-    opacity 150ms linear;
+  /* Position is drawn every animation frame by InputLayer (the engine's cursor glides by itself), so
+     there is no transform transition here: one would restart on every frame and lag. */
+  transition: opacity 150ms linear;
   will-change: transform;
-}
-@media (prefers-reduced-motion: reduce) {
-  .gaze-cursor {
-    transition: opacity 150ms linear;
-  }
 }
 
 .blink-meter,
@@ -2950,8 +2944,8 @@ h2 {
   height: 20px;
   margin: -10px 0 0 -10px;
   background: var(--accent);
+  /* The glide onto the target's centre is drawn by InputLayer (160 ms ease-out). */
   transition:
-    transform 160ms cubic-bezier(0.2, 0.8, 0.2, 1),
     width 160ms ease-out,
     height 160ms ease-out,
     margin 160ms ease-out,

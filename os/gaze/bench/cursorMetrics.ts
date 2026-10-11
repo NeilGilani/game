@@ -49,6 +49,8 @@ export interface CursorMetrics {
   fixations: number;
   saccades: number;
   blinks: number;
+  /** Each saccade's lag (ms), in order: for reading a run, not for averaging. */
+  lags: number[];
   /** Drawn frames per second in the samples. */
   drawnFps: number;
 }
@@ -118,6 +120,7 @@ export function cursorMetrics(
     jitterPx: mean(jitter),
     stepPx: mean(step),
     lagMs: median(lag),
+    lags: lag.map(Math.round),
     accuracyPx: mean(accuracy),
     blinkMovePx: mean(moves),
     closedMovePx: mean(closed),

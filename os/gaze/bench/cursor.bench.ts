@@ -178,8 +178,9 @@ it("drawn cursor: jitter, lag, accuracy, blinks (simulated)", () => {
     for (const head of HEADS) {
       for (const make of cursors) {
         const runs = SEEDS.map((s) => session(s, head, noise, make)).filter((m): m is CursorMetrics => !!m);
-        const avg = (k: keyof CursorMetrics) => runs.reduce((a, m) => a + m[k], 0) / runs.length;
-        const sd = (k: keyof CursorMetrics) => {
+        type Num = Exclude<keyof CursorMetrics, "lags">;
+        const avg = (k: Num) => runs.reduce((a, m) => a + m[k], 0) / runs.length;
+        const sd = (k: Num) => {
           const m = avg(k);
           return Math.sqrt(runs.reduce((a, r) => a + (r[k] - m) ** 2, 0) / runs.length);
         };

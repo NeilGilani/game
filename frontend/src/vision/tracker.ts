@@ -331,6 +331,21 @@ export class VisionEngine {
     this.gaze.cancelTouchUp();
   }
 
+  /**
+   * Where to draw the gaze or head cursor now (viewport pixels), for every animation frame: it
+   * glides between camera frames, smooths harder the longer the eyes rest, eases across saccades
+   * and holds still through blinks (os/gaze/src/cursor.ts). Null when there is no pointer.
+   */
+  cursorAt(now: number): { x: number; y: number } | null {
+    if (this.calibrating) return null;
+    const p = this.gaze.cursorAt(now);
+    if (!p) return null;
+    return {
+      x: (p.x * window.innerWidth) / this.space.width,
+      y: (p.y * window.innerHeight) / this.space.height,
+    };
+  }
+
   /** The error circle around the pointer (viewport pixels, about two standard deviations). */
   get errorRadius(): number {
     return this.gaze.errorRadiusPt * (window.innerWidth / this.space.width);

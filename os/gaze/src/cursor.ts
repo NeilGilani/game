@@ -69,7 +69,7 @@ export const DEFAULT_CURSOR: CursorOptions = {
   jumpSigma: 3.5,
   jumpMaxK: 20,
   springStartMs: 30,
-  springEndMs: 110,
+  springEndMs: 50,
   blinkHold: 0.25,
   minTracking: 0.5,
   reopenMs: 120,
