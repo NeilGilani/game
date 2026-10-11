@@ -48,7 +48,7 @@ export const HOME_TILES: Tile[] = [
 /** One plain sentence on how to choose, for the input the person is using now. */
 export function howToChoose(mode: InputMode): string {
   if (mode === "gaze") return "Look at a choice until its ring fills.";
-  if (mode === "head") return "Point with your head; hold still until the ring fills.";
+  if (mode === "head") return "The pointer follows your eyes; hold still until the ring fills.";
   if (mode === "scan_blink") return "Choices light up in turn: close your eyes briefly on yours.";
   if (mode === "scan_key") return "Choices light up in turn: press Space on yours.";
   return "Click a choice, or use the keyboard.";
