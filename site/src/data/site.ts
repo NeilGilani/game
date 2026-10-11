@@ -27,12 +27,12 @@ export const REQUIREMENTS = {
 };
 
 /**
- * Where each feature really stands. "prototype" = working and tested in the AGENCY web prototype that's in the
- * repository today. "building" = being built for AGENCY OS and not in a release yet. Update this as work lands.
+ * Where each feature really stands. "prototype" = working and tested in the AGENCY app that's in the repository
+ * today. "building" = being built for AGENCY OS and not in a release yet. Update this as work lands.
  */
 export type Status = "prototype" | "building";
-export const STATUS_REVIEWED = "10 October 2026";
+export const STATUS_REVIEWED = "11 October 2026";
 export const STATUS_LABEL: Record<Status, string> = {
-  prototype: "Works in the prototype today",
+  prototype: "Works today",
   building: "Being built",
 };

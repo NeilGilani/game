@@ -11,9 +11,20 @@ interface Props {
   /** Load straight away (only for the first screenshot on the page). */
   eager?: boolean;
   sizes?: string;
+  /** "full": the description and where it came from; "short": only where it came from (the description stays
+   *  the image's alt text). */
+  caption?: "full" | "short";
+  /** Wrap the image in a glass window frame. */
+  frame?: boolean;
 }
 
-const { name, eager = false, sizes = "(min-width: 76rem) 38rem, 92vw" } = Astro.props;
+const {
+  name,
+  eager = false,
+  sizes = "(min-width: 76rem) 38rem, 92vw",
+  caption = "full",
+  frame = false,
+} = Astro.props;
 const files = import.meta.glob<{ default: ImageMetadata }>("../assets/screenshots/*.png", { eager: true });
 const light = files[`../assets/screenshots/${name}.png`]?.default;
 const dark = files[`../assets/screenshots/${name}-dark.png`]?.default;
@@ -23,31 +34,39 @@ const common = { widths, sizes, formats: ["avif", "webp"] as const, decoding: "a
 ---
 
 {light && (
-  <figure class="shot">
-    <Picture
-      src={light}
-      alt={alt}
-      class:list={["shot-img", dark && "shot-light"]}
-      loading={eager ? "eager" : "lazy"}
-      fetchpriority={eager ? "high" : "auto"}
-      {...common}
-      formats={[...common.formats]}
-    />
-    {dark && (
+  <figure class:list={["shot", frame && "shot-framed"]}>
+    <div class="shot-frame">
       <Picture
-        src={dark}
+        src={light}
         alt={alt}
-        class="shot-img shot-dark"
-        loading="lazy"
+        class:list={["shot-img", dark && "shot-light"]}
+        loading={eager ? "eager" : "lazy"}
+        fetchpriority={eager ? "high" : "auto"}
         {...common}
         formats={[...common.formats]}
       />
+      {dark && (
+        <Picture
+          src={dark}
+          alt={alt}
+          class="shot-img shot-dark"
+          loading={eager ? "eager" : "lazy"}
+          {...common}
+          formats={[...common.formats]}
+        />
+      )}
+    </div>
+    {caption === "full" ? (
+      <figcaption>
+        {alt}{" "}
+        <span class="provenance">
+          Real screenshot of the AGENCY app (captured {formatDate(manifest.captured)}, demo data).
+        </span>
+      </figcaption>
+    ) : (
+      <figcaption class="provenance-short">
+        Real screenshot, {formatDate(manifest.captured)}, demo data
+      </figcaption>
     )}
-    <figcaption>
-      {alt}{" "}
-      <span class="provenance">
-        Real screenshot of the AGENCY prototype (captured {formatDate(manifest.captured)}, demo data).
-      </span>
-    </figcaption>
   </figure>
 )}

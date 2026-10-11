@@ -99,8 +99,11 @@ test("keyboard: skip link first, every stop visibly focused, the download reacha
   for (let i = 0; i < 80; i += 1) {
     await page.keyboard.press("Tab");
     const info2 = await page.evaluate(() => {
+      // Mark the focused element: a video's own controls keep focus inside the player, where ":focus" can't see it.
+      document.querySelector("[data-kbd-focus]")?.removeAttribute("data-kbd-focus");
       const el = document.activeElement as HTMLElement | null;
       if (!el || el === document.body) return null;
+      el.setAttribute("data-kbd-focus", "");
       const s = getComputedStyle(el);
       return {
         text: (el.textContent ?? "").trim().slice(0, 60),
@@ -111,7 +114,7 @@ test("keyboard: skip link first, every stop visibly focused, the download reacha
     if (!info2) break;
     expect(info2.outline, `focus outline on "${info2.text}"`).toBe(true);
     // Smooth scrolling takes a moment to bring the focused control into view.
-    await expect(page.locator(":focus"), `"${info2.text}" scrolled into view`).toBeInViewport();
+    await expect(page.locator("[data-kbd-focus]"), `"${info2.text}" scrolled into view`).toBeInViewport();
     if (String(info2.cls).includes("dl-primary")) reachedDownload = true;
   }
   expect(reachedDownload).toBe(true);
@@ -146,7 +149,7 @@ test("on a phone, the section menu opens in place with large, well-spaced links"
   await page.goto("");
   await page.getByText("Menu: all sections").click();
   const links = page.locator(".menu a");
-  await expect(links).toHaveCount(6);
+  await expect(links).toHaveCount(7);
   const boxes = await links.evaluateAll((els) =>
     els.map((e) => e.getBoundingClientRect().toJSON() as DOMRect),
   );
