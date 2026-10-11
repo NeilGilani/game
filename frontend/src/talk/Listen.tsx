@@ -1,9 +1,9 @@
 /**
  * Conversation mode. Off until the person turns it on. In the AGENCY app, agency-native
  * listens with on-device recognition only (audio never leaves the Mac, nothing is recorded);
- * Talk shows what was said and big reply suggestions. Claude suggestions are a second,
- * separate opt-in that shows exactly what would be sent. What was heard is never followed
- * as an instruction.
+ * Talk shows what was said and big reply suggestions. AI suggestions (Gemini through the
+ * coordinator, routed by Synapse-Mesh, or the Mac app's agent) are a second, separate opt-in
+ * that shows exactly what would be sent. What was heard is never followed as an instruction.
  */
 
 import { useEffect, useRef, useState } from "react";
@@ -15,6 +15,7 @@ import {
   type ReplySuggestion,
 } from "../../../os/tasks/src/index";
 import { ConfirmSheet } from "../components/common";
+import { aiReplies } from "../state/assist";
 import { Icon } from "../components/Icon";
 import { useTalk } from "./services";
 import { useBoards, useHistory } from "./storage";
@@ -85,22 +86,33 @@ export function Listen() {
       ].slice(0, 6)
     : [];
   const recent = history.items.slice(-3).map((h) => h.text);
-  const request = claudeSuggestionRequest(last, recent);
+  // The Mac app's agent when it offers replies; otherwise Gemini through the coordinator (only the words heard and
+  // your last few phrases are sent, after you agree, for this conversation only).
+  const viaAgent = !!claudeReplies;
+  const request = viaAgent
+    ? claudeSuggestionRequest(last, recent)
+    : `Heard: ${last}\nYour recent phrases: ${recent.join(" | ") || "none"}`;
+  const askAi = async (line: string): Promise<string[]> => {
+    if (claudeReplies) return claudeReplies(claudeSuggestionRequest(line, recent));
+    const r = await aiReplies(line, [...recent, ...personal.slice(0, 10)]);
+    if (!r) throw new Error("no answer");
+    return r.replies;
+  };
 
-  // With consent for this conversation, each new line gets Claude ideas too.
-  const claudeOn = consent.claude && !!claudeReplies;
+  // With consent for this conversation, each new line gets AI ideas too.
+  const claudeOn = consent.claude;
   useEffect(() => {
-    if (!claudeOn || !last || !claudeReplies) return;
+    if (!claudeOn || !last) return;
     let live = true;
-    claudeReplies(claudeSuggestionRequest(last, recent))
+    askAi(last)
       .then((r) => live && setClaude(r.slice(0, 4)))
-      .catch(() => live && setError("Claude didn't answer. The usual suggestions are still here."));
+      .catch(() => live && setError("The AI didn't answer. The usual suggestions are still here."));
     return () => {
       live = false;
     };
     // recent is read at the moment a new line arrives
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [claudeOn, last, claudeReplies]);
+  }, [claudeOn, last]);
 
   return (
     <div className="talk-stack">
@@ -149,7 +161,7 @@ export function Listen() {
               disabled={!last || consent.claude}
               data-dwell
             >
-              <Icon name="sparkle" /> {consent.claude ? "Claude ideas on" : "Ideas from Claude…"}
+              <Icon name="sparkle" /> {consent.claude ? "AI ideas on" : "Ideas from AI…"}
             </button>
             <button className="btn talk-btn btn-quiet" onClick={() => void setListening(false)} data-dwell>
               <Icon name="stop" /> Stop listening
@@ -197,18 +209,18 @@ export function Listen() {
       )}
       {askingClaude && (
         <ConfirmSheet
-          title="Ask Claude for reply ideas?"
-          confirmLabel={claudeReplies ? "Send this" : "Not available"}
+          title="Ask the AI for reply ideas?"
+          confirmLabel="Send this"
           onConfirm={async () => {
             setAskingClaude(false);
-            if (claudeReplies) setConsent((c) => ({ ...c, claude: true }));
+            setConsent((c) => ({ ...c, claude: true }));
           }}
           onCancel={() => setAskingClaude(false)}
         >
           <p>
-            {claudeReplies
-              ? "This exact text goes to Anthropic's Claude, for this conversation only:"
-              : "Claude ideas need the AGENCY agent with an API key. Nothing will be sent. This is what would be sent:"}
+            {viaAgent
+              ? "This exact text goes to the AGENCY agent's AI model, for this conversation only:"
+              : "This goes to Google's Gemini through your AGENCY coordinator (routed by Synapse-Mesh), for this conversation only. Your phrases help it answer in your words:"}
           </p>
           <pre className="talk-preview">{request}</pre>
         </ConfirmSheet>

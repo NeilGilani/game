@@ -25,6 +25,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 from . import __version__
+from .assist import router as assist_router
 from .config import Settings, load_settings
 from .db import Database, dumps, loads, utcnow
 from .engine.engine import Engine, EngineError
@@ -708,6 +709,7 @@ def create_app(
     app.include_router(lifeline_api)
     app.include_router(respond_pages)
     app.include_router(memory_router())
+    app.include_router(assist_router())
 
     if settings.frontend_dist and (settings.frontend_dist / "index.html").is_file():
         app.mount("/", StaticFiles(directory=settings.frontend_dist, html=True), name="frontend")

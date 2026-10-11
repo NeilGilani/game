@@ -35,7 +35,11 @@ try {
 const ready =
   import.meta.env.VITE_WEB_DEMO === "1"
     ? import("./demo/webDemo").then((m) => m.installWebDemo())
-    : import("./api/client").then((m) => m.repairCoordinatorUrl());
+    : import("./api/client")
+        .then((m) => m.repairCoordinatorUrl())
+        // Gemini plans every Home task through the coordinator (Synapse + Cisco), built-in plans as the fallback.
+        .then(() => Promise.all([import("./state/fakeAgent"), import("./state/assist")]))
+        .then(([agent, assist]) => agent.setRemotePlanner(assist.planWithCoordinator));
 
 void ready.then(() =>
   createRoot(document.getElementById("root")!).render(
