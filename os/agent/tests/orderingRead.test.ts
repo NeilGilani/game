@@ -192,15 +192,15 @@ describe("reading ordering pages", () => {
       eta: "Arriving in about 25–35 min",
       evidence: "Thanks! Your order is placed.",
     });
-    for (const [line, eta] of [
-      ["Arriving tomorrow by 9 pm", "Arriving tomorrow by 9 pm"],
-      ["Estimated arrival 6:45 PM", "Estimated arrival 6:45 PM"],
-      ["Arriving Thursday, Oct 15", "Arriving Thursday, Oct 15"],
-      ["Delivery in about 35 min", "Delivery in about 35 min"],
+    for (const line of [
+      "Arriving tomorrow by 9 pm",
+      "Estimated arrival 6:45 PM",
+      "Arriving Thursday, Oct 15",
+      "Delivery in about 35 min",
     ])
       expect(
         afterPlace(page([node("heading", "Order placed, thank you!"), node("text", line)]), before),
-      ).toMatchObject({ eta });
+      ).toMatchObject({ eta: line });
     // The same text that was already there before the click proves nothing.
     expect(afterPlace(placed, placed.text).kind).toBe("unknown");
     expect(afterPlace(page([node("heading", "Your total changed")]), before).kind).toBe("changed");
