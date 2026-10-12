@@ -209,7 +209,7 @@ function fromHex(text: string): Uint8Array<ArrayBuffer> {
   for (let i = 0; i < out.length; i++) out[i] = parseInt(text.slice(i * 2, i * 2 + 2), 16);
   return out;
 }
-const hmacKey = (secret: string): Promise<CryptoKey> =>
+const hmacKey = (secret: string) =>
   crypto.subtle.importKey("raw", enc.encode(secret), { name: "HMAC", hash: "SHA-256" }, false, [
     "sign",
     "verify",

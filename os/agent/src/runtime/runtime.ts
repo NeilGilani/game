@@ -80,10 +80,15 @@ export class AgentRuntime {
     bridge: boolean;
     native: boolean;
     packs: string[];
+    /** "AI: AGENCY Cloud" in the status when Gemini is reached through AGENCY's relay. */
+    ai: string;
     note: string;
   } {
     const m = this.deps.model;
     const model = m !== null;
+    const name =
+      m?.provider === "gemini" ? "Gemini" : m?.provider === "anthropic" ? "Claude" : "A scripted model";
+    const cloud = m?.via === "agency-cloud";
     return {
       model,
       provider: m?.provider ?? null,
@@ -91,9 +96,12 @@ export class AgentRuntime {
       bridge: this.deps.bridge !== null,
       native: this.deps.native !== null,
       packs: this.deps.packs.map((p) => p.title),
-      note: model
-        ? `${m.provider === "gemini" ? "Gemini" : m.provider === "anthropic" ? "Claude" : "A scripted model"} (${m.model}) is set up.`
-        : "No AI model API key is set up, so I can only do the built-in tasks.",
+      ai: !model ? "AI: off" : cloud ? "AI: AGENCY Cloud" : `AI: ${name} (own key)`,
+      note: !model
+        ? "No AI model is set up (AGENCY Cloud is off and no API key is set), so I can only do the built-in tasks."
+        : cloud
+          ? `AI: AGENCY Cloud (Gemini, ${m.model}) is set up.`
+          : `${name} (${m.model}) is set up.`,
     };
   }
 

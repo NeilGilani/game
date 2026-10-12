@@ -323,6 +323,16 @@ def test_build_provider_uses_agency_cloud_only_without_a_key(monkeypatch: pytest
     assert type(local) is GeminiProvider and local.status()["label"] == "Gemini"
 
 
+def test_signs_the_fixed_vector_the_relay_and_the_mac_agent_check() -> None:
+    from agency.reasoning.cloud import _sign
+
+    # The same vector is checked in site/tests/unit/relay.test.ts and os/agent/tests/cloud.test.ts.
+    assert (
+        _sign("s3cret", "POST", "/api/relay/v1/generate", 1_700_000_000, b'{"a":1}')
+        == "eb7f913af191f5d86cd4b354938bc3a52ebf5f117efaa7338052bd6c16db803c"
+    )
+
+
 def test_settings_read_the_relay_address_and_the_switch(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     from agency.config import DEFAULT_RELAY_URL, load_settings
 

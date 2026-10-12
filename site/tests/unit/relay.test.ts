@@ -169,6 +169,13 @@ describe("registration and signatures", () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
+  it("signs a fixed vector exactly as the Mac agent and the coordinator do", async () => {
+    // The same vector is checked in os/agent/tests/cloud.test.ts and backend/tests/test_cloud.py.
+    expect(await signRequest("s3cret", "POST", "/api/relay/v1/generate", 1_700_000_000, '{"a":1}')).toBe(
+      "eb7f913af191f5d86cd4b354938bc3a52ebf5f117efaa7338052bd6c16db803c",
+    );
+  });
+
   it("rotating the server secret retires every install", async () => {
     const a = await newInstall();
     const rotated = { ...env, RELAY_SIGNING_SECRET: `${MASTER}-rotated` };

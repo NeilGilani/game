@@ -19,6 +19,13 @@ import { FakeAgent } from "./fake/fakeAgent";
 import { HttpMemoryClient } from "./memory";
 import { AnthropicModel } from "./model/anthropic";
 import { createAppsPack } from "./packs/apps";
+import {
+  AgencyCloud,
+  cloudTransport,
+  defaultIdentityStore,
+  relayUrlFromEnv,
+  type IdentityStore,
+} from "./model/cloud";
 import { GeminiModel, type GeminiThinkingLevel } from "./model/gemini";
 import { findApiKey, type Provider } from "./model/keys";
 import { HttpSynapseRouter } from "./synapse";
@@ -128,6 +135,31 @@ export function modelFor(provider: Provider, apiKey: string, env: NodeJS.Process
   return new GeminiModel({ apiKey, model, thinkingLevel: thinking });
 }
 
+/**
+ * The agent's model: a key of your own if one is set (environment or keychain), otherwise Gemini on AGENCY's key
+ * through AGENCY Cloud (model/cloud.ts; AGENCY_RELAY=off switches it off, AGENCY_RELAY_URL moves it). Claude needs
+ * a key of its own.
+ */
+export function chooseModel(
+  provider: Provider,
+  key: string | null,
+  env: NodeJS.ProcessEnv,
+  store: IdentityStore = defaultIdentityStore(env),
+): AgentModel | null {
+  if (key) return modelFor(provider, key, env);
+  const relay = provider === "gemini" ? relayUrlFromEnv(env) : null;
+  if (!relay) return null;
+  const thinking = (["minimal", "low", "medium", "high"] as const).find(
+    (l) => l === env.AGENCY_AGENT_THINKING,
+  );
+  return new GeminiModel({
+    transport: cloudTransport(new AgencyCloud({ baseUrl: relay, store })),
+    model: env.AGENCY_AGENT_MODEL || undefined,
+    thinkingLevel: thinking,
+    via: "agency-cloud",
+  });
+}
+
 async function main(port: ParentPort): Promise<void> {
   const env = process.env;
   const rpc = new RpcPort((m) => port.postMessage(m));
@@ -142,7 +174,7 @@ async function main(port: ParentPort): Promise<void> {
     const provider: Provider = env.AGENCY_AGENT_PROVIDER === "anthropic" ? "anthropic" : "gemini";
     const { key, source } = await findApiKey(provider);
     const runtime = new AgentRuntime({
-      model: key ? modelFor(provider, key, env) : null,
+      model: chooseModel(provider, key, env),
       bridge: env.AGENCY_BRIDGE === "0" ? null : bridgeOverRpc(rpc),
       native: env.AGENCY_NATIVE === "0" ? null : nativeOverRpc(rpc),
       memory: env.AGENCY_COORDINATOR_URL
