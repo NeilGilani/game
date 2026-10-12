@@ -56,7 +56,7 @@ test.describe("with a fake webcam", () => {
       )
       .toBe(1630);
     await expect(page.getByText(/Tracking confidence \d+%/)).toBeVisible();
-    await expect(page.getByText(/Eye gaze · needs calibration/)).toBeVisible();
+    await expect(page.getByText(/Eye gaze \(calibrated\) · needs calibration/)).toBeVisible();
 
     // The 5-second eye scan starts by itself after a countdown (no click needed for eye-only users).
     await page.getByRole("button", { name: /Calibrate now/ }).click();
