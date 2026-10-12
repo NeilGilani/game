@@ -30,9 +30,33 @@ const SYSTEM = [
   'Answer only JSON: {"steps":[...]}',
 ].join(" ");
 
+const PLAN_SCHEMA = {
+  type: "object",
+  properties: {
+    steps: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: {
+          title: { type: "string" },
+          risk: { type: "string", enum: ["read", "reversible", "consequential"] },
+          done: { type: "string" },
+        },
+        required: ["title", "risk", "done"],
+      },
+    },
+  },
+  required: ["steps"],
+};
+
 /** Gemini's plan if it passes the checks, else null. Any shape of answer is handled, none throws. */
 function parseSteps(data: unknown): Step[] | null {
-  const list = data && typeof data === "object" ? (data as { steps?: unknown }).steps : undefined;
+  // {"steps": [...]}, or the bare list Gemini sometimes sends.
+  const list = Array.isArray(data)
+    ? data
+    : data && typeof data === "object"
+      ? (data as { steps?: unknown }).steps
+      : undefined;
   if (!Array.isArray(list) || list.length < 2 || list.length > 8) return null;
   const steps: Step[] = [];
   for (const s of list) {
@@ -70,7 +94,8 @@ export const onRequestPost = async ({ request, env }: Context): Promise<Response
     .join("; ");
 
   const started = Date.now();
-  const out = await gemini(env, SYSTEM, `Task: ${goal}\nKind: ${kind}\nChoices: ${selections}`, 1024, 0.4);
+  const user = `Task: ${goal}\nKind: ${kind}\nChoices: ${selections}`;
+  const out = await gemini(env, SYSTEM, user, 1024, 0.4, PLAN_SCHEMA);
   if (out === null) return json({ error: "Gemini didn't answer." }, 502);
   const steps = parseSteps(out);
   if (!steps) return json({ error: "Gemini's plan didn't pass the checks." }, 502);

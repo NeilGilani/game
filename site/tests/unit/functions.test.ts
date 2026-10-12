@@ -57,6 +57,27 @@ describe("POST /api/agent/plan", () => {
     expect(older.generationConfig.thinkingConfig).toBeUndefined();
   });
 
+  it("asks for structured output, and accepts the bare list Gemini sometimes sends anyway", async () => {
+    // Seen from gemini-3.5-flash-lite without a schema: [ {title, risk, done}, ... ] with no "steps" wrapper,
+    // which made the web demo fall back to its built-in plan.
+    const bare = JSON.stringify((JSON.parse(STEPS) as { steps: unknown[] }).steps);
+    fetchMock.mockResolvedValue(gemini(bare));
+    const res = await plan({ request: post(JSON.stringify({ goal: "Order soup" })), env });
+    expect(res.status).toBe(200);
+    const sent = JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body)) as {
+      generationConfig: { responseJsonSchema?: { required?: string[] } };
+    };
+    expect(sent.generationConfig.responseJsonSchema?.required).toEqual(["steps"]);
+
+    fetchMock.mockResolvedValue(gemini(JSON.stringify(["Yes please", "Not now"])));
+    const r = await replies({ request: post(JSON.stringify({ heard: "Tea?" })), env });
+    expect(await r.json()).toEqual({ replies: ["Yes please", "Not now"], label: "Gemini" });
+    const asked = JSON.parse(String(fetchMock.mock.calls[1]?.[1]?.body)) as {
+      generationConfig: { responseJsonSchema?: { required?: string[] } };
+    };
+    expect(asked.generationConfig.responseJsonSchema?.required).toEqual(["items"]);
+  });
+
   it("answers 400, never crashes, on JSON that isn't an object", async () => {
     for (const body of ["null", "[]", "5", '"text"', "{", ""]) {
       const res = await plan({ request: post(body), env });
