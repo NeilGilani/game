@@ -11,11 +11,12 @@ to host anywhere. It also resizes screenshots into AVIF/WebP at build time.
 
 | Path                              | What it is                                                                                                                                                                                                                            |
 | --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `src/pages/`                      | Home (hero, demo slot, how it works, features, safety, who it's for, download, FAQ), setup guide, accessibility statement, privacy policy, credits, 404                                                                               |
-| `src/data/site.ts`                | **Everything that changes as AGENCY grows:** releases repository, contact email, demo video, requirements, feature status                                                                                                             |
+| `src/pages/`                      | Home (hero, story, how to use it, demo, who it's for, features, safety, facts, under the hood, get started, FAQ), download, setup guide, accessibility statement, privacy policy, credits, 404                                        |
+| `src/data/site.ts`                | **Everything that changes as AGENCY grows:** releases repository, contact email, demo video, requirements, feature status, team                                                                                                       |
+| `src/data/photos.json`            | Every photograph of people: file, alt text, author, source, licence and changes. The credits page reads it. Only CC0, public domain, CC BY or CC BY-SA; the people shown are never presented as AGENCY users                          |
 | `src/lib/release.ts`              | Pure logic: reading a GitHub release, choosing the .dmg, SHA-256, signed or not, every API outcome                                                                                                                                    |
 | `src/lib/platform.ts`             | Which computer and chip the visitor has (client hints, then the GPU name; never guesses from Safari's user agent)                                                                                                                     |
-| `src/scripts/download.ts`         | The download panel in the browser                                                                                                                                                                                                     |
+| `src/scripts/download.ts`         | The download panel in the browser (on `/download/`)                                                                                                                                                                                   |
 | `src/assets/screenshots/`         | Real captures of the AGENCY app, plus `manifest.json` (commit and date)                                                                                                                                                               |
 | `scripts/capture-screenshots.mjs` | Captures those screenshots from the real app with Playwright                                                                                                                                                                          |
 | `scripts/check-links.mjs`         | Offline check of every internal link, `#anchor`, and link to a file in this repository                                                                                                                                                |
@@ -90,6 +91,12 @@ build. The site will be at `https://neilgilani.github.io/game/`.
 
 **Netlify.** New site from Git, base directory `site`, build command `npm run build`, publish directory
 `site/dist`, environment `SITE_BASE=/` and `SITE_URL`.
+
+**Cloudflare Pages.** `make site-deploy` (from the repository root) builds the web demo into `/app/` and the site
+with `SITE_BASE=/`, then deploys. Cloudflare may add a suffix to the project's `pages.dev` address, so set
+`SITE_URL` to the address it prints (or your own domain) for correct canonical links:
+`SITE_URL=https://<your address> make site-deploy`. No page hard-codes the host name; canonical and share links
+come from `SITE_URL`, and every other link is relative to `SITE_BASE`.
 
 **Anywhere else.** `SITE_BASE=/ npm run build` and upload `dist/`. Any static host works. If your host can set
 headers, add the CSP from `src/layouts/Base.astro` as a real header too.
