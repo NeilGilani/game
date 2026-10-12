@@ -16,6 +16,8 @@ const SCREENS = [
   "/#/settings",
   "/#/settings/memory",
   "/#/settings/voice",
+  "/#/settings/papers",
+  "/#/papers/explain",
   "/#/talk",
   "/#/talk/phrases",
   "/#/talk/listen",

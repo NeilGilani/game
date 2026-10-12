@@ -1,6 +1,10 @@
-/** pdf.js in the page (with its worker), for pictures of pages, and the typed-name signature picture. */
-import * as pdfjs from "pdfjs-dist";
-import workerUrl from "pdfjs-dist/build/pdf.worker.min.mjs?url";
+/**
+ * pdf.js in the page (with its worker), for the text and pictures of pages, and the typed-name signature picture.
+ * The legacy build: the modern one needs very new JavaScript (Map.getOrInsertComputed) and can't draw pages in
+ * slightly older browsers.
+ */
+import * as pdfjs from "pdfjs-dist/legacy/build/pdf.mjs";
+import workerUrl from "pdfjs-dist/legacy/build/pdf.worker.min.mjs?url";
 import type { PdfJsLike } from "../../../os/tasks/src/documents/pdf/index";
 
 pdfjs.GlobalWorkerOptions.workerSrc = workerUrl;

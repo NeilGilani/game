@@ -135,7 +135,7 @@ export function pickerSource(): PaperSource {
     save: async (original, suffix, bytes) => {
       const name = copyName(original, suffix, (n) => opened.has(n));
       download(name, bytes);
-      return { name, where: "your browser's downloads" };
+      return { name, where: "in your browser's downloads" };
     },
   };
 }

@@ -252,23 +252,21 @@ function SignSteps({ doc, gate, source, onBack, onStop }: FlowProps) {
             ? `You are about to sign "${doc.name}"`
             : `Last check: sign "${doc.name}" now?`
         }
-        help={`On page ${stage.pageIndex + 1}, ${stage.spot.label.toLowerCase()}, with ${what}. Only this one place is signed. A new copy, "${copyName(doc.name, "signed")}", is saved; the original stays as it is.`}
+        help={`On page ${stage.pageIndex + 1}, ${stage.spot.label[0]!.toLowerCase()}${stage.spot.label.slice(1)}, with ${what}. Only this one place is signed. A new copy, "${copyName(doc.name, "signed")}", is saved; the original stays as it is.`}
       />
       {stage.type === "confirm" ? (
-        <div className="papers-panel stack">
-          <h2>What signing means</h2>
-          <ul className="papers-meaning">
-            {WHAT_SIGNING_MEANS.slice(0, 2).map((m) => (
-              <li key={m}>{m}</li>
-            ))}
-            <li>AGENCY saves the signed copy. It doesn't send it; a helper can.</li>
-            <li>{WHAT_SIGNING_MEANS[3]}</li>
-          </ul>
-          <div className="task-actions">
-            <button className="btn btn-xl" onClick={onBack} data-dwell>
-              <Icon name="x" /> Don't sign
-            </button>
-            <span className="spacer" />
+        <div className="papers-sign-confirm">
+          <div className="papers-panel stack">
+            <h2>What signing means</h2>
+            <ul className="papers-meaning">
+              {WHAT_SIGNING_MEANS.slice(0, 2).map((m) => (
+                <li key={m}>{m}</li>
+              ))}
+              <li>AGENCY saves the signed copy. It doesn't send it; a helper can.</li>
+              <li>{WHAT_SIGNING_MEANS[3]}</li>
+            </ul>
+          </div>
+          <div className="papers-sign-buttons">
             <button
               className="btn btn-xl btn-primary"
               onClick={() => setStage({ ...stage, type: "reconfirm", fp: gate.propose(proposal) })}
@@ -276,6 +274,9 @@ function SignSteps({ doc, gate, source, onBack, onStop }: FlowProps) {
               data-approval-gate
             >
               <Icon name="check" /> Yes, I want to sign
+            </button>
+            <button className="btn btn-xl" onClick={onBack} data-dwell>
+              <Icon name="x" /> Don't sign
             </button>
           </div>
         </div>
