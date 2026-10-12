@@ -1,6 +1,14 @@
 import type { Page, Route } from "@playwright/test";
 
-export const PAGES = ["", "download/", "setup/", "accessibility/", "privacy/", "credits/"] as const;
+export const PAGES = [
+  "",
+  "download/",
+  "inside/",
+  "setup/",
+  "accessibility/",
+  "privacy/",
+  "credits/",
+] as const;
 
 const HEX = "3f".repeat(32);
 

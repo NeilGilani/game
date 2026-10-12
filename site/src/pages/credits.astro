@@ -48,8 +48,15 @@ const app = [
 const site = [
   { name: "Astro", detail: "The tool that builds this site into plain HTML", license: "MIT License" },
   {
-    name: "Atkinson Hyperlegible",
-    detail: "@fontsource/atkinson-hyperlegible 5.3.0, served from this site",
+    name: "Atkinson Hyperlegible Next",
+    detail:
+      "The text face. Typeface by the Braille Institute of America; @fontsource-variable/atkinson-hyperlegible-next 5.3.0, served from this site",
+    license: "SIL Open Font License 1.1",
+  },
+  {
+    name: "Fraunces",
+    detail:
+      "The headline face. Typeface by Undercase Type (Phaedra Charles and Flavia Zimbardi); @fontsource-variable/fraunces 5.3.0, served from this site",
     license: "SIL Open Font License 1.1",
   },
   { name: "sharp", detail: "Image resizing at build time", license: "Apache License 2.0" },
@@ -70,7 +77,6 @@ const site = [
     eyebrow="Credits and licenses"
     title="Built on the work of others"
     lede="AGENCY and this site use these components and photographs. Thank you to everyone who made them."
-    tone="pink"
   />
   <article class="wrap prose">
     <h2 id="app">In the AGENCY app</h2>
@@ -128,8 +134,7 @@ const site = [
       <strong>The people in them are not AGENCY users</strong> and have no connection to the project; we use
       the photos to show who we build for. Each one was resized and converted to modern image formats for the
       web; some are also cropped on screen to fit their frame. Checked on {formatDate(PHOTOS_CHECKED)}. A
-      machine-readable list is in the repository at
-      <code>site/src/data/photos.json</code>.
+      machine-readable list is in the repository at <code>site/src/data/photos.json</code>.
     </p>
     <div class="table-scroll" role="region" aria-label="Photographs and their licenses" tabindex="0">
       <table>
@@ -162,10 +167,16 @@ const site = [
     <h2 id="screenshots">Screenshots</h2>
     <p>
       Every screenshot on this site is a real capture of the AGENCY app, taken automatically by a script in
-      the repository (<code>site/scripts/capture-screenshots.mjs</code>) on {manifest.captured} from commit
+      the repository (<code>site/scripts/capture-screenshots.mjs</code>) on {manifest.captured} from commit{" "}
       <code>{manifest.commit}</code>, using fictional demo data (“Jordan”, “Thai Basil” and practice services)
-      and the built-in demo agent. None are mock-ups. The network-mode bars and the “look and hold” ring on
-      the home page are drawings, not screenshots.
+      and the built-in demo agent. None are mock-ups.
+    </p>
+    <p>
+      The three large stills on the home page are single frames of the demo video, which was recorded on the
+      real app with live Gemini and practice services. No webcam was on the recording machine, so a scripted
+      pointer stands in for the eyes; the yellow rings in them are the app's own dwell rings. The “Try it
+      here” phrases, the full stop in the headline and the network-mode bars on Inside AGENCY are drawn for
+      this site.
     </p>
 
     <h2 id="sources">Sources</h2>

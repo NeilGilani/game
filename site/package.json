@@ -19,7 +19,8 @@
     "check": "npm run lint && npm run typecheck && npm test && npm run build && npm run links"
   },
   "dependencies": {
-    "@fontsource/atkinson-hyperlegible": "5.3.0",
+    "@fontsource-variable/atkinson-hyperlegible-next": "5.3.0",
+    "@fontsource-variable/fraunces": "5.3.0",
     "astro": "7.3.8"
   },
   "devDependencies": {

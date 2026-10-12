@@ -1,0 +1,45 @@
+---
+// One frame of the demo recording (src/assets/frames), with where it came from. See src/data/frames.ts.
+import { Picture } from "astro:assets";
+import type { ImageMetadata } from "astro";
+import { FRAMES, FRAME_SOURCE } from "../data/frames";
+
+interface Props {
+  name: keyof typeof FRAMES;
+  eager?: boolean;
+  sizes?: string;
+  class?: string;
+  /** Hide the caption visually (it stays in the alt text and the credits). */
+  caption?: boolean;
+}
+
+const {
+  name,
+  eager = false,
+  sizes = "(min-width: 84rem) 46rem, 92vw",
+  class: cls,
+  caption = true,
+} = Astro.props;
+const info = FRAMES[name];
+if (!info) throw new Error(`Unknown frame: ${String(name)}`);
+const files = import.meta.glob<{ default: ImageMetadata }>("../assets/frames/*.jpg", { eager: true });
+const src = files[`../assets/frames/${info.file}`]?.default;
+if (!src) throw new Error(`Frame file missing: ${info.file}`);
+---
+
+<figure class:list={["shot", "frame", cls]}>
+  <div class="shot-frame">
+    <Picture
+      src={src}
+      alt={info.alt}
+      widths={[480, 800, 1280]}
+      sizes={sizes}
+      formats={["avif", "webp"]}
+      quality={eager ? 70 : 66}
+      loading={eager ? "eager" : "lazy"}
+      fetchpriority={eager ? "high" : "auto"}
+      decoding="async"
+    />
+  </div>
+  {caption && <figcaption>{FRAME_SOURCE}</figcaption>}
+</figure>

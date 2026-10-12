@@ -1,279 +1,99 @@
 ---
 import { getImage } from "astro:assets";
 import Base from "../layouts/Base.astro";
-import Shot from "../components/Shot.astro";
 import Photo from "../components/Photo.astro";
-import Icon from "../components/Icon.astro";
+import Frame from "../components/Frame.astro";
 import CtaPair from "../components/CtaPair.astro";
+import DwellDemo from "../components/DwellDemo.astro";
 import NextSection from "../components/NextSection.astro";
-import posterSrc from "../assets/screenshots/home.png";
-import {
-  CONTACT_EMAIL,
-  DEMO_CAPTIONS,
-  DEMO_VIDEO,
-  ISSUES_URL,
-  SOURCE_URL,
-  STATUS_LABEL,
-  STATUS_REVIEWED,
-  TEAM,
-  type Status,
-} from "../data/site";
+import posterSrc from "../assets/frames/talk-dwell.jpg";
+import { CONTACT_EMAIL, DEMO_CAPTIONS, DEMO_VIDEO, ISSUES_URL, SOURCE_URL, TEAM } from "../data/site";
 
 const base = import.meta.env.BASE_URL;
 const contactHref = CONTACT_EMAIL
   ? `mailto:${CONTACT_EMAIL}?subject=${encodeURIComponent("About AGENCY")}`
   : ISSUES_URL;
-const contactLabel = CONTACT_EMAIL ? "Email us" : "Talk to us on GitHub";
-const poster = await getImage({ src: posterSrc, width: 1280, format: "webp" });
+const contactLabel = CONTACT_EMAIL ? "Email us" : "Ask us on GitHub";
+const poster = await getImage({ src: posterSrc, width: 1280, format: "webp", quality: 70 });
+
+/** Places in the demo recording, matching its captions (public/demo/agency-demo.vtt). */
+const chapters = [
+  { at: 6.5, time: "0:06", label: "Order lunch by looking" },
+  { at: 36.3, time: "0:36", label: "Say a sentence out loud" },
+  { at: 52.2, time: "0:52", label: "Ask for help" },
+];
 
 /**
  * How to use AGENCY. Each line was checked against the interface's code (frontend/src): the dwell ring
  * (input/InputLayer.tsx), the eye cursor without calibration (vision/eyeCursor.ts), squint to scroll
- * (input/SquintScroll.tsx), the eye keyboard (components/EyeKeyboard.tsx), Help in the dock on every screen
- * (components/Shell.tsx), and approvals before consequential actions.
+ * (input/SquintScroll.tsx), the eye keyboard (components/EyeKeyboard.tsx), and Help in the dock on every screen
+ * (components/Shell.tsx).
  */
 const howTo = [
   {
-    icon: "target" as const,
-    tone: "sun",
     title: "Look and hold",
-    body: "Look at a button and keep looking. A ring fills up around the pointer. When it's full, the button is chosen. Look away, and nothing happens.",
+    body: "Look at a button and keep looking. A ring fills up. When it's full, the button is chosen. Look away, and nothing happens.",
   },
   {
-    icon: "eye" as const,
-    tone: "teal",
     title: "No calibration",
     body: "The eye cursor follows your eyes as soon as the camera is on. There is nothing to set up first.",
   },
   {
-    icon: "updown" as const,
-    tone: "coral",
-    title: "Squint to scroll",
-    body: "Squint, then move your head up or down to scroll a page. Open your eyes again to stop.",
-  },
-  {
-    icon: "keyboard" as const,
-    tone: "violet",
     title: "Type with your eyes",
     body: "Look at a text box and big keys appear at the bottom of the screen. Look at each letter to type it.",
   },
   {
-    icon: "bell" as const,
-    tone: "pink",
-    title: "Help, one look away",
-    body: "Help is on every screen. Look at it, or close your eyes for a second, three times. You then have 8 seconds to cancel.",
+    title: "Squint to scroll",
+    body: "Squint, then move your head up or down to scroll a page. Open your eyes again to stop.",
   },
   {
-    icon: "hand" as const,
-    tone: "teal",
-    title: "You stay in charge",
-    body: "Before AGENCY pays, sends, signs or calls, it shows you exactly what will happen and waits for your OK.",
+    title: "Help is one look away",
+    body: "Help is on every screen. Look at it, or close your eyes for a second, three times. You then have 8 seconds to cancel.",
   },
 ];
 
 const audiences = [
   {
     photo: "leading-meeting",
-    tone: "coral",
-    title: "For people who can only move their eyes",
+    title: "People who can only move their eyes",
     body: "Living with ALS, locked-in syndrome, a stroke or a high spinal cord injury? If your eyes still move, AGENCY lets you choose, write, talk and ask for help.",
   },
   {
-    photo: "home-laptop",
-    tone: "sun",
-    title: "For families and caregivers",
+    photo: "care-hands",
+    title: "Families and caregivers",
     body: "Set AGENCY up with a mouse and keyboard in about fifteen minutes, then hand it over. Lifeline contacts need no app and no account.",
   },
   {
     photo: "clinician-laugh",
-    tone: "teal",
-    title: "For clinicians, therapists and funders",
-    body: "Every feature says what works today, what is a practice version, and what hasn't been tested yet. We want to test AGENCY properly, with the people it's for.",
-  },
-];
-
-interface Feature {
-  shot: string;
-  tone: string;
-  title: string;
-  body: string;
-  status: Status;
-  note?: string;
-}
-const features: Feature[] = [
-  {
-    shot: "talk",
-    tone: "violet",
-    title: "Talk, out loud",
-    body: "Build a sentence from big word buttons and AGENCY says it out loud, in your own Personal Voice if you've made one on your Mac. Listen mode shows what people say in big text.",
-    status: "prototype",
-  },
-  {
-    shot: "approval",
-    tone: "sun",
-    title: "An AI helper that asks first",
-    body: "Say what you want with a few looks. Google's Gemini plans the steps and does them. Before anything important, it shows you exactly what will happen and waits.",
-    status: "prototype",
-    note: "Shops and services are practice versions until someone sets up real ones.",
-  },
-  {
-    shot: "help-countdown",
-    tone: "coral",
-    title: "Lifeline: help when you need it",
-    body: "Three long blinks, or a look at Help. After 8 seconds, AGENCY contacts your people one by one until someone says “I'm on my way”. It never calls 911 by itself.",
-    status: "prototype",
-    note: "Contacts are practice phones until someone sets up real ones.",
-  },
-  {
-    shot: "home",
-    tone: "teal",
-    title: "A calm Home that knows your usuals",
-    body: "Twelve big apps, from Talk and Food to Lifeline. AGENCY learns what you usually choose and offers it first. You can see, change or erase what it remembers.",
-    status: "prototype",
+    title: "Clinicians, therapists and funders",
+    body: "Every feature says what works today and what is still a practice version. We want to test AGENCY properly, with the people it's for.",
   },
 ];
 
 const promises = [
   {
-    icon: "camera" as const,
-    tone: "teal",
-    title: "Your camera stays on your computer",
-    body: "Video is processed on the device and thrown away. It's never stored and never sent.",
-  },
-  {
-    icon: "hand" as const,
-    tone: "sun",
-    title: "Nothing important without you",
-    body: "Pay, send, sign, call, delete and share wait for your OK of that exact action. Stop works from every screen.",
-  },
-  {
-    icon: "wallet" as const,
-    tone: "coral",
     title: "Spending limits",
-    body: "$50 a purchase and $100 a day by default, on top of your approval.",
+    body: "$50 a purchase and $100 a day by default, on top of your OK.",
   },
   {
-    icon: "sandbox" as const,
-    tone: "violet",
     title: "Practice first",
     body: "Out of the box, shops are practice stores and phones are simulated. Nobody real is contacted until someone sets that up.",
   },
   {
-    icon: "lock" as const,
-    tone: "pink",
     title: "No passwords in the AI's hands",
     body: "AGENCY never types, reads or keeps passwords, two-factor codes or card numbers.",
   },
   {
-    icon: "doc" as const,
-    tone: "teal",
     title: "Pages can't give orders",
-    body: "Text on web pages and emails is information, never instructions. If a page tries to steer the AI, it stops and shows you.",
+    body: "Text on web pages and in emails is information, never instructions. If a page tries to steer the AI, it stops and shows you.",
   },
   {
-    icon: "heart" as const,
-    tone: "coral",
     title: "Not a medical device",
     body: "AGENCY hasn't been clinically tested. Keep your existing alarms and care routines.",
   },
   {
-    icon: "bell" as const,
-    tone: "sun",
     title: "Not an emergency service",
     body: "Lifeline contacts the people you choose until one says they're coming. It never calls 911 by itself.",
-  },
-];
-
-/** Facts with their sources. Nothing here is an estimate of ours. */
-const stats = [
-  { value: "33,000", label: "Americans live with ALS, by the CDC's estimate", source: "CDC" },
-  {
-    value: "80 to 95%",
-    label: "of people with ALS lose the ability to rely on speech",
-    source: "Beukelman et al., 2011",
-  },
-  {
-    value: "$9,646",
-    label: "is what Medicare pays for one speech-generating device",
-    source: "CMS 2026 fee schedule",
-  },
-  {
-    value: "3×",
-    label: "as likely to suffer a preventable harm in hospital, for patients who can't communicate",
-    source: "Bartlett et al., CMAJ 2008",
-    href: "https://pmc.ncbi.nlm.nih.gov/articles/PMC2396356",
-  },
-];
-
-const modes = [
-  { name: "Ultra-Fusion", net: "Good network", does: "Gemini with full thinking", level: 4 },
-  { name: "Lean-Fusion", net: "Congested", does: "Gemini with light thinking", level: 2 },
-  { name: "Critical-Fusion", net: "Critical", does: "Built-in plans, at once", level: 1 },
-  { name: "Safe-Mode", net: "Offline", does: "Built-in plans; Lifeline retries when back", level: 0 },
-];
-
-type Mark = "yes" | "no";
-const compareCols = [
-  "Control with your eyes",
-  "No special hardware",
-  "An AI agent finishes the task",
-  "Approve with a look",
-];
-const compare: { name: string; us?: boolean; cells: [Mark, string][] }[] = [
-  {
-    name: "AGENCY",
-    us: true,
-    cells: [
-      ["yes", "Eye cursor or eye gaze"],
-      ["yes", "Just a webcam"],
-      ["yes", "Gemini plans and acts"],
-      ["yes", "Your OK, for that exact action"],
-    ],
-  },
-  {
-    name: "Tobii Dynavox",
-    cells: [
-      ["yes", "Accurate"],
-      ["no", "$10,000+ hardware"],
-      ["no", "You click every step"],
-      ["no", "No agent"],
-    ],
-  },
-  {
-    name: "Apple Eye Tracking",
-    cells: [
-      ["yes", "A cursor"],
-      ["yes", "Device camera"],
-      ["no", "Cursor only"],
-      ["no", "No agent"],
-    ],
-  },
-  {
-    name: "Microsoft Eye Control",
-    cells: [
-      ["yes", "A cursor"],
-      ["no", "Needs a Tobii tracker"],
-      ["no", "Cursor only"],
-      ["no", "No agent"],
-    ],
-  },
-  {
-    name: "OpenAI Operator, Gemini agents",
-    cells: [
-      ["no", "Built for typing or talking"],
-      ["yes", "Any computer"],
-      ["yes", "Yes"],
-      ["no", "Built for typing or talking"],
-    ],
-  },
-  {
-    name: "Google Look to Speak",
-    cells: [
-      ["yes", "Picks phrases"],
-      ["yes", "Phone camera"],
-      ["no", "Talking only"],
-      ["no", "No agent"],
-    ],
   },
 ];
 
@@ -310,25 +130,6 @@ const faqs: { q: string; a: string[] }[] = [
     ],
   },
   {
-    q: "Is my camera video uploaded anywhere?",
-    a: [
-      "No. Camera frames are processed on your computer and thrown away. They are never stored and never sent anywhere, including to the AI.",
-    ],
-  },
-  {
-    q: "What does the AI see?",
-    a: [
-      "Only what a task you started needs: the text of your request and, when the agent has to look, the app it's working in. Screenshots aren't kept by default. Text on web pages, emails and documents is treated as information, never as instructions.",
-      "AI tasks need a Google Gemini API key, and Google's terms apply to what's sent. Without a key, AGENCY runs its built-in plans only.",
-    ],
-  },
-  {
-    q: "What happens when the internet is bad?",
-    a: [
-      "Every AI request goes through Synapse-Mesh, whose Cisco sentinel measures the network first. A good network gets Gemini with full thinking, a congested one gets lighter thinking, and a critical one gets AGENCY's built-in plans at once. Offline, Lifeline keeps its messages and retries when the connection is back.",
-    ],
-  },
-  {
     q: "Does it cost anything?",
     a: [
       "Downloading AGENCY costs nothing, and there's nothing to buy here. If you use AI tasks, Google bills the account whose Gemini API key you use.",
@@ -353,185 +154,144 @@ const faqs: { q: string; a: string[] }[] = [
   title="AGENCY: use a computer with just your eyes"
   description="A free, eye-controlled computer for people who can only move their eyes, and the people who care for them. Just a webcam. Try it in your browser or download it for Mac."
 >
-  <!-- Hero ------------------------------------------------------------------------------------------- -->
+  <!-- Hero: what it is, and the two things you can do -->
   <section class="hero" aria-labelledby="hero-title">
-    <span class="blob blob-1" aria-hidden="true"></span>
-    <span class="blob blob-2" aria-hidden="true"></span>
-    <div class="wrap hero-grid">
-      <div class="hero-copy">
-        <p class="award">
-          <span class="award-icon" aria-hidden="true">
-            <Icon name="trophy" />
-          </span>
-          1st place, UCSC AI Hackathon, Cloud AI track
-        </p>
-        <h1 id="hero-title">
-          Use a computer with <span class="hl">just your eyes.</span>
-        </h1>
-        <p class="lede hero-lede">
-          AGENCY is a free, eye-controlled computer for people who can only move their eyes, and the people
-          who care for them. All you need is a webcam.
-        </p>
-        <CtaPair class="hero-cta" />
-        <ul class="proof" aria-label="In short">
-          <li class="tone-teal">
-            <Icon name="camera" /> Just a webcam
-          </li>
-          <li class="tone-violet">
-            <Icon name="lock" /> Video stays on your computer
-          </li>
-          <li class="tone-sun">
-            <Icon name="hand" /> Asks before anything important
-          </li>
-          <li class="tone-coral">
-            <Icon name="bell" /> Help is one look away
-          </li>
-        </ul>
-      </div>
-
-      <div class="hero-visual">
-        <span class="ring-deco" aria-hidden="true"></span>
-        <Photo id="care-hands" eager class="hero-photo" sizes="(min-width: 1100px) 600px, 92vw" />
-        <div class="hero-shot">
-          <Shot name="home" frame caption="short" sizes="(min-width: 1100px) 380px, 70vw" />
-        </div>
-        <div class="float float-dwell" aria-hidden="true">
-          <span class="dwell-ring">
-            <span></span>
-          </span>
-          <span>
-            <strong>Look and hold</strong>
-            <br />
-            to choose
-          </span>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- Story ------------------------------------------------------------------------------------------- -->
-  <section class="section band-sun story" id="story" aria-labelledby="story-title">
-    <div class="wrap story-grid">
-      <div class="reveal">
-        <p class="eyebrow">Our story</p>
-        <h2 id="story-title">It started with one grandmother.</h2>
-        <p class="story-big">We built AGENCY for one person first: a team member's grandmother.</p>
-        <p>
-          Then we took it to the UCSC AI Hackathon, where it won 1st place in the Cloud AI track. Now we're
-          turning AGENCY into a nonprofit, so it can reach more people who can only move their eyes, and the
-          families who look after them.
-        </p>
-        <p>
-          It's built in the open. The <a href={SOURCE_URL}>source code is on GitHub</a> for anyone to read.
-        </p>
-      </div>
-      <div class="story-cards">
-        <div class="trophy-card reveal" style="--i:1">
-          <span class="trophy-badge" aria-hidden="true">
-            <Icon name="trophy" />
-          </span>
-          <p class="trophy-big">1st place</p>
-          <p class="trophy-small">
-            UCSC AI Hackathon
-            <br />
-            Cloud AI track
+    <div class="wrap">
+      <h1 id="hero-title" class="hero-title">
+        Use a computer with just your eyes<span class="gaze-stop" aria-hidden="true"></span>
+      </h1>
+      <div class="hero-grid">
+        <div class="hero-copy">
+          <p class="hero-lede">
+            AGENCY is a free, eye-controlled computer for people who can only move their eyes, and the people
+            who care for them. All you need is a webcam.
           </p>
+          <CtaPair class="hero-cta" />
         </div>
-        <div class="card team-card reveal" style="--i:2">
-          <h3>The team</h3>
-          <ul class="team">
-            {TEAM.map((m, i) => (
-              <li>
-                <span
-                  class:list={["avatar", `tone-${["coral", "teal", "violet"][i % 3]}`]}
-                  aria-hidden="true"
-                >
-                  {m.initials}
-                </span>
-                <span>{m.name}</span>
-              </li>
-            ))}
-          </ul>
-        </div>
+        <Frame
+          name="food-dwell"
+          eager
+          class="hero-frame"
+          sizes="(min-width: 84rem) 50rem, (min-width: 60rem) 58vw, 92vw"
+        />
       </div>
-    </div>
-    <div class="wrap">
-      <NextSection href="#how" label="How to use it" />
+      <ul class="hero-facts" aria-label="In short">
+        <li>1st place, UCSC AI Hackathon, Cloud AI&nbsp;track</li>
+        <li>Free, and becoming a nonprofit</li>
+        <li>Works with the webcam you already have</li>
+      </ul>
     </div>
   </section>
 
-  <!-- How to use it ---------------------------------------------------------------------------------- -->
-  <section class="section" id="how" aria-labelledby="how-title">
+  <!-- See it working -->
+  <section class="section on-blue" id="demo" aria-labelledby="demo-title">
     <div class="wrap">
-      <div class="section-head reveal">
-        <p class="eyebrow">How to use it</p>
-        <h2 id="how-title">
-          Everything works <span class="hl hl-teal">with your eyes.</span>
-        </h2>
-        <p class="lede">No hands, no voice and no special hardware. Here's all there is to learn.</p>
-      </div>
-      <ol class="howto">
-        {howTo.map((s, i) => (
-          <li class:list={["howto-card", "reveal", `tone-${s.tone}`]} style={`--i:${i % 3}`}>
-            <span class="howto-num" aria-hidden="true">
-              {i + 1}
-            </span>
-            <span class="badge" aria-hidden="true">
-              <Icon name={s.icon} />
-            </span>
-            <h3>{s.title}</h3>
-            <p>{s.body}</p>
-          </li>
-        ))}
-      </ol>
-
-      <div class="demo" id="demo">
-        <div class="demo-copy reveal">
-          <h3 class="demo-title">See it work in about a minute</h3>
+      <div class="demo-grid">
+        <div class="demo-copy">
+          <p class="kicker">One minute of the real app</p>
+          <h2 id="demo-title">Watch it work.</h2>
           <p>
-            A recording of the real AGENCY interface, with captions. It never plays by itself. Or try it now:
+            Ordering lunch, saying a sentence out loud and asking for help, all by looking. Captions are on,
+            and it never plays by itself.
           </p>
-          <a class="btn btn-primary" href={`${base}app/`}>
-            <Icon name="browser" /> Try it in your browser
-          </a>
         </div>
         {DEMO_VIDEO ? (
-          <figure class="video reveal">
-            <div class="video-frame">
-              <video controls preload="none" playsinline poster={poster.src} src={`${base}${DEMO_VIDEO}`}>
-                {DEMO_CAPTIONS && (
-                  <track
-                    kind="captions"
-                    srclang="en"
-                    label="English"
-                    src={`${base}${DEMO_CAPTIONS}`}
-                    default
-                  />
-                )}
-              </video>
-            </div>
+          <figure class="video">
+            <video
+              id="demo-video"
+              controls
+              preload="none"
+              playsinline
+              poster={poster.src}
+              src={`${base}${DEMO_VIDEO}`}
+            >
+              {DEMO_CAPTIONS && (
+                <track kind="captions" srclang="en" label="English" src={`${base}${DEMO_CAPTIONS}`} default />
+              )}
+            </video>
+            <figcaption>
+              Recorded on the real app with live Gemini and practice services. A scripted pointer stands in
+              for the eyes.
+            </figcaption>
           </figure>
         ) : (
-          <div class="video-slot reveal" role="note" aria-label="Demo video not recorded yet">
+          <div class="video-slot" role="note" aria-label="Demo video not recorded yet">
             <p>The demo video isn't recorded yet. Until it exists, this space stays empty.</p>
           </div>
         )}
       </div>
+      {DEMO_VIDEO && (
+        <ul class="chapters js-only" aria-label="Jump to a part of the video">
+          {chapters.map((c) => (
+            <li>
+              <button type="button" class="btn chapter" data-seek={c.at}>
+                <span class="chapter-time">{c.time}</span>
+                <span>{c.label}</span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+      <NextSection href="#how" label="How it works" />
+    </div>
+  </section>
+
+  <!-- How it works -->
+  <section class="section" id="how" aria-labelledby="how-title">
+    <div class="wrap">
+      <div class="how-head">
+        <p class="kicker">How it works</p>
+        <h2 id="how-title">Look and hold. That's the whole idea.</h2>
+        <p class="lede">
+          No hands, no voice and no special hardware. Here's everything there is to learn, and you can try the
+          first part right here.
+        </p>
+      </div>
+      <div class="how-grid">
+        <div class="how-demo reveal">
+          <DwellDemo />
+        </div>
+        <ol class="rules steps">
+          {howTo.map((s, i) => (
+            <li class="reveal" style={`--i:${i}`}>
+              <span class="step-n" aria-hidden="true">
+                {i + 1}
+              </span>
+              <div>
+                <h3>{s.title}</h3>
+                <p>{s.body}</p>
+              </div>
+            </li>
+          ))}
+        </ol>
+      </div>
+      <p class="how-also">
+        Eyes not reliable today? Every screen also works with a single switch, a head pointer, or a mouse and
+        keyboard.
+      </p>
       <NextSection href="#who" label="Who it's for" />
     </div>
   </section>
 
-  <!-- Who it's for ----------------------------------------------------------------------------------- -->
-  <section class="section band-tint" id="who" aria-labelledby="who-title">
+  <!-- Who it's for -->
+  <section class="section" id="who" aria-labelledby="who-title">
     <div class="wrap">
-      <div class="section-head reveal">
-        <p class="eyebrow">Who it's for</p>
-        <h2 id="who-title">For people who can only move their eyes, and everyone around them.</h2>
-      </div>
+      <p class="kicker">Who it's for</p>
+      <h2 id="who-title" class="who-title">
+        For people who can only move their eyes, and everyone around them.
+      </h2>
       <ul class="audiences">
         {audiences.map((a, i) => (
-          <li class:list={["audience", "reveal", `tone-${a.tone}`]} style={`--i:${i}`}>
-            <Photo id={a.photo} class="audience-photo" sizes="(min-width: 1100px) 400px, 92vw" />
+          <li class:list={["audience", `audience-${i + 1}`, "reveal"]} style={`--i:${i}`}>
+            <Photo
+              id={a.photo}
+              class="audience-photo"
+              sizes={
+                i === 0
+                  ? "(min-width: 84rem) 46rem, (min-width: 60rem) 55vw, 92vw"
+                  : "(min-width: 84rem) 30rem, (min-width: 60rem) 36vw, 92vw"
+              }
+            />
             <div class="audience-copy">
               <h3>{a.title}</h3>
               <p>{a.body}</p>
@@ -539,216 +299,110 @@ const faqs: { q: string; a: string[] }[] = [
           </li>
         ))}
       </ul>
-      <p class="center photo-note">
-        Photos are of people who aren't AGENCY users. They're here to show who we build for.
+      <p class="fine photo-note">
+        The people in these photos aren't AGENCY users. The photos are here to show who we build for.
       </p>
-      <NextSection href="#features" label="What AGENCY can do" />
-    </div>
-  </section>
-
-  <!-- Features --------------------------------------------------------------------------------------- -->
-  <section class="section" id="features" aria-labelledby="features-title">
-    <div class="wrap">
-      <div class="section-head reveal">
-        <p class="eyebrow">What it can do</p>
-        <h2 id="features-title">
-          Everything a day needs, <span class="hl hl-pink">a few looks away.</span>
-        </h2>
-        <p class="lede">
-          These are real screenshots of AGENCY with practice data. Each feature says where it really stands,
-          as of {STATUS_REVIEWED}.
-        </p>
-      </div>
-      <div class="features">
-        {features.map((f, i) => (
-          <article class:list={["feature", "reveal", `tone-${f.tone}`]} style={`--i:${i % 2}`}>
-            <div class="feature-copy">
-              <p class:list={["chip", `chip-${f.status}`]}>
-                <Icon name="check" />
-                {STATUS_LABEL[f.status]}
-              </p>
-              <h3>{f.title}</h3>
-              <p>{f.body}</p>
-              {f.note && <p class="feature-note">{f.note}</p>}
-            </div>
-            <div class="feature-shot">
-              <Shot name={f.shot} frame caption="short" sizes="(min-width: 1100px) 560px, 92vw" />
-            </div>
-          </article>
-        ))}
-      </div>
       <NextSection href="#safety" label="Safety and privacy" />
     </div>
   </section>
 
-  <!-- Safety ----------------------------------------------------------------------------------------- -->
-  <section class="section band-teal" id="safety" aria-labelledby="safety-title">
+  <!-- Safety and privacy -->
+  <section class="section on-night" id="safety" aria-labelledby="safety-title">
     <div class="wrap">
-      <div class="section-head reveal">
-        <p class="eyebrow">Safety and privacy</p>
-        <h2 id="safety-title">You stay in control. Always.</h2>
-        <p class="lede">
-          Your video never leaves your computer by default, and nothing important happens without your OK.
-        </p>
+      <div class="safety-grid">
+        <div class="safety-copy">
+          <p class="kicker">Safety and privacy</p>
+          <h2 id="safety-title">You stay in charge.</h2>
+          <div class="big-promise">
+            <h3>Your video never leaves your computer.</h3>
+            <p>
+              Camera frames are processed on the device and thrown away. They're never stored and never sent
+              anywhere, not even to the AI.
+            </p>
+          </div>
+          <div class="big-promise">
+            <h3>It asks before anything important.</h3>
+            <p>
+              Before AGENCY pays, sends, signs or calls, it shows you exactly what will happen and waits for
+              your OK of that exact action. Stop works from every screen.
+            </p>
+          </div>
+        </div>
+        <Frame
+          name="approve-dwell"
+          class="safety-frame"
+          sizes="(min-width: 84rem) 46rem, (min-width: 60rem) 55vw, 92vw"
+        />
       </div>
-      <ul class="promises">
-        {promises.map((p, i) => (
-          <li class:list={["promise", "reveal", `tone-${p.tone}`]} style={`--i:${i % 4}`}>
-            <span class="badge" aria-hidden="true">
-              <Icon name={p.icon} />
-            </span>
+      <ul class="rules promises">
+        {promises.map((p) => (
+          <li>
             <h3>{p.title}</h3>
             <p>{p.body}</p>
           </li>
         ))}
       </ul>
-      <p class="center reveal">
-        Read the full <a href={`${base}privacy/`}>privacy policy</a>, and how Lifeline is designed and tested
-        in <a href={`${SOURCE_URL}/blob/main/LIFELINE.md`}>LIFELINE.md</a>.
+      <p class="safety-more">
+        Read the <a href={`${base}privacy/`}>privacy policy</a>, and how Lifeline is designed and tested in{" "}
+        <a href={`${SOURCE_URL}/blob/main/LIFELINE.md`}>LIFELINE.md</a>.
       </p>
-      <NextSection href="#why" label="Why it matters" />
+      <NextSection href="#story" label="Our story" />
     </div>
   </section>
 
-  <!-- Why it matters --------------------------------------------------------------------------------- -->
-  <section class="section" id="why" aria-labelledby="why-title">
-    <div class="wrap">
-      <div class="section-head reveal">
-        <p class="eyebrow">Why it matters</p>
-        <h2 id="why-title">Losing your voice shouldn't mean losing your say.</h2>
+  <!-- Our story -->
+  <section class="section" id="story" aria-labelledby="story-title">
+    <div class="wrap story-grid">
+      <div class="story-main">
+        <p class="kicker">Our story</p>
+        <h2 class="story-quote" id="story-title">
+          We built AGENCY for one person first: a team member's grandmother.
+        </h2>
+        <p class="story-body">
+          Then we took it to the UCSC AI Hackathon, where it won 1st place in the Cloud AI track. Now we're
+          turning AGENCY into a nonprofit, so it can reach more people who can only move their eyes, and the
+          families who look after them.
+        </p>
       </div>
-      <ul class="stats">
-        {stats.map((s, i) => (
-          <li
-            class:list={["stat", "reveal", `tone-${["coral", "teal", "violet", "sun"][i]}`]}
-            style={`--i:${i}`}
-          >
-            <p class="stat-value">{s.value}</p>
-            <p class="stat-label">{s.label}</p>
-            <p class="stat-source">Source: {s.href ? <a href={s.href}>{s.source}</a> : s.source}</p>
-          </li>
-        ))}
-      </ul>
-      <p class="center stats-after reveal">
-        Dedicated eye-gaze systems cost thousands, and you still click every step yourself. AGENCY uses the
-        webcam you already have, and an AI helper that finishes the job.
-      </p>
-      <NextSection href="#tech" label="Under the hood" />
-    </div>
-  </section>
-
-  <!-- Under the hood --------------------------------------------------------------------------------- -->
-  <section class="section band-deep" id="tech" aria-labelledby="tech-title">
-    <div class="wrap">
-      <div class="section-head reveal">
-        <p class="eyebrow">Under the hood</p>
-        <h2 id="tech-title">Gemini, Synapse-Mesh and Cisco, working together.</h2>
-        <p class="lede">For the technically curious: how AGENCY thinks, and how it reads your eyes.</p>
-      </div>
-      <div class="tech-grid">
-        <article class="tech-card reveal">
-          <h3>Cloud AI that adapts to your connection</h3>
-          <ol class="pipeline" aria-label="How each AI request is routed">
-            <li>
-              <Icon name="cpu" /> Synapse-Mesh's Sifter, on the device, picks expert lenses
-            </li>
-            <li>
-              <Icon name="network" /> Its Cisco sentinel measures the network
-            </li>
-            <li>
-              <Icon name="sparkles" /> Google's Gemini thinks as hard as the network allows
-            </li>
-          </ol>
-          <ul class="modes">
-            {modes.map((m) => (
-              <li class={`mode mode-${m.level}`}>
-                <span class="bars" aria-hidden="true">
-                  {[1, 2, 3, 4].map((b) => (
-                    <span class:list={[b <= m.level && "on"]} />
-                  ))}
-                </span>
-                <span class="mode-name">{m.name}</span>
-                <span class="mode-does">
-                  <strong>{m.net}.</strong> {m.does}.
-                </span>
-              </li>
-            ))}
-          </ul>
-          <p class="tech-note">
-            Built on Ray's Synapse-Mesh. When it isn't running, AGENCY's built-in stand-in router picks the
-            mode.
-          </p>
-        </article>
-        <article class="tech-card reveal" style="--i:1">
-          <h3>Eye tracking with an ordinary webcam</h3>
-          <ul class="pair">
-            <li>
-              <strong>Eye cursor</strong>
-              <span>The default. Instant, with no calibration.</span>
-            </li>
-            <li>
-              <strong>Eye gaze</strong>
-              <span>Adds a 5-second eye scan: a light glides, then you look at three dots.</span>
-            </li>
-          </ul>
-          <p>
-            MediaPipe finds your eyes on the device, and RealEye's open-source eye-image model reads where you
-            look. The pointer glides smoothly, and a held button survives a blink or a quick glance away.
-          </p>
-          <p>
-            When two buttons are close, the AI's guess of your likely next choice breaks the tie. Never for
-            pay, send or sign.
-          </p>
-        </article>
-      </div>
-
-      <h3 class="compare-title reveal">How AGENCY compares</h3>
-      <div class="compare reveal">
-        <table>
-          <caption class="sr-only">How AGENCY compares with other eye-control tools and AI agents</caption>
-          <thead>
-            <tr>
-              <th scope="col">
-                <span class="sr-only">Product</span>
-              </th>
-              {compareCols.map((c) => (
-                <th scope="col">{c}</th>
+      <dl class="story-facts">
+        <div>
+          <dt>Won</dt>
+          <dd>1st place, UCSC AI Hackathon, Cloud AI track</dd>
+        </div>
+        <div>
+          <dt>Next</dt>
+          <dd>Becoming a nonprofit</dd>
+        </div>
+        <div>
+          <dt>Built</dt>
+          <dd>
+            In the open. <a href={SOURCE_URL}>Read the source code on GitHub</a>.
+          </dd>
+        </div>
+        <div>
+          <dt>Made by</dt>
+          <dd>
+            <ul class="team">
+              {TEAM.map((m) => (
+                <li>{m.name}</li>
               ))}
-            </tr>
-          </thead>
-          <tbody>
-            {compare.map((row) => (
-              <tr class:list={[row.us && "is-us"]}>
-                <th scope="row">{row.name}</th>
-                {row.cells.map(([mark, text], i) => (
-                  <td data-col={compareCols[i]}>
-                    <span class="cell">
-                      <span class:list={["mark", `mark-${mark}`]}>
-                        <Icon name={mark === "yes" ? "check" : "x"} />
-                        <span class="sr-only">{mark === "yes" ? "Yes:" : "No:"}</span>
-                      </span>
-                      <span>{text}</span>
-                    </span>
-                  </td>
-                ))}
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-      <p class="compare-fine">Based on each product's own public description, October 2026.</p>
-      <NextSection href="#start" label="Get started" />
+            </ul>
+          </dd>
+        </div>
+      </dl>
     </div>
   </section>
 
-  <!-- Get started ------------------------------------------------------------------------------------ -->
-  <section class="section start" id="start" aria-labelledby="start-title">
-    <div class="wrap">
-      <div class="start-card reveal">
-        <span class="start-shape start-shape-1" aria-hidden="true"></span>
-        <span class="start-shape start-shape-2" aria-hidden="true"></span>
-        <h2 id="start-title">Ready when you are.</h2>
-        <p class="lede">Try AGENCY in your browser right now, or download the Mac app. Both are free.</p>
+  <!-- Get it -->
+  <section class="section on-blue start" id="start" aria-labelledby="start-title">
+    <div class="wrap start-grid">
+      <div>
+        <h2 id="start-title">Free. Try it now, or put it on a Mac.</h2>
+        <p class="lede">
+          The browser version needs nothing but a webcam. The Mac app works in every app on the computer.
+        </p>
+      </div>
+      <div class="start-actions">
         <CtaPair class="start-cta" />
         <p class="start-more">
           Setting it up for someone? <a href={`${base}setup/`}>Read the setup guide</a>.
@@ -757,12 +411,20 @@ const faqs: { q: string; a: string[] }[] = [
     </div>
   </section>
 
-  <!-- FAQ -------------------------------------------------------------------------------------------- -->
-  <section class="section band-tint" id="faq" aria-labelledby="faq-title">
-    <div class="wrap">
-      <div class="section-head">
-        <p class="eyebrow">Questions</p>
-        <h2 id="faq-title">Frequently asked questions</h2>
+  <!-- Questions -->
+  <section class="section" id="faq" aria-labelledby="faq-title">
+    <div class="wrap faq-grid">
+      <div class="faq-head">
+        <h2 id="faq-title">Questions</h2>
+        <p class="muted">
+          How the AI and the network routing work, and how AGENCY compares with other tools, is on{" "}
+          <a href={`${base}inside/`}>Inside AGENCY</a>.
+        </p>
+        <p>
+          <a class="target-link" href={contactHref}>
+            {contactLabel}
+          </a>
+        </p>
       </div>
       <div class="faq">
         {faqs.map((f) => (
@@ -776,955 +438,477 @@ const faqs: { q: string; a: string[] }[] = [
           </details>
         ))}
       </div>
-      <p class="center">
-        Something else?{" "}
-        <a class="target-link" href={contactHref}>
-          {contactLabel}
-        </a>
-      </p>
     </div>
   </section>
 </Base>
 
+<script>
+  // Chapter buttons under the video: jump to a moment and play from there (only when someone asks).
+  const video = document.querySelector<HTMLVideoElement>("#demo-video");
+  for (const btn of document.querySelectorAll<HTMLButtonElement>("[data-seek]")) {
+    btn.addEventListener("click", () => {
+      if (!video) return;
+      video.currentTime = Number(btn.dataset["seek"] ?? 0);
+      void video.play().catch(() => {});
+      video.focus();
+    });
+  }
+</script>
+
 <style>
   /* --- Hero --- */
   .hero {
+    padding-block: clamp(32px, 4.4vw, 64px) clamp(56px, 6vw, 88px);
+  }
+  .hero-title {
+    max-width: 11.5em;
+    margin-bottom: clamp(32px, 4vw, 56px);
+  }
+  /* The full stop is the gaze point: a blue dot inside a dwell-yellow ring, as in the app. */
+  .gaze-stop {
+    display: inline-block;
     position: relative;
-    isolation: isolate;
-    overflow-x: clip;
-    padding-block: clamp(24px, 4vw, 56px) clamp(64px, 8vw, 112px);
-  }
-  .blob {
-    position: absolute;
-    z-index: -1;
+    width: 0.2em;
+    height: 0.2em;
+    margin-left: 0.12em;
     border-radius: 50%;
-    pointer-events: none;
-  }
-  .blob-1 {
-    width: 52rem;
-    height: 52rem;
-    right: -16rem;
-    top: -22rem;
-    background: radial-gradient(circle at 50% 50%, var(--sun-soft) 0 55%, transparent 70%);
-  }
-  .blob-2 {
-    width: 30rem;
-    height: 30rem;
-    left: -16rem;
-    bottom: -8rem;
-    background: radial-gradient(circle at 50% 50%, var(--violet-soft) 0 45%, transparent 70%);
+    background: var(--blue);
+    box-shadow:
+      0 0 0 0.05em var(--paper),
+      0 0 0 0.1em var(--yellow);
+    vertical-align: 0.02em;
   }
   .hero-grid {
-    position: relative;
     display: grid;
-    grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
-    gap: clamp(32px, 4vw, 56px);
-    align-items: center;
-  }
-  .award {
-    display: inline-flex;
-    align-items: center;
-    gap: 12px;
-    padding: 8px 20px 8px 8px;
-    border-radius: 999px;
-    background: var(--surface);
-    border: 1px solid var(--line);
-    box-shadow: var(--shadow);
-    font-family: var(--font-display);
-    font-weight: 700;
-    font-size: 1.05rem;
-    max-width: none;
-  }
-  .award-icon {
-    display: inline-grid;
-    place-items: center;
-    width: 44px;
-    height: 44px;
-    border-radius: 50%;
-    background: var(--sun);
-    color: var(--on-bright);
-  }
-  .award-icon :global(svg) {
-    width: 24px;
-    height: 24px;
-  }
-  .hero h1 {
-    margin-top: 28px;
-    font-size: clamp(2.6rem, 5.2vw, 4.6rem);
+    grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+    gap: clamp(32px, 5vw, 80px);
+    align-items: start;
   }
   .hero-lede {
-    font-size: clamp(1.3rem, 2.1vw, 1.6rem);
+    font-size: clamp(1.3rem, 1.8vw, 1.6rem);
+    line-height: 1.45;
+    color: var(--ink);
+    max-width: 30rem;
+    margin-bottom: 40px;
   }
   .hero :global(.hero-cta) {
-    margin-top: 36px;
+    flex-direction: column;
+    max-width: 24rem;
   }
-  .proof {
+  .hero :global(.hero-cta .btn) {
+    flex: none;
+    max-width: none;
+    width: 100%;
+  }
+  .hero :global(.hero-frame img) {
+    box-shadow: 0 40px 80px -48px rgb(13 18 38 / 0.5);
+  }
+  .hero-facts {
     display: flex;
     flex-wrap: wrap;
-    gap: 12px;
+    gap: 12px 0;
     list-style: none;
-    padding: 0;
-    margin: 32px 0 0;
+    margin: clamp(48px, 6vw, 80px) 0 0;
+    padding: 24px 0 0;
     max-width: none;
-  }
-  .proof li {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    margin: 0;
-    padding: 8px 16px 8px 10px;
-    border-radius: 999px;
-    background: var(--tone-soft);
-    font-size: 1.05rem;
+    border-top: 1px solid var(--line);
     font-weight: 700;
+    font-size: 1.08rem;
   }
-  .proof li :global(svg) {
-    width: 30px;
-    height: 30px;
-    padding: 5px;
-    border-radius: 50%;
-    background: var(--tone);
-    color: var(--on-bright);
-    stroke-width: 2.4;
+  .hero-facts li {
+    margin: 0;
+    padding-right: 28px;
+    margin-right: 28px;
+    border-right: 1px solid var(--line);
   }
-  .proof li.tone-violet :global(svg) {
-    color: var(--on-violet);
+  .hero-facts li:last-child {
+    border-right: 0;
   }
-
-  .hero-visual {
-    position: relative;
-    padding: 0 0 72px 0;
-  }
-  .hero-visual :global(.hero-photo) {
-    position: relative;
-    aspect-ratio: 5 / 4;
-    margin-left: clamp(0px, 4vw, 48px);
-    border-radius: 48px;
-    box-shadow: var(--shadow-lg);
-  }
-  .hero-visual :global(.hero-photo img) {
-    border-radius: 48px;
-    object-position: 35% 40%;
-  }
-  .ring-deco {
-    position: absolute;
-    right: -28px;
-    top: -28px;
-    width: 160px;
-    height: 160px;
-    border-radius: 50%;
-    background: var(--coral);
-  }
-  .ring-deco::after {
-    content: "";
-    position: absolute;
-    left: -320px;
-    top: 260px;
-    width: 90px;
-    height: 90px;
-    border-radius: 50%;
-    background: var(--teal);
-  }
-  .hero-shot {
-    position: absolute;
-    left: 0;
-    bottom: 0;
-    width: min(58%, 380px);
-    padding: 10px;
-    border-radius: 22px;
-    background: var(--surface);
-    box-shadow: var(--shadow-lg);
-  }
-  .hero-shot :global(.shot img) {
-    border-radius: 12px;
-    box-shadow: none;
-  }
-  .hero-shot :global(figcaption) {
-    margin: 8px 4px 0;
-    font-size: 0.9rem;
-  }
-  .float {
-    position: absolute;
-    display: flex;
-    align-items: center;
-    gap: 14px;
-    padding: 14px 20px 14px 14px;
-    border-radius: 24px;
-    background: var(--surface);
-    box-shadow: var(--shadow-lg);
-    font-size: 1.05rem;
-    line-height: 1.25;
-  }
-  .float-dwell {
-    right: -8px;
-    bottom: 120px;
-  }
-  .dwell-ring {
-    position: relative;
-    width: 52px;
-    height: 52px;
-    border-radius: 50%;
-    background: conic-gradient(var(--violet) 0 70%, var(--violet-soft) 70% 100%);
-    display: grid;
-    place-items: center;
-  }
-  .dwell-ring span {
-    width: 34px;
-    height: 34px;
-    border-radius: 50%;
-    background: var(--surface);
-  }
-  .dwell-ring span::after {
-    content: "";
-    display: block;
-    width: 12px;
-    height: 12px;
-    margin: 11px;
-    border-radius: 50%;
-    background: var(--sun);
-  }
-  @property --fill {
-    syntax: "<percentage>";
-    inherits: false;
-    initial-value: 70%;
-  }
-  @keyframes dwell {
-    from {
-      --fill: 0%;
-    }
-    to {
-      --fill: 70%;
-    }
-  }
-  .dwell-ring {
-    background: conic-gradient(var(--violet) 0 var(--fill), var(--violet-soft) var(--fill) 100%);
-  }
-  @media (prefers-reduced-motion: no-preference) {
-    .dwell-ring {
-      animation: dwell 3.2s var(--ease) 0.4s 1 both;
-    }
-  }
-  @media (max-width: 1100px) {
+  @media (max-width: 960px) {
     .hero-grid {
       grid-template-columns: 1fr;
     }
-    .hero-visual {
-      max-width: 44rem;
+    .hero :global(.hero-cta) {
+      flex-direction: row;
+      max-width: none;
+    }
+    .hero :global(.hero-cta .btn) {
+      flex: 1 1 16rem;
+      width: auto;
+      max-width: 22rem;
     }
   }
   @media (max-width: 640px) {
-    .hero-visual {
-      padding-bottom: 96px;
+    .hero-facts {
+      display: grid;
+      gap: 12px;
     }
-    .hero-visual :global(.hero-photo) {
-      margin-left: 0;
-      border-radius: 32px;
-    }
-    .hero-visual :global(.hero-photo img) {
-      border-radius: 32px;
-    }
-    .hero-shot {
-      width: 62%;
-      padding: 6px;
-      border-radius: 16px;
-    }
-    .hero-shot :global(figcaption) {
-      display: none;
-    }
-    .float-dwell {
-      right: 0;
-      bottom: 16px;
-      padding: 10px 14px 10px 10px;
-      font-size: 0.95rem;
-    }
-    .dwell-ring {
-      width: 40px;
-      height: 40px;
-    }
-    .dwell-ring span {
-      width: 26px;
-      height: 26px;
-    }
-    .dwell-ring span::after {
-      width: 10px;
-      height: 10px;
-      margin: 8px;
-    }
-    .ring-deco {
-      width: 96px;
-      height: 96px;
-      right: -24px;
-      top: -24px;
-    }
-    .ring-deco::after {
-      display: none;
-    }
-  }
-  @media (max-width: 400px) {
-    .float-dwell {
-      display: none;
-    }
-    .hero-visual {
-      padding-bottom: 72px;
+    .hero-facts li {
+      border: 0;
+      padding: 0;
+      margin: 0;
     }
   }
 
-  /* --- Story --- */
-  .story-grid {
+  /* --- See it work --- */
+  .demo-grid {
     display: grid;
-    grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr);
-    gap: clamp(32px, 6vw, 96px);
-    align-items: center;
+    grid-template-columns: minmax(0, 4fr) minmax(0, 8fr);
+    gap: clamp(32px, 5vw, 72px);
+    align-items: end;
   }
-  .story-big {
-    font-family: var(--font-display);
-    font-size: clamp(1.5rem, 2.6vw, 2rem);
-    font-weight: 700;
-    line-height: 1.3;
-  }
-  .story-cards {
-    display: grid;
-    gap: var(--gap);
-  }
-  .trophy-card {
-    position: relative;
-    overflow: hidden;
-    padding: 36px 40px;
-    border-radius: var(--radius-lg);
-    background: var(--deep);
-    color: var(--on-deep);
-    box-shadow: var(--shadow-lg);
-  }
-  .trophy-card::after {
-    content: "";
-    position: absolute;
-    right: -50px;
-    bottom: -60px;
-    width: 180px;
-    height: 180px;
-    border-radius: 50%;
-    background: var(--pink);
-    opacity: 0.55;
-  }
-  .trophy-badge {
-    display: inline-grid;
-    place-items: center;
-    width: 72px;
-    height: 72px;
-    border-radius: 24px;
-    background: #ffc83d;
-    color: #1b1530;
-  }
-  .trophy-badge :global(svg) {
-    width: 40px;
-    height: 40px;
-  }
-  .trophy-big {
-    position: relative;
-    z-index: 1;
-    margin: 18px 0 4px;
-    font-family: var(--font-display);
-    font-size: clamp(2.8rem, 5vw, 4rem);
-    font-weight: 700;
-    line-height: 1;
-    color: #ffd45c;
-  }
-  .trophy-small {
-    position: relative;
-    z-index: 1;
-    margin: 0;
-    font-size: 1.2rem;
-    font-weight: 700;
-    color: var(--on-deep);
-  }
-  .team-card h3 {
-    margin-bottom: 0.8em;
-  }
-  .team {
-    list-style: none;
-    padding: 0;
-    margin: 0;
-    display: grid;
-    gap: 14px;
-  }
-  .team li {
-    display: flex;
-    align-items: center;
-    gap: 16px;
-    margin: 0;
-    font-weight: 700;
-    font-size: 1.2rem;
-  }
-  .avatar {
-    display: inline-grid;
-    place-items: center;
-    width: 52px;
-    height: 52px;
-    border-radius: 50%;
-    background: var(--tone);
-    color: var(--on-bright);
-    font-family: var(--font-display);
-    font-size: 1.05rem;
-    letter-spacing: 0.04em;
-    flex: none;
-  }
-  .avatar.tone-violet {
-    color: var(--on-violet);
-  }
-  @media (max-width: 900px) {
-    .story-grid {
-      grid-template-columns: 1fr;
-    }
-  }
-
-  /* --- How to use it --- */
-  .howto {
-    list-style: none;
-    padding: 0;
-    margin: 0;
-    max-width: none;
-    display: grid;
-    gap: var(--gap);
-    grid-template-columns: repeat(auto-fit, minmax(min(100%, 21rem), 1fr));
-  }
-  .howto-card {
-    position: relative;
-    margin: 0;
-    padding: 36px 32px 32px;
-    border-radius: var(--radius-lg);
-    background: var(--tone-soft);
-    overflow: hidden;
-  }
-  .howto-card h3 {
-    margin-top: 22px;
-  }
-  .howto-card p {
-    margin: 0;
-  }
-  .howto-num {
-    position: absolute;
-    right: 24px;
-    top: 10px;
-    font-family: var(--font-display);
-    font-size: 5.5rem;
-    font-weight: 700;
-    line-height: 1;
-    color: var(--tone);
-    opacity: 0.35;
-  }
-  .demo {
-    display: grid;
-    grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.4fr);
-    gap: clamp(32px, 5vw, 64px);
-    align-items: center;
-    margin-top: clamp(56px, 7vw, 96px);
-    padding: clamp(24px, 4vw, 48px);
-    border-radius: var(--radius-lg);
-    background: var(--violet-soft);
-  }
-  .demo-title {
-    font-size: clamp(1.7rem, 3vw, 2.4rem);
+  .demo-copy h2 {
+    max-width: 9em;
   }
   .video {
     margin: 0;
-  }
-  .video-frame {
-    padding: 10px;
-    border-radius: 28px;
-    background: var(--surface);
-    box-shadow: var(--shadow-lg);
   }
   .video video,
   .video-slot {
     width: 100%;
     aspect-ratio: 16 / 10;
-    border-radius: 20px;
+    border-radius: var(--radius-sm);
     background: #000;
+    box-shadow: 0 40px 80px -40px rgb(5 8 40 / 0.7);
+  }
+  .video figcaption {
+    margin-top: 14px;
+    font-size: 0.98rem;
+    color: var(--on-blue-soft);
   }
   .video-slot {
     display: grid;
     place-items: center;
     padding: 24px;
-    background: var(--surface);
     text-align: center;
   }
-  @media (max-width: 900px) {
-    .demo {
+  .chapters {
+    list-style: none;
+    padding: 0;
+    margin: 40px 0 0;
+    max-width: none;
+    display: none;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: var(--gap);
+  }
+  :global(.js) .chapters {
+    display: grid;
+  }
+  .chapters li {
+    margin: 0;
+  }
+  .chapter {
+    width: 100%;
+    justify-content: flex-start;
+    gap: 16px;
+    text-align: left;
+    font-size: 1.15rem;
+  }
+  .chapter-time {
+    font-variant-numeric: tabular-nums;
+    color: var(--yellow);
+  }
+  @media (max-width: 960px) {
+    .demo-grid {
+      grid-template-columns: 1fr;
+    }
+    .chapters {
       grid-template-columns: 1fr;
     }
   }
 
+  /* --- How it works --- */
+  .how-head {
+    display: grid;
+    grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
+    gap: 0 clamp(32px, 5vw, 80px);
+    align-items: end;
+    margin-bottom: clamp(40px, 5vw, 72px);
+  }
+  .how-head .kicker {
+    grid-column: 1 / -1;
+  }
+  .how-head h2 {
+    margin: 0;
+  }
+  .how-head .lede {
+    margin: 0;
+  }
+  .how-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 6fr) minmax(0, 6fr);
+    gap: clamp(32px, 5vw, 80px);
+    align-items: start;
+  }
+  .how-demo {
+    position: sticky;
+    top: 32px;
+  }
+  .steps > li {
+    display: grid;
+    grid-template-columns: 3.2rem minmax(0, 1fr);
+    gap: 16px;
+    padding-block: 24px;
+  }
+  .steps > li:first-child {
+    padding-top: 0;
+    border-top: 0;
+  }
+  .step-n {
+    font-family: var(--font-display);
+    font-variation-settings:
+      "SOFT" 100,
+      "WONK" 0;
+    font-size: 2.3rem;
+    line-height: 1;
+    font-weight: 500;
+    color: var(--blue-ink);
+  }
+  .steps h3 {
+    margin-bottom: 6px;
+  }
+  .how-also {
+    margin: clamp(40px, 5vw, 64px) 0 0;
+    font-size: 1.15rem;
+    color: var(--ink-soft);
+    max-width: 44rem;
+  }
+  @media (max-width: 960px) {
+    .how-head,
+    .how-grid {
+      grid-template-columns: 1fr;
+    }
+    .how-head .lede {
+      margin-top: 8px;
+    }
+    .how-demo {
+      position: static;
+    }
+  }
+
   /* --- Who it's for --- */
+  .who-title {
+    max-width: 15em;
+    margin-bottom: clamp(40px, 5vw, 72px);
+  }
   .audiences {
     list-style: none;
     padding: 0;
     margin: 0;
     max-width: none;
     display: grid;
-    gap: var(--gap);
-    grid-template-columns: repeat(auto-fit, minmax(min(100%, 20rem), 1fr));
+    grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
+    grid-template-rows: auto auto;
+    gap: clamp(32px, 4vw, 56px) clamp(32px, 5vw, 80px);
   }
   .audience {
     margin: 0;
+  }
+  .audience-1 {
+    grid-row: 1 / span 2;
     display: flex;
     flex-direction: column;
-    border-radius: var(--radius-lg);
-    background: var(--surface);
-    box-shadow: var(--shadow);
-    overflow: hidden;
-    border-top: 10px solid var(--tone);
+  }
+  .audience-1 :global(.audience-photo) {
+    flex: 1 1 auto;
+    min-height: 22rem;
   }
   .audience :global(.audience-photo) {
-    aspect-ratio: 3 / 2;
+    aspect-ratio: 16 / 10;
+    margin-bottom: 20px;
   }
-  .audience :global(.audience-photo img) {
-    border-radius: 0;
+  .audience-1 :global(.audience-photo) {
+    aspect-ratio: auto;
   }
-  .audience-copy {
-    padding: 28px 30px 32px;
+  .audience-1 h3 {
+    font-family: var(--font-display);
+    font-variation-settings:
+      "SOFT" 100,
+      "WONK" 0;
+    font-weight: 560;
+    font-size: clamp(1.8rem, 2.6vw, 2.3rem);
+    letter-spacing: -0.02em;
+    line-height: 1.1;
   }
-  .audience-copy p {
+  .audience p {
     margin: 0;
     color: var(--ink-soft);
   }
+  .audience-1 p {
+    font-size: 1.3rem;
+    color: var(--ink);
+  }
   .photo-note {
-    margin-top: 28px;
-    font-size: 1rem;
-    color: var(--ink-soft);
+    margin: clamp(32px, 4vw, 48px) 0 0;
   }
-
-  /* --- Features --- */
-  .features {
-    display: grid;
-    gap: clamp(24px, 3vw, 40px);
-  }
-  .feature {
-    display: grid;
-    grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.2fr);
-    gap: clamp(24px, 4vw, 56px);
-    align-items: center;
-    padding: clamp(24px, 4vw, 48px);
-    border-radius: var(--radius-lg);
-    background: var(--tone-soft);
-  }
-  .feature:nth-child(even) .feature-copy {
-    order: 2;
-  }
-  .feature-copy p:last-child {
-    margin-bottom: 0;
-  }
-  .feature h3 {
-    margin-top: 18px;
-    font-size: clamp(1.6rem, 2.8vw, 2.2rem);
-  }
-  .feature-note {
-    font-size: 1.02rem;
-    color: var(--ink-soft);
-  }
-  .feature-shot {
-    padding: 10px;
-    border-radius: 24px;
-    background: var(--surface);
-    box-shadow: var(--shadow-lg);
-  }
-  .feature-shot :global(.shot img) {
-    box-shadow: none;
-    border-radius: 14px;
-  }
-  .feature-shot :global(figcaption) {
-    margin: 8px 6px 2px;
-    font-size: 0.92rem;
-  }
-  @media (max-width: 900px) {
-    .feature {
+  @media (max-width: 960px) {
+    .audiences {
       grid-template-columns: 1fr;
     }
-    .feature:nth-child(even) .feature-copy {
-      order: 0;
+    .audience-1 {
+      grid-row: auto;
     }
   }
 
   /* --- Safety --- */
+  .safety-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+    gap: clamp(32px, 5vw, 80px);
+    align-items: start;
+  }
+  .safety-copy h2 {
+    margin-bottom: clamp(28px, 3vw, 44px);
+  }
+  .big-promise {
+    padding-block: 24px;
+    border-top: 1px solid var(--night-line);
+  }
+  .big-promise h3 {
+    font-family: var(--font-display);
+    font-variation-settings:
+      "SOFT" 100,
+      "WONK" 0;
+    font-weight: 560;
+    font-size: clamp(1.6rem, 2.3vw, 2rem);
+    line-height: 1.15;
+    letter-spacing: -0.015em;
+  }
+  .big-promise p {
+    margin: 0;
+  }
+  .safety-grid :global(.safety-frame) {
+    margin-top: 8px;
+  }
+  .safety-grid :global(.safety-frame img) {
+    outline-color: rgb(255 255 255 / 0.12);
+  }
   .promises {
-    list-style: none;
-    padding: 0;
-    margin: 0 0 48px;
-    max-width: none;
     display: grid;
-    gap: var(--gap);
-    grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0 clamp(24px, 4vw, 56px);
+    margin-top: clamp(56px, 7vw, 96px);
   }
-  .promise {
-    margin: 0;
-    padding: 28px;
-    border-radius: var(--radius-lg);
-    background: var(--surface);
-    box-shadow: var(--shadow);
-  }
-  .promise h3 {
-    margin-top: 18px;
-    font-size: 1.35rem;
-  }
-  .promise p {
-    margin: 0;
-    color: var(--ink-soft);
-    font-size: 1.1rem;
-  }
-
-  /* --- Stats --- */
-  .stats {
-    list-style: none;
-    padding: 0;
-    margin: 0;
-    max-width: none;
-    display: grid;
-    gap: var(--gap);
-    grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr));
-  }
-  .stat {
-    margin: 0;
-    padding: 32px 28px;
-    border-radius: var(--radius-lg);
-    background: var(--tone-soft);
-    border-bottom: 10px solid var(--tone);
-  }
-  .stat-value {
-    margin: 0 0 8px;
-    font-family: var(--font-display);
-    font-size: clamp(2.2rem, 3.2vw, 2.8rem);
-    font-weight: 700;
-    line-height: 1;
-    white-space: nowrap;
-  }
-  .stat-label {
-    font-size: 1.12rem;
-  }
-  .stat-source {
-    margin: 0;
-    font-size: 0.98rem;
-    color: var(--ink-soft);
-  }
-  .stats-after {
-    margin-top: 40px;
-    max-width: 46rem;
-    font-size: 1.3rem;
-  }
-
-  /* --- Under the hood --- */
-  .tech-grid {
-    display: grid;
-    gap: var(--gap);
-    grid-template-columns: repeat(auto-fit, minmax(min(100%, 26rem), 1fr));
-  }
-  .tech-card {
-    padding: clamp(24px, 3.4vw, 40px);
-    border-radius: var(--radius-lg);
-    background: rgb(255 255 255 / 0.08);
-    border: 1px solid rgb(255 255 255 / 0.2);
-  }
-  .tech-card p:last-child {
-    margin-bottom: 0;
-  }
-  .pipeline {
-    list-style: none;
-    padding: 0;
-    margin: 0 0 24px;
-    display: grid;
-    gap: 10px;
-  }
-  .pipeline li {
-    display: flex;
-    gap: 12px;
-    align-items: center;
-    margin: 0;
-    padding: 10px 14px;
-    border-radius: 16px;
-    background: rgb(255 255 255 / 0.1);
-    color: var(--on-deep);
-  }
-  .pipeline :global(svg) {
-    flex: none;
-    color: #ffd45c;
-  }
-  .modes {
-    list-style: none;
-    padding: 0;
-    margin: 0 0 20px;
-    display: grid;
-    gap: 12px;
-  }
-  .mode {
-    display: grid;
-    grid-template-columns: auto 10.5rem 1fr;
-    gap: 14px;
-    align-items: center;
-    margin: 0;
-    color: var(--on-deep-soft);
-  }
-  .mode-name {
-    font-family: var(--font-display);
-    font-weight: 700;
-    color: var(--on-deep);
-  }
-  .bars {
-    display: inline-flex;
-    align-items: flex-end;
-    gap: 3px;
-    height: 26px;
-  }
-  .bars span {
-    width: 7px;
-    border-radius: 3px;
-    background: rgb(255 255 255 / 0.25);
-  }
-  .bars span:nth-child(1) {
-    height: 30%;
-  }
-  .bars span:nth-child(2) {
-    height: 55%;
-  }
-  .bars span:nth-child(3) {
-    height: 78%;
-  }
-  .bars span:nth-child(4) {
-    height: 100%;
-  }
-  .bars .on {
-    background: #5ee0d3;
-  }
-  .mode-2 .bars .on {
-    background: #ffd45c;
-  }
-  .mode-1 .bars .on {
-    background: #ff9a7f;
-  }
-  .tech-note {
-    font-size: 1.02rem;
-  }
-  .pair {
-    list-style: none;
-    padding: 0;
-    margin: 0 0 20px;
-    display: grid;
-    gap: 12px;
-  }
-  .pair li {
-    margin: 0;
-    padding: 14px 18px;
-    border-radius: 16px;
-    background: rgb(255 255 255 / 0.1);
-    display: grid;
-  }
-  .pair span {
-    color: var(--on-deep-soft);
-  }
-  @media (max-width: 560px) {
-    .mode {
-      grid-template-columns: auto 1fr;
-    }
-    .mode-does {
-      grid-column: 1 / -1;
-    }
-  }
-  .compare-title {
-    margin: clamp(48px, 6vw, 80px) 0 24px;
-    text-align: center;
-    font-size: clamp(1.7rem, 3vw, 2.4rem);
-  }
-  .compare {
-    border-radius: var(--radius-lg);
-    background: var(--surface);
-    color: var(--ink);
-    overflow: hidden;
-  }
-  .compare table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 1.05rem;
-  }
-  .compare th,
-  .compare td {
-    padding: 18px 20px;
-    text-align: left;
-    vertical-align: middle;
-    border-bottom: 1px solid var(--line);
-    color: var(--ink);
-  }
-  .compare thead th {
-    font-family: var(--font-display);
-    font-size: 1rem;
-    color: var(--ink-soft);
-  }
-  .compare tbody th {
-    font-family: var(--font-display);
-    font-size: 1.12rem;
-  }
-  .compare td {
-    color: var(--ink-soft);
-  }
-  .compare tbody tr:last-child > * {
+  .promises > li:last-child {
     border-bottom: 0;
   }
-  .compare .is-us {
-    background: var(--sun-soft);
+  .promises h3 {
+    font-size: 1.25rem;
   }
-  .compare .is-us th {
-    font-size: 1.3rem;
+  .promises p {
+    color: var(--on-night-soft);
+    font-size: 1.08rem;
   }
-  .compare .is-us td {
-    color: var(--ink);
-    font-weight: 700;
-  }
-  .cell {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-  }
-  .mark {
-    display: inline-grid;
-    place-items: center;
-    width: 30px;
-    height: 30px;
-    flex: none;
-    border-radius: 50%;
-  }
-  .mark :global(svg) {
-    width: 18px;
-    height: 18px;
-    stroke-width: 3;
-  }
-  .mark-yes {
-    background: var(--ok-soft);
-    color: var(--ok);
-  }
-  .mark-no {
-    background: var(--bg-tint);
-    color: var(--ink-soft);
-  }
-  .is-us .mark-yes {
-    background: var(--ok);
-    color: var(--surface);
-  }
-  .compare-fine {
-    margin: 16px auto 0;
-    text-align: center;
-    font-size: 1rem;
-  }
-  @media (max-width: 899px) {
-    .compare {
-      background: none;
-      overflow: visible;
-    }
-    .compare thead {
-      position: absolute;
-      width: 1px;
-      height: 1px;
-      overflow: hidden;
-      clip: rect(0, 0, 0, 0);
-    }
-    .compare table,
-    .compare tbody,
-    .compare tr,
-    .compare th,
-    .compare td {
-      display: block;
-    }
-    .compare tr {
-      margin-bottom: 16px;
-      padding: 8px 4px;
-      border-radius: var(--radius);
-      background: var(--surface);
-    }
-    .compare tr.is-us {
-      background: var(--sun-soft);
-    }
-    .compare th,
-    .compare td {
-      border: 0;
-      padding: 8px 16px;
-    }
-    .compare td::before {
-      content: attr(data-col);
-      display: block;
-      font-size: 0.92rem;
-      color: var(--ink-soft);
-      font-weight: 400;
-    }
-  }
-
-  /* --- Get started --- */
-  .start-card {
-    position: relative;
-    overflow: hidden;
-    padding: clamp(40px, 7vw, 96px) clamp(24px, 6vw, 96px);
-    border-radius: 48px;
-    background: linear-gradient(120deg, var(--sun) 0%, #ffb35c 45%, var(--coral) 100%);
-    color: var(--on-bright);
-    text-align: center;
-  }
-  .start-card h2 {
-    position: relative;
-    font-size: clamp(2.4rem, 5vw, 4rem);
-  }
-  .start-card .lede {
-    position: relative;
-    margin-inline: auto;
-    color: var(--on-bright);
-  }
-  .start-card :global(.start-cta) {
-    position: relative;
-    justify-content: center;
+  .safety-more {
     margin-top: 32px;
   }
-  .start-card :global(.btn-sun) {
-    background: #ffffff;
-    color: #1b1530;
+  @media (max-width: 960px) {
+    .safety-grid {
+      grid-template-columns: 1fr;
+    }
+    .promises {
+      grid-template-columns: 1fr 1fr;
+    }
   }
-  .start-card :global(.btn-primary) {
-    background: #5b2bd6;
-    color: #ffffff;
-  }
-  .start-card :focus-visible,
-  .start-card :global(:focus-visible) {
-    outline-color: #1b1530;
-    box-shadow: 0 0 0 10px #ffffff;
-  }
-  .start-more {
-    position: relative;
-    margin: 28px auto 0;
-    font-size: 1.15rem;
-  }
-  .start-more a {
-    text-decoration-color: #1b1530;
-  }
-  .start-shape {
-    position: absolute;
-    border-radius: 50%;
-    pointer-events: none;
-  }
-  .start-shape-1 {
-    width: 260px;
-    height: 260px;
-    left: -80px;
-    bottom: -120px;
-    background: rgb(255 255 255 / 0.35);
-  }
-  .start-shape-2 {
-    width: 160px;
-    height: 160px;
-    right: -40px;
-    top: -60px;
-    background: rgb(91 43 214 / 0.25);
+  @media (max-width: 640px) {
+    .promises {
+      grid-template-columns: 1fr;
+    }
   }
 
-  /* --- FAQ --- */
-  .faq {
+  /* --- Our story --- */
+  .story-grid {
     display: grid;
-    gap: var(--gap);
-    max-width: 56rem;
-    margin: 0 auto 32px;
+    grid-template-columns: minmax(0, 8fr) minmax(0, 4fr);
+    gap: clamp(40px, 6vw, 96px);
+    align-items: end;
   }
-  .faq :global(summary.btn) {
-    font-size: 1.25rem;
+  .story-quote {
+    font-size: clamp(2.3rem, 5vw, 4.6rem);
+    line-height: 1.04;
+    max-width: 14em;
+    margin-bottom: 0.5em;
+  }
+  .story-body {
+    font-size: 1.3rem;
+    max-width: 36rem;
+    margin: 0;
+    color: var(--ink-soft);
+  }
+  .story-facts {
+    margin: 0;
+    max-width: none;
+  }
+  .story-facts > div {
+    padding-block: 18px;
+    border-top: 1px solid var(--line);
+  }
+  .story-facts dt {
+    font-size: 1rem;
+    color: var(--ink-soft);
+  }
+  .story-facts dd {
+    margin: 0;
+    font-weight: 700;
+  }
+  .team {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+  .team li + li {
+    margin-top: 2px;
+  }
+  @media (max-width: 960px) {
+    .story-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  /* --- Get it --- */
+  .start-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
+    gap: clamp(32px, 5vw, 80px);
+    align-items: end;
+  }
+  .start h2 {
+    font-size: clamp(2.6rem, 5.4vw, 5rem);
+    max-width: 10em;
+  }
+  .start .lede {
+    margin: 0;
+  }
+  .start :global(.start-cta) {
+    flex-direction: column;
+  }
+  .start :global(.start-cta .btn) {
+    flex: none;
+    max-width: none;
+    width: 100%;
+  }
+  .start-more {
+    margin: 28px 0 0;
+  }
+  @media (max-width: 960px) {
+    .start-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  /* --- Questions --- */
+  .faq-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 4fr) minmax(0, 8fr);
+    gap: clamp(32px, 5vw, 80px);
+    align-items: start;
+  }
+  .faq-head .muted {
+    font-size: 1.1rem;
+  }
+  @media (max-width: 960px) {
+    .faq-grid {
+      grid-template-columns: 1fr;
+    }
   }
 </style>

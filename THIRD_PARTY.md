@@ -10,6 +10,8 @@
 | pdf-lib (`pdf-lib` 1.17.1, Andrew Dillon) and its `@pdf-lib/standard-fonts` and `@pdf-lib/upng` | bundled into the interface (Papers: reading and filling form fields, placing a signature) and `os/tasks` | MIT License |
 | PDF.js (`pdfjs-dist` 5.7.284, Mozilla), including its worker | bundled into the interface (Papers and Talk: the text and pictures of PDF pages) and `os/tasks` tests | Apache License 2.0 |
 | Atkinson Hyperlegible font (`@fontsource/atkinson-hyperlegible`) | bundled into the interface | SIL Open Font License 1.1 |
+| Atkinson Hyperlegible Next font (`@fontsource-variable/atkinson-hyperlegible-next` 5.3.0, Braille Institute of America) | served by the website (`site/`), text face | SIL Open Font License 1.1 |
+| Fraunces font (`@fontsource-variable/fraunces` 5.3.0, Undercase Type) | served by the website (`site/`), headline face | SIL Open Font License 1.1 |
 | React, Vite, FastAPI, Pydantic, Uvicorn, Anthropic Python SDK and other dependencies | `package.json`, `backend/requirements*.txt` | Their respective open-source licenses |
 
 The end-to-end camera test downloads MediaPipe's public sample image

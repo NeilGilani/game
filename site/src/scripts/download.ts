@@ -187,7 +187,7 @@ function renderRelease(ctx: Ctx, release: GitHubRelease, platform: Platform): vo
   const others = choice.others.map((o) =>
     h(
       "a",
-      { class: "btn btn-stack", href: o.asset.browser_download_url, "data-kind": o.kind },
+      { class: "btn btn-secondary btn-stack", href: o.asset.browser_download_url, "data-kind": o.kind },
       `Download for ${kindLabel(o.kind)}`,
       h("span", { class: "sub" }, `${o.asset.name}, ${formatBytes(o.asset.size)}`),
     ),
@@ -207,7 +207,7 @@ function renderRelease(ctx: Ctx, release: GitHubRelease, platform: Platform): vo
       h(
         "a",
         {
-          class: "btn btn-sun btn-stack dl-primary",
+          class: "btn btn-primary btn-stack dl-primary",
           href: asset.browser_download_url,
           "data-kind": kind,
         },
