@@ -28,6 +28,11 @@ export interface LifelineOptions {
   retryMs?: { initial: number; max: number };
 }
 
+interface HelpRequest {
+  source: HelpSource;
+  test: boolean;
+}
+
 interface HelpResponse {
   alert?: { id?: string } | null;
   created?: boolean;
@@ -37,10 +42,11 @@ export class LifelineHost {
   private beatTimer: ReturnType<typeof setInterval> | null = null;
   private lastBeatAt: string | null = null;
   private lastBeatOk = false;
-  private pendingHelp: { source: HelpSource; test: boolean } | null = null;
+  private pendingHelp: HelpRequest | null = null;
   private retryTimer: ReturnType<typeof setTimeout> | null = null;
   private retryDelay: number;
-  private inFlight: Promise<HelpResult> | null = null;
+  /** The attempt on its way to the coordinator, and the request it carries. */
+  private inFlight: { req: HelpRequest; run: Promise<HelpResult> } | null = null;
 
   constructor(private readonly opts: LifelineOptions) {
     this.retryDelay = opts.retryMs?.initial ?? 1_000;
@@ -93,15 +99,38 @@ export class LifelineHost {
       clearTimeout(this.retryTimer);
       this.retryTimer = null;
     }
-    const attempt = this.inFlight ?? this.attempt();
+    // An attempt already carrying this request answers for it. One carrying an older request (a test request that
+    // this real one just upgraded) does not: when it settles, the real request goes out by itself.
+    const req = this.pendingHelp;
+    const flight = this.inFlight;
+    const attempt = !flight
+      ? this.attempt()
+      : flight.req === req
+        ? flight.run
+        : flight.run.then(() => this.followUp(req));
     // 3. Answer the caller quickly; retries continue in the background.
     const wait = this.opts.firstAttemptMs ?? 2_500;
+    let timer: ReturnType<typeof setTimeout> | null = null;
     return Promise.race([
       attempt,
-      new Promise<HelpResult>((resolve) =>
-        setTimeout(() => resolve({ delivered: false, alertId: null, created: false }), wait),
-      ),
-    ]);
+      new Promise<HelpResult>((resolve) => {
+        timer = setTimeout(() => resolve({ delivered: false, alertId: null, created: false }), wait);
+      }),
+    ]).finally(() => {
+      if (timer) clearTimeout(timer);
+    });
+  }
+
+  /** An attempt for an older request settled: send `req` now, unless it was delivered meanwhile. */
+  private followUp(req: HelpRequest | null): Promise<HelpResult> {
+    if (!req || this.pendingHelp !== req)
+      return Promise.resolve({ delivered: true, alertId: null, created: false });
+    if (this.inFlight?.req === req) return this.inFlight.run;
+    if (this.retryTimer) {
+      clearTimeout(this.retryTimer);
+      this.retryTimer = null;
+    }
+    return this.attempt();
   }
 
   private attempt(): Promise<HelpResult> {
@@ -121,11 +150,14 @@ export class LifelineHost {
         );
         this.scheduleRetry();
         return { delivered: false, alertId: null, created: false };
-      } finally {
-        this.inFlight = null;
       }
     })();
-    this.inFlight = run;
+    const flight = { req, run };
+    this.inFlight = flight;
+    // Runs before any follow-up a caller chained on `run` (registered first), so they see nothing in flight.
+    void run.finally(() => {
+      if (this.inFlight === flight) this.inFlight = null;
+    });
     return run;
   }
 
