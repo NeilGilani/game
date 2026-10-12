@@ -1,7 +1,7 @@
 /**
  * The AGENCY Bridge (os/browser-bridge, Instance 5) in the main process: pairing, the Chrome native-messaging host
  * install, the local socket server, web targets for the overlay, Stop in both directions, and the agent's
- * `bridge` rpc (snapshot, click, type, navigate) mapped onto the bridge's methods.
+ * `bridge` rpc (snapshot, click, type, navigate, select) mapped onto the bridge's methods.
  */
 
 import { BridgeServer, ensurePairing, installNativeHost, isSandboxOrigin } from "@agency/browser-bridge";
@@ -30,7 +30,21 @@ interface TreeNode {
   role: string;
   name: string;
   value?: string;
-  state: { secure?: boolean; disabled?: boolean };
+  state: { secure?: boolean; disabled?: boolean; checked?: boolean | "mixed" };
+  depth?: number;
+  href?: string;
+  options?: string[];
+}
+
+/** A link's address for the agent: plain http(s) only (never javascript:, data: or the like). */
+function webHref(href: string | undefined): string | undefined {
+  if (!href) return undefined;
+  try {
+    const u = new URL(href);
+    return u.protocol === "https:" || u.protocol === "http:" ? u.href : undefined;
+  } catch {
+    return undefined;
+  }
 }
 
 export class BridgeHost {
@@ -145,7 +159,7 @@ export class BridgeHost {
     // The task's first page read must not race the re-arm that its own start triggered.
     if (this.rearming) await this.rearming;
     const s = this.requireServer();
-    const p = (params ?? {}) as { ref?: string; text?: string; url?: string; approved?: unknown };
+    const p = (params ?? {}) as { ref?: string; text?: string; url?: string; option?: string; approved?: unknown };
     const tabId = await this.activeTab();
     switch (method) {
       case "snapshot": {
@@ -166,6 +180,10 @@ export class BridgeHost {
             ...(n.value !== undefined && !n.state.secure ? { value: n.value } : {}),
             ...(n.state.secure ? { secure: true } : {}),
             ...(n.state.disabled ? { disabled: true } : {}),
+            ...(typeof n.state.checked === "boolean" ? { checked: n.state.checked } : {}),
+            ...(typeof n.depth === "number" ? { depth: n.depth } : {}),
+            ...(webHref(n.href) ? { href: webHref(n.href) } : {}),
+            ...(Array.isArray(n.options) ? { options: n.options.slice(0, 50) } : {}),
           })),
           text: tree.data.nodes
             .map((n) => n.name)
@@ -203,6 +221,9 @@ export class BridgeHost {
         return { ok: true };
       case "navigate":
         await s.call("tabs.navigate", { tabId, url: String(p.url) });
+        return { ok: true };
+      case "select":
+        await s.call("page.select", { tabId, ref: String(p.ref), option: String(p.option ?? "") });
         return { ok: true };
       default:
         throw new Error(`Unknown bridge method ${method}`);

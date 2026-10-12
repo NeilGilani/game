@@ -25,6 +25,7 @@ import {
   type OverlayMode,
   type PermissionKind,
   type PermissionStatus,
+  type RealOrderingSetting,
   type ScreenRect,
   type SelectionEvent,
   type Suggestion,
@@ -107,6 +108,13 @@ const api: AgencyApi = {
       ipcRenderer.invoke(IPC.host, "setCoordinator", setting) as Promise<{ ok: boolean; error?: string }>,
     completeOnboardingStep: (step: string) =>
       ipcRenderer.invoke(IPC.host, "completeOnboardingStep", step) as Promise<OnboardingState>,
+    realOrdering: () => ipcRenderer.invoke(IPC.host, "realOrdering") as Promise<RealOrderingSetting>,
+    setRealOrdering: (setting: RealOrderingSetting) =>
+      ipcRenderer.invoke(IPC.host, "setRealOrdering", setting) as Promise<{
+        ok: boolean;
+        error?: string;
+        setting?: RealOrderingSetting;
+      }>,
   },
 };
 
