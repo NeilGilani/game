@@ -79,9 +79,11 @@ see [DEMO_SCRIPT.md](DEMO_SCRIPT.md). How it's built: see [ARCHITECTURE.md](ARCH
 (`AGENCY_SYNAPSE_URL=http://127.0.0.1:8100`, or `make demo-local`), every AI request is routed by its expert
 classifier and Cisco network sentinel before Gemini answers: see [ARCHITECTURE.md](ARCHITECTURE.md#the-synapse-layer-rays-synapse-mesh-over-gemini).
 
-To enable cloud reasoning, put a Gemini API key from [Google AI Studio](https://aistudio.google.com/apikey) in `.env`
-as `GEMINI_API_KEY=...` (copy `.env.example`; the default model is `gemini-3.8-flash`). The status bar then shows
-**Gemini · gemini-3.8-flash**. Without a key it says **Demo mode: built-in plans**. An Anthropic key
+Cloud reasoning needs no key: without one, AGENCY uses **AGENCY Cloud**, Gemini on AGENCY's key through a relay on
+the AGENCY site ([docs/AI_RELAY.md](docs/AI_RELAY.md)), and the status bar says **AI: AGENCY Cloud**. A Gemini key of
+your own from [Google AI Studio](https://aistudio.google.com/apikey) in `.env` as `GEMINI_API_KEY=...` wins (copy
+`.env.example`; the default model is `gemini-3.8-flash`); the status bar then shows **Gemini · gemini-3.8-flash**.
+With `AGENCY_RELAY=off` and no key it says **Demo mode: built-in plans**. An Anthropic key
 (`ANTHROPIC_API_KEY`) still works as an alternative; when both are set, Gemini is used unless
 `AGENCY_REASONING=anthropic`. The key stays on the coordinator and is never sent to the browser.
 

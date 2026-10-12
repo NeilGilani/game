@@ -12,19 +12,23 @@ make setup        # Python and npm packages
 make check        # optional: every test that runs without a display
 ```
 
-## 2. The AI key (GEMINI_API_KEY)
+## 2. The AI (no key needed)
 
-Without a key everything still works with built-in plans and task packs; with one, the agent can plan new tasks.
+Nobody needs an API key: without one, the coordinator and the agent use **AGENCY Cloud**, Gemini on AGENCY's key
+through AGENCY's relay ([docs/AI_RELAY.md](docs/AI_RELAY.md)). The status bar says **AI: AGENCY Cloud**. If the relay
+is busy, at its daily limit or switched off, AGENCY says so in plain words and uses its built-in plans.
+
+Advanced, for developers: a key of your own wins over AGENCY Cloud and costs money on your Google account.
 
 - For the coordinator: copy `.env.example` to `.env` and set `GEMINI_API_KEY=...`.
 - For the agent inside the app: either start the app from a terminal where you ran `export GEMINI_API_KEY=...`, or
-  store it once in the keychain (recommended):
+  store it once in the keychain:
 
   ```bash
   security add-generic-password -s AGENCY -a gemini-api-key -w   # paste the key when asked
   ```
 
-Model calls cost money on your Google account and only happen for tasks you start.
+`AGENCY_RELAY=off` switches AGENCY Cloud off (then, without a key, only built-in plans and task packs run).
 
 ## 3. Start it
 

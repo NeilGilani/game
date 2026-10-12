@@ -75,8 +75,17 @@ const contact = CONTACT_EMAIL
         <strong>The AI sees only what a task needs, only when you start one.</strong> During a task you
         started, AGENCY may send Google's Gemini your request and screenshots of the app it's working in.
         Every request is routed first by Synapse-Mesh, whose intent Sifter runs on the device. Screenshots
-        aren't kept by default. Google's terms apply to what's sent. Without an API key, nothing is sent to an
-        AI at all.
+        aren't kept by AGENCY after the task, and AGENCY asks Google not to store the agent's turns. Google's
+        terms apply to what's sent.
+      </li>
+      <li>
+        <strong>No API key needed: AGENCY Cloud.</strong> Unless you add a Gemini key of your own, those
+        requests and screenshots go through AGENCY Cloud, a relay on this website that passes them to Google
+        on AGENCY's account. The relay doesn't log or store what's in them (no requests, screenshots or
+        document text). It keeps only counts of requests, so it can share the AI fairly. Camera video is never
+        sent. Your Mac gets an anonymous install number for this (no name, account or email), and networks are
+        counted under a scrambled form of the address, never the address itself. With AGENCY Cloud switched
+        off and no key of your own, nothing is sent to an AI at all.
       </li>
       <li>
         <strong>Memory is local and yours.</strong> What AGENCY learns about your usual choices stays on your
@@ -111,7 +120,7 @@ const contact = CONTACT_EMAIL
       </a>
     </p>
     <p>
-      Last updated 10 October 2026. If this policy changes, the change will be visible in the site's public
+      Last updated 12 October 2026. If this policy changes, the change will be visible in the site's public
       history on GitHub.
     </p>
   </article>

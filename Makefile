@@ -14,7 +14,7 @@ SHELL := /bin/bash
 PY := backend/.venv/bin/python
 PI ?= agency-pi.local
 
-.PHONY: site-gemini-key free-port help setup setup-backend setup-frontend dev demo demo-local site-deploy web-demo backend frontend dev-pi test test-backend test-frontend \
+.PHONY: site-gemini-key relay-setup free-port help setup setup-backend setup-frontend dev demo demo-local site-deploy web-demo backend frontend dev-pi test test-backend test-frontend \
         lint typecheck build check e2e e2e-fixtures reset-demo pi-setup pi-start pi-stop pi-status pi-logs clean \
         os-check os-dev os-build os-dist os-test os-e2e sidecar sandbox
 
@@ -199,6 +199,18 @@ web-demo:
 # The web demo's Gemini planner reads GEMINI_API_KEY as a Cloudflare secret (never in the page): run once.
 site-gemini-key:
 	npx --yes wrangler@4 pages secret put GEMINI_API_KEY --project-name=$(CF_PROJECT)
+
+# AGENCY Cloud (docs/AI_RELAY.md): the Mac app's AI on the site's key, so nobody needs their own. Run once, after
+# site-gemini-key. The signing secret goes straight from openssl to Cloudflare: it is never printed or saved here.
+relay-setup:
+	openssl rand -base64 48 | tr -d '\n' | npx --yes wrangler@4 pages secret put RELAY_SIGNING_SECRET --project-name=$(CF_PROJECT)
+	@# Exact counters for the limits and the daily budget (without it they are per-isolate and approximate).
+	-npx --yes wrangler@4 d1 create agency-relay
+	@echo ""
+	@echo "Next, once: Cloudflare dashboard > Workers & Pages > $(CF_PROJECT) > Settings > Bindings > Add > D1 database:"
+	@echo "  variable name RELAY_DB, database agency-relay (Production and Preview). The table is created on first use."
+	@echo "Optional limits (Settings > Variables and Secrets): RELAY_DAILY_REQUEST_CAP, RELAY_INSTALL_PER_DAY, ..."
+	@echo "Then: make site-deploy   (variables and bindings take effect on the next deployment)"
 
 site-deploy: web-demo
 	npm install --workspace site --no-audit --no-fund
