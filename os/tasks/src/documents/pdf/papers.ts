@@ -278,9 +278,9 @@ export async function signatureSpots(
 export interface StampRequest {
   pageIndex: number;
   rect: Rect;
-  /** A saved signature picture (PNG or JPEG). Either this or typedName, never both. */
+  /** A signature picture (PNG or JPEG): the saved one, or a picture of the typed name. */
   image?: Uint8Array;
-  /** The typed-name fallback, drawn in a slanted font and labelled as typed. */
+  /** Set for the typed-name fallback: labelled as typed, and drawn in a slanted font when there's no picture of it. */
   typedName?: string;
   signerName: string;
   /** ISO time of the final confirmation. */
@@ -293,7 +293,7 @@ export interface StampRequest {
 export function stampLine(req: Pick<StampRequest, "signerName" | "signedAt" | "typedName">): string {
   const day = req.signedAt.slice(0, 10);
   return winAnsi(
-    `Signed electronically by ${req.signerName} on ${day} with AGENCY (eye-gaze confirmation).${req.typedName ? " Typed signature." : ""}`,
+    `Signed electronically${req.signerName.trim() ? ` by ${req.signerName.trim()}` : ""} on ${day} with AGENCY (eye-gaze confirmation).${req.typedName ? " Typed signature." : ""}`,
   );
 }
 
@@ -308,8 +308,8 @@ function isJpeg(b: Uint8Array): boolean {
 export async function stampSignature(bytes: Uint8Array, req: StampRequest): Promise<Uint8Array> {
   if (sha256Hex(bytes) !== req.documentSha256)
     throw new PaperError("The document changed after you reviewed it, so AGENCY didn't sign it.");
-  if (!!req.image === !!req.typedName?.trim())
-    throw new PaperError("Choose one signature: your saved one or your typed name.");
+  if (!req.image && !req.typedName?.trim())
+    throw new PaperError("Choose a signature first: your saved one or your typed name.");
   const pdf = await loadPdf(bytes);
   const page = pdf.getPages()[req.pageIndex];
   if (!page) throw new PaperError("That page isn't in this document.");
@@ -395,7 +395,9 @@ export async function checkSigned(
     const [pa, pb] = [await loadPdf(before), await loadPdf(after)];
     if (imageCount(pb, req.pageIndex) !== imageCount(pa, req.pageIndex) + 1)
       return { ok: false, problem: "The signature picture isn't on the page." };
-  } else if (!b[req.pageIndex]!.includes(winAnsi(req.typedName!.trim())))
+  } else if (
+    !b[req.pageIndex]!.replace(/\s+/g, "").includes(winAnsi(req.typedName!.trim()).replace(/\s+/g, ""))
+  )
     return { ok: false, problem: "The typed signature isn't on the page." };
   return { ok: true };
 }

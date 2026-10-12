@@ -159,6 +159,13 @@ export function HelperSettings() {
       path: "/onboarding",
     },
     {
+      id: "papers",
+      label: "Papers",
+      sub: "Documents folder, details for forms, signature",
+      icon: "document",
+      path: "/settings/papers",
+    },
+    {
       id: "cases",
       label: "Cases and approvals",
       sub: "Every errand and decision",

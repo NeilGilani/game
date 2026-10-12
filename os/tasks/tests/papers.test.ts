@@ -266,9 +266,14 @@ describe("signing in one place", () => {
     const signed = await stampSignature(original, req);
     expect(await checkSigned(js, original, signed, req)).toEqual({ ok: true });
     expect((await pageTexts(js, signed))[1]).toContain("Typed signature.");
+    // With a picture of the typed name (drawn in a script font on screen), it is still labelled as typed.
+    const pictured = { ...req, image: png() };
+    const signed2 = await stampSignature(original, pictured);
+    expect(await checkSigned(js, original, signed2, pictured)).toEqual({ ok: true });
+    expect((await pageTexts(js, signed2))[1]).toContain("Typed signature.");
   });
 
-  it("refuses a changed document, two signatures at once, or a place off the page", async () => {
+  it("refuses a changed document, no signature, or a place off the page", async () => {
     const original = await mixedForm();
     const base = {
       pageIndex: 0,
@@ -280,8 +285,8 @@ describe("signing in one place", () => {
     await expect(
       stampSignature(original, { ...base, typedName: "R", documentSha256: "0".repeat(64) }),
     ).rejects.toThrow(/changed after you reviewed/);
-    await expect(stampSignature(original, { ...base, typedName: "R", image: png() })).rejects.toThrow(
-      /Choose one/,
+    await expect(stampSignature(original, { ...base, typedName: "  " })).rejects.toThrow(
+      /Choose a signature/,
     );
     await expect(
       stampSignature(original, { ...base, typedName: "R", rect: { x: 500, y: 72, width: 220, height: 44 } }),

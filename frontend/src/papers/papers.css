@@ -1,0 +1,209 @@
+/* Papers: big readable cards, document thumbnails and the signature places. Uses the app's tokens only. */
+
+.papers-help {
+  font-size: 1.15rem;
+  max-width: 90ch;
+}
+.papers-panel {
+  background: var(--surface);
+  border: 2px solid var(--line);
+  border-radius: var(--radius-lg);
+  padding: 24px 28px;
+  font-size: 1.25rem;
+  align-self: start;
+}
+.papers-error {
+  color: var(--danger);
+  font-weight: 600;
+}
+.papers-pick {
+  min-height: 0;
+}
+.papers-choice .choice-pic {
+  height: auto;
+  min-height: 64px;
+}
+.papers-thumb {
+  max-height: 150px;
+  max-width: 100%;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: #fff;
+}
+.papers-choice .choice-pic img.papers-thumb {
+  max-height: 150px;
+}
+
+/* The explanation: up to three big cards at a time. */
+.papers-cards {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 24px;
+  align-content: start;
+  min-height: 0;
+}
+.papers-cards[data-count="1"] {
+  grid-template-columns: minmax(0, 1fr);
+}
+.papers-cards[data-count="2"] {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.papers-card {
+  background: var(--surface);
+  border: 2px solid var(--line);
+  border-radius: var(--radius-lg);
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  font-size: 1.3rem;
+  line-height: 1.45;
+}
+.papers-card h2 {
+  margin: 0;
+  font-size: 1.05rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--ink-2);
+}
+.papers-card-body {
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 600;
+}
+.papers-card ul,
+.papers-meaning {
+  margin: 0;
+  padding-left: 1.2em;
+  display: grid;
+  gap: 8px;
+}
+.papers-quote {
+  margin: 0;
+  padding: 12px 16px;
+  border-left: 4px solid var(--accent);
+  background: var(--accent-soft);
+  border-radius: 8px;
+  font-size: 1.1rem;
+}
+
+/* Review of every answer. */
+.papers-review {
+  margin: 0;
+  display: grid;
+  gap: 12px;
+}
+.papers-review-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr) auto;
+  align-items: center;
+  gap: 16px;
+  padding: 12px 20px;
+  border: 2px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  font-size: 1.25rem;
+}
+.papers-review-row dt {
+  color: var(--ink-2);
+}
+.papers-review-row dd {
+  margin: 0;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+.papers-review-row .btn {
+  min-height: 72px;
+  min-width: 150px;
+}
+
+.papers-confirm {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  align-self: start;
+}
+
+/* Signing: the page with numbered places, and the places as big choices. */
+.papers-spot-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 420px) minmax(0, 1fr);
+  gap: 32px;
+  min-height: 0;
+}
+.papers-page {
+  position: relative;
+  margin: 0;
+  align-self: start;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  overflow: hidden;
+  background: #fff;
+}
+.papers-page img {
+  display: block;
+  width: 100%;
+}
+.papers-spot-box {
+  position: absolute;
+  border: 3px solid var(--accent);
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  border-radius: 6px;
+  color: var(--accent);
+  font-weight: 800;
+  display: grid;
+  place-items: center;
+  font-size: 1.1rem;
+}
+.papers-spot-choices {
+  display: grid;
+  gap: 20px;
+  align-content: start;
+}
+.papers-spot-choice {
+  flex-direction: row;
+  justify-content: flex-start;
+  gap: 20px;
+  min-height: 110px;
+}
+.papers-spot-num {
+  display: grid;
+  place-items: center;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: var(--accent-ink);
+  font-size: 1.6rem;
+  font-weight: 800;
+  flex: none;
+}
+.papers-signature {
+  max-height: 64px;
+  max-width: 100%;
+  background: #fff;
+  border-radius: 6px;
+}
+.papers-signature-preview {
+  max-width: 360px;
+  max-height: 140px;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 8px;
+}
+.papers-typed {
+  font-family: "Snell Roundhand", "Apple Chancery", "Brush Script MT", "Segoe Script", cursive;
+  font-size: 2rem;
+  color: #0d2673;
+}
+
+@media (max-width: 900px) {
+  .papers-cards,
+  .papers-spot-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .papers-review-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
