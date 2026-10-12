@@ -323,7 +323,7 @@ def create_app(
             "held_on_start": s.held_on_start,
             "privacy": {
                 "camera_processing": "In the browser on this device. No frames, face or eye data are sent to the coordinator or the cloud.",
-                "sent_to_cloud_when_configured": "Goal text and selections, the fictional demo profile summary, the tool catalog and plan.",
+                "sent_to_cloud_when_configured": "Goal text and selections, the fictional demo profile summary, the tool catalog and plan. In Papers, the text of a letter the person agreed on screen to have explained (nothing else, never cached).",
                 "stored": "Cases, plans, approvals, tool calls and audit events in SQLite on the coordinator.",
             },
             "settings": {
