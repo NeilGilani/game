@@ -55,8 +55,10 @@ export interface GeminiOptions {
   timeoutMs?: number;
   /** Screenshots kept in the history that is resent every turn (the most recent ones). */
   keepScreenshots?: number;
-  /** For tests: replaces the network call. */
+  /** Replaces the call to Google: AGENCY Cloud (model/cloud.ts), or a fake in tests. */
   transport?: GeminiTransport;
+  /** How the model is reached, for the status: AGENCY's relay or a key of your own. */
+  via?: "agency-cloud" | "own-key";
 }
 
 export const GEMINI_DEFAULT_MODEL = "gemini-3.8-flash";
@@ -119,6 +121,7 @@ export class GeminiModel implements AgentModel {
   readonly provider = "gemini" as const;
   readonly model: string;
   readonly screenshotEveryComputerAction = true;
+  readonly via: "agency-cloud" | "own-key";
   private readonly thinkingLevel: GeminiThinkingLevel;
   private readonly prices: Prices;
   private readonly transport: GeminiTransport;
@@ -126,6 +129,7 @@ export class GeminiModel implements AgentModel {
 
   constructor(opts: GeminiOptions) {
     this.model = opts.model ?? GEMINI_DEFAULT_MODEL;
+    this.via = opts.via ?? "own-key";
     this.keepScreenshots = Math.max(1, opts.keepScreenshots ?? GEMINI_KEEP_SCREENSHOTS);
     // Low by default: each turn of a desktop task must come back in seconds, not tens of seconds.
     this.thinkingLevel = opts.thinkingLevel ?? "low";

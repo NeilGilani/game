@@ -295,6 +295,8 @@ export interface ReasoningStatus {
   model: string | null;
   state: "not_configured" | "configured" | "ok" | "error";
   description: string;
+  /** "agency-cloud": Gemini on AGENCY's key through AGENCY's relay (no key on this computer). */
+  via?: string;
   last_ok_at?: string | null;
   last_error?: string | null;
   calls?: number;

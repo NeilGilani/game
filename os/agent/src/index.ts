@@ -20,6 +20,7 @@ export { AnthropicModel } from "./model/anthropic";
 export { ScriptedModel, RecordingModel } from "./model/scripted";
 export type { AgentModel, ModelSession, ModelTurn, ToolCall, ToolOutput, ToolSpec } from "./model/types";
 export { findApiKey } from "./model/keys";
+export { AgencyCloud, cloudTransport, relayUrlFromEnv, DEFAULT_RELAY_URL } from "./model/cloud";
 export { FakeMemoryClient, HttpMemoryClient, type MemoryClient } from "./memory";
 export { FakeAgent } from "./fake/fakeAgent";
 export type * from "./types";

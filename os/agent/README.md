@@ -119,7 +119,7 @@ tool calls. Providers translate; none of the safety code depends on which one ru
 | | Gemini (default) | Claude (optional) |
 |---|---|---|
 | Choose | default | `AGENCY_AGENT_PROVIDER=anthropic` |
-| Key | `GEMINI_API_KEY`, or keychain service `AGENCY` account `gemini-api-key` | `ANTHROPIC_API_KEY`, or account `anthropic-api-key` |
+| Key | none needed: AGENCY Cloud (`src/model/cloud.ts`, [docs/AI_RELAY.md](../../docs/AI_RELAY.md)); a key of your own wins: `GEMINI_API_KEY`, or keychain service `AGENCY` account `gemini-api-key` | `ANTHROPIC_API_KEY`, or account `anthropic-api-key` |
 | Model | `gemini-3.8-flash` (`AGENCY_AGENT_MODEL`) | `claude-opus-5-5` (`AGENCY_AGENT_MODEL`) |
 | SDK and API | `@google/genai` 2.28.0, Interactions API (`client.interactions.create`) | `@anthropic-ai/sdk` 0.133.0, Messages API (streamed) |
 | Reasoning | `generation_config.thinking_level` low / medium / high, default medium (`AGENCY_AGENT_THINKING`) | adaptive thinking, `output_config.effort` (`AGENCY_AGENT_EFFORT`, default high) |

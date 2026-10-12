@@ -170,6 +170,8 @@ def create_app(
             effort=settings.reasoning_effort,
             fallbacks=settings.anthropic_fallbacks,
             timeout_s=settings.reasoning_timeout_s,
+            relay_url=settings.relay_url,
+            identity_dir=settings.db_path.parent,
         )
         if provider is None:
             chosen = with_local_model(chosen, dict(os.environ))
@@ -290,7 +292,7 @@ def create_app(
             "reasoning": {
                 k: v
                 for k, v in s.provider.status().items()
-                if k in {"mode", "provider", "label", "model", "state", "description", "local", "private_explanations"}
+                if k in {"mode", "provider", "label", "model", "state", "description", "via", "local", "private_explanations"}
             },
             "network": s.network.snapshot(),
             "synapse": {k: v for k, v in s.synapse.status().items() if k != "last_route"}

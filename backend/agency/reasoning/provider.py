@@ -21,6 +21,7 @@ import json
 import logging
 import os
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Any, ClassVar, Protocol
 
 from pydantic import ValidationError
@@ -631,11 +632,14 @@ def build_provider(
     effort: str = "medium",
     fallbacks: bool = True,
     timeout_s: float = 45.0,
+    relay_url: str | None = None,
+    identity_dir: Path | None = None,
 ) -> ReasoningProvider:
     """Pick the cloud model from AGENCY_REASONING and the keys present.
 
     auto: Gemini when GEMINI_API_KEY (or GOOGLE_API_KEY) is set, else Claude when ANTHROPIC_API_KEY
-    is set, else the deterministic built-in plans. gemini / anthropic: only that provider.
+    is set, else Gemini through AGENCY Cloud (``relay_url``; AGENCY_RELAY=off leaves it None), else the
+    deterministic built-in plans. gemini: a local key, else AGENCY Cloud. anthropic: only Claude.
     """
     if reasoning in {"deterministic", "off", "demo"}:
         return DisabledProvider(reason="Cloud reasoning is switched off (AGENCY_REASONING=deterministic).")
@@ -648,11 +652,21 @@ def build_provider(
             return GeminiProvider(model=gemini_model, effort=effort, timeout_s=timeout_s)
         if want_anthropic and os.environ.get("ANTHROPIC_API_KEY"):
             return AnthropicProvider(model=anthropic_model, effort=effort, use_fallbacks=fallbacks, timeout_s=timeout_s)
+        if want_gemini and relay_url:
+            # No key of their own: Gemini on AGENCY's key, through AGENCY Cloud (reasoning/cloud.py).
+            from .cloud import AgencyCloud, AgencyCloudProvider, default_store
+
+            cloud = AgencyCloud(relay_url, default_store(identity_dir))
+            return AgencyCloudProvider(model=gemini_model, effort=effort, timeout_s=timeout_s, cloud=cloud)
     except Exception as exc:  # pragma: no cover - SDK import problems
         log.warning("could not start the cloud model client: %s", exc)
         return DisabledProvider(reason=f"The cloud model client could not start ({type(exc).__name__}).")
     if reasoning in {"gemini", "google"}:
-        return DisabledProvider(reason="AGENCY_REASONING=gemini but GEMINI_API_KEY is not set.")
+        return DisabledProvider(reason="AGENCY_REASONING=gemini but GEMINI_API_KEY is not set and AGENCY Cloud is off.")
     if reasoning in {"anthropic", "claude"}:
         return DisabledProvider(reason="AGENCY_REASONING=anthropic but ANTHROPIC_API_KEY is not set.")
+    if not relay_url:
+        return DisabledProvider(
+            reason="AGENCY Cloud is switched off (AGENCY_RELAY=off) and no GEMINI_API_KEY or ANTHROPIC_API_KEY is set."
+        )
     return DisabledProvider()

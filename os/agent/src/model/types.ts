@@ -83,6 +83,8 @@ export interface AgentModel {
   readonly model: string;
   /** Gemini wants a fresh screenshot with every computer-use result; Claude asks for screenshots itself. */
   readonly screenshotEveryComputerAction: boolean;
+  /** "agency-cloud": Gemini on AGENCY's key through AGENCY's relay; "own-key": a key set on this computer. */
+  readonly via?: "agency-cloud" | "own-key";
   start(options: SessionOptions): ModelSession;
 }
 
