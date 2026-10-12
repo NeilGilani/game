@@ -226,12 +226,17 @@ export class AgencyApp {
     // The agent needs the coordinator's address (memory API); start it once that is known, either way.
     void coordinatorReady.finally(() => this.startAgent());
     await coordinatorReady;
+    // Quit while the coordinator was still starting: start nothing more.
+    if (this.shuttingDown) return;
     this.lifeline.start();
     this.statusTimer = setInterval(() => void this.pollLifelineStatus(), 5_000);
     log.info("startup complete");
   }
 
+  private shuttingDown = false;
+
   async shutdown(): Promise<void> {
+    this.shuttingDown = true;
     globalShortcut.unregisterAll();
     this.lifeline.stop();
     this.mouse.end();
@@ -280,6 +285,7 @@ export class AgencyApp {
     const sup = new Supervisor({
       name: "coordinator",
       start: () => sidecar.start(),
+      cancelStart: () => sidecar.cancelStart(),
       health: () => sidecar.health(),
       healthIntervalMs: 5_000,
       backoffMs: { initial: 500, max: 10_000 },
@@ -336,6 +342,7 @@ export class AgencyApp {
   }
 
   private startAgent(): void {
+    if (this.shuttingDown) return;
     const spec = this.opts.paths.agent;
     if (!spec) {
       log.warn("agent runtime not found");
