@@ -189,7 +189,7 @@ clean:
 
 # Landing page on Cloudflare Pages straight from this Mac (opens a browser to log in to Cloudflare the first time).
 # CI does the same on every push to main once the CLOUDFLARE_* secrets are set (.github/workflows/cloudflare-pages.yml).
-CF_PROJECT ?= agency-os
+CF_PROJECT ?= getagencyos
 # The web demo at /app/ on the same site: the real interface with an in-page stand-in for the coordinator
 # (frontend/src/demo/webDemo.ts). The camera and eye tracking run in the visitor's browser; nothing is sent.
 web-demo:
