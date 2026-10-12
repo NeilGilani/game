@@ -9,6 +9,7 @@ import { navigate, useRoute, type Route } from "../state/router";
 import { usePoll } from "../state/usePoll";
 import { useLifeline } from "../lifeline/LifelineProvider";
 import { useAgent } from "../state/agent";
+import { nextTextField } from "./EyeKeyboard";
 import { AppIcon, BrandMark, Icon } from "./Icon";
 
 function useInputChip(): { text: string; tone: string } {
@@ -81,8 +82,12 @@ export function TopBar() {
   const keyboard = () => {
     // Typing happens with the Mac app's eye keyboard (overlay) or a helper's keyboard; this puts the cursor where
     // the text goes.
-    const field = document.querySelector<HTMLElement>("#main textarea, #main input:not([type=checkbox])");
+    // Only text boxes (never a password, a checkbox or a slider), in the open dialog if there is one. Each look
+    // moves on to the next box, so a screen with several (Lifeline setup) can be filled in with the eyes.
+    const root = document.querySelector('[data-dwell-scope="modal"]') ?? document.getElementById("main");
+    const field = root ? nextTextField(root) : null;
     if (field) {
+      if (document.activeElement === field) field.blur(); // focusing again brings the keyboard back
       field.focus();
       announce("Ready to type: look at the letters on the eye keyboard.");
     } else announce("There's nothing to type into on this screen.");
