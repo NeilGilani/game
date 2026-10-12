@@ -51,6 +51,32 @@ test("Stop agent halts automation until resumed", async ({ page }) => {
   expect(after.messages.length).toBe(before + 1); // only a draft was created after resuming
 });
 
+test("while automation is stopped, a practice task chosen on Home doesn't run", async ({ page }) => {
+  await page.goto("/#/");
+  await page.getByRole("button", { name: /Stop agent/ }).click();
+  await expect(page.getByText(/Automation is stopped/)).toBeVisible();
+  await page.goto("/#/flow/messages");
+  await page.getByRole("button", { name: /^Mom/ }).click();
+  await page.getByRole("button", { name: /I'm OK, no need to come/ }).click();
+  await expect(page).toHaveURL(/#\/task\//);
+  await expect(
+    page.locator(".task-big").filter({ hasText: /All automation is stopped, so nothing was done/ }),
+  ).toBeVisible();
+  await expect(page.getByTestId("approval")).toHaveCount(0);
+  await page.getByRole("button", { name: /Resume agent/ }).click();
+  await expect(page.getByText(/Automation is stopped/)).toHaveCount(0);
+});
+
+test("Stop agent also stops a Talk call in progress", async ({ page }) => {
+  await page.goto("/#/talk/call");
+  await page.locator(".talk-tile").first().click();
+  await expect(page.getByRole("heading", { name: /On a call/ })).toBeVisible();
+  await page.getByRole("button", { name: /Stop agent/ }).click();
+  await expect(page.getByRole("heading", { name: "Stopped. Nothing more will happen." })).toBeVisible();
+  await page.getByRole("button", { name: /Resume agent/ }).click();
+  await expect(page.getByText(/Automation is stopped/)).toHaveCount(0);
+});
+
 test("key-switch scanning selects without a mouse (keyboard switch, not computer vision)", async ({
   page,
 }) => {
