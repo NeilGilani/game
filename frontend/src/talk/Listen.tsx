@@ -79,11 +79,11 @@ export function Listen() {
 
   const last = heard.at(-1) ?? "";
   const personal = boards.flatMap((b) => b.phrases);
+  // The AI and the on-device suggestions can offer the same words: show each reply once (it is also the key).
   const replies: ReplySuggestion[] = last
-    ? [
-        ...claude.map((text) => ({ text, source: "claude" as const })),
-        ...suggestReplies(last, personal),
-      ].slice(0, 6)
+    ? [...claude.map((text) => ({ text, source: "claude" as const })), ...suggestReplies(last, personal)]
+        .filter((r, i, all) => all.findIndex((o) => o.text.toLowerCase() === r.text.toLowerCase()) === i)
+        .slice(0, 6)
     : [];
   const recent = history.items.slice(-3).map((h) => h.text);
   // The Mac app's agent when it offers replies; otherwise Gemini through the coordinator (only the words heard and

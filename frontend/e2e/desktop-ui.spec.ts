@@ -100,6 +100,23 @@ test("AI sentence suggestions keep Talk paging and editing controls in the viewp
   }
 });
 
+test("conversation mode shows each reply once when the AI suggests one the device already offers", async ({
+  page,
+}) => {
+  await page.goto("/#/talk/listen");
+  await page.getByRole("button", { name: /Practise conversation/ }).click();
+  await page.getByRole("button", { name: /Pretend: “How are you/ }).click();
+  const replies = page.locator(".talk-phrase");
+  const first = (await replies.first().innerText()).trim();
+  await page.route("**/api/assist/replies", (route) =>
+    route.fulfill({ json: { replies: [first, "A brand new idea"], label: "Test suggestions" } }),
+  );
+  await page.getByRole("button", { name: /Ideas from AI/ }).click();
+  await page.getByRole("button", { name: /Send this/ }).click();
+  await expect(replies.filter({ hasText: "A brand new idea" })).toHaveCount(1);
+  await expect(replies.filter({ hasText: first })).toHaveCount(1);
+});
+
 for (const size of [
   { width: 768, height: 1024 },
   { width: 390, height: 844 },

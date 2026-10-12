@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { AgentEvent, ApprovalRequest, TaskRequest } from "../src/state/contracts";
-import { FakeAgent, scriptFor } from "../src/state/fakeAgent";
+import { FakeAgent, scriptFor, withPlan } from "../src/state/fakeAgent";
 import {
   answered,
   decided,
@@ -99,6 +99,13 @@ describe("the task view follows the agent's events", () => {
     expect(needsPerson(failed)).toBe(true);
     const stopped = reduceTask(t, { type: "task.stopped", taskId: "t1", by: "caregiver" }, 1);
     expect(stopped).toMatchObject({ phase: "stopped", stoppedBy: "caregiver" });
+  });
+
+  it("a pause while the plan is being made holds when the plan arrives", () => {
+    const started: AgentEvent = { type: "task.started", taskId: "t1", goal: "Order pad thai", dryRun: true };
+    const paused = { ...newTask(request, 0), phase: "paused" as const };
+    expect(reduceTask(paused, started, 1).phase).toBe("paused");
+    expect(reduceTask(newTask(request, 0), started, 1).phase).toBe("working");
   });
 
   it("an unverified result stays unverified", () => {
@@ -230,6 +237,55 @@ describe("the fake agent keeps the safety rules", () => {
     await new Promise((r) => setTimeout(r, 20));
     expect(events.filter((e) => e.type === "task.stopped")).toHaveLength(1);
     expect(events.some((e) => e.type === "task.done" || e.type === "task.failed")).toBe(false);
+  });
+
+  it("Change on an approval with nothing to change doesn't report that the person said no", async () => {
+    const agent = new FakeAgent(1);
+    const events = collect(agent);
+    agent.send({
+      type: "task.start",
+      request: {
+        id: "m1",
+        goal: "Message Mom",
+        origin: "flow",
+        selections: { kind: "message", person: "Mom" },
+      },
+    });
+    const req = await until(events, "approval.required");
+    if (req.type !== "approval.required") throw new Error();
+    agent.send({
+      type: "approval.decide",
+      taskId: "m1",
+      decision: { approvalId: req.approval.id, fingerprint: req.approval.fingerprint, decision: "change" },
+    });
+    const failed = await until(events, "task.failed");
+    if (failed.type !== "task.failed") throw new Error();
+    expect(failed.reason).not.toMatch(/You said no/);
+    expect(failed.reason).toMatch(/Nothing here can be changed.*Nothing was sent/);
+    expect(events.some((e) => e.type === "task.done")).toBe(false);
+  });
+
+  it("a cloud plan is only used when its consequential steps are exactly the ones the person approves", () => {
+    const food = scriptFor(request);
+    const watch = scriptFor({ id: "w", goal: "Watch", origin: "flow", selections: { kind: "watch" } });
+    const step = (risk: "read" | "reversible" | "consequential") => ({ title: risk, risk, done: risk });
+    const plan = (...risks: ("read" | "reversible" | "consequential")[]) => ({
+      steps: risks.map(step),
+      label: "Gemini",
+    });
+    // One consequential step where the task has its approval: used, and the approval moves there.
+    const used = withPlan(food, plan("read", "reversible", "consequential", "read"));
+    expect(used.steps.map((s) => s.title)).toEqual(["read", "reversible", "consequential", "read"]);
+    expect(used.approvalAt).toBe(2);
+    // None, or two, where the task needs exactly one approval: the built-in plan.
+    expect(withPlan(food, plan("read", "reversible"))).toBe(food);
+    expect(withPlan(food, plan("consequential", "consequential", "read"))).toBe(food);
+    // A consequential step in a task with no approval would run without asking: the built-in plan.
+    expect(withPlan(watch, plan("read", "consequential"))).toBe(watch);
+    expect(withPlan(watch, plan("reversible", "read")).steps.map((s) => s.title)).toEqual([
+      "reversible",
+      "read",
+    ]);
   });
 
   it("opening things needs no approval", () => {

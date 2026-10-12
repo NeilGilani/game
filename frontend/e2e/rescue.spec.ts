@@ -22,6 +22,9 @@ test.beforeEach(async ({ context }) => {
   await context.addInitScript(() => {
     localStorage.setItem("agency.onboarded", "1");
     localStorage.setItem("agency.testHooks", "1");
+    // Calibrated eye gaze, chosen by the person: the one-time move to the eye cursor (now the default) is done.
+    localStorage.setItem("agency.eyeCursorDefault.v1", "1");
+    localStorage.setItem("agency.gazeChosen", "1");
     localStorage.setItem(
       "agency.preferences",
       JSON.stringify({ input_mode: "gaze", dwell_ms: 1000, show_gaze_cursor: true }),
@@ -216,6 +219,8 @@ test("setup: care plan, emergency services and the home are saved, and bad input
   await pin.fill("12");
   await expect(page.getByText("The PIN must be exactly 4 digits.")).toBeVisible();
   await pin.fill("4321");
+  // The eye keyboard is up while a text box has focus; its Done puts it away (this page has no form to submit).
+  await page.getByRole("group", { name: "Eye keyboard" }).getByRole("button", { name: "Done" }).click();
 
   await page.getByRole("button", { name: /Alert everyone at once/ }).click();
   await page.getByRole("button", { name: /Increase Critical below/ }).click();

@@ -27,7 +27,8 @@ test("wheelchair repair: plan, approve, recover from a taken slot, survive refre
   page,
 }) => {
   await page.goto("/#/errands");
-  await expect(page.getByText("Coordinator:")).toBeVisible();
+  // The menu bar names the coordinator (the new menu bar hides the "Coordinator:" label).
+  await expect(page.getByRole("link", { name: "This MacBook" })).toBeVisible();
   await expect(page.getByRole("link", { name: "Demo mode: built-in plans" })).toBeVisible();
 
   // 1. Express the intention with a few large selections.

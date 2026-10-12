@@ -13,6 +13,8 @@ import {
   type ReactNode,
 } from "react";
 import type { AgentCommand, AgentEvent, ApprovalDecision, TaskRequest } from "./contracts";
+import { STOP_ALL_EVENT } from "../components/common";
+import { useConnection } from "./connection";
 import { FakeAgent } from "./fakeAgent";
 import { fakeForced, host } from "./host";
 import { answered, decided, newTask, reduceTask, type TaskView } from "./tasks";
@@ -134,10 +136,31 @@ export function AgentProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => link.followHostStop?.(), [link]);
 
+  // Stop agent pauses all automation on the coordinator; until Resume agent, no new task may start here either
+  // (the banner promises that nothing runs).
+  const { health } = useConnection();
+  const halted = useRef(false);
+  halted.current = !!health?.automation_paused;
+
   const start = useCallback(
     (req: Omit<TaskRequest, "id"> & { id?: string }) => {
       const request: TaskRequest = { dryRun: true, ...req, id: req.id ?? taskId() };
       order.current = [request.id, ...order.current];
+      if (halted.current) {
+        const now = Date.now();
+        const refused = reduceTask(
+          newTask(request, now),
+          {
+            type: "task.failed",
+            taskId: request.id,
+            reason: "All automation is stopped, so nothing was done. Press Resume agent, then try again.",
+            recoverable: true,
+          },
+          now,
+        );
+        setTasks((all) => ({ ...all, [request.id]: refused }));
+        return request.id;
+      }
       setTasks((all) => ({ ...all, [request.id]: newTask(request, Date.now()) }));
       link.send({ type: "task.start", request });
       return request.id;
@@ -179,6 +202,7 @@ export function AgentProvider({ children }: { children: ReactNode }) {
     stopAll: () => {
       // In the Mac app, main stops the agent and all synthetic input itself (and tells every window); sending
       // stop.all here too would echo every broadcast back.
+      window.dispatchEvent(new Event(STOP_ALL_EVENT));
       const h = link.simulated ? null : host();
       if (h) {
         void h.stopAll();

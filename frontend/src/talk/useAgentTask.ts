@@ -14,6 +14,7 @@ import type {
   TaskRequest,
 } from "../../../os/contracts/src/agent";
 import type { PackAgent } from "../../../os/tasks/src/index";
+import { STOP_ALL_EVENT } from "../components/common";
 
 export type TaskResult =
   | { type: "done"; outcome: string; verified: boolean; evidence?: string }
@@ -101,6 +102,15 @@ export function useAgentTask(agent: PackAgent) {
       }),
     [agent],
   );
+
+  // Stop agent (the dock) stops this task too: it used to stop only Home's tasks, so a call carried on.
+  useEffect(() => {
+    const stopAll = () => {
+      if (taskRef.current) agent.send({ type: "task.stop", taskId: taskRef.current });
+    };
+    window.addEventListener(STOP_ALL_EVENT, stopAll);
+    return () => window.removeEventListener(STOP_ALL_EVENT, stopAll);
+  }, [agent]);
 
   // Leaving the screen stops the task (a call hangs up, nothing is left half-done).
   useEffect(

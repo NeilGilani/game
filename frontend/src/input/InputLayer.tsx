@@ -36,6 +36,7 @@ import { useGazeTuning } from "../vision/tuning";
 import { formNextElements, readContext } from "./context";
 import { setAdaptiveLayout, setLivePrecision } from "./layout";
 import { ScanEngine, type ScanEvent } from "./scan";
+import { contains, probePoints, SettleGuard } from "./targetGuards";
 
 const AUTO_CALIBRATE_KEY = "agency.autoCalibrated";
 
@@ -54,13 +55,34 @@ function labelOf(el: HTMLElement): string {
   return (el.getAttribute("aria-label") || el.textContent || "item").replace(/\s+/g, " ").trim().slice(0, 80);
 }
 
-/** Visible, enabled dwell targets, limited to an open dialog if there is one. */
+/** Whether any part of the control can be seen (hit-tested), not covered by the eye keyboard, a sheet or the dock. */
+function uncovered(el: HTMLElement, r: DOMRect, vw: number, vh: number): boolean {
+  return probePoints(r, vw, vh).some((p) => {
+    const hit = document.elementFromPoint(p.x, p.y);
+    return !!hit && el.contains(hit);
+  });
+}
+
+/**
+ * Visible, enabled dwell targets, limited to an open dialog if there is one. Over a dialog, Help, Stop and Resume
+ * eye control stay choosable (unless something covers them, as the Lifeline alert does), and so does the eye
+ * keyboard when it types into the dialog. Controls covered by something else are left out: only what can be
+ * seen can be chosen.
+ */
 function collectTargets(
   onlyAlways: boolean,
   contextStrength: number,
 ): { list: SelectorTarget[]; byId: Map<string, HTMLElement> } {
-  const scope = document.querySelector<HTMLElement>('[data-dwell-scope="modal"]') ?? document.body;
-  const nodes = scope.querySelectorAll<HTMLElement>("[data-dwell]");
+  const modal = document.querySelector<HTMLElement>('[data-dwell-scope="modal"]');
+  const scope = modal ?? document.body;
+  const nodes = [...scope.querySelectorAll<HTMLElement>("[data-dwell]")];
+  if (modal) {
+    document
+      .querySelectorAll<HTMLElement>('[data-dwell-always], [data-keyboard-for="modal"] [data-dwell]')
+      .forEach((el) => {
+        if (!modal.contains(el)) nodes.push(el);
+      });
+  }
   const list: SelectorTarget[] = [];
   const contexts: ReturnType<typeof readContext>[] = [];
   const formNext = formNextElements(scope);
@@ -73,6 +95,7 @@ function collectTargets(
     const r = el.getBoundingClientRect();
     if (r.width < 4 || r.height < 4 || r.bottom < 0 || r.right < 0 || r.top > vh || r.left > vw) return;
     if (el.closest("[inert]")) return;
+    if (!uncovered(el, r, vw, vh)) return;
     const id = idFor(el);
     byId.set(id, el);
     contexts.push(readContext(el, formNext));
@@ -88,6 +111,20 @@ function collectTargets(
   );
   list.forEach((t, i) => (t.prior = priors[i]));
   return { list, byId };
+}
+
+/**
+ * The targets the pointer can choose right now: where it rests on something covering part of a control (the eye
+ * keyboard over a page button), that control is not one of them.
+ */
+function choosableAt(
+  list: SelectorTarget[],
+  byId: Map<string, HTMLElement>,
+  at: { x: number; y: number },
+): SelectorTarget[] {
+  const hit = document.elementFromPoint(at.x, at.y);
+  if (!hit) return list;
+  return list.filter((t) => !contains(t.rect, at) || !!byId.get(t.id)?.contains(hit));
 }
 
 /** Remove a marker attribute everywhere; the dwell ring's fill goes too unless keepRing. */
@@ -152,6 +189,7 @@ export function InputLayer() {
   const tuning = useGazeTuning();
   const meter = useRef(new PrecisionMeter());
   const selector = useRef(new GazeSelector(APP_SELECTOR));
+  const settle = useRef(new SettleGuard());
   const scan = useRef(new ScanEngine());
   const blink = useRef(new BlinkSwitch());
   const targets = useRef<{ list: SelectorTarget[]; byId: Map<string, HTMLElement>; at: number }>({
@@ -235,7 +273,11 @@ export function InputLayer() {
 
   const refreshTargets = (now: number, onlyAlways = false) => {
     if (now - targets.current.at > 250) {
-      targets.current = { ...collectTargets(onlyAlways, tuning.contextStrength), at: now };
+      const fresh = collectTargets(onlyAlways, tuning.contextStrength);
+      // New, moved or resized controls hold still a moment before a dwell on them can fill.
+      const settling = settle.current.update(now, fresh.list);
+      for (const t of fresh.list) t.settling = settling.has(t.id);
+      targets.current = { ...fresh, at: now };
     }
     return targets.current;
   };
@@ -283,7 +325,7 @@ export function InputLayer() {
       // The held target is highlighted, but the cursor keeps following the eyes (no snapping).
       let held = false;
       if (mode === "gaze" && frame.pointer && frame.confidence >= 0.5 && !suspended) {
-        setLivePrecision(meter.current.update(now, vision.errorRadius));
+        setLivePrecision(meter.current.update(now, frame.errorRadius));
       }
       if (!suspended && !fallbackActive && frame.pointer) {
         const { list, byId } = refreshTargets(now, eyeControlPaused);
@@ -295,9 +337,10 @@ export function InputLayer() {
             x: at.x,
             y: at.y,
             confidence: frame.confidence,
-            errorRadius: mode === "head" ? 0 : vision.errorRadius,
+            // This frame's own error circle (the same number the engine reports, and what test frames carry).
+            errorRadius: mode === "head" ? 0 : frame.errorRadius,
           },
-          list,
+          choosableAt(list, byId, at),
         );
         for (const ev of events) {
           if (ev.type === "lock") {

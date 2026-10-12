@@ -19,6 +19,11 @@ import type { TargetRect } from "./targets";
 export interface SelectorTarget extends TargetRect {
   /** Some targets ask for a longer dwell (e.g. 2 for "Resume eye control"). */
   dwellScale?: number;
+  /**
+   * The target just appeared, moved or resized (e.g. AI suggestions arriving under the gaze): it can be
+   * highlighted, but its dwell doesn't fill until it has held still.
+   */
+  settling?: boolean;
 }
 
 export interface SelectorSample {
@@ -142,7 +147,7 @@ export class GazeSelector {
       confidence: s.confidence,
       targetId: m.targetId,
       dwellScale: target?.dwellScale ?? 1,
-      weight: !this.weighted || m.supported ? 1 : 0,
+      weight: (!this.weighted || m.supported) && !target?.settling ? 1 : 0,
     });
     for (const e of dwellEvents) {
       events.push(e);
