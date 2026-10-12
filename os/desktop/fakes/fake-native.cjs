@@ -28,6 +28,9 @@ function send(msg) {
   process.stdout.write(JSON.stringify({ jsonrpc: "2.0", ...msg }) + "\n");
 }
 
+const NOT_REAL =
+  "this is AGENCY's stand-in macOS helper, which can't open apps. Build agency-native (os/native-macos) to open real apps";
+
 const app = { bundleId: "com.example.fake", name: "Fake App", path: "/Applications/Fake.app", running: true, frontmost: true };
 const permissions = {
   camera: "granted",
@@ -57,8 +60,9 @@ const methods = {
   "input.drag": () => ({ ok: true }),
   "apps.hide": () => ({ ok: true }),
   "apps.list": () => ({ apps: [app] }),
-  "apps.launch": () => ({ ok: true }),
-  "apps.activate": () => ({ ok: true }),
+  // Nothing opens here, so never say it did: the Apps screen and the agent show the reason instead of a pretend success.
+  "apps.launch": () => ({ ok: false, error: NOT_REAL }),
+  "apps.activate": () => ({ ok: false, error: NOT_REAL }),
   "apps.frontmost": () => ({ app }),
   "screen.capture": () => ({ data: "", width: 0, height: 0, scale: 1, format: "png" }),
   "speech.say": () => ({ ok: true }),
