@@ -7,7 +7,7 @@ import type { GuardedTools } from "../tools/guarded";
 import { ToolError } from "../tools/guarded";
 import type { TaskPack } from "../types";
 import type { Asker, RunResult } from "./runtime";
-import { TaskStopped, withTimeout, type TaskRun } from "./task";
+import { TaskStopped, withActiveTimeout, type TaskRun } from "./task";
 
 export async function runPack(
   task: TaskRun,
@@ -28,7 +28,8 @@ export async function runPack(
       tools.setWhy(step.title);
       task.stepStatus(step.id, "running", attempt === 1 ? step.title : `${step.title} (try ${attempt})`);
       try {
-        const outcome = await withTimeout(
+        const outcome = await withActiveTimeout(
+          task,
           step.run({ request: task.request, tools, ask, values }),
           task.budgets.toolTimeoutMs * 4,
           step.title,

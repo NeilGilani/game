@@ -30,6 +30,11 @@ export interface GuardContext {
   requestApproval(request: ApprovalRequest): Promise<ApprovalDecision>;
   /** Throws if the task was stopped; waits while paused. */
   checkpoint(): Promise<void>;
+  /**
+   * Checked again between reading the live state and acting on it (throws if stopped, waits while paused), so a Stop
+   * pressed while the page or screen was being read still prevents the action. Not counted as another action.
+   */
+  ensureRunning?(): Promise<void>;
 }
 
 export type GuardOutcome<T> =
@@ -76,16 +81,19 @@ export class ActionGuard {
   /**
    * @param resolve builds the action from live state; called again after every wait so that an approval is
    *   checked against what is on screen now, not what was there when the person was asked.
-   * @param exec performs the action. Only called when every check passed.
+   * @param exec performs the action. Only called when every check passed. For a consequential action it also gets
+   *   the id of the person's approval it consumed (so a downstream check, like the bridge's, knows it was approved).
    */
   async run<T>(
     ctx: GuardContext,
     resolve: () => Promise<AgentAction>,
-    exec: (action: AgentAction) => Promise<T>,
+    exec: (action: AgentAction, approval?: { approvalId: string }) => Promise<T>,
   ): Promise<GuardOutcome<T>> {
     for (let round = 0; round <= MAX_APPROVAL_ROUNDS; round++) {
       await ctx.checkpoint();
       const action = await resolve();
+      // Reading live state takes time; a Stop pressed meanwhile must still win.
+      await ctx.ensureRunning?.();
       const what = describe(action);
 
       const refusal = this.precheck(ctx, action);
@@ -114,7 +122,7 @@ export class ActionGuard {
       const approvalId = this.gate.consume(ctx.taskId, fingerprint);
       if (approvalId) {
         if (kind === "purchase") this.ledger.record(amountOf(action) ?? 0);
-        const value = await exec(action);
+        const value = await exec(action, { approvalId });
         this.audit.record({
           taskId: ctx.taskId,
           kind: "action",

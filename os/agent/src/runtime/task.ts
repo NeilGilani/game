@@ -97,6 +97,11 @@ export class TaskRun {
     return this.paused;
   }
 
+  /** True while the task waits for the person: a question, an approval, or a pause. */
+  get waitingForPerson(): boolean {
+    return this.paused || this.question !== null || this.approval !== null;
+  }
+
   // --- Control ------------------------------------------------------------------------------------
 
   pause(): void {
@@ -225,6 +230,39 @@ export class TaskRun {
       );
     if (this.usage.costUsd > this.budgets.maxCostUsd)
       throw new BudgetExceeded(`This task reached its cost limit of $${this.budgets.maxCostUsd.toFixed(2)}.`);
+  }
+}
+
+/**
+ * Like withTimeout, but only the task's own working time counts: time spent waiting for the person (a question, an
+ * approval, a pause) never does. Nobody is rushed: a plain timeout used to fire while someone was still choosing,
+ * so the model was told the action failed while the approval stayed open, and approving it later then ran the
+ * action in the background, after the model had moved on.
+ */
+export async function withActiveTimeout<T>(
+  task: TaskRun,
+  p: Promise<T>,
+  ms: number,
+  what: string,
+): Promise<T> {
+  const t0 = Date.now();
+  const waitedBefore = task.waitingMs;
+  let timer: NodeJS.Timeout | undefined;
+  try {
+    return await Promise.race([
+      p,
+      new Promise<never>((_, reject) => {
+        const check = () => {
+          const active = Date.now() - t0 - (task.waitingMs - waitedBefore);
+          if (task.waitingForPerson) timer = setTimeout(check, Math.min(ms, 1_000));
+          else if (active < ms) timer = setTimeout(check, ms - active);
+          else reject(new Error(`${what} took longer than ${Math.round(ms / 1000)} seconds.`));
+        };
+        timer = setTimeout(check, ms);
+      }),
+    ]);
+  } finally {
+    if (timer) clearTimeout(timer);
   }
 }
 

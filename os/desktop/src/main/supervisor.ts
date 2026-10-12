@@ -16,6 +16,11 @@ export interface Running {
 export interface SupervisorOptions {
   name: string;
   start(): Promise<Running>;
+  /**
+   * Abandon a start still in progress (stop() was called while waiting for the process to become ready): kill what
+   * is starting so start() settles promptly. Without it, stop() waits for start() to settle and then kills the result.
+   */
+  cancelStart?(): void;
   /** Resolves true when healthy. Called every `healthIntervalMs` while running. */
   health?: () => Promise<boolean>;
   healthIntervalMs?: number;
@@ -34,6 +39,7 @@ export interface SupervisorOptions {
 export class Supervisor {
   private state: ProcessState = "stopped";
   private current: Running | null = null;
+  private starting: Promise<Running> | null = null;
   private stopping = false;
   private restarts = 0;
   private backoff: number;
@@ -70,12 +76,17 @@ export class Supervisor {
     if (this.stopping) return;
     this.set(this.restarts === 0 ? "starting" : "restarting");
     let running: Running;
+    const starting = this.opts.start();
+    this.starting = starting;
     try {
-      running = await this.opts.start();
+      running = await starting;
     } catch (err) {
+      if (this.stopping) return;
       this.opts.log.error(`start failed: ${(err as Error).message}`);
       this.scheduleRestart();
       return;
+    } finally {
+      if (this.starting === starting) this.starting = null;
     }
     if (this.stopping) {
       running.kill();
@@ -157,6 +168,16 @@ export class Supervisor {
     this.clearHealth();
     if (this.restartTimer) this.t.clearTimeout(this.restartTimer);
     this.restartTimer = null;
+    // Stopped while still starting (quitting during the coordinator's startup): never leave that process behind.
+    const starting = this.starting;
+    if (starting) {
+      this.opts.cancelStart?.();
+      const late = await starting.catch(() => null);
+      if (late) {
+        late.kill();
+        await late.exited;
+      }
+    }
     const running = this.current;
     if (running) {
       running.kill();

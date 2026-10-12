@@ -380,6 +380,20 @@ export class GazeEngine {
     if (options) this.blinkSwitch.setOptions(options);
   }
 
+  /**
+   * Limit the frame rate from outside (null: no limit). Kept by the governor, which sets the provider's rate on every
+   * frame, so the limit lasts; it never goes below the governor's floor, where the help signal still works.
+   */
+  setFrameRateCap(fps: number | null): void {
+    this.governor.setCap(fps);
+    this.provider?.setTargetFps?.(this.governor.currentFps());
+  }
+
+  /** The frame rate the engine asks of its provider now. */
+  frameRateNow(): number {
+    return this.governor.currentFps();
+  }
+
   /** Eye control paused by the person: samples still flow (protected targets), frame rate drops. */
   setPaused(paused: boolean): void {
     this.paused = paused;

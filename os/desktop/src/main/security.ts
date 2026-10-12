@@ -50,14 +50,30 @@ const EXTERNAL_HOSTS = [
   "www.google.com",
 ];
 
-export function isExternalAllowed(url: string): boolean {
+/**
+ * The canonical address to hand to the browser, or null when the page may not be opened. Only plain https on the
+ * default port to one of EXTERNAL_HOSTS (or a subdomain): no user name or password in the address (they can be
+ * used to disguise the real host), no other port, no other scheme. The URL parser lowercases schemes and hosts and
+ * turns international names into punycode, so look-alike hosts never match.
+ */
+export function externalUrl(url: string): string | null {
+  if (typeof url !== "string") return null;
+  let u: URL;
   try {
-    const u = new URL(url);
-    if (u.protocol !== "https:") return false;
-    return EXTERNAL_HOSTS.some((h) => u.hostname === h || u.hostname.endsWith(`.${h}`));
+    u = new URL(url);
   } catch {
-    return false;
+    return null;
   }
+  if (u.protocol !== "https:") return null;
+  if (u.username !== "" || u.password !== "") return null;
+  if (u.port !== "") return null;
+  const host = u.hostname;
+  if (!EXTERNAL_HOSTS.some((h) => host === h || host.endsWith(`.${h}`))) return null;
+  return u.href;
+}
+
+export function isExternalAllowed(url: string): boolean {
+  return externalUrl(url) !== null;
 }
 
 export function applySecurity(app: App, policy: SecurityPolicy): void {
@@ -65,7 +81,9 @@ export function applySecurity(app: App, policy: SecurityPolicy): void {
     contents.setWindowOpenHandler(({ url }) => {
       // A page the person chose in Watch & listen or Browse opens in their own browser, never in an AGENCY window.
       // Only these well-known https sites; anything else stays blocked.
-      if (isExternalAllowed(url) && policy.openExternal) policy.openExternal(url);
+      // The parsed, canonical form is what opens, never the raw string the page passed.
+      const safe = externalUrl(url);
+      if (safe && policy.openExternal) policy.openExternal(safe);
       else policy.log.warn(`blocked window.open to ${url}`);
       return { action: "deny" };
     });

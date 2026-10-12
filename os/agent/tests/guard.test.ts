@@ -4,7 +4,8 @@ import { ApprovalGate, fingerprintAction } from "../src/approvals";
 import { AuditLog } from "../src/audit";
 import { ActionGuard, SpendLedger, type GuardContext } from "../src/guard";
 import { DEFAULT_SETTINGS, type SafetySettings } from "../src/policy/settings";
-import type { AgentAction } from "../src/types";
+import { GuardedTools } from "../src/tools/guarded";
+import type { AgentAction, BrowserBridge } from "../src/types";
 
 const ORIGIN = "http://shop.sandbox.agency.test";
 const pay = (total = "$20.00", extra: Partial<AgentAction> = {}): AgentAction => ({
@@ -356,5 +357,79 @@ describe("ActionGuard", () => {
       ),
     ).rejects.toThrow("stopped");
     expect(ran).toBe(0);
+  });
+
+  it("a Stop pressed while the live state was being read still prevents the action", async () => {
+    const { guard, ctx } = setup();
+    let stopped = false;
+    ctx.ensureRunning = async () => {
+      if (stopped) throw new Error("stopped");
+    };
+    let ran = 0;
+    await expect(
+      guard.run(
+        ctx,
+        async () => {
+          stopped = true; // the person pressed Stop during the read
+          return { tier: "bridge", op: "bridge.click", target: { label: "Next", origin: ORIGIN } };
+        },
+        async () => ++ran,
+      ),
+    ).rejects.toThrow("stopped");
+    expect(ran).toBe(0);
+  });
+
+  it("tells exec which approval it consumed, and only for consequential actions", async () => {
+    const { guard, ctx } = setup();
+    const seen: unknown[] = [];
+    await guard.run(
+      ctx,
+      async () => ({ tier: "bridge", op: "bridge.click", target: { label: "Next", origin: ORIGIN } }),
+      async (_a, approval) => seen.push(approval),
+    );
+    const done = await guard.run(
+      ctx,
+      async () => pay(),
+      async (_a, approval) => seen.push(approval),
+    );
+    expect(done.status).toBe("done");
+    expect(seen[0]).toBeUndefined();
+    expect(seen[1]).toEqual({ approvalId: (done as { approvalId: string }).approvalId });
+  });
+});
+
+describe("GuardedTools on the bridge", () => {
+  it("tells the bridge a click was approved only when the person approved it", async () => {
+    const { guard, ctx } = setup();
+    const clicks: { ref: string; approved: boolean | undefined }[] = [];
+    const bridge: BrowserBridge = {
+      snapshot: async () => ({
+        tabId: "1",
+        url: `${ORIGIN}/cart`,
+        origin: ORIGIN,
+        title: "Cart",
+        text: "Cart",
+        simulated: true,
+        nodes: [
+          { ref: "next", role: "button", name: "Next" },
+          { ref: "place", role: "button", name: "Place order" },
+        ],
+      }),
+      click: async (ref, opts) => {
+        clicks.push({ ref, approved: opts?.approved });
+        return { ok: true };
+      },
+      type: async () => ({ ok: true }),
+      navigate: async () => ({ ok: true }),
+    };
+    const tools = new GuardedTools(guard, ctx, bridge, null);
+    expect((await tools.click("next")).status).toBe("done");
+    expect((await tools.click("place", { risk: "consequential", kind: "purchase", amount: 5 })).status).toBe(
+      "done",
+    );
+    expect(clicks).toEqual([
+      { ref: "next", approved: false },
+      { ref: "place", approved: true },
+    ]);
   });
 });

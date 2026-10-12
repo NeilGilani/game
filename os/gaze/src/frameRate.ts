@@ -28,6 +28,8 @@ export class FrameRateGovernor {
   private o: FrameRateOptions;
   private lastFaceAt = -Infinity;
   private paused = false;
+  private cap: number | null = null;
+  private lastSeenAt = -Infinity;
   private lastFrameAt = -Infinity;
 
   constructor(options: Partial<FrameRateOptions> = {}) {
@@ -40,15 +42,33 @@ export class FrameRateGovernor {
     this.paused = paused;
   }
 
+  /**
+   * An outside limit (the desktop slows this engine while its own window tracks the eyes), or null for none. It can
+   * only lower the rate, and never below `floorFps`: Lifeline's help signal keeps working whatever is asked.
+   */
+  setCap(fps: number | null): void {
+    this.cap = fps === null || !Number.isFinite(fps) ? null : Math.max(this.o.floorFps, fps);
+  }
+
   /** Record what the last processed frame saw. */
   observe(t: number, face: boolean): void {
+    this.lastSeenAt = t;
     if (face) this.lastFaceAt = t;
   }
 
+  /** The target at the last observed frame (on the frames' own clock). */
+  currentFps(): number {
+    return this.targetFps(Number.isFinite(this.lastSeenAt) ? this.lastSeenAt : this.lastFaceAt);
+  }
+
   targetFps(t: number): number {
-    if (t - this.lastFaceAt > this.o.idleAfterMs) return this.o.idleFps;
-    if (this.paused) return this.o.restingFps;
-    return this.o.activeFps;
+    const base =
+      t - this.lastFaceAt > this.o.idleAfterMs
+        ? this.o.idleFps
+        : this.paused
+          ? this.o.restingFps
+          : this.o.activeFps;
+    return this.cap === null ? base : Math.min(base, this.cap);
   }
 
   /** True if a frame arriving at t should be processed (the camera may deliver faster). */

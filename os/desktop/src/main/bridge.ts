@@ -59,12 +59,20 @@ export class BridgeHost {
       token: pairing.token,
       log: (m) => this.opts.log.raw(m),
     });
+    this.attach(server);
+    await server.start();
+  }
+
+  /** Listens to the server's events and connection; it is the server from now on. */
+  private attach(server: BridgeServer): void {
     server.onEvent((e) => {
       if (e.type === "targets") this.opts.onTargets(e.snapshot);
       if (e.type === "stopped") this.opts.onStopped();
     });
-    server.onConnection((c) => this.opts.log.info(`bridge: ${c}`));
-    await server.start();
+    server.onConnection((c) => {
+      this.opts.log.info(`bridge: ${c}`);
+      if (c === "ready" && this.rearmWanted) this.newTask();
+    });
     this.server = server;
   }
 
@@ -75,7 +83,47 @@ export class BridgeHost {
 
   /** Global Stop: tell the extension too. Never throws. */
   stopAll(): void {
+    // A Stop always wins over a re-arm still under way or waiting for the extension to connect.
+    this.rearmWanted = false;
+    this.stops += 1;
     this.server?.call("stop.all", {}).catch(() => undefined);
+  }
+
+  /** Set when the person started a task while the extension wasn't connected: re-arm it once it is. */
+  private rearmWanted = false;
+  private rearming: Promise<void> | null = null;
+  private stops = 0;
+
+  /**
+   * The person started a new task. After a Stop the extension refuses all page work "until they start a new task"
+   * (its Stop latch, kept across Chrome restarts; session.reset in os/browser-bridge/src/protocol.ts): this is that
+   * moment, so lift it. Only a task the person starts does this, never the agent, and a Stop in the meantime wins.
+   */
+  newTask(): void {
+    const s = this.server;
+    if (!s || s.connection !== "ready") {
+      this.rearmWanted = true;
+      return;
+    }
+    this.rearmWanted = false;
+    const stopsBefore = this.stops;
+    const run = s
+      .call("bridge.status", {})
+      .then(async (status) => {
+        // Not latched: nothing to lift (and a running task's tab sessions stay as they are).
+        if (!(status as { stopped?: boolean }).stopped) return;
+        if (this.stops !== stopsBefore) return; // Stop was pressed again meanwhile: it stays stopped
+        await s.call("session.reset", {});
+        this.opts.log.info("bridge: re-armed for the new task");
+      })
+      .then(
+        () => undefined,
+        (err: Error) => this.opts.log.warn(`bridge: could not re-arm after Stop: ${err.message}`),
+      )
+      .finally(() => {
+        if (this.rearming === run) this.rearming = null;
+      });
+    this.rearming = run;
   }
 
   private async activeTab(): Promise<number> {
@@ -94,8 +142,10 @@ export class BridgeHost {
 
   /** The agent's BrowserBridge interface (os/agent/src/types.ts), over the bridge protocol. */
   async agentCall(method: string, params: unknown): Promise<unknown> {
+    // The task's first page read must not race the re-arm that its own start triggered.
+    if (this.rearming) await this.rearming;
     const s = this.requireServer();
-    const p = (params ?? {}) as { ref?: string; text?: string; url?: string };
+    const p = (params ?? {}) as { ref?: string; text?: string; url?: string; approved?: unknown };
     const tabId = await this.activeTab();
     switch (method) {
       case "snapshot": {
@@ -125,12 +175,22 @@ export class BridgeHost {
         };
       }
       case "click": {
-        // The agent's guard has already bound the person's approval to this exact action; the bridge re-describes
-        // the live element so its own fingerprint check also passes only for the same page state.
+        // The bridge re-describes the live element. When by its own reading the click is consequential, it goes
+        // through only if the agent's guard got the person's approval for it (`approved`), and then the bridge's own
+        // fingerprint check also passes only for the same page state. Main never approves on the person's behalf a
+        // click the agent's guard thought harmless (a "Continue" button that actually submits a payment form).
         const d = (await s.call("page.describeAction", { tabId, ref: String(p.ref) })) as Untrusted<{
           fingerprint: string;
           consequential: string | null;
         }>;
+        if (d.data.consequential && p.approved !== true) {
+          // Only the kind goes back (a fixed word), never page text: this message reaches the model.
+          const kind = /^[a-z-]{1,40}$/.test(d.data.consequential) ? d.data.consequential : "consequential";
+          throw new Error(
+            `The AGENCY Bridge reads this click as "${kind}", so the person has to approve it first. ` +
+              `Nothing was clicked. Click it again marked with kind "${kind}" so they can approve it.`,
+          );
+        }
         await s.call("page.click", {
           tabId,
           ref: String(p.ref),

@@ -224,6 +224,44 @@ describe("GeminiModel (Interactions API)", () => {
     const rt = new AgentRuntime({ model, bridge: null, native, memory: null, packs: [] });
     await rt.handle({ type: "task.start", request: { id: "n1", goal: "x", origin: "home" } });
     expect(native.draft.to).toBe("Jordan");
+    // Screenshots are asked for as JPEG (much smaller to encode and upload every turn than PNG).
+    const captures = native.calls.filter((c) => c.method === "screen.capture");
+    expect(captures.length).toBeGreaterThan(0);
+    for (const c of captures) expect(c.params).toMatchObject({ format: "jpeg" });
+  });
+
+  it("resends only the latest screenshots each turn, and every model step exactly", async () => {
+    const thought = { type: "thought" as const, signature: "sig-1", summary: [] };
+    const responses: GeminiResponse[] = Array.from({ length: 6 }, (_, i) => ({
+      status: "requires_action",
+      steps: [thought, { type: "function_call", id: `c${i}`, name: "click", arguments: { x: 1, y: 1 } }],
+    }));
+    const { model, requests } = gemini(responses);
+    const s = model.start(opts());
+    await s.next("go");
+    for (let i = 0; i < 5; i++) {
+      await s.next([
+        {
+          callId: `c${i}`,
+          name: "click",
+          computer: true,
+          text: "OK",
+          image: { data: `SHOT${i}`, mediaType: "image/jpeg" },
+        },
+      ]);
+    }
+    const last = requests.at(-1)!.input as { type: string; call_id?: string; result?: unknown }[];
+    const images = last
+      .filter((s) => s.type === "function_result")
+      .flatMap((s) => (Array.isArray(s.result) ? (s.result as { type: string; data?: string }[]) : []))
+      .filter((p) => p.type === "image")
+      .map((p) => p.data);
+    expect(images).toEqual(["SHOT2", "SHOT3", "SHOT4"]);
+    // Older results keep their text (and say why the picture is gone); every thought step is still there.
+    const first = last.find((s) => s.call_id === "c0")!;
+    expect(JSON.stringify(first.result)).toContain("older screenshot removed");
+    expect(JSON.stringify(first.result)).toContain('\\"status\\":\\"OK\\"');
+    expect(last.filter((s) => s.type === "thought")).toHaveLength(5);
   });
 });
 

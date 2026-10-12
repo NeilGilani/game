@@ -293,6 +293,39 @@ describe("modes", () => {
     expect(host.nativeCalls().some((c) => /quit|terminate/.test(c.method ?? ""))).toBe(false);
   });
 
+  it("opens a running app through Launch Services when macOS refuses to activate it", async () => {
+    const { host, ctrl, flush } = setup({}, { activateRefused: true });
+    ctrl.activate("overlay:more");
+    ctrl.activate("menu:apps");
+    await flush();
+    ctrl.activate("app:com.google.Chrome");
+    await flush();
+    expect(host.nativeCalls("apps.activate")).toHaveLength(1);
+    expect(host.nativeCalls("apps.launch")[0]?.params).toEqual({ bundleId: "com.google.Chrome" });
+    expect(ctrl.view().notice?.text ?? "").not.toMatch(/couldn't open/i);
+  });
+
+  it("says so when an app can't be opened, also when the helper call fails", async () => {
+    const { ctrl, flush } = setup({}, { activateRefused: true, launchFails: true });
+    ctrl.activate("overlay:more");
+    ctrl.activate("menu:apps");
+    await flush();
+    ctrl.activate("app:com.google.Chrome");
+    await flush();
+    expect(ctrl.view().notice?.text).toMatch(/Couldn't open Google Chrome/);
+
+    const broken = setup();
+    broken.ctrl.activate("overlay:more");
+    broken.ctrl.activate("menu:apps");
+    await broken.flush();
+    broken.host.native = async () => {
+      throw new Error("agency-native is not running");
+    };
+    broken.ctrl.activate("app:com.apple.mail");
+    await broken.flush();
+    expect(broken.ctrl.view().notice?.text).toMatch(/Couldn't open Mail/);
+  });
+
   it("can move the rail to the other side", () => {
     const { ctrl } = setup();
     ctrl.activate("overlay:more");

@@ -19,6 +19,8 @@ import { ScanEngine } from "../../../../frontend/src/input/scan";
 import type {
   AppInfo,
   GazeEvent,
+  NativeMethod,
+  NativeMethods,
   OverlayMode,
   ScreenRect,
   Target,
@@ -547,11 +549,11 @@ export class OverlayController {
       return;
     }
     if (mode === "right-click") {
-      void this.host.native("input.click", { x: c.x, y: c.y, button: "right" });
+      this.fire("input.click", { x: c.x, y: c.y, button: "right" }, "That right-click didn't work.");
       return;
     }
     if (mode === "double-click") {
-      void this.host.native("input.click", { x: c.x, y: c.y, count: 2 });
+      this.fire("input.click", { x: c.x, y: c.y, count: 2 }, "That double-click didn't work.");
       return;
     }
     if (target.role === "textfield") this.focusField(target);
@@ -671,12 +673,23 @@ export class OverlayController {
     const app = this.apps.find((a) => a.bundleId === bundleId);
     this.closePanel();
     if (!app) return;
-    const call = app.running
-      ? this.host.native("apps.activate", { bundleId })
-      : this.host.native("apps.launch", { bundleId });
-    void call.then((r) => {
-      if (!r.ok) this.say(`Couldn't open ${app.name}.`, "warn");
+    void this.openApp(app.bundleId, app.running).then((ok) => {
+      if (!ok) this.say(`Couldn't open ${app.name}.`, "warn");
     });
+  }
+
+  /**
+   * Bring a running app forward, or open it. macOS 14+ activation is cooperative, so the system can refuse a
+   * background helper's request to bring another app forward; opening it through Launch Services (apps.launch, what
+   * `open -b` does) brings a running app to the front too. Same fallback as the shell's Apps screen.
+   */
+  private async openApp(bundleId: string, running: boolean): Promise<boolean> {
+    if (running) {
+      const activated = await this.host.native("apps.activate", { bundleId }).catch(() => ({ ok: false }));
+      if (activated.ok) return true;
+    }
+    const launched = await this.host.native("apps.launch", { bundleId }).catch(() => ({ ok: false }));
+    return launched.ok;
   }
 
   private scrollPage(zoneId: string): void {
@@ -686,7 +699,7 @@ export class OverlayController {
     // native.ts: positive dx/dy show content to the left/above (the CGEvent scroll-wheel convention).
     const dx = dir === "left" ? step : dir === "right" ? -step : 0;
     const dy = dir === "up" ? step : dir === "down" ? -step : 0;
-    void this.host.native("input.scroll", { x: p.x, y: p.y, dx, dy });
+    this.fire("input.scroll", { x: p.x, y: p.y, dx, dy }, "Couldn't scroll.");
   }
 
   // ---------------------------------------------------------------- internals: keyboard
@@ -761,12 +774,12 @@ export class OverlayController {
         break;
       case "delete":
         this.composition = this.composition.slice(0, -1);
-        void this.host.native("input.key", { key: "delete" });
+        this.fire("input.key", { key: "delete" }, "Couldn't delete.");
         break;
       case "return":
         this.learnComposition();
         this.composition = "";
-        void this.host.native("input.key", { key: "return" });
+        this.fire("input.key", { key: "return" }, "Couldn't press Return.");
         break;
       case "predict": {
         const word = this.predictions()[action.slot];
@@ -792,13 +805,22 @@ export class OverlayController {
 
   private typeText(text: string): void {
     this.composition += text;
-    void this.host.native("input.type", { text }).then((r) => {
-      if (!r.ok) {
-        this.composition = this.composition.slice(0, Math.max(0, this.composition.length - text.length));
-        this.say(r.error ? plainTypeError(r.error) : "Couldn't type there.", "warn");
-        this.changed(true);
-      }
-    });
+    const failed = (message: string) => {
+      this.composition = this.composition.slice(0, Math.max(0, this.composition.length - text.length));
+      this.say(message, "warn");
+      this.changed(true);
+    };
+    void this.host.native("input.type", { text }).then(
+      (r) => {
+        if (!r.ok) failed(r.error ? plainTypeError(r.error) : "Couldn't type there.");
+      },
+      () => failed("Couldn't type there."),
+    );
+  }
+
+  /** A native call whose answer doesn't matter, except that a failure (helper not running) is said, not lost. */
+  private fire<M extends NativeMethod>(method: M, params: NativeMethods[M]["params"], failure: string): void {
+    void this.host.native(method, params).catch(() => this.say(failure, "warn"));
   }
 
   private learnComposition(): void {
