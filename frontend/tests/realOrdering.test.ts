@@ -99,10 +99,11 @@ describe("Food and Shopping: practice unless ordering for real is on in the Mac 
     expect(real).toMatchObject({
       goal: "Order pad thai on DoorDash",
       dryRun: false,
-      selections: { kind: "food", orderSite: "doordash", orderQuery: "Pad thai", restaurant: "Thai Basil" },
+      selections: { kind: "food", orderSite: "doordash", orderQuery: "Pad thai", dish: "Pad thai" },
     });
-    // The practice flow's made-up price is not passed on.
+    // The practice flow's made-up restaurant and price are not passed on.
     expect(real.selections!.price).toBeUndefined();
+    expect(real.selections!.restaurant).toBeUndefined();
     expect(practiceTask(real)).toBe(false);
     connect().send({ type: "task.start", request: real });
     expect(mac.sentToMac).toEqual([{ type: "task.start", request: real }]);

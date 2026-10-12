@@ -146,9 +146,11 @@ export function realOrderRequest(request: TaskRequest): TaskRequest | null {
       ? `Order ${query.toLowerCase()} on ${name}${when}`
       : `Buy ${query.toLowerCase()} on ${name}`;
   const selections: Record<string, string> = { ...s, orderSite: site, orderQuery: query };
-  // Fictional prices from the practice flow mean nothing on the real site.
+  // The practice flow's restaurants, stores and prices are made up: they mean nothing on the real site, where the
+  // person picks from the real ones.
   delete selections.price;
   delete selections.store;
+  delete selections.restaurant;
   return { ...request, goal, selections, dryRun: false };
 }
 
