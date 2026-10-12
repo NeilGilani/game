@@ -982,8 +982,13 @@ export class AgencyApp {
 
     on(IPC.agentCommand, ["shell", "overlay"], (_e, command) => {
       const cmd = command as AgentCommand;
-      if (cmd.type === "stop.all") void this.stopAll("renderer");
-      else if (!this.agent?.send(cmd)) log.warn(`agent not running; dropped ${cmd.type}`);
+      if (cmd.type === "stop.all") {
+        void this.stopAll("renderer");
+        return;
+      }
+      // The person started a task: Chrome may act again after an earlier Stop (only for a task the agent will run).
+      if (cmd.type === "task.start" && this.agent?.running) this.bridge?.newTask();
+      if (!this.agent?.send(cmd)) log.warn(`agent not running; dropped ${cmd.type}`);
     });
 
     handle(IPC.lifeline, "any", (_e, _role, signal) => {
