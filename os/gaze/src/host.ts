@@ -156,7 +156,6 @@ export async function startEngineHost(options: HostOptions): Promise<EngineHost>
 
   let mouse: MouseProvider | null = null;
   let webcam: WebcamProvider | null = null;
-  let fps = 30;
   let current = "none";
   let recorder: Recorder | null = null;
   let offRecord: (() => void) | null = null;
@@ -177,7 +176,7 @@ export async function startEngineHost(options: HostOptions): Promise<EngineHost>
     engine.detach();
     mouse = provider instanceof MouseProvider ? provider : null;
     webcam = provider instanceof WebcamProvider ? provider : null;
-    webcam?.setTargetFps(fps);
+    webcam?.setTargetFps(engine.frameRateNow());
     current = name;
     if (provider) {
       if (provider instanceof WebcamProvider) provider.onStatus(() => status(provider));
@@ -303,8 +302,9 @@ export async function startEngineHost(options: HostOptions): Promise<EngineHost>
     engine,
     command,
     setFps(next: number) {
-      fps = Math.max(1, next);
-      webcam?.setTargetFps(fps);
+      // The engine's governor sets the camera rate on every frame, so the request has to live there (setting the
+      // camera directly was undone by the next frame). It never goes below the floor where the help signal works.
+      engine.setFrameRateCap(Number.isFinite(next) && next > 0 ? next : null);
     },
     stop() {
       offRecord?.();

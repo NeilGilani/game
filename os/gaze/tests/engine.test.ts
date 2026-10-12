@@ -240,6 +240,58 @@ describe("gaze engine", () => {
 });
 
 describe("frame-rate governor", () => {
+  it("takes an outside limit, but never below the Lifeline floor", () => {
+    const g = new FrameRateGovernor({ floorFps: 10 });
+    g.observe(0, true);
+    g.setCap(5);
+    expect(g.targetFps(100)).toBe(10);
+    g.setCap(20);
+    expect(g.targetFps(100)).toBe(20);
+    g.setPaused(true);
+    expect(g.targetFps(100)).toBe(15); // a limit only lowers the rate
+    g.setCap(null);
+    g.setPaused(false);
+    expect(g.targetFps(100)).toBe(30);
+  });
+
+  it("keeps the desktop's limit on the camera across frames, and the help signal still fires", async () => {
+    const engine = new GazeEngine({ screen: singleDisplay(1470, 956) });
+    const asked: number[] = [];
+    let push: ((f: ProviderFrame) => void) | null = null;
+    await engine.attach({
+      id: "fake-camera",
+      kind: "face",
+      start: async (onFrame) => {
+        push = onFrame;
+      },
+      stop: () => undefined,
+      setTargetFps: (fps) => asked.push(fps),
+    });
+    const events = collect(engine);
+    engine.setFrameRateCap(5);
+    // Three long blinks, seen at the floor rate (10 frames a second) the limit leaves.
+    const script = new GazeScript([{ x: 700, y: 400, durationMs: 9000 }], {
+      naturalBlinks: false,
+      closures: [
+        [1000, 1000],
+        [2800, 1000],
+        [4600, 1000],
+      ],
+    });
+    let last = -Infinity;
+    for (const f of simulate(person(2), script, new HeadMotion({ kind: "still" }))) {
+      if (f.t - last < 100) continue;
+      last = f.t;
+      push!(toFrame(f));
+    }
+    // Before the fix, the next frame put the camera straight back to 30.
+    expect(asked.length).toBeGreaterThan(50);
+    expect(Math.max(...asked)).toBe(10);
+    expect(events.some((e) => e.type === "help-signal")).toBe(true);
+    engine.setFrameRateCap(null);
+    expect(asked.at(-1)).toBe(30);
+  });
+
   it("drops to idle when nobody is in view but never below the Lifeline floor", () => {
     const g = new FrameRateGovernor({ idleFps: 2, floorFps: 10 });
     g.observe(0, true);
