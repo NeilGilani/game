@@ -11,8 +11,22 @@ import { useInput } from "../state/input";
 import type { VisionFrame } from "../vision/tracker";
 import { SquintGesture } from "./squintGesture";
 
+/**
+ * Areas that scroll something AGENCY can't scroll as an element, such as AGENCY Browser's page (drawn by the Mac
+ * app over this area): squinting there calls the area's own scroller.
+ */
+const scrollers = new Map<Element, (dy: number) => void>();
+
+export function registerScroller(el: Element, scroll: (dy: number) => void): () => void {
+  scrollers.set(el, scroll);
+  return () => {
+    if (scrollers.get(el) === scroll) scrollers.delete(el);
+  };
+}
+
 function scrollableAt(x: number, y: number): Element {
   let el: Element | null = document.elementFromPoint(x, y);
+  for (let e = el; e && e !== document.body; e = e.parentElement) if (scrollers.has(e)) return e;
   while (el && el !== document.body) {
     const style = getComputedStyle(el);
     if (/(auto|scroll)/.test(style.overflowY) && el.scrollHeight > el.clientHeight + 4) return el;
@@ -46,7 +60,10 @@ export function SquintScroll() {
       if (!g.active || !target) return;
       const dt = Math.min(0.05, (now - last) / 1000);
       last = now;
-      if (speed) target.scrollBy({ top: speed * dt });
+      if (!speed) return;
+      const own = scrollers.get(target);
+      if (own) own(speed * dt);
+      else target.scrollBy({ top: speed * dt });
     };
     const off = vision.onFrame((f: VisionFrame) => {
       const y = f.pointer?.y ?? null;

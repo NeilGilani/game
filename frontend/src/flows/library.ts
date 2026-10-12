@@ -501,17 +501,17 @@ const watch: FlowDef = {
         {
           id: "youtube",
           label: "YouTube",
-          sub: "In Chrome",
+          sub: "Videos on the web",
           icon: "play",
-          set: { where: "YouTube in Chrome" },
+          set: { where: "YouTube" },
           next: "youtube",
         },
         {
           id: "netflix",
           label: "Netflix",
-          sub: "In Chrome",
+          sub: "Films and series",
           icon: "play",
-          set: { where: "Netflix in Chrome" },
+          set: { where: "Netflix" },
           next: "netflix",
         },
         {
@@ -649,7 +649,7 @@ const browse: FlowDef = {
     where: {
       id: "where",
       prompt: "Where to?",
-      help: "Opens in Chrome. Your eyes work on the page: look at a link to open it.",
+      help: "Opens the site in AGENCY Browser, made for your eyes. In a web browser it opens in a new tab.",
       options: [
         {
           id: "news",

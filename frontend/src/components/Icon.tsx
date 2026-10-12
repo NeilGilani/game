@@ -63,6 +63,24 @@ const paths: Record<string, string> = {
   mail: "M2 4h20v16H2V4Zm0 0 10 9L22 4",
   photo: "M2 3h20v18H2V3Zm0 15 6-7 5 5 3-3 6 6M17 7h.01",
 };
+// AGENCY Browser's controls.
+Object.assign(paths, {
+  up: "m4 16 8-8 8 8",
+  "page-up": "m6 12 6-6 6 6M6 19l6-6 6 6",
+  "page-down": "m6 5 6 6 6-6M6 12l6 6 6-6",
+  lock: "M6 11h12v10H6V11Zm3 0V8a3 3 0 0 1 6 0v3",
+  star: "m12 2 3 7 7 .6-5.4 4.6L18.2 21 12 17.3 5.8 21l1.6-6.8L2 9.6 9 9l3-7Z",
+  tabs: "M3 8h13v13H3V8Zm4-4h14v13",
+  search: "m16 16 6 6M18 10a8 8 0 1 1-16 0 8 8 0 0 1 16 0Z",
+  "zoom-in": "m16 16 6 6M18 10a8 8 0 1 1-16 0 8 8 0 0 1 16 0ZM10 6v8M6 10h8",
+  "zoom-out": "m16 16 6 6M18 10a8 8 0 1 1-16 0 8 8 0 0 1 16 0ZM6 10h8",
+  captions: "M2 5h20v14H2V5Zm8 5.5a2.5 2.5 0 1 0 0 3m8-3a2.5 2.5 0 1 0 0 3",
+  expand: "M3 9V3h6m12 6V3h-6M3 15v6h6m12-6v6h-6",
+  popup: "M3 3h18v18H3V3Zm10 4 4 4m0-4-4 4",
+  volume: "M3 9h4l5-5v16l-5-5H3V9Zm13-1a5 5 0 0 1 0 8m3-11a9 9 0 0 1 0 14",
+  more: "M5 12h.1M12 12h.1M19 12h.1",
+  labels: "M3 4h9v7H3V4Zm9 9h9v7h-9v-7ZM6 7.5h3m6 9h3",
+});
 paths.key = paths.keyboard!;
 paths.voice = "M3 10v4m4-7v10m5-15v20m5-16v12m4-8v4";
 
@@ -241,8 +259,20 @@ function Sculpture({
 }
 
 /** Flat, original glyphs for small controls; dimensional artwork at feature sizes. */
-export function Icon({ name, size = 24, label }: { name: string; size?: number; label?: string }) {
+export function Icon({
+  name,
+  size = 24,
+  label,
+  flat = false,
+}: {
+  name: string;
+  size?: number;
+  label?: string;
+  /** Always the flat glyph, at any size (AGENCY Browser's controls). */
+  flat?: boolean;
+}) {
   if (
+    !flat &&
     size >= 28 &&
     !["check", "x", "pause", "stop", "bell", "left", "right", "back", "plus"].includes(name)
   ) {

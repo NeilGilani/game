@@ -159,6 +159,13 @@ export function HelperSettings() {
       path: "/settings/ordering",
     },
     {
+      id: "browser",
+      label: "AGENCY Browser",
+      sub: "Start page sites, ads, the assistant on websites",
+      icon: "globe",
+      path: "/settings/browser",
+    },
+    {
       id: "status",
       label: "Status and demo controls",
       sub: "What's running, reset the demo",

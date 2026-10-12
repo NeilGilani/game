@@ -30,7 +30,8 @@ import { memory } from "../state/memory";
 import { host } from "../state/host";
 import { apps } from "../state/native";
 import { REAL_CONTACT } from "../state/realMessaging";
-import { forRealOrdering } from "../state/realOrdering";
+import { forRealOrdering, realOrderingOn } from "../state/realOrdering";
+import { browserApi, webTasksInBrowser } from "../browser/store";
 import { navigate } from "../state/router";
 
 /** Memory gets a moment to offer the usual, so it never appears under the gaze after the choices did. */
@@ -115,8 +116,24 @@ function FlowRunner({ flow }: { flow: FlowDef }) {
     });
     if (outcome.type === "route") {
       navigate(outcome.path);
+    } else if (outcome.type === "open" && browserApi()) {
+      // In the Mac app: AGENCY Browser, made for the eyes (main checks the address again).
+      const r = await browserApi()!
+        .open({ url: outcome.url, newTab: true })
+        .catch((err: unknown) => ({
+          ok: false as const,
+          error: err instanceof Error ? err.message : "something went wrong",
+        }));
+      if (r.ok) {
+        announce(`${outcome.name} is open.`);
+        navigate("/internet");
+        return;
+      }
+      const text = `Couldn't open ${outcome.name}: ${r.error}`;
+      announce(text);
+      setLaunched(text);
     } else if (outcome.type === "open") {
-      // In the browser a new tab; in the Mac app, main opens it in the person's browser (allow-listed sites only).
+      // In a browser (no AGENCY Browser): a new tab of the person's own browser.
       // window.open with "noopener" always returns null, which read as "blocked" even when the tab opened: open
       // it, then cut the link back to AGENCY by hand.
       const w = window.open(outcome.url, "_blank");
@@ -151,7 +168,10 @@ function FlowRunner({ flow }: { flow: FlowDef }) {
         origin: outcome.usual ? "memory-suggestion" : "flow",
         selections: outcome.selections,
       });
-      navigate(`/task/${taskId}`);
+      // Ordering for real runs in AGENCY Browser: watch it beside the page (the task screen works too).
+      const kind = outcome.selections.kind;
+      const web = (kind === "food" || kind === "shopping") && realOrderingOn() && webTasksInBrowser();
+      navigate(web ? `/internet?task=${encodeURIComponent(taskId)}` : `/task/${taskId}`);
     }
   };
 
