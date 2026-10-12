@@ -7,6 +7,7 @@ is tested exactly, without sleeping.
 from __future__ import annotations
 
 import re
+import time
 from collections.abc import Awaitable, Callable, Iterator
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
@@ -674,3 +675,48 @@ def test_real_channel_through_the_service(h: H) -> None:
     assert sent[0]["To"] == "+14155550100"
     assert sent[0]["Body"].startswith("TEST from AGENCY Lifeline")
     assert h.client.get("/api/lifeline/outbox").json()["messages"] == [], "real messages are not shown as simulated phones"
+
+
+def test_alerts_that_could_not_get_out_are_sent_again_when_the_network_is_back(h: H) -> None:
+    network_up = False
+    sent: list[dict[str, str]] = []
+
+    def transport(url: str, form: dict[str, str], auth: str) -> tuple[int, dict[str, Any]]:
+        if not network_up:
+            raise OSError("network down")
+        sent.append(form)
+        return 201, {"sid": f"SM{len(sent)}"}
+
+    h.svc.channels.twilio = TwilioChannel("AC1", "t", "+15005550006", transport=transport)
+    h.settings(
+        contacts=[
+            {"id": "a1", "name": "Alex", "channel": "sms", "address": "+14155550100", "priority": 1},
+            {"id": "b1", "name": "Bo", "channel": "sms", "address": "+14155550101", "priority": 2},
+        ]
+    )
+    alert = activate(h)
+    assert [n["status"] for n in alert["notifications"]] == ["failed", "failed"]
+    assert alert["next_escalation_at"] is not None
+
+    # The network comes back (the presenter control moves AGENCY's monitor exactly as the sentinel would). Lifeline
+    # must not wait for the next escalation, which could be a minute and a half away.
+    network_up = True
+    h.client.put("/api/demo/network", json={"state": "offline"})
+    h.client.put("/api/demo/network", json={"state": "good"})
+    for _ in range(200):
+        if len(sent) == 2:
+            break
+        time.sleep(0.01)
+    assert sorted(m["To"] for m in sent) == ["+14155550100", "+14155550101"]
+    assert all("The network was down" in m["Body"] for m in sent)
+    alert = h.alert()
+    assert [n["status"] for n in alert["notifications"] if n["purpose"] == "alert"] == ["failed", "failed", "sent", "sent"]
+    assert any(e["kind"] == "network_back" for e in alert["events"])
+    assert alert["waiting_on"] == ["Alex", "Bo"]
+    # They get a full answer window before everyone is alerted again.
+    due = datetime.fromisoformat(alert["next_escalation_at"].replace("Z", "+00:00"))
+    assert due >= h.clock() + timedelta(seconds=45)
+
+    # Already reached: another recovery sends nothing new.
+    assert h.run(h.svc.network_back) == []
+    assert len(sent) == 2

@@ -1361,6 +1361,45 @@ class LifelineService:
             self._save_monitor(state)
             self._event(None, "checkin_due", "system", f"Check-in: asking {self._person()} to confirm they're OK.")
 
+    async def network_back(self) -> list[dict[str, Any]]:
+        """The network is back after an outage: alerts that couldn't get out are sent again now.
+
+        Only to contacts this alert already tried and never reached by text (simulated phones don't need the
+        network); people not tried yet are still reached by the normal escalation. Their next escalation is moved
+        back if needed, so they get a full answer window.
+        """
+        sent: list[dict[str, Any]] = []
+        if not self.channels.twilio_configured:
+            return sent
+        async with self.lock:
+            now = self.now()
+            settings = self.settings()
+            for row in self.db.query("SELECT * FROM lifeline_alerts WHERE status = 'active' AND local_only = 0"):
+                alert = dict(row)
+                alerts = [n for n in self._notifications(alert["id"]) if n["purpose"] == "alert"]
+                reached = {n["contact_id"] for n in alerts if n["status"] != "failed"}
+                missed = {n["contact_id"] for n in alerts if n["status"] == "failed" and n["channel"] != "demo"}
+                targets = [c for c in settings.enabled_contacts() if c.id in missed - reached and c.channel != "demo"]
+                if not targets:
+                    continue
+                self._event(
+                    alert["id"], "network_back", "system", f"The network is back. Sending the alert again to {_names(targets)}."
+                )
+                due = parse(alert["next_escalation_at"])
+                window = now + timedelta(seconds=settings.ack_timeout_s)
+                if due is None or due < window:
+                    self._update_alert(alert["id"], next_escalation_at=iso(window))
+                fresh = self._alert_row(alert["id"]) or alert
+                sent += await self._notify(
+                    fresh,
+                    targets,
+                    purpose="alert",
+                    level=fresh["level"],
+                    cycle=fresh["cycle"],
+                    context="The network was down, so this alert is late. ",
+                )
+        return sent
+
     async def run(self, interval_s: float = 1.0) -> None:
         while True:
             try:

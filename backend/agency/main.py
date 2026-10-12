@@ -195,10 +195,15 @@ def create_app(
         app.state.agency = state
         supervisor = asyncio.create_task(lifeline.run(settings.lifeline_tick_s)) if settings.lifeline_loop else None
 
+        retries: set[asyncio.Task[Any]] = set()  # held until done, so a retry can't be garbage-collected midway
+
         def on_network(old: str, new: str) -> None:
-            # Back online after an outage: Lifeline retries at once instead of waiting for its next tick.
+            # Back online after an outage: alerts that couldn't get out are sent again at once, instead of
+            # waiting for the next escalation.
             if old in {"offline", "critical"} and new in {"good", "slow"}:
-                asyncio.get_running_loop().create_task(lifeline.tick())
+                task = asyncio.get_running_loop().create_task(lifeline.network_back())
+                retries.add(task)
+                task.add_done_callback(retries.discard)
 
         state.network.on_change(on_network)
         watcher = asyncio.create_task(state.network.run()) if settings.lifeline_loop and state.network.configured else None
