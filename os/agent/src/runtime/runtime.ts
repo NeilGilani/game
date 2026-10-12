@@ -55,6 +55,8 @@ export class AgentRuntime {
   readonly audit: AuditLog;
   readonly gate = new ApprovalGate();
   private readonly guard: ActionGuard;
+  /** One spending record for every guard, so a pack's own limits still count everything bought today. */
+  private readonly ledger = new SpendLedger();
   private readonly tasks = new Map<string, TaskRun>();
   private readonly listeners = new Set<(e: AgentEvent) => void>();
   private readonly budgets: Budgets;
@@ -63,7 +65,7 @@ export class AgentRuntime {
   constructor(private readonly deps: RuntimeDeps) {
     this.audit = deps.audit ?? new AuditLog();
     this.settings = deps.settings ?? (() => DEFAULT_SETTINGS);
-    this.guard = new ActionGuard(this.gate, this.audit, this.settings, new SpendLedger());
+    this.guard = new ActionGuard(this.gate, this.audit, this.settings, this.ledger);
     this.budgets = { ...DEFAULT_BUDGETS, ...deps.budgets };
   }
 
@@ -192,8 +194,13 @@ export class AgentRuntime {
     const surface = surfaceFor(request);
     const suggestions = await safeSuggestions(this.deps.memory, surface);
     const chosen: string[] = [];
+    const pack = this.deps.packs.find((p) => p.matches(request));
+    // A pack with its own safety settings (the ordering pack) gets a guard of its own; same approvals and ledger.
+    const guard = pack?.safety
+      ? new ActionGuard(this.gate, this.audit, () => pack.safety!(this.settings(), request), this.ledger)
+      : this.guard;
     const tools = new GuardedTools(
-      this.guard,
+      guard,
       {
         taskId: task.id,
         dryRun: task.dryRun,
@@ -226,7 +233,6 @@ export class AgentRuntime {
 
     let result: RunResult;
     try {
-      const pack = this.deps.packs.find((p) => p.matches(request));
       if (pack) {
         result = await runPack(task, pack, tools, ask);
       } else if (this.deps.model) {

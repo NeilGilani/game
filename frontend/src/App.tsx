@@ -26,6 +26,7 @@ import { FlowScreen } from "./screens/Flow";
 import { GazeLab } from "./screens/GazeLab";
 import { Home } from "./screens/Home";
 import { Onboarding } from "./screens/Onboarding";
+import { OrderingSettings } from "./screens/OrderingSettings";
 import { HelperSettings, MemorySettings, SettingsHub, VoiceSettings } from "./screens/OsSettings";
 import { TaskScreen } from "./screens/Task";
 import { LifelineAlertView, LifelineHome, LifelineSetup } from "./screens/Lifeline";
@@ -64,6 +65,7 @@ function Screen({ route }: { route: Route }) {
   if (a === "settings" && b === "phone") return <PhoneSettings />;
   if (a === "settings" && b === "memory") return <MemorySettings />;
   if (a === "settings" && b === "helper") return <HelperSettings />;
+  if (a === "settings" && b === "ordering") return <OrderingSettings />;
   if (a === "settings" && b === "gaze-lab") return <GazeLab />;
   if (a === "settings" && b === "connection") return <SettingsView />;
   if (a === "settings" && b === "papers") return <PapersSettings />;

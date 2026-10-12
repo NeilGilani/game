@@ -33,6 +33,7 @@ import {
   type PermissionStatus,
   type PrepareRequest,
   type PrepareResult,
+  type RealOrderingSetting,
   type ScreenRect,
   type SelectionEvent,
   type SendResult,
@@ -127,6 +128,13 @@ const api: AgencyApi = {
       ipcRenderer.invoke(IPC.host, "setCoordinator", setting) as Promise<{ ok: boolean; error?: string }>,
     completeOnboardingStep: (step: string) =>
       ipcRenderer.invoke(IPC.host, "completeOnboardingStep", step) as Promise<OnboardingState>,
+    realOrdering: () => ipcRenderer.invoke(IPC.host, "realOrdering") as Promise<RealOrderingSetting>,
+    setRealOrdering: (setting: RealOrderingSetting) =>
+      ipcRenderer.invoke(IPC.host, "setRealOrdering", setting) as Promise<{
+        ok: boolean;
+        error?: string;
+        setting?: RealOrderingSetting;
+      }>,
   },
   // Main allows these from the shell only, and checks every name and byte (src/main/papers.ts).
   papers: {

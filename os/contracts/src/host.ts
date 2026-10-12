@@ -213,9 +213,21 @@ export interface AgencyApi {
      * The token is kept in the macOS keychain by main and never returned.
      */
     setCoordinator(setting: CoordinatorChoice): Promise<{ ok: boolean; error?: string }>;
+    /** Ordering for real on the person's own DoorDash, Uber Eats, Amazon or Instacart (off by default). */
+    realOrdering(): Promise<RealOrderingSetting>;
+    /** Shell only. Main checks it and writes it for the agent, which re-reads it on every check. */
+    setRealOrdering(
+      setting: RealOrderingSetting,
+    ): Promise<{ ok: boolean; error?: string; setting?: RealOrderingSetting }>;
   };
   /** Shell only: Papers' documents in the helper's chosen folder (added additively; older hosts don't have it). */
   papers?: PapersApi;
+}
+
+/** "Order for real" in Settings: on or off, and the most one order may cost, in dollars. */
+export interface RealOrderingSetting {
+  enabled: boolean;
+  maxOrder: number;
 }
 
 /**

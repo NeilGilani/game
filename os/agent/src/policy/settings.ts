@@ -14,6 +14,29 @@ export interface SafetySettings {
   siteAllowlist: string[];
   /** When true (the default), consequential actions only run against simulated targets. */
   simulatedOnly: boolean;
+  /**
+   * Ordering for real on the person's own DoorDash, Uber Eats, Amazon or Instacart in Chrome (Settings, off by
+   * default). Only the ordering pack reads this; it never widens what the model or any other pack may do.
+   */
+  realOrdering?: RealOrdering;
+}
+
+export interface RealOrdering {
+  enabled: boolean;
+  /** Largest order total, in dollars, the ordering pack may even ask approval for. */
+  maxOrder: number;
+}
+
+/** Off, with a $60 cap ready for when a caregiver turns it on. */
+export const DEFAULT_REAL_ORDERING: RealOrdering = { enabled: false, maxOrder: 60 };
+
+/** The real-ordering setting from a settings file, checked: anything odd means off. */
+export function realOrderingOf(s: SafetySettings): RealOrdering {
+  const r = s.realOrdering as Partial<RealOrdering> | undefined;
+  const max = typeof r?.maxOrder === "number" && Number.isFinite(r.maxOrder) ? r.maxOrder : NaN;
+  if (!r || r.enabled !== true || !(max > 0) || max > 1000)
+    return { enabled: false, maxOrder: max > 0 && max <= 1000 ? max : DEFAULT_REAL_ORDERING.maxOrder };
+  return { enabled: true, maxOrder: max };
 }
 
 export const DEFAULT_SETTINGS: SafetySettings = {

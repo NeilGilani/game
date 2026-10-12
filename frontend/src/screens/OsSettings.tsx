@@ -152,6 +152,13 @@ export function HelperSettings() {
       path: "/settings/connection",
     },
     {
+      id: "ordering",
+      label: "Order for real",
+      sub: "Your own DoorDash, Amazon in Chrome; spending limit",
+      icon: "bag",
+      path: "/settings/ordering",
+    },
+    {
       id: "status",
       label: "Status and demo controls",
       sub: "What's running, reset the demo",

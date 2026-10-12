@@ -19,6 +19,7 @@ import { FakeAgent } from "./fake/fakeAgent";
 import { HttpMemoryClient } from "./memory";
 import { AnthropicModel } from "./model/anthropic";
 import { createAppsPack } from "./packs/apps";
+import { createOrderingPack } from "./packs/ordering/pack";
 import { GeminiModel, type GeminiThinkingLevel } from "./model/gemini";
 import { findApiKey, type Provider } from "./model/keys";
 import { HttpSynapseRouter } from "./synapse";
@@ -96,6 +97,7 @@ export function bridgeOverRpc(rpc: RpcPort): BrowserBridge {
       rpc.call("bridge", "click", { ref, approved: opts?.approved === true }) as Promise<BridgeResult>,
     type: (ref, text) => rpc.call("bridge", "type", { ref, text }) as Promise<BridgeResult>,
     navigate: (url) => rpc.call("bridge", "navigate", { url }) as Promise<BridgeResult>,
+    select: (ref, option) => rpc.call("bridge", "select", { ref, option }) as Promise<BridgeResult>,
   };
 }
 
@@ -141,6 +143,8 @@ async function main(port: ParentPort): Promise<void> {
   } else {
     const provider: Provider = env.AGENCY_AGENT_PROVIDER === "anthropic" ? "anthropic" : "gemini";
     const { key, source } = await findApiKey(provider);
+    const settings = settingsFromFile(env.AGENCY_AGENT_SETTINGS);
+    const sandboxPort = Number(env.AGENCY_SANDBOX_PORT) || 8787;
     const runtime = new AgentRuntime({
       model: key ? modelFor(provider, key, env) : null,
       bridge: env.AGENCY_BRIDGE === "0" ? null : bridgeOverRpc(rpc),
@@ -148,10 +152,11 @@ async function main(port: ParentPort): Promise<void> {
       memory: env.AGENCY_COORDINATOR_URL
         ? new HttpMemoryClient(env.AGENCY_COORDINATOR_URL, env.AGENCY_COORDINATOR_TOKEN)
         : null,
-      // Opening apps and playing music need no model: seconds instead of a screen-reading loop.
-      packs: [createAppsPack()],
+      // Opening apps and playing music need no model: seconds instead of a screen-reading loop. Ordering on the
+      // person's own DoorDash, Uber Eats, Amazon or Instacart is code too, never the model (only when Settings allow).
+      packs: [createAppsPack(), createOrderingPack({ settings, sandboxPort })],
       audit: new AuditLog(env.AGENCY_AUDIT_FILE),
-      settings: settingsFromFile(env.AGENCY_AGENT_SETTINGS),
+      settings,
       computerUse: env.AGENCY_COMPUTER_USE !== "0",
       router: env.AGENCY_COORDINATOR_URL
         ? new HttpSynapseRouter(env.AGENCY_COORDINATOR_URL, env.AGENCY_COORDINATOR_TOKEN)

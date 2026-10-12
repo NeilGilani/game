@@ -45,6 +45,7 @@ import {
   type PrepareRequest,
   type ProcessName,
   type ProcessState,
+  type RealOrderingSetting,
   type ScreenRect,
   type SelectionEvent,
   type StopAllResult,
@@ -58,6 +59,7 @@ import { createLogger, setLogDir } from "./log";
 import { Messaging, runOsascript } from "./messaging";
 import { MouseGaze } from "./mouse-gaze";
 import { displayFolder, listPapers, readPaper, saveCopy, validFolder } from "./papers";
+import { parseOrdering, readOrdering, writeOrdering } from "./ordering";
 import type { Paths } from "./paths";
 import { PERMISSION_KINDS, Permissions } from "./permissions";
 import { AgentHost, NativeHost, Sidecar } from "./processes";
@@ -379,7 +381,7 @@ export class AgencyApp {
             ...process.env,
             AGENCY_AGENT_DATA: join(this.opts.userData, "agent"),
             AGENCY_AUDIT_FILE: join(this.opts.userData, "agent-audit.jsonl"),
-            AGENCY_AGENT_SETTINGS: join(this.opts.userData, "agent-settings.json"),
+            AGENCY_AGENT_SETTINGS: this.agentSettingsFile,
             ...(this.client.current
               ? {
                   AGENCY_COORDINATOR_URL: this.client.current.url,
@@ -1074,6 +1076,8 @@ export class AgencyApp {
       if (op === "setCoordinator" && role === "shell") return this.setCoordinator(arg as CoordinatorChoice);
       if (op === "completeOnboardingStep" && (role === "onboarding" || role === "shell"))
         return this.completeStep(String(arg));
+      if (op === "realOrdering") return readOrdering(this.agentSettingsFile);
+      if (op === "setRealOrdering" && role === "shell") return this.setRealOrdering(arg);
       throw new Error("unknown operation");
     });
 
@@ -1235,6 +1239,26 @@ export class AgencyApp {
       completedSteps: [...this.settings.onboarding.completedSteps],
       done: this.settings.onboarding.done,
     };
+  }
+
+  /** The agent's caregiver limits (os/agent settingsFromFile): main writes it, the agent only reads it. */
+  get agentSettingsFile(): string {
+    return join(this.opts.userData, "agent-settings.json");
+  }
+
+  /** Settings' "Order for real": checked here, then written for the agent (it re-reads it on every check). */
+  setRealOrdering(value: unknown): { ok: boolean; error?: string; setting?: RealOrderingSetting } {
+    const setting = parseOrdering(value);
+    if (!setting) return { ok: false, error: "That isn't a valid setting (the limit must be $5 to $500)." };
+    try {
+      writeOrdering(this.agentSettingsFile, setting);
+    } catch (err) {
+      log.error(`could not save ordering setting: ${(err as Error).message}`);
+      return { ok: false, error: "The setting couldn't be saved." };
+    }
+    log.info(`ordering for real ${setting.enabled ? "on" : "off"}, limit $${setting.maxOrder.toFixed(2)}`);
+    this.record("ordering.set", setting.enabled ? "on" : "off");
+    return { ok: true, setting };
   }
 
   completeStep(step: string): OnboardingState {

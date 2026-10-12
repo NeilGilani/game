@@ -76,6 +76,41 @@ depends on the model following them.
 | Provider safety signals | Gemini Computer Use's `safety_decision` can only make AGENCY stricter: `require_confirmation` sends the action through the person's approval (and `safety_acknowledgement` is sent only after they approve and it ran); a blocking decision is refused. Gemini's own prompt-injection detection is on. |
 | Privacy | The first message holds only the goal, the person's selections, up to 6 memory suggestions and the mode. Screenshots exist only in the running task's in-memory conversation and are never written to disk. Gemini requests use `store: false`, so interactions (screenshots included) aren't kept on Google's servers. |
 
+## Ordering for real (the ordering pack, `src/packs/ordering/`)
+
+Food and Shopping on the person's own signed-in DoorDash or Uber Eats, and Amazon or Instacart, in Chrome. None
+of these sites has a public API for ordering on someone's behalf, so the pack drives the site's own pages through
+the AGENCY Bridge, as code (no AI model), with the same guarded tools as everything else.
+
+1. Opens the site's search for what the person chose, picks a clear match or asks (2 to 4 real options, with
+   prices), opens it, asks for required choices (a protein, a size), adds it to the cart.
+2. Opens checkout and reads it: items and quantities, fees, tip, total, delivery address and card, as the page
+   shows them. Over the cap: refused in plain words before anyone is asked.
+3. Stops for an approval bound to exactly that (site, store, every line, total, address, card). The guard re-reads
+   the page right before pressing Place order; anything different (a price, a default tip) needs a new approval,
+   and so does a site that refuses the order because its total changed. One order per approval.
+4. Reads the confirmation back (order number, arrival). If it can't, it says so: "finished but not confirmed".
+
+Turned on in Settings, For a helper, Order for real (off by default; Mac app only). Main writes
+`{ realOrdering: { enabled, maxOrder } }` into `agent-settings.json`; the agent re-reads it on every check.
+
+Enforced in code, whatever a page says:
+
+| Rule | How |
+|---|---|
+| Only the ordering sites | Exact hostnames, https, default port, no user info (`sites.ts`); its own guard allow-list holds only the one site. The sandbox shops (http on `food.localhost` / `shop.localhost`) are simulated. |
+| Real only when switched on | The pack's guard is `simulatedOnly` unless Settings turned it on, and the task isn't a dry run. The model and every other pack keep the caregiver's settings as they are. |
+| Never types | The pack has no typing step at all. A sign-in, card, security-code, verification-code or robot-check page stops it, asking for a helper. |
+| No account changes | It never clicks sign-in, account, address, payment, gift card, promo or membership controls (`neverClick`). |
+| No subscriptions | A membership trial offered in the way is declined ("No thanks"); one switched on, or Subscribe & Save chosen, stops it. |
+| Spending cap | `realOrdering.maxOrder` (default $60) per order, plus the daily limit (`maxPurchasePerDay`, $100). |
+| Stop | Halts the pack at once, even while it waits for a page; open approvals are revoked. |
+
+Real site layouts are not knowable from here: the pack reads pages by roles, names, link addresses and dollar
+amounts, and the real sites' search and checkout addresses in `sites.ts` are unverified. Tested against a fake
+DoorDash-like and Amazon-like site (`tests/orderingPack.test.ts`) and, end to end through the real extension in
+Chromium, against the sandbox shops (`os/browser-bridge/e2e/agent-ordering.spec.ts`).
+
 ## Model providers
 
 The runner only sees `AgentModel` (`src/model/types.ts`): start a session, send the brief or the tool results, get back

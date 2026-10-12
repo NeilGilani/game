@@ -618,6 +618,7 @@ c*=+f.qty.value;f.querySelector('[data-line-total]').textContent=fmt(c)}f.addEve
 <h2>Tip your courier</h2><div class="inline">${[0, 10, 15, 20].map(tipOpt).join("")}<input type="radio" id="tip-custom" name="tip" value="custom" ${f.tipPercent === null ? "checked" : ""}><label for="tip-custom">Other</label>
 <label for="tipCustom" style="display:inline">Amount ($)</label> <input id="tipCustom" name="tipCustom" type="number" min="0" step="0.01" style="width:100px" value="${(f.tipCustomCents / 100).toFixed(2)}"> <button type="submit">Update tip</button></div>
 <noscript><button type="submit">Update</button></noscript></form>
+${f.plusOn ? `<div class="card"><input type="checkbox" id="dd-plus" name="plus" checked form="place"><label for="dd-plus" style="display:inline">Try DashDish Plus free for 30 days: $0 delivery fees</label></div>` : ""}
 <div class="card"><h2>Payment</h2><p><input type="radio" id="pay-saved" name="pay" checked form="place"><label for="pay-saved" style="display:inline">${SAVED_CARD}</label></p>
 <p><a href="/payment/new">Add a new card</a></p></div></div>
 <form method="post" action="/checkout/place" id="place" class="card" style="flex:1;min-width:280px" aria-label="Place your order"><h2>Your order</h2>
@@ -659,6 +660,7 @@ ${summaryRows(t, f.tipPercent === null ? "" : ` (${f.tipPercent}%)`)}
       cancelled: false,
       advancedSteps: 0,
     };
+    if (r.form.get("plus")) record(w, "food", "plus.joined", { at: "checkout" });
     f.orders.push(order);
     f.cart = { restaurantId: null, lines: [], nextLine: f.cart.nextLine };
     record(w, "food", "order.placed", {
@@ -703,7 +705,7 @@ ${summaryRows(t, f.tipPercent === null ? "" : ` (${f.tipPercent}%)`)}
     return layout(
       w,
       `Order ${o.id}`,
-      `${r.query.get("placed") ? `<div class="card" role="status"><h1>Thanks! Your order is placed.</h1><p>Order number <strong>${o.id}</strong>. Total charged to ${esc(o.payment)}: <strong>${money(o.totalCents)}</strong>.</p></div>` : `<h1>Order ${o.id}</h1>`}
+      `${r.query.get("placed") ? `<div class="card" role="status"><h1>Thanks! Your order is placed.</h1><p>Order number <strong>${o.id}</strong>. Total charged to ${esc(o.payment)}: <strong>${money(o.totalCents)}</strong>.</p><p>Arriving in about ${esc(RESTAURANTS.find((x) => x.id === o.restaurantId)?.eta ?? "30–45 min")}</p></div>` : `<h1>Order ${o.id}</h1>`}
 <div class="card"><h2>Tracking</h2><p aria-live="polite">Status: <strong data-status>${status}</strong></p>${
         o.cancelled
           ? ""
