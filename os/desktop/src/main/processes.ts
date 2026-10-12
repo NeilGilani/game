@@ -296,14 +296,36 @@ export class Sidecar {
     pipeLines(child.stdout, (line) => this.log.raw(line));
     pipeLines(child.stderr, (line) => this.log.raw(line));
     const running = childRunning(child);
+    this.starting = running;
     const url = `http://127.0.0.1:${port}`;
     this.client.set({ mode: "bundled", url, token: this.token });
     let exited = false;
     void running.exited.then(() => (exited = true));
-    while (!exited && Date.now() - t0 < this.readyTimeoutMs) {
+    try {
+      return await this.waitReady(running, url, t0, () => exited, child.pid);
+    } finally {
+      if (this.starting === running) this.starting = null;
+    }
+  }
+
+  private starting: Running | null = null;
+
+  /** AGENCY is quitting while the coordinator is still starting: end it now rather than leave it running. */
+  cancelStart(): void {
+    this.starting?.kill();
+  }
+
+  private async waitReady(
+    running: Running,
+    url: string,
+    t0: number,
+    exited: () => boolean,
+    pid: number | undefined,
+  ): Promise<Running> {
+    while (!exited() && Date.now() - t0 < this.readyTimeoutMs) {
       if (await this.client.healthy(1_000)) {
         this.startupMs = Date.now() - t0;
-        this.log.info(`coordinator ready on ${url} in ${this.startupMs} ms (pid ${child.pid})`);
+        this.log.info(`coordinator ready on ${url} in ${this.startupMs} ms (pid ${pid})`);
         return running;
       }
       await new Promise((r) => setTimeout(r, 150));
@@ -311,7 +333,7 @@ export class Sidecar {
     running.kill();
     this.port = null; // maybe the port was taken: pick a new one next time
     throw new Error(
-      exited ? "coordinator exited during startup" : "coordinator did not become healthy in time",
+      exited() ? "coordinator exited during startup" : "coordinator did not become healthy in time",
     );
   }
 
