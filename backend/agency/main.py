@@ -292,7 +292,7 @@ def create_app(
             "reasoning": {
                 k: v
                 for k, v in s.provider.status().items()
-                if k in {"mode", "provider", "label", "model", "state", "description", "local", "private_explanations"}
+                if k in {"mode", "provider", "label", "model", "state", "description", "via", "local", "private_explanations"}
             },
             "network": s.network.snapshot(),
             "synapse": {k: v for k, v in s.synapse.status().items() if k != "last_route"}

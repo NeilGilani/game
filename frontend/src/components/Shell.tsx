@@ -44,7 +44,9 @@ export function TopBar() {
       ? "Demo mode: built-in plans"
       : reasoning.state === "error"
         ? `${reasoning.label ?? "Cloud model"} unavailable: built-in plans`
-        : `${reasoning.label ?? "Cloud"} · ${reasoning.model ?? "cloud"}`;
+        : reasoning.via === "agency-cloud"
+          ? "AI: AGENCY Cloud"
+          : `${reasoning.label ?? "Cloud"} · ${reasoning.model ?? "cloud"}`;
   const reasoningTone = !reasoning
     ? "neutral"
     : reasoning.mode === "deterministic"

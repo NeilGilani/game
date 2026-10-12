@@ -280,7 +280,7 @@ def test_through_the_app_synapse_routes_the_fast_lane_and_caches_the_answer(tmp_
     assert len(relay.generated) == 1  # the second came from Synapse's cache
     assert relay.generated[0]["model"] == GEMINI_FAST_MODEL and relay.generated[0]["thinkingLevel"] == "LOW"
     assert "Synapse-Mesh routed this request" in relay.generated[0]["system"]
-    assert health["reasoning"]["label"] == "AGENCY Cloud"
+    assert health["reasoning"]["label"] == "AGENCY Cloud" and health["reasoning"]["via"] == "agency-cloud"
 
 
 def test_a_busy_relay_means_the_built_in_plan_with_the_reason(tmp_path: Path) -> None:

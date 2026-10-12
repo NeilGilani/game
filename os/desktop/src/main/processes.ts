@@ -12,6 +12,7 @@ import type {
   NativeMethod,
   NativeMethods,
 } from "@agency/contracts";
+import { aiStatusLabel } from "./ai";
 import type { CoordinatorClient } from "./coordinator";
 import { NativeRpcClient } from "./jsonrpc";
 import type { Logger } from "./log";
@@ -217,7 +218,7 @@ export class AgentHost {
         break;
       case "status":
         this.status = msg.status;
-        this.log.info(`agent status: ${JSON.stringify(msg.status)}`);
+        this.log.info(`agent status: ${aiStatusLabel(msg.status)} ${JSON.stringify(msg.status)}`);
         break;
       case "pong":
         this.pongs.get(msg.id)?.();

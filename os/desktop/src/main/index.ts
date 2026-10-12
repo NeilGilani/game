@@ -4,6 +4,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { app, protocol } from "electron";
 import { AgencyApp } from "./app";
+import { applyAiDefaults } from "./ai";
 import { applyDotenv } from "./dotenv";
 import { resolvePaths } from "./paths";
 import { SCHEME } from "./protocol";
@@ -26,6 +27,7 @@ const logDir = process.env.AGENCY_USER_DATA
   : join(app.getPath("home"), "Library", "Logs", "AGENCY");
 
 const test = process.env.AGENCY_TEST === "1";
+applyAiDefaults(process.env, test);
 
 // Development (`make os-dev`): the repository's .env, so the agent gets the same Gemini key as the coordinator.
 if (!app.isPackaged && !test) {
