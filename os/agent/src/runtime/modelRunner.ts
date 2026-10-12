@@ -23,7 +23,7 @@ import { ComputerTier } from "../tools/computer";
 import { ToolError, type GuardedTools } from "../tools/guarded";
 import type { ActionClaim, PageSnapshot } from "../types";
 import { options, type Asker, type RunResult } from "./runtime";
-import { BudgetExceeded, TaskStopped, withTimeout, type TaskRun } from "./task";
+import { BudgetExceeded, TaskStopped, withActiveTimeout, type TaskRun } from "./task";
 import { verifyVisible } from "./verify";
 
 export interface ModelRunInput {
@@ -132,7 +132,7 @@ export async function runModel(input: ModelRunInput): Promise<RunResult> {
         continue;
       }
       try {
-        const handled = await withTimeout(dispatch(call), task.budgets.toolTimeoutMs, call.name);
+        const handled = await withActiveTimeout(task, dispatch(call), task.budgets.toolTimeoutMs, call.name);
         outputs.push({ ...meta, ...handled.out });
         if (handled.terminal) terminal = handled.terminal;
       } catch (e) {
