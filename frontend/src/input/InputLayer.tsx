@@ -325,7 +325,7 @@ export function InputLayer() {
       // The held target is highlighted, but the cursor keeps following the eyes (no snapping).
       let held = false;
       if (mode === "gaze" && frame.pointer && frame.confidence >= 0.5 && !suspended) {
-        setLivePrecision(meter.current.update(now, vision.errorRadius));
+        setLivePrecision(meter.current.update(now, frame.errorRadius));
       }
       if (!suspended && !fallbackActive && frame.pointer) {
         const { list, byId } = refreshTargets(now, eyeControlPaused);
@@ -337,7 +337,8 @@ export function InputLayer() {
             x: at.x,
             y: at.y,
             confidence: frame.confidence,
-            errorRadius: mode === "head" ? 0 : vision.errorRadius,
+            // This frame's own error circle (the same number the engine reports, and what test frames carry).
+            errorRadius: mode === "head" ? 0 : frame.errorRadius,
           },
           choosableAt(list, byId, at),
         );

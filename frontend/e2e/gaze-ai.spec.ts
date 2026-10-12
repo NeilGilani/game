@@ -17,6 +17,9 @@ test.beforeEach(async ({ context }) => {
   await context.addInitScript(() => {
     localStorage.setItem("agency.onboarded", "1");
     localStorage.setItem("agency.testHooks", "1");
+    // Calibrated eye gaze, chosen by the person: the one-time move to the eye cursor (now the default) is done.
+    localStorage.setItem("agency.eyeCursorDefault.v1", "1");
+    localStorage.setItem("agency.gazeChosen", "1");
     localStorage.setItem("agency.fakes", "memory,agent,native");
     localStorage.setItem(
       "agency.preferences",
@@ -53,8 +56,10 @@ const pick = (page: Page, name: string) => page.getByRole("button", { name, exac
 async function pausedTask(page: Page) {
   await page.evaluate(() => localStorage.setItem("agency.fakeAgentDelayMs", "4000"));
   await page.goto("/#/flow/food");
-  await pick(page, "Thai");
-  await pick(page, "Pad thai");
+  await page.reload(); // a hash change keeps the page: reload so the agent picks up its slower pace
+  // By name from the start: "Your usual: Pad thai from Thai Basil" (first on the screen) also says Thai.
+  await page.getByRole("button", { name: /^Thai / }).click();
+  await page.getByRole("button", { name: /^Pad thai/ }).click();
   await pick(page, "As soon as possible");
   await page.getByRole("button", { name: "Pause" }).click();
   const carryOn = page.getByRole("button", { name: "Carry on" });
@@ -91,7 +96,8 @@ test("sharp tracking: the same gaze goes to the nearer button; the eyes decide",
 test("adaptive layout: rough tracking gives bigger, fewer choices on the next screen", async ({ page }) => {
   await page.goto("/#/flow/food");
   await expect(page.locator("html")).toHaveAttribute("data-gaze-precision", "normal");
-  await expect(page.locator(".flow-options")).toHaveAttribute("data-count", "4");
+  // The four kinds of food and the usual, all on one page.
+  await expect(page.locator(".flow-options")).toHaveAttribute("data-count", "5");
   // Rough tracking for a few seconds, looking at empty space (no selection).
   await hold(page, { x: 5, y: 5 }, 220, 4500);
   // Nothing moved under the eyes: the layout waits for the next screen.
