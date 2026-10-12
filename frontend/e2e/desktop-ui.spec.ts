@@ -49,7 +49,8 @@ test("all Settings remain reachable through large, paged choices", async ({ page
   await expect(page.locator(".flow-options .choice")).toHaveCount(5);
   await expect(page.getByRole("button", { name: /Gaze lab/ })).toBeVisible();
   await page.getByRole("button", { name: "More settings" }).click();
-  await expect(page.locator(".flow-options .choice")).toHaveCount(2);
+  await expect(page.locator(".flow-options .choice")).toHaveCount(3);
+  await expect(page.getByRole("button", { name: /Calls and texts/ })).toBeVisible();
   await expect(page.getByRole("button", { name: /Lifeline.*Contacts/ })).toBeVisible();
   await page.getByRole("button", { name: "Previous settings" }).click();
   await expect(page.locator(".flow-options .choice")).toHaveCount(5);

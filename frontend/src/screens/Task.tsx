@@ -483,6 +483,12 @@ function Result({ t }: { t: TaskView }) {
         </p>
       )}
       <div className="task-actions">
+        {/* A real call is under way: Talk is how the person speaks on it. */}
+        {!t.dryRun && t.request.selections?.kind === "call" && (
+          <button className="btn btn-xl btn-primary" onClick={() => navigate("/talk/listen")} data-dwell>
+            <Icon name="voice" /> Talk on the call
+          </button>
+        )}
         <HomeButton t={t} />
       </div>
     </div>

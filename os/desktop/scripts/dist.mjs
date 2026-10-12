@@ -82,6 +82,8 @@ const config = {
         "AGENCY uses the microphone during calls so you can hear and answer the other person.",
       NSSpeechRecognitionUsageDescription:
         "AGENCY turns what the other person says on a call into words on your screen, on this Mac.",
+      NSAppleEventsUsageDescription:
+        "AGENCY uses Messages to send the texts you approve, to your saved people, from your own number.",
       LSApplicationCategoryType: "public.app-category.productivity",
     },
   },

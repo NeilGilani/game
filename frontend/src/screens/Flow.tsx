@@ -29,6 +29,7 @@ import type { Suggestion } from "../state/contracts";
 import { memory } from "../state/memory";
 import { host } from "../state/host";
 import { apps } from "../state/native";
+import { REAL_CONTACT } from "../state/realMessaging";
 import { navigate } from "../state/router";
 
 /** Memory gets a moment to offer the usual, so it never appears under the gaze after the choices did. */
@@ -139,8 +140,9 @@ function FlowRunner({ flow }: { flow: FlowDef }) {
         );
       announce(text);
       setLaunched(text);
-    } else if (outcome.pack && PACK_SCREENS[outcome.pack]) {
+    } else if (outcome.pack && PACK_SCREENS[outcome.pack] && !outcome.selections[REAL_CONTACT]) {
       // Task packs (os/tasks) run in Talk, which hosts their pack agent, call simulator and document engine.
+      // A call to a real saved person is a task with its own approval instead (state/realMessaging.ts).
       navigate(PACK_SCREENS[outcome.pack]!);
     } else {
       const taskId = agent.start({

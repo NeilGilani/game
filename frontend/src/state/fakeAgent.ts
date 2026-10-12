@@ -4,7 +4,9 @@
  * rules as the real guard: an approval only counts with the exact fingerprint that was shown, decline means nothing
  * happens, change issues a new approval with a new fingerprint, Stop ends everything at once.
  *
- * Everything it "does" is simulated and says so. It never touches the Mac, the web or anyone's accounts.
+ * Everything it "does" is simulated and says so, with one exception: a text or call to one of the person's real
+ * saved people, once turned on in Settings (realMessaging.ts). That goes out through the Mac app, for real, and only
+ * for the exact ticket the person approved.
  */
 import type {
   AgentCommand,
@@ -16,6 +18,7 @@ import type {
   PlanStepView,
   TaskRequest,
 } from "./contracts";
+import { realScriptFor } from "./realMessaging";
 
 type Listener = (event: AgentEvent) => void;
 
@@ -30,6 +33,25 @@ export interface Script {
   changes?: Record<string, string[]>;
   outcome: string;
   evidence: string;
+  /** Whether the result can be checked (false: AGENCY can't see whether it arrived). Default true. */
+  verified?: boolean;
+  /** Refuse at once with this reason (nothing is done). */
+  refuse?: string;
+  /** A real send (realMessaging.ts): bound to a ticket before each approval, sent only after it. */
+  real?: RealHooks;
+}
+
+/** A real action behind an approval. The approval shown is the one `bind` returned; only that one can be sent. */
+export interface RealHooks {
+  bind(
+    details: Record<string, string>,
+  ): Promise<{ fingerprint: string; details: Record<string, string>; preview?: string } | { error: string }>;
+  perform(
+    fingerprint: string,
+  ): Promise<
+    { ok: true; summary: string; outcome: string; evidence: string } | { ok: false; reason: string }
+  >;
+  cancel(): void;
 }
 
 const NO_CHOICE = "__none__";
@@ -276,6 +298,9 @@ interface Running {
   questionId: string | null;
   decide: ((d: "approve" | "decline" | "change", change?: string) => void) | null;
   approval: ApprovalRequest | null;
+  /** The approval the person approved, and why a real one couldn't be prepared. */
+  approved?: ApprovalRequest;
+  refusal?: string;
 }
 
 export class FakeAgent {
@@ -387,9 +412,18 @@ export class FakeAgent {
       approval: null,
     };
     this.tasks.set(id, t);
-    let script = scriptFor(request);
+    const real = realScriptFor(request);
+    let script = real ? await real : scriptFor(request);
+    if (t.stopped) return;
+    if (script.refuse) {
+      this.emit({ type: "task.started", taskId: id, goal: request.goal, dryRun: false });
+      this.emit({ type: "task.failed", taskId: id, reason: script.refuse, recoverable: false });
+      this.tasks.delete(id);
+      return;
+    }
     let planNote: string | null = null;
-    if (remotePlanner) {
+    // A real send keeps its own plain plan: the cloud planner only plans practice tasks.
+    if (remotePlanner && !script.real) {
       const started = performance.now();
       // Never keep the person waiting on the cloud: if Gemini hasn't planned within a few seconds (busy, slow
       // network), the built-in plan starts at once. A task chosen before comes back from Synapse's cache instantly.
@@ -414,7 +448,12 @@ export class FakeAgent {
       risk: s.risk,
       status: "pending",
     }));
-    this.emit({ type: "task.started", taskId: id, goal: request.goal, dryRun: request.dryRun ?? true });
+    this.emit({
+      type: "task.started",
+      taskId: id,
+      goal: request.goal,
+      dryRun: script.real ? false : (request.dryRun ?? true),
+    });
     this.emit({ type: "task.plan", taskId: id, steps });
     if (planNote)
       this.emit({
@@ -433,6 +472,24 @@ export class FakeAgent {
 
       if (i === script.approvalAt && script.approval) {
         const result = await this.approve(t, script);
+        if (result !== "approved") script.real?.cancel();
+        if (result === "refused" && !t.stopped) {
+          this.emit({
+            type: "task.step",
+            taskId: id,
+            stepId: step.id,
+            status: "failed",
+            summary: "Not sent.",
+          });
+          this.emit({
+            type: "task.failed",
+            taskId: id,
+            reason: t.refusal ?? "Nothing was sent.",
+            recoverable: true,
+          });
+          this.tasks.delete(id);
+          return;
+        }
         if (result !== "approved") {
           if (t.stopped) return;
           // Change on something with nothing to change isn't a no: say what really happened.
@@ -454,6 +511,25 @@ export class FakeAgent {
           return;
         }
       }
+      if (i === script.approvalAt && script.real && t.approved) {
+        if (t.stopped) return;
+        const done = await script.real.perform(t.approved.fingerprint);
+        if (t.stopped) return;
+        if (!done.ok) {
+          this.emit({
+            type: "task.step",
+            taskId: id,
+            stepId: step.id,
+            status: "failed",
+            summary: "Not sent.",
+          });
+          this.emit({ type: "task.failed", taskId: id, reason: done.reason, recoverable: true });
+          this.tasks.delete(id);
+          return;
+        }
+        s.summary = done.summary;
+        script = { ...script, outcome: done.outcome, evidence: done.evidence };
+      }
       if (!(await this.tick(t))) return;
       this.emit({ type: "task.step", taskId: id, stepId: step.id, status: "done", summary: s.summary });
 
@@ -470,24 +546,41 @@ export class FakeAgent {
       type: "task.done",
       taskId: id,
       outcome: script.outcome,
-      verified: true,
+      verified: script.verified ?? true,
       evidence: script.evidence,
     });
     this.tasks.delete(id);
   }
 
-  private async approve(t: Running, script: Script): Promise<"approved" | "declined" | "unchangeable"> {
+  private async approve(
+    t: Running,
+    script: Script,
+  ): Promise<"approved" | "declined" | "unchangeable" | "refused"> {
     const base = script.approval!;
     let details = { ...base.details };
     for (let round = 1; round <= 5; round++) {
+      let fp = await fingerprint(base.kind, details);
+      let preview = base.preview;
+      if (script.real) {
+        // The Mac app makes the ticket for exactly these details; its fingerprint is the one shown and approved.
+        const bound = await script.real.bind(details);
+        if (t.stopped) return "declined";
+        if ("error" in bound) {
+          t.refusal = bound.error;
+          return "refused";
+        }
+        details = bound.details;
+        fp = bound.fingerprint;
+        if (bound.preview !== undefined) preview = bound.preview;
+      }
       const approval: ApprovalRequest = {
         id: `${t.request.id}.a${round}`,
         kind: base.kind,
         summary: base.summary,
         details,
-        fingerprint: await fingerprint(base.kind, details),
-        simulated: true,
-        ...(base.preview ? { preview: { kind: "text" as const, data: base.preview } } : {}),
+        fingerprint: fp,
+        simulated: !script.real,
+        ...(preview ? { preview: { kind: "text" as const, data: preview } } : {}),
       };
       t.approval = approval;
       const decision = await new Promise<{ d: "approve" | "decline" | "change"; change?: string }>(
@@ -501,7 +594,10 @@ export class FakeAgent {
       );
       t.approval = null;
       if (t.stopped || decision.d === "decline") return "declined";
-      if (decision.d === "approve") return "approved";
+      if (decision.d === "approve") {
+        t.approved = approval;
+        return "approved";
+      }
       // Change: ask which detail, then the new value. The next approval has a new fingerprint.
       const changeable = Object.keys(script.changes ?? {});
       let field = decision.change && changeable.includes(decision.change) ? decision.change : null;

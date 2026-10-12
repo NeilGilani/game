@@ -40,6 +40,7 @@ import {
   type OnboardingState,
   type OverlayDisplay,
   type PermissionKind,
+  type PrepareRequest,
   type ProcessName,
   type ProcessState,
   type ScreenRect,
@@ -52,6 +53,7 @@ import { BridgeHost } from "./bridge";
 import { CoordinatorClient } from "./coordinator";
 import { LifelineHost, type HeartbeatBody } from "./lifeline";
 import { createLogger, setLogDir } from "./log";
+import { Messaging, runOsascript } from "./messaging";
 import { MouseGaze } from "./mouse-gaze";
 import type { Paths } from "./paths";
 import { PERMISSION_KINDS, Permissions } from "./permissions";
@@ -114,6 +116,8 @@ export class AgencyApp {
   bridge: BridgeHost | null = null;
   readonly supervisors: Supervisor[] = [];
   lifeline: LifelineHost;
+  /** Real texts and calls through the person's iPhone; off until turned on in Settings. */
+  messaging: Messaging;
   permissions: Permissions;
   mouse: MouseGaze;
   gazeSource: HostStatus["gazeSource"] = "none";
@@ -137,6 +141,20 @@ export class AgencyApp {
       log: createLogger("lifeline"),
       surface: () => this.surfaceEmergency(),
       heartbeat: () => this.heartbeatBody(),
+    });
+    this.messaging = new Messaging({
+      platform: process.platform,
+      settings: () => this.settings.messaging,
+      saveSettings: (s) => {
+        this.settings.messaging = s;
+        saveSettings(this.settingsFile, this.settings);
+      },
+      // The saved people (Lifeline contacts) come from the coordinator, never from a window.
+      lifelineSettings: () => this.client.request("GET", "/api/lifeline/settings"),
+      osascript: runOsascript,
+      openUrl: (url) => electronShell.openExternal(url),
+      logFile: join(opts.userData, "real-sends.jsonl"),
+      log: createLogger("messaging"),
     });
     this.permissions = new Permissions({
       platform: process.platform,
@@ -764,6 +782,8 @@ export class AgencyApp {
   }
 
   private async runStop(): Promise<StopAllResult> {
+    // No real text or call goes out after Stop, even one already approved and waiting.
+    this.messaging.cancelAll();
     const result = await stopAll(
       {
         agent: () => {
@@ -1027,6 +1047,9 @@ export class AgencyApp {
 
     handle(IPC.memory, ["shell", "overlay"], (_e, _role, op, arg) => this.memory(String(op), arg));
 
+    // Real texts and calls: the shell only. Main resolves numbers and checks every rule itself (messaging.ts).
+    handle(IPC.messaging, ["shell"], (_e, _role, op, arg) => this.messagingCall(String(op), arg));
+
     handle(IPC.overlayDisplay, ["overlay"], (e) => {
       for (const o of this.overlays.values()) if (o.win.webContents.id === e.sender.id) return o.display;
       return null;
@@ -1095,6 +1118,20 @@ export class AgencyApp {
     const win = this.showShell();
     this.sendTo(win, IPC.showHome, null);
     this.record("home");
+  }
+
+  messagingCall(op: string, arg: unknown): Promise<unknown> {
+    const a = (arg ?? {}) as Record<string, unknown>;
+    if (op === "status") return this.messaging.status();
+    if (op === "setSettings") return this.messaging.setSettings(a as Partial<AppSettings["messaging"]>);
+    if (op === "check") return this.messaging.check();
+    if (op === "prepare") return this.messaging.prepare(a as unknown as PrepareRequest);
+    if (op === "send") return this.messaging.send(String(a.ticket ?? ""), String(a.fingerprint ?? ""));
+    if (op === "cancel") {
+      this.messaging.cancel(String(a.ticket ?? ""));
+      return Promise.resolve(undefined);
+    }
+    return Promise.reject(new Error("unknown messaging operation"));
   }
 
   private async memory(op: string, arg: unknown): Promise<unknown> {

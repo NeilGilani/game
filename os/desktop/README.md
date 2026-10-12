@@ -50,6 +50,23 @@ package is reported as `absent` in `window.agency.host.status()`.
 - IPC: main checks the sender's role on every channel. Native methods per role are listed in `NATIVE_ALLOWED`
   (`os/contracts/src/host.ts`); no renderer can capture the screen or reach the coordinator token.
 
+### Real calls and texts (`src/main/messaging.ts`)
+
+Through the person's own iPhone: texts with the Mac's Messages app (AppleScript via `/usr/bin/osascript`, the number
+and words passed as `on run argv` arguments, never written into the script), calls by opening `tel:` (or
+`facetime-audio:`), which macOS hands to the paired iPhone and asks to confirm. Off until switched on in the shell's
+Settings, Calls and texts (`settings.json` → `messaging.enabled`). Only the shell may use it (`IPC.messaging`), and
+only for Lifeline contacts with a real channel and number, which main reads from the coordinator itself. Each send
+is `prepare` (a ticket and fingerprint shown on the approval) then `send` with that fingerprint: once, within
+10 minutes, cleared by Stop. Emergency, short and premium numbers are refused; at most 3 sends a minute and 20 an
+hour; no retries. Each send is recorded in `<userData>/real-sends.jsonl` without the words.
+
+A helper sets up: Messages signed in to iMessage; on the iPhone, Text Message Forwarding (for green texts) and Calls
+on Other Devices; on the Mac, FaceTime's Calls from iPhone; and Allow when macOS asks whether AGENCY may control
+Messages (System Settings, Privacy & Security, Automation). Not verified yet on a real Mac: whether the other side of
+a call hears AGENCY's spoken voice (FaceTime's voice processing ducks or cancels other Mac audio; screen-reader users
+report needing a virtual audio device such as Loopback). So a real call offers to text a fixed note first.
+
 ### Lifeline and Stop
 
 - **Heartbeat**: main posts `/api/lifeline/heartbeat` every 5 s with honest fields (the eye help signal is

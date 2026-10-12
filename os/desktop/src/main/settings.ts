@@ -2,6 +2,7 @@
 
 import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { dirname } from "node:path";
+import type { MessagingSettings } from "@agency/contracts";
 
 export type CoordinatorSetting =
   | { mode: "bundled" }
@@ -15,6 +16,8 @@ export interface AppSettings {
   stopHotkey: string;
   /** Electron accelerator for Help (opt-in; empty disables). */
   helpHotkey: string;
+  /** Real calls and texts through the person's iPhone (messaging.ts): off until turned on in Settings. */
+  messaging: MessagingSettings;
 }
 
 export const DEFAULT_SETTINGS: AppSettings = {
@@ -22,6 +25,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   onboarding: { completedSteps: [], done: false },
   stopHotkey: "Command+Shift+Escape",
   helpHotkey: "",
+  messaging: { enabled: false, textVia: "auto", callVia: "phone" },
 };
 
 export function loadSettings(file: string): AppSettings {
@@ -32,6 +36,12 @@ export function loadSettings(file: string): AppSettings {
       ...structuredClone(DEFAULT_SETTINGS),
       ...raw,
       onboarding: { ...DEFAULT_SETTINGS.onboarding, ...(raw.onboarding ?? {}) },
+      messaging: {
+        ...DEFAULT_SETTINGS.messaging,
+        ...(raw.messaging ?? {}),
+        // Only an explicit true turns real sends on.
+        enabled: raw.messaging?.enabled === true,
+      },
     };
   } catch {
     return structuredClone(DEFAULT_SETTINGS);

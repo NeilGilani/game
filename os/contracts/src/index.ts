@@ -4,5 +4,6 @@ export * from "./host";
 export * from "./ipc";
 export * from "./lifeline";
 export * from "./memory";
+export * from "./messaging";
 export * from "./native";
 export * from "./targets";
