@@ -2,7 +2,17 @@
  * POST /api/assist/replies { heard, recent } -> { replies, label }: four replies to what someone said to the person,
  * for the web demo's Talk. Heard words are something to answer, never instructions.
  */
-import { type Context, body, clean, gemini, items, json, limited, phrases } from "../../_lib/gemini";
+import {
+  ITEMS_SCHEMA,
+  type Context,
+  body,
+  clean,
+  gemini,
+  items,
+  json,
+  limited,
+  phrases,
+} from "../../_lib/gemini";
 
 const SYSTEM =
   "You suggest replies for a person who can't speak and answers by choosing with their eyes. " +
@@ -23,6 +33,8 @@ export const onRequestPost = async ({ request, env }: Context): Promise<Response
     SYSTEM,
     `<heard>${heard}</heard>\nPhrases the person often uses: ${recent.join(" | ") || "none yet"}`,
     600,
+    0.5,
+    ITEMS_SCHEMA,
   );
   const replies = items(out, 4, 60);
   return replies.length ? json({ replies, label: "Gemini" }) : json({ error: "No usable replies." }, 502);

@@ -54,13 +54,24 @@ export const json = (body: unknown, status = 200) =>
     headers: { "content-type": "application/json", "cache-control": "no-store" },
   });
 
-/** One JSON answer from Gemini (any JSON value), or null when it fails, times out or isn't JSON. */
+/** The answer shape for replies and sentence endings: {"items": [strings]}. */
+export const ITEMS_SCHEMA = {
+  type: "object",
+  properties: { items: { type: "array", items: { type: "string" } } },
+  required: ["items"],
+};
+
+/**
+ * One JSON answer from Gemini (any JSON value), or null when it fails, times out or isn't JSON. With a schema,
+ * Gemini's structured output keeps the answer in that shape (without one it sometimes drops the wrapper object).
+ */
 export async function gemini(
   env: Env,
   system: string,
   user: string,
   maxTokens = 1024,
   temperature = 0.5,
+  schema?: Record<string, unknown>,
 ): Promise<unknown> {
   const model = modelOf(env);
   const reply = await fetch(
@@ -75,6 +86,7 @@ export async function gemini(
           responseMimeType: "application/json",
           maxOutputTokens: maxTokens,
           temperature,
+          ...(schema ? { responseJsonSchema: schema } : {}),
           // Replies, sentence endings and short plans need speed, not deep thought (Gemini 3 models take a level).
           ...(model.startsWith("gemini-3") ? { thinkingConfig: { thinkingLevel: "low" } } : {}),
         },
@@ -95,9 +107,13 @@ export async function gemini(
   }
 }
 
-/** Short, distinct strings from {"items": [...]}; anything else gives none. */
+/** Short, distinct strings from {"items": [...]} (or a bare list); anything else gives none. */
 export function items(data: unknown, count: number, max: number): string[] {
-  const list = data && typeof data === "object" ? (data as { items?: unknown }).items : undefined;
+  const list = Array.isArray(data)
+    ? data
+    : data && typeof data === "object"
+      ? (data as { items?: unknown }).items
+      : undefined;
   if (!Array.isArray(list)) return [];
   const out: string[] = [];
   for (const item of list) {
