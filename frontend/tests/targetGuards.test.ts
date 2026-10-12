@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { APP_SELECTOR, GazeSelector, type SelectorTarget } from "../../os/gaze/src/input/selector";
-import { contains, probePoints, SETTLE_MS, SettleGuard } from "../src/input/targetGuards";
+import { contains, probePoints, SETTLE_MS, SettleGuard, UNSEEN_MS } from "../src/input/targetGuards";
 
 const rect = (left: number, top: number, w = 100, h = 60) => ({
   left,
@@ -23,6 +23,7 @@ describe("only what can be seen can be chosen", () => {
 describe("new or moved controls hold still before they can be chosen", () => {
   it("a control is settling when it appears, moves or resizes, and not once it has held still", () => {
     const g = new SettleGuard();
+    g.update(-100, []); // frames are flowing
     expect(g.update(0, [{ id: "a", rect: rect(0, 0) }]).has("a")).toBe(true);
     expect(g.update(SETTLE_MS - 1, [{ id: "a", rect: rect(0, 0) }]).has("a")).toBe(true);
     expect(g.update(SETTLE_MS, [{ id: "a", rect: rect(2, 3) }]).has("a")).toBe(false); // a wobble isn't a move
@@ -33,6 +34,14 @@ describe("new or moved controls hold still before they can be chosen", () => {
     ]);
     expect([...moved].sort()).toEqual(["a", "new"]);
     expect(g.update(2 * SETTLE_MS + 100, [{ id: "a", rect: rect(120, 0) }]).size).toBe(0);
+  });
+
+  it("what was on screen before any frames (or after a gap) counts as settled: nothing was seen to change", () => {
+    const g = new SettleGuard();
+    expect(g.update(0, [{ id: "a", rect: rect(0, 0) }]).size).toBe(0);
+    expect(g.update(250, [{ id: "a", rect: rect(0, 0) }]).size).toBe(0);
+    expect(g.update(500, [{ id: "b", rect: rect(0, 100) }]).has("b")).toBe(true);
+    expect(g.update(500 + UNSEEN_MS + 1, [{ id: "c", rect: rect(0, 200) }]).size).toBe(0);
   });
 
   it("a slow drift adds up to a move", () => {
