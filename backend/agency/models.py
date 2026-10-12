@@ -137,6 +137,15 @@ def check_transition(current: StepStatus, new: StepStatus) -> None:
 GoalType = Literal["equipment_repair", "reschedule_appointment", "admin_request", "message_followup"]
 
 
+def _bounded_strings(value: dict[str, str]) -> dict[str, str]:
+    if len(value) > 20:
+        raise ValueError("too many entries")
+    for k, v in value.items():
+        if len(k) > 60 or len(v) > 300:
+            raise ValueError("entry too long")
+    return value
+
+
 class Goal(BaseModel):
     """Structured representation of what the user wants. Validated before it enters state."""
 
@@ -165,13 +174,8 @@ class Goal(BaseModel):
 
     @field_validator("preferences", "entities")
     @classmethod
-    def _bounded_strings(cls, value: dict[str, str]) -> dict[str, str]:
-        if len(value) > 20:
-            raise ValueError("too many entries")
-        for k, v in value.items():
-            if len(k) > 60 or len(v) > 300:
-                raise ValueError("entry too long")
-        return value
+    def _bounded(cls, value: dict[str, str]) -> dict[str, str]:
+        return _bounded_strings(value)
 
 
 class GoalRequest(BaseModel):
@@ -183,6 +187,19 @@ class GoalRequest(BaseModel):
     selections: dict[str, str] = Field(default_factory=dict)
     phrases: list[str] = Field(default_factory=list, max_length=12)
     free_text: str | None = Field(default=None, max_length=600)
+
+    # Selections and phrases go into the cloud model's prompt as they are: bounded like the Goal's own fields.
+    @field_validator("selections")
+    @classmethod
+    def _bounded_selections(cls, value: dict[str, str]) -> dict[str, str]:
+        return _bounded_strings(value)
+
+    @field_validator("phrases")
+    @classmethod
+    def _short_phrases(cls, value: list[str]) -> list[str]:
+        if any(len(p) > 200 for p in value):
+            raise ValueError("phrase too long")
+        return value
 
 
 # ---------------------------------------------------------------------------------------
