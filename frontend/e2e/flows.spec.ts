@@ -77,7 +77,7 @@ test("food: choices, a question as cards, change makes a new approval, decline d
   await expect(page.getByRole("button", { name: "Try again" })).toBeVisible();
 });
 
-test("call, messages (typed), papers, shopping comparison, browse and watch all end in a checked task", async ({
+test("call, messages (typed), papers and shopping end in their task; browse and watch open the site", async ({
   page,
 }) => {
   await page.goto("/#/flow/call");
@@ -90,6 +90,8 @@ test("call, messages (typed), papers, shopping comparison, browse and watch all 
   await pick(page, "Mom");
   await pick(page, "Write my own");
   await page.getByRole("textbox").fill("See you Sunday");
+  // The eye keyboard is up while typing (covering the page's Done): its own Done puts it away.
+  await page.getByRole("group", { name: "Eye keyboard" }).getByRole("button", { name: "Done" }).click();
   await pick(page, "Done");
   await expect(page.getByTestId("approval")).toContainText("See you Sunday");
   await approve(page, /Yes, send/);
@@ -107,14 +109,29 @@ test("call, messages (typed), papers, shopping comparison, browse and watch all 
   await pick(page, /MedDirect/);
   await approve(page, /Yes, pay · \$35.00/);
 
+  // Browse and Watch & listen open the real (allow-listed) site in a new tab, and say so. The sites are stood in
+  // for here, so the test needs no network.
+  await page
+    .context()
+    .route(/^https:\/\/(weather\.com|www\.youtube\.com)\//, (r) =>
+      r.fulfill({ contentType: "text/html", body: "<title>stand-in</title>" }),
+    );
   await page.goto("/#/flow/browse");
+  let tab = page.waitForEvent("popup");
   await pick(page, "Weather");
-  await expect(page.getByTestId("result")).toContainText("Done, and checked");
+  const weather = await tab;
+  await weather.waitForLoadState();
+  expect(weather.url()).toBe("https://weather.com/");
+  await expect(page.getByRole("heading", { name: "Today's weather is open in your browser." })).toBeVisible();
 
   await page.goto("/#/flow/watch");
   await pick(page, "YouTube");
+  tab = page.waitForEvent("popup");
   await pick(page, "My subscriptions");
-  await expect(page.getByTestId("result")).toBeVisible();
+  const youtube = await tab;
+  await youtube.waitForLoadState();
+  expect(youtube.url()).toBe("https://www.youtube.com/feed/subscriptions");
+  await expect(page.getByRole("heading", { name: /is open in your browser\.$/ })).toBeVisible();
 });
 
 test("back, paging-free screens, Stop mid-task, and Continue on Home", async ({ page }) => {

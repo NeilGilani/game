@@ -115,7 +115,10 @@ function FlowRunner({ flow }: { flow: FlowDef }) {
       navigate(outcome.path);
     } else if (outcome.type === "open") {
       // In the browser a new tab; in the Mac app, main opens it in the person's browser (allow-listed sites only).
-      const w = window.open(outcome.url, "_blank", "noopener");
+      // window.open with "noopener" always returns null, which read as "blocked" even when the tab opened: open
+      // it, then cut the link back to AGENCY by hand.
+      const w = window.open(outcome.url, "_blank");
+      if (w) w.opener = null;
       const text =
         w === null && !host()
           ? `Your browser blocked the new tab: allow pop-ups to open ${outcome.name}.`
