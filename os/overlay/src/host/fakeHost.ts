@@ -29,6 +29,10 @@ export interface FakeHostOptions {
   phrases?: string[];
   /** input.drag answers ok: false (to exercise the failure message). */
   dragFails?: boolean;
+  /** apps.activate answers ok: false, as macOS 14+ may for a background helper (to exercise the launch fallback). */
+  activateRefused?: boolean;
+  /** apps.launch answers ok: false. */
+  launchFails?: boolean;
 }
 
 export const DEMO_APPS: AppInfo[] = [
@@ -102,8 +106,10 @@ export class FakeHost implements OverlayHost {
         return this.opts.dragFails ? { ok: false, error: "drag failed" } : { ok: true };
       case "apps.list":
         return { apps: this.opts.apps ?? DEMO_APPS };
-      case "apps.launch":
       case "apps.activate":
+        return this.opts.activateRefused ? { ok: false } : { ok: true };
+      case "apps.launch":
+        return this.opts.launchFails ? { ok: false, error: "not installed" } : { ok: true };
       case "input.click":
       case "input.scroll":
       case "input.key":
