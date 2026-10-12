@@ -2,7 +2,7 @@
  * POST /api/assist/complete { text, recent } -> { completions, label }: ways to finish the sentence the person
  * started on the web demo's word board.
  */
-import { type Context, body, clean, gemini, items, json, limited } from "../../_lib/gemini";
+import { type Context, body, clean, gemini, items, json, limited, phrases } from "../../_lib/gemini";
 
 const SYSTEM =
   "You help a person who speaks by choosing words with their eyes. Give 3 likely full sentences that begin " +
@@ -13,11 +13,11 @@ export const onRequestPost = async ({ request, env }: Context): Promise<Response
   if (!env.GEMINI_API_KEY) return json({ error: "Gemini isn't set up on this site." }, 503);
   if (limited(request)) return json({ error: "Too many requests in a minute." }, 429);
   const b = await body(request);
-  const text = clean(b?.["text"], 200);
+  if (b instanceof Response) return b;
+  // Cleaned the same way as the answers (single spaces), so "I  want" still matches "I want tea".
+  const text = clean(b["text"], 200);
   if (!text) return json({ error: "Nothing started." }, 400);
-  const recent = Array.isArray(b?.["recent"])
-    ? (b["recent"] as unknown[]).slice(0, 20).map((p) => clean(p, 80))
-    : [];
+  const recent = phrases(b["recent"]);
   const out = await gemini(
     env,
     SYSTEM,
