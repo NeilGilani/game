@@ -2,7 +2,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Icon } from "../components/Icon";
 import { GameFrame, LeaveButtons, LevelPicker, resetSelection, type SayTone } from "./GameFrame";
-import { cpuMove, emptyBoard, isFull, winner, type Board, type TttLevel } from "./tictactoe";
+import { cpuMove, emptyBoard, isFull, winner, type Board, type TttLevel } from "./tictactoeRules";
 
 const CPU_PAUSE_MS = 700;
 const CELL_NAMES = [

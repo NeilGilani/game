@@ -16,7 +16,7 @@ import {
   winner,
   type Board,
   type Mark,
-} from "../src/games/tictactoe";
+} from "../src/games/tictactoeRules";
 
 describe("tic-tac-toe", () => {
   it("finds the winning line", () => {
