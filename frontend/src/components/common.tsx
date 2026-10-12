@@ -4,6 +4,8 @@ import { useDialogFocus } from "./useDialogFocus";
 
 /** Fired when new choices appear under the person's gaze (dialogs, screen changes). */
 export const SELECTION_RESET_EVENT = "agency:selection-reset";
+/** Sent on window when the person stops everything, so tasks run elsewhere (Talk's calls, papers, shop) stop too. */
+export const STOP_ALL_EVENT = "agency:stop-all";
 
 /**
  * Gaze-friendly paging: big Previous / Next targets instead of scrolling.
