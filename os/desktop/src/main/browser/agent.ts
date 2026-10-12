@@ -93,7 +93,8 @@ export function approvalKind(
 ): ConsequentialKind | null {
   if (d.consequential) return d.consequential;
   if (SIGN_IN.test(d.name)) return "account-or-settings";
-  if (sensitive === "bank" || sensitive === "passwords" || sensitive === "account") return "account-or-settings";
+  if (sensitive === "bank" || sensitive === "passwords" || sensitive === "account")
+    return "account-or-settings";
   if (sensitive) return "submit";
   return null;
 }
@@ -124,12 +125,20 @@ export class AgentBrowser {
 
   private running(): void {
     if (this.stopped)
-      throw new AgentBrowserError("The person pressed Stop. Nothing more happens until they start a new task.");
+      throw new AgentBrowserError(
+        "The person pressed Stop. Nothing more happens until they start a new task.",
+      );
   }
 
   async call(method: string, params: unknown): Promise<unknown> {
     this.running();
-    const p = (params ?? {}) as { ref?: unknown; text?: unknown; url?: unknown; option?: unknown; approved?: unknown };
+    const p = (params ?? {}) as {
+      ref?: unknown;
+      text?: unknown;
+      url?: unknown;
+      option?: unknown;
+      approved?: unknown;
+    };
     switch (method) {
       case "snapshot":
         return this.snapshot();
@@ -150,7 +159,15 @@ export class AgentBrowser {
     const tab = await this.deps.tab();
     const url = tab.url();
     if (!/^https?:/.test(url)) {
-      return { tabId: String(tab.id), url, origin: "null", title: "New tab", nodes: [], text: "", simulated: false };
+      return {
+        tabId: String(tab.id),
+        url,
+        origin: "null",
+        title: "New tab",
+        nodes: [],
+        text: "",
+        simulated: false,
+      };
     }
     const tree = await tab.call<PageTree>("agent.tree", { maxNodes: 600 }, 10_000);
     this.running();
@@ -217,7 +234,9 @@ export class AgentBrowser {
         // Approved by this side's reading only (signing in, a sensitive site): the page must not have changed.
         const again = await tab.call<Description>("agent.describe", { ref }, 10_000);
         if (again.key !== d.key)
-          throw new AgentBrowserError("The page changed since the person approved. Read it again and ask again.");
+          throw new AgentBrowserError(
+            "The page changed since the person approved. Read it again and ask again.",
+          );
       }
       // For the page's own reading, the page checks again right before the click: if the page changed since the
       // person approved (a different total), the click doesn't happen.

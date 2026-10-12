@@ -1,1 +1,2 @@
 os/contracts/src/*.ts
+os/desktop/src/browser-page/vendor/

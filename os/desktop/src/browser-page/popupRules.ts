@@ -9,7 +9,8 @@ const DECLINE =
   /\b(reject( all)?|decline( all)?|necessary only|only (strictly )?necessary|essential only|use necessary|refuse|deny|do not (accept|agree|sell)|disagree|continue without (accepting|agreeing))\b/i;
 const CLOSE = /^(x|×|✕|✖)$|\b(close|dismiss|no,? thanks|not now|maybe later|skip|cancel|hide|later)\b/i;
 const ACCEPT = /\b(accept( all)?|agree|allow( all)?|got it|i understand|okay|ok|continue|yes)\b/i;
-const COOKIES = /\b(cookies?|consent|gdpr|ccpa|privacy (choices|settings|preferences)|we (and our partners )?use|tracking)\b/i;
+const COOKIES =
+  /\b(cookies?|consent|gdpr|ccpa|privacy (choices|settings|preferences)|we (and our partners )?use|tracking)\b/i;
 
 export function toneOf(label: string): PopupChoice["tone"] {
   const l = label.trim();

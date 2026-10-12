@@ -57,6 +57,7 @@ import { writeWebSettings } from "./agentweb";
 import { PageCallError, PageChannel, PageGone } from "./channel";
 import {
   checkPermission,
+  chromeUserAgent,
   decideNavigation,
   decideRequest,
   isProgram,
@@ -112,11 +113,6 @@ interface PendingPrompt {
 
 const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 
-/** A Chrome-like user agent: sites serve their normal pages instead of "unsupported browser" ones. */
-export function chromeUserAgent(ua: string): string {
-  return ua.replace(/\s(AGENCY|agency-os|@agency\/desktop)\/\S+/gi, "").replace(/\sElectron\/\S+/, "");
-}
-
 export class BrowserHost {
   readonly store: BrowserStore;
   readonly session: Session;
@@ -149,7 +145,8 @@ export class BrowserHost {
     this.agent = new AgentBrowser({
       tab: () => this.agentTab(),
       internalOrigins: () => this.opts.internalOrigins(),
-      acting: (what, tabId) => this.opts.emit({ type: "agent", tabId, active: true, acting: what ?? undefined }),
+      acting: (what, tabId) =>
+        this.opts.emit({ type: "agent", tabId, active: true, acting: what ?? undefined }),
       helperNeeded: (why, tabId) => this.opts.emit({ type: "agent", tabId, active: true, helperNeeded: why }),
     });
     this.newTab();
@@ -187,7 +184,8 @@ export class BrowserHost {
       const internal = this.opts.internalOrigins();
       if (!decideRequest(details.url, internal)) return callback({ cancel: true });
       if (this.store.settings.blockAds) {
-        const page = details.webContents && !details.webContents.isDestroyed() ? details.webContents.getURL() : null;
+        const page =
+          details.webContents && !details.webContents.isDestroyed() ? details.webContents.getURL() : null;
         if (isBlockedAd(details.url, page, details.resourceType)) return callback({ cancel: true });
       }
       callback({});
@@ -353,7 +351,11 @@ export class BrowserHost {
     });
     wc.on("render-process-gone", () => {
       this.channel.dropFor(wc.id);
-      tab.error = { kind: "crashed", message: "This page stopped working. Reload it to try again.", url: tab.url };
+      tab.error = {
+        kind: "crashed",
+        message: "This page stopped working. Reload it to try again.",
+        url: tab.url,
+      };
       this.attach();
       this.changed();
     });
@@ -550,7 +552,8 @@ export class BrowserHost {
     let tab: Tab;
     if (!newTab && active && active.url === "") tab = active;
     else {
-      if (this.tabs.size >= MAX_TABS) return { ok: false, error: `You have ${MAX_TABS} tabs open. Close one first.` };
+      if (this.tabs.size >= MAX_TABS)
+        return { ok: false, error: `You have ${MAX_TABS} tabs open. Close one first.` };
       tab = this.tabFor(this.newTab());
     }
     this.activateTab(tab.id);
@@ -739,12 +742,21 @@ export class BrowserHost {
       | { kind: "gone" }
       | { kind: "field"; field: PageField }
       | { kind: "list"; label: string; options: string[]; selected: string | null }
-      | { kind: "click"; name: string; consequential: ConsequentialKind | null; x: number; y: number; hit: boolean };
+      | {
+          kind: "click";
+          name: string;
+          consequential: ConsequentialKind | null;
+          x: number;
+          y: number;
+          hit: boolean;
+        };
     let ins: Inspection;
     try {
       ins = await this.call<Inspection>(tab, "inspect", { ref: String(ref).slice(0, 40) });
     } catch (e) {
-      return e instanceof PageGone ? { kind: "gone" } : { kind: "error", message: "That didn't work. Try again." };
+      return e instanceof PageGone
+        ? { kind: "gone" }
+        : { kind: "error", message: "That didn't work. Try again." };
     }
     if (ins.kind === "gone") return { kind: "gone" };
     if (ins.kind === "field") return { kind: "field", field: ins.field };
@@ -782,12 +794,22 @@ export class BrowserHost {
       if (op.op === "show")
         return { kind: "field", field: await this.call<PageField>(tab, "field.focus", { ref: r }) };
       if (op.op === "next" || op.op === "previous") {
-        const f = await this.call<PageField | null>(tab, "field.move", { ref: r, step: op.op === "next" ? 1 : -1 });
-        return f ? { kind: "field", field: f } : { kind: "field", field: await this.call<PageField>(tab, "field.info", { ref: r }) };
+        const f = await this.call<PageField | null>(tab, "field.move", {
+          ref: r,
+          step: op.op === "next" ? 1 : -1,
+        });
+        return f
+          ? { kind: "field", field: f }
+          : { kind: "field", field: await this.call<PageField>(tab, "field.info", { ref: r }) };
       }
       const kind = await this.call<string | null>(tab, "field.submitKind", { ref: r });
       if (kind && !op.confirmed)
-        return { kind: "confirm", action: kind as ConsequentialKind, label: "Submit", origin: siteLabel(tab.url) };
+        return {
+          kind: "confirm",
+          action: kind as ConsequentialKind,
+          label: "Submit",
+          origin: siteLabel(tab.url),
+        };
       const navs = tab.navs;
       await this.call(tab, "field.submit", { ref: r }).catch((e: unknown) => {
         if (!(e instanceof PageGone)) throw e;
@@ -795,22 +817,28 @@ export class BrowserHost {
       return { kind: "done", navigated: await this.navigatedSince(tab, navs, 800) };
     } catch (e) {
       if (e instanceof PageGone) return { kind: "gone" };
-      return { kind: "error", message: e instanceof PageCallError ? e.message : "That didn't work. Try again." };
+      return {
+        kind: "error",
+        message: e instanceof PageCallError ? e.message : "That didn't work. Try again.",
+      };
     }
   }
 
   async chooseOption(tabId: number, ref: string, option: string): Promise<boolean> {
     const tab = this.tabFor(tabId);
-    return this.call<boolean>(tab, "chooseOption", { ref: String(ref).slice(0, 40), option: String(option).slice(0, 200) }).catch(
-      () => false,
-    );
+    return this.call<boolean>(tab, "chooseOption", {
+      ref: String(ref).slice(0, 40),
+      option: String(option).slice(0, 200),
+    }).catch(() => false);
   }
 
   scroll(tabId: number, req: ScrollRequest): void {
     const tab = this.tabs.get(tabId);
     if (!tab?.view || !tab.url) return;
     const params: Record<string, unknown> =
-      req.by === "px" ? { by: "px", amount: Number(req.amount) } : { by: req.by, direction: req.direction === -1 ? -1 : 1 };
+      req.by === "px"
+        ? { by: "px", amount: Number(req.amount) }
+        : { by: req.by, direction: req.direction === -1 ? -1 : 1 };
     void this.call(tab, "scroll", params, 2_000).catch(() => undefined);
   }
 
@@ -909,7 +937,12 @@ export class BrowserHost {
       this.opts.emit({
         type: "field",
         tabId,
-        field: { ...f, ref: f.ref.slice(0, 40), label: f.label.slice(0, 120), value: f.secure ? "" : String(f.value ?? "").slice(0, 5000) },
+        field: {
+          ...f,
+          ref: f.ref.slice(0, 40),
+          label: f.label.slice(0, 120),
+          value: f.secure ? "" : String(f.value ?? "").slice(0, 5000),
+        },
       });
     }
   }
@@ -918,7 +951,10 @@ export class BrowserHost {
   // Permissions and downloads
 
   private openPrompt(prompt: BrowserPrompt, onAnswer: (a: PromptAnswer) => void): void {
-    const timer = setTimeout(() => this.settlePrompt(prompt.id, prompt.type === "download" ? "cancel" : "deny"), PROMPT_TIMEOUT_MS);
+    const timer = setTimeout(
+      () => this.settlePrompt(prompt.id, prompt.type === "download" ? "cancel" : "deny"),
+      PROMPT_TIMEOUT_MS,
+    );
     this.prompts.set(prompt.id, { prompt, settle: onAnswer, timer });
     this.opts.emit({ type: "prompt", prompt });
   }
@@ -965,7 +1001,14 @@ export class BrowserHost {
     const stored = this.store.permission(origin, route.permission);
     if (stored) return stored === "allow";
     // One question at a time per site and kind; a repeat while it is open is a no.
-    if ([...this.prompts.values()].some((p) => p.prompt.type === "permission" && p.prompt.origin === origin && p.prompt.permission === route.permission))
+    if (
+      [...this.prompts.values()].some(
+        (p) =>
+          p.prompt.type === "permission" &&
+          p.prompt.origin === origin &&
+          p.prompt.permission === route.permission,
+      )
+    )
       return false;
     return new Promise<boolean>((resolve) => {
       const id = `p${++this.promptSeq}`;
@@ -1088,7 +1131,8 @@ export class BrowserHost {
       const active = this.activeId === null ? null : this.tabs.get(this.activeId);
       if (active && (this.agentWantsCurrent || active.url === "")) tab = active;
       else {
-        if (this.tabs.size >= MAX_TABS) throw new Error(`${MAX_TABS} tabs are open; close one so AGENCY can work.`);
+        if (this.tabs.size >= MAX_TABS)
+          throw new Error(`${MAX_TABS} tabs are open; close one so AGENCY can work.`);
         tab = this.tabFor(this.newTab());
       }
       this.agentTabId = tab.id;
@@ -1132,7 +1176,10 @@ export class BrowserHost {
       if (tab.error) throw new Error(tab.error.message);
       if (tab.navs !== navsBefore && !tab.loading) {
         // The preload of the new page is ready once it answers.
-        const ok = await this.call(tab, "ping", {}, 1_000).then(() => true, () => false);
+        const ok = await this.call(tab, "ping", {}, 1_000).then(
+          () => true,
+          () => false,
+        );
         if (ok) return;
       }
       await sleep(100);

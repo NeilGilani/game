@@ -60,7 +60,9 @@ function formOf(el: Element): HTMLFormElement | null {
 /** The text boxes in the same form (or the page), in order, that a person can see. */
 function siblingsOf(el: Element): Typable[] {
   const scope: ParentNode = formOf(el) ?? document;
-  return [...scope.querySelectorAll("input, textarea, [contenteditable='true'], [contenteditable='']")].filter(
+  return [
+    ...scope.querySelectorAll("input, textarea, [contenteditable='true'], [contenteditable='']"),
+  ].filter(
     (f): f is Typable =>
       typable(f) && isVisible(f) && !(f as HTMLInputElement).readOnly && f.getClientRects().length > 0,
   );
@@ -120,7 +122,8 @@ export function focusField(el: Typable): PageField {
 }
 
 function setNativeValue(el: HTMLInputElement | HTMLTextAreaElement, value: string): void {
-  const proto = el instanceof HTMLTextAreaElement ? HTMLTextAreaElement.prototype : HTMLInputElement.prototype;
+  const proto =
+    el instanceof HTMLTextAreaElement ? HTMLTextAreaElement.prototype : HTMLInputElement.prototype;
   const setter = Object.getOwnPropertyDescriptor(proto, "value")?.set;
   if (setter) setter.call(el, value);
   else el.value = value;
@@ -217,7 +220,9 @@ export function inspect(ref: string): Inspection {
       kind: "list",
       label: nameOf(el) || "Choose one",
       options: opts.map((o) => (o.label || o.text).trim().slice(0, 100)).slice(0, 60),
-      selected: el.selectedOptions[0] ? (el.selectedOptions[0].label || el.selectedOptions[0].text).trim() : null,
+      selected: el.selectedOptions[0]
+        ? (el.selectedOptions[0].label || el.selectedOptions[0].text).trim()
+        : null,
     };
   }
   const r0 = el.getBoundingClientRect();
@@ -233,7 +238,12 @@ export function inspect(ref: string): Inspection {
     kind: "click",
     name,
     role,
-    consequential: classifyAction({ role, name, submitsForm: submitsForm(el), formMethod: formOf(el)?.method }),
+    consequential: classifyAction({
+      role,
+      name,
+      submitsForm: submitsForm(el),
+      formMethod: formOf(el)?.method,
+    }),
     x,
     y,
     hit: !!top && (top === el || el.contains(top)),

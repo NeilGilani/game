@@ -182,9 +182,7 @@ export const SENSITIVE_WORDS: Record<SensitiveKind, string> = {
 // Permissions
 
 export type PermissionRoute =
-  | { kind: "ask"; permission: SitePermission }
-  | { kind: "allow" }
-  | { kind: "deny"; why?: "camera" };
+  { kind: "ask"; permission: SitePermission } | { kind: "allow" } | { kind: "deny"; why?: "camera" };
 
 /**
  * What to do with a page's permission request. Asked per site: microphone, location, notifications, reading the
@@ -192,7 +190,10 @@ export type PermissionRoute =
  * HID, MIDI), screen capture, other windows, pointer lock, opening other apps. Always: full screen (AGENCY shows it
  * in its own big-screen mode) and writing to the clipboard (a page's own Copy button).
  */
-export function routePermission(permission: string, mediaTypes: readonly string[] | undefined): PermissionRoute {
+export function routePermission(
+  permission: string,
+  mediaTypes: readonly string[] | undefined,
+): PermissionRoute {
   switch (permission) {
     case "media": {
       const types = mediaTypes ?? [];
@@ -264,7 +265,9 @@ export function uniqueName(name: string, taken: (candidate: string) => boolean):
 }
 
 /** A page that didn't load, in plain words (Chromium's net error codes). null: not worth showing (cancelled). */
-export function loadError(code: number): { kind: "load" | "certificate" | "blocked"; message: string } | null {
+export function loadError(
+  code: number,
+): { kind: "load" | "certificate" | "blocked"; message: string } | null {
   if (code === -3) return null;
   if (code <= -200 && code > -300)
     return {
@@ -272,14 +275,17 @@ export function loadError(code: number): { kind: "load" | "certificate" | "block
       message:
         "This site's security certificate isn't valid, so AGENCY won't open it: someone could be pretending to be the site.",
     };
-  if (code === -20 || code === -27)
-    return { kind: "blocked", message: "AGENCY Browser blocked this page." };
+  if (code === -20 || code === -27) return { kind: "blocked", message: "AGENCY Browser blocked this page." };
   if (code === -105 || code === -137)
-    return { kind: "load", message: "AGENCY couldn't find that site. Check the address, or the internet connection." };
+    return {
+      kind: "load",
+      message: "AGENCY couldn't find that site. Check the address, or the internet connection.",
+    };
   if (code === -106) return { kind: "load", message: "This Mac isn't connected to the internet right now." };
   if ([-7, -102, -104, -109, -118, -324, -100, -101].includes(code))
     return { kind: "load", message: "The site didn't answer. It may be down; try again in a while." };
-  if (code === -310) return { kind: "load", message: "The site keeps sending AGENCY around in circles, so it stopped." };
+  if (code === -310)
+    return { kind: "load", message: "The site keeps sending AGENCY around in circles, so it stopped." };
   return { kind: "load", message: "The page couldn't load." };
 }
 
@@ -292,4 +298,9 @@ export function siteLabel(url: string): string {
   } catch {
     return "this page";
   }
+}
+
+/** A Chrome-like user agent: sites serve their normal pages instead of "unsupported browser" ones. */
+export function chromeUserAgent(ua: string): string {
+  return ua.replace(/\s(AGENCY|agency-os|@agency\/desktop)\/\S+/gi, "").replace(/\sElectron\/\S+/, "");
 }

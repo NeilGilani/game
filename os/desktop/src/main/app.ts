@@ -965,7 +965,8 @@ export class AgencyApp {
 
   private onAgentEvent(ev: AgentEvent): void {
     this.record("agent.event", ev.type);
-    if (ev.type === "task.done" || ev.type === "task.failed" || ev.type === "task.stopped") this.browser?.agentEnded();
+    if (ev.type === "task.done" || ev.type === "task.failed" || ev.type === "task.stopped")
+      this.browser?.agentEnded();
     this.sendTo(this.shell, IPC.agentEvent, ev);
     this.toOverlays(IPC.agentEvent, ev);
   }

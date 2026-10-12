@@ -130,7 +130,7 @@ export const PLAN_TOOLS: ToolSpec[] = [
 export const BRIDGE_TOOLS: ToolSpec[] = [
   tool(
     "read_page",
-    "Read the current Chrome tab: address, title, elements with refs, and visible text.",
+    "Read the current web page (in AGENCY Browser or Chrome): address, title, elements with refs, and visible text.",
     {},
     [],
   ),

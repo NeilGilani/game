@@ -34,7 +34,13 @@ export const DEFAULT_FAVOURITES: Favourite[] = [
 
 export const MAX_FAVOURITES = 24;
 export const MAX_HISTORY = 500;
-const PERMISSIONS: readonly SitePermission[] = ["microphone", "camera", "location", "notifications", "clipboard"];
+const PERMISSIONS: readonly SitePermission[] = [
+  "microphone",
+  "camera",
+  "location",
+  "notifications",
+  "clipboard",
+];
 
 interface BrowserFile {
   settings: BrowserSettings;
@@ -60,13 +66,18 @@ function writeJson(file: string, value: unknown): void {
 }
 
 /** Settings from anywhere (the file, the shell), checked field by field; anything odd keeps the current value. */
-export function parseSettings(value: unknown, base: BrowserSettings = DEFAULT_BROWSER_SETTINGS): BrowserSettings {
+export function parseSettings(
+  value: unknown,
+  base: BrowserSettings = DEFAULT_BROWSER_SETTINGS,
+): BrowserSettings {
   const v = (value && typeof value === "object" ? value : {}) as Record<string, unknown>;
   const engine = v.searchEngine;
   return {
-    searchEngine: engine === "google" || engine === "duckduckgo" || engine === "bing" ? engine : base.searchEngine,
+    searchEngine:
+      engine === "google" || engine === "duckduckgo" || engine === "bing" ? engine : base.searchEngine,
     blockAds: typeof v.blockAds === "boolean" ? v.blockAds : base.blockAds,
-    agentBrowser: v.agentBrowser === "agency" || v.agentBrowser === "chrome" ? v.agentBrowser : base.agentBrowser,
+    agentBrowser:
+      v.agentBrowser === "agency" || v.agentBrowser === "chrome" ? v.agentBrowser : base.agentBrowser,
     agentAnySite: typeof v.agentAnySite === "boolean" ? v.agentAnySite : base.agentAnySite,
     realActions: typeof v.realActions === "boolean" ? v.realActions : base.realActions,
   };
@@ -168,7 +179,9 @@ export class BrowserStore {
   }
 
   permission(origin: string, permission: SitePermission): "allow" | "deny" | null {
-    return this.data.permissions.find((p) => p.origin === origin && p.permission === permission)?.decision ?? null;
+    return (
+      this.data.permissions.find((p) => p.origin === origin && p.permission === permission)?.decision ?? null
+    );
   }
 
   setPermission(origin: string, permission: SitePermission, decision: "allow" | "deny"): void {

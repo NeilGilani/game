@@ -87,7 +87,8 @@ const browser: BrowserApi = {
   zoom: (tabId, change) => b("zoom", tabId, change) as Promise<number>,
   thumbnails: () => b("thumbnails") as Promise<Record<number, string>>,
   frame: (tabId) => b("frame", tabId) as Promise<PageFrame | null>,
-  activate: (tabId, ref, confirmed) => b("activate", tabId, ref, confirmed === true) as Promise<ActivateResult>,
+  activate: (tabId, ref, confirmed) =>
+    b("activate", tabId, ref, confirmed === true) as Promise<ActivateResult>,
   field: (tabId, ref, op) => b("field", tabId, ref, op) as Promise<FieldResult>,
   chooseOption: (tabId, ref, option) => b("chooseOption", tabId, ref, option) as Promise<boolean>,
   scroll: (tabId, request) => void b("scroll", tabId, request).catch(() => undefined),
@@ -104,7 +105,8 @@ const browser: BrowserApi = {
   settings: () => b("settings") as Promise<BrowserSettings>,
   setSettings: (s) => b("setSettings", s) as Promise<BrowserSettings>,
   sitePermissions: () => b("sitePermissions") as Promise<SitePermissionEntry[]>,
-  forgetSitePermission: (origin, permission) => b("forgetSitePermission", origin, permission) as Promise<void>,
+  forgetSitePermission: (origin, permission) =>
+    b("forgetSitePermission", origin, permission) as Promise<void>,
   clearSiteData: () => b("clearSiteData") as Promise<void>,
 };
 

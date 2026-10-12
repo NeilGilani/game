@@ -101,7 +101,8 @@ export function hidePopup(): boolean {
       hide(sib);
   }
   for (const root of [document.documentElement, document.body]) {
-    if (root && getComputedStyle(root).overflow === "hidden") root.style.setProperty("overflow", "auto", "important");
+    if (root && getComputedStyle(root).overflow === "hidden")
+      root.style.setProperty("overflow", "auto", "important");
   }
   found = null;
   return true;

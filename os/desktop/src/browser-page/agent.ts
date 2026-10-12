@@ -16,7 +16,8 @@ export function setStopped(on: boolean): void {
 
 const isStopped = () => stopped;
 
-const CAPTCHA_FRAME = /recaptcha|hcaptcha|challenges\.cloudflare\.com|turnstile|arkoselabs|funcaptcha|captcha/i;
+const CAPTCHA_FRAME =
+  /recaptcha|hcaptcha|challenges\.cloudflare\.com|turnstile|arkoselabs|funcaptcha|captcha/i;
 const CAPTCHA_TEXT =
   /\b(i'?m not a robot|verify (that )?you are (a )?human|are you a robot|prove you'?re human|security check|press (and|&) hold)\b/i;
 

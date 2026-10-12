@@ -36,7 +36,8 @@ interface Request {
   params?: Record<string, unknown>;
 }
 
-const str = (p: Record<string, unknown>, k: string): string => (typeof p[k] === "string" ? (p[k] as string) : "");
+const str = (p: Record<string, unknown>, k: string): string =>
+  typeof p[k] === "string" ? (p[k] as string) : "";
 
 function field(ref: string) {
   const el = elementFor(ref);
@@ -68,7 +69,8 @@ function scroll(p: Record<string, unknown>) {
     target.scrollTo({ top: p.direction === -1 ? 0 : target.scrollHeight, behavior: "smooth" });
   else {
     const dy = Number(p.amount);
-    if (Number.isFinite(dy)) target.scrollBy({ top: Math.max(-4000, Math.min(4000, dy)), behavior: "instant" });
+    if (Number.isFinite(dy))
+      target.scrollBy({ top: Math.max(-4000, Math.min(4000, dy)), behavior: "instant" });
   }
   return scrollState();
 }

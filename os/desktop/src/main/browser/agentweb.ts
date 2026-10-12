@@ -45,7 +45,10 @@ export function withWebSettings(
   };
 }
 
-export function writeWebSettings(file: string, s: Pick<BrowserSettings, "agentAnySite" | "realActions">): void {
+export function writeWebSettings(
+  file: string,
+  s: Pick<BrowserSettings, "agentAnySite" | "realActions">,
+): void {
   const next = withWebSettings(readJson(file), s);
   mkdirSync(dirname(file), { recursive: true });
   const tmp = `${file}.tmp`;

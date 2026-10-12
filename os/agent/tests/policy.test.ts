@@ -226,6 +226,17 @@ describe("allowlist and totals", () => {
     expect(originAllowed("file:///etc/passwd", list)).toBe(false);
     expect(originAllowed("javascript:alert(1)", list)).toBe(false);
   });
+  it("lets a caregiver allow any site of a scheme (AGENCY Browser's 'any website'), and nothing else", () => {
+    expect(originAllowed("https://www.example.org", ["https://*"])).toBe(true);
+    expect(originAllowed("https://shop.example:8443", ["https://*"])).toBe(true);
+    expect(originAllowed("http://www.example.org", ["https://*"])).toBe(false);
+    expect(originAllowed("http://www.example.org", ["https://*", "http://*"])).toBe(true);
+    expect(originAllowed("file:///etc/passwd", ["https://*", "http://*"])).toBe(false);
+    expect(originAllowed("javascript:alert(1)", ["https://*", "http://*"])).toBe(false);
+    expect(originAllowed("ftp://files.example.org", ["https://*", "http://*"])).toBe(false);
+    // Not a wildcard: a host literally called "*" never matches anything else.
+    expect(originAllowed("https://www.example.org", ["https://*.example.org/"])).toBe(false);
+  });
   it("reads the labelled total, else the largest amount", () => {
     expect(pageTotal("Subtotal $14.50\nDelivery $5.99\nOrder total $21.83")).toBe(21.83);
     expect(pageTotal("Item $3.00 and item $1,204.50")).toBe(1204.5);

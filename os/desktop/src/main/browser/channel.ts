@@ -54,7 +54,12 @@ export class PageChannel {
   private seq = 0;
   private readonly pending = new Map<number, Pending>();
 
-  call<T>(contents: WebContents, method: string, params: Record<string, unknown> = {}, timeoutMs = 5_000): Promise<T> {
+  call<T>(
+    contents: WebContents,
+    method: string,
+    params: Record<string, unknown> = {},
+    timeoutMs = 5_000,
+  ): Promise<T> {
     if (contents.isDestroyed()) return Promise.reject(new PageGone());
     const id = ++this.seq;
     return new Promise<T>((resolve, reject) => {
@@ -62,7 +67,12 @@ export class PageChannel {
         this.pending.delete(id);
         reject(new PageGone("The page didn't answer in time."));
       }, timeoutMs);
-      this.pending.set(id, { contentsId: contents.id, resolve: resolve as (v: unknown) => void, reject, timer });
+      this.pending.set(id, {
+        contentsId: contents.id,
+        resolve: resolve as (v: unknown) => void,
+        reject,
+        timer,
+      });
       try {
         contents.send(IPC.page, { id, method, params });
       } catch {

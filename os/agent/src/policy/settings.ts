@@ -9,7 +9,8 @@ export interface SafetySettings {
   maxPurchasePerDay: number | null;
   /**
    * Web origins the agent may act on (click, type, navigate to). Reading the current page is always allowed.
-   * Entries are origins ("https://shop.example") or host suffixes ("*.example.org").
+   * Entries are origins ("https://shop.example"), host suffixes ("*.example.org"), or "https://*" / "http://*" for
+   * any site with that scheme.
    */
   siteAllowlist: string[];
   /** When true (the default), consequential actions only run against simulated targets. */
@@ -58,6 +59,9 @@ export function originAllowed(origin: string, allowlist: string[]): boolean {
 }
 
 function matchEntry(url: URL, entry: string): boolean {
+  // "https://*": any site with that scheme (AGENCY Browser's "any website" setting). Approvals still apply.
+  const any = /^(https?):\/\/\*$/.exec(entry);
+  if (any) return url.protocol === `${any[1]}:`;
   if (entry.startsWith("*.")) {
     const suffix = entry.slice(2).toLowerCase();
     return url.hostname === suffix || url.hostname.endsWith("." + suffix);

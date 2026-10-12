@@ -4,11 +4,24 @@
  */
 
 import type { WebContents } from "electron";
-import type { FieldOp, PromptAnswer, ScreenRect, ScrollRequest, SitePermission, VideoCommand } from "@agency/contracts";
+import type {
+  FieldOp,
+  PromptAnswer,
+  ScreenRect,
+  ScrollRequest,
+  SitePermission,
+  VideoCommand,
+} from "@agency/contracts";
 import type { BrowserHost } from "./host";
 
 const VIDEO: readonly VideoCommand[] = ["play-pause", "back", "forward", "captions", "big-screen"];
-const PERMISSIONS: readonly SitePermission[] = ["microphone", "camera", "location", "notifications", "clipboard"];
+const PERMISSIONS: readonly SitePermission[] = [
+  "microphone",
+  "camera",
+  "location",
+  "notifications",
+  "clipboard",
+];
 const ANSWERS: readonly PromptAnswer[] = ["allow", "deny", "never", "save", "cancel"];
 
 export function tabId(v: unknown): number {
@@ -45,7 +58,12 @@ export function scrollRequest(v: unknown): ScrollRequest {
   throw new Error("bad scroll");
 }
 
-export async function browserCall(b: BrowserHost, sender: WebContents, op: string, a: unknown[]): Promise<unknown> {
+export async function browserCall(
+  b: BrowserHost,
+  sender: WebContents,
+  op: string,
+  a: unknown[],
+): Promise<unknown> {
   switch (op) {
     case "state":
       return b.state();

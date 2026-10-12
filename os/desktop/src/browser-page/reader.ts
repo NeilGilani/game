@@ -9,7 +9,8 @@ import { visibleText } from "../../../browser-bridge/src/extension/page/dom.ts";
 import { article, blocksFromLines, clean } from "./blocks";
 import { Readability } from "./vendor/Readability.js";
 
-const CONTAINERS = /^(DIV|SECTION|ARTICLE|MAIN|HEADER|FOOTER|ASIDE|SPAN|FIGURE|TBODY|THEAD|TABLE|DETAILS|BODY)$/;
+const CONTAINERS =
+  /^(DIV|SECTION|ARTICLE|MAIN|HEADER|FOOTER|ASIDE|SPAN|FIGURE|TBODY|THEAD|TABLE|DETAILS|BODY)$/;
 
 /** Walks Readability's result and turns it into text blocks. Nothing but text is kept. */
 export function toBlocks(root: Node): ReaderBlock[] {
@@ -52,7 +53,8 @@ export function toBlocks(root: Node): ReaderBlock[] {
       if (cells.length) out.push({ type: "paragraph", text: cells.join(" · ") });
       return;
     }
-    if (tag === "SCRIPT" || tag === "STYLE" || tag === "NOSCRIPT" || tag === "IFRAME" || tag === "SVG") return;
+    if (tag === "SCRIPT" || tag === "STYLE" || tag === "NOSCRIPT" || tag === "IFRAME" || tag === "SVG")
+      return;
     if (CONTAINERS.test(tag) || el.children.length > 0) {
       for (const c of el.childNodes) walk(c);
       return;

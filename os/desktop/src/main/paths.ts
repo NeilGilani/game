@@ -55,10 +55,13 @@ export function resolvePaths(opts: {
     packaged ? res("shell/index.html") : repo(HOST_ENTRIES.shell),
   );
 
-  const overlayIndex = env("AGENCY_OVERLAY_BUILTIN") === "1" ? null : firstExisting(
-    env("AGENCY_OVERLAY_DIR") && join(env("AGENCY_OVERLAY_DIR")!, "index.html"),
-    packaged ? res("overlay/index.html") : repo(HOST_ENTRIES.overlay),
-  );
+  const overlayIndex =
+    env("AGENCY_OVERLAY_BUILTIN") === "1"
+      ? null
+      : firstExisting(
+          env("AGENCY_OVERLAY_DIR") && join(env("AGENCY_OVERLAY_DIR")!, "index.html"),
+          packaged ? res("overlay/index.html") : repo(HOST_ENTRIES.overlay),
+        );
 
   const gazeIndex = firstExisting(
     env("AGENCY_GAZE_DIR") && join(env("AGENCY_GAZE_DIR")!, "engine.html"),
