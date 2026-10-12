@@ -39,6 +39,8 @@ export const IPC = {
   memory: "agency:memory",
   /** main -> gaze: frames per second to track at (slow while the shell, which tracks for itself, is in front) */
   gazePace: "agency:gaze-pace",
+  /** shell -> main (invoke): real texts and calls through the person's iPhone (messaging.ts) */
+  messaging: "agency:messaging",
 } as const;
 
 export type IpcChannel = (typeof IPC)[keyof typeof IPC];

@@ -38,6 +38,7 @@ class FakeEmitter {
 }
 
 let nextId = 1;
+const handlers = new Map<string, (...args: unknown[]) => unknown>();
 
 class FakeContents extends FakeEmitter {
   readonly id = nextId++;
@@ -123,7 +124,10 @@ vi.mock("electron", () => ({
   Menu: { setApplicationMenu: () => {}, buildFromTemplate: () => ({}) },
   app: { on: () => {}, focus: () => {}, getVersion: () => "0.0.0-test", dock: undefined },
   globalShortcut: { register: () => true, unregisterAll: () => {} },
-  ipcMain: { on: () => {}, handle: () => {} },
+  ipcMain: {
+    on: () => {},
+    handle: (channel: string, fn: (...args: unknown[]) => unknown) => handlers.set(channel, fn),
+  },
   protocol: { handle: () => {} },
   safeStorage: { isEncryptionAvailable: () => false },
   screen: {
@@ -297,5 +301,23 @@ describe("pacing the hidden gaze engine", () => {
     agency.paceGaze();
     shell.close();
     expect(paces(gaze)).toEqual([30, 10, 30]);
+  });
+});
+
+describe("real texts and calls over IPC", () => {
+  it("only the shell may use them, and Stop forgets every waiting approval", async () => {
+    const agency = makeApp();
+    (agency as unknown as { registerIpc(): void }).registerIpc();
+    const handler = handlers.get(IPC.messaging)!;
+    const overlay = new FakeContents();
+    agency.roles.set(overlay.id, "overlay");
+    expect(() => handler({ sender: overlay }, "status")).toThrow(/not allowed/);
+    const shell = new FakeContents();
+    agency.roles.set(shell.id, "shell");
+    const status = (await handler({ sender: shell }, "status")) as { settings: { enabled: boolean } };
+    expect(status.settings.enabled).toBe(false);
+    agency.messaging.cancelAll = vi.fn(agency.messaging.cancelAll.bind(agency.messaging));
+    await agency.stopAll("test");
+    expect(agency.messaging.cancelAll).toHaveBeenCalled();
   });
 });

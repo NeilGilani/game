@@ -11,6 +11,7 @@ import type { GazeEvent } from "./gaze";
 import type { HelpSource, LifelineSignal } from "./lifeline";
 import type { NativeEvent, NativeMethod, NativeMethods, PermissionKind, PermissionStatus } from "./native";
 import type { SelectionEvent, Suggestion, Surface } from "./memory";
+import type { MessagingApi } from "./messaging";
 import type { ScreenRect, Target, TargetSnapshot } from "./targets";
 
 export type WindowRole = "shell" | "overlay" | "gaze" | "onboarding" | "about";
@@ -152,6 +153,11 @@ export interface AgencyApi {
     usual(path: string): Promise<Suggestion | null>;
     event(event: SelectionEvent): Promise<void>;
   };
+  /**
+   * Shell only: real texts and calls through the person's iPhone (messaging.ts). Off until turned on in Settings;
+   * every send needs the person's approval of the exact ticket. Added in v0 (additive).
+   */
+  messaging: MessagingApi;
   /** Any window: bring the shell to the front on Home. The shell listens with onShowHome. */
   showHome(): void;
   onShowHome(listener: () => void): Unsubscribe;
