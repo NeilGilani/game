@@ -48,6 +48,7 @@ export interface ComputerResult {
 
 /** Longest screenshot edge sent to the model; 1280 keeps cost down and stays inside image limits. */
 const MAX_WIDTH = 1280;
+export const SCREENSHOT_FORMAT = "jpeg" as const;
 
 export class ComputerTier {
   /** Image pixels per global screen point, from the last screenshot. */
@@ -150,10 +151,14 @@ export class ComputerTier {
   }
 
   private async capture(): Promise<ComputerResult> {
-    const shot = await this.native.call("screen.capture", { maxWidth: MAX_WIDTH, format: "png" });
+    // JPEG: several times smaller than PNG for a screen, so it is encoded, sent over the pipe and uploaded with
+    // every turn much faster; at this size text stays readable. The frontmost app is read at the same time.
+    const [shot, front] = await Promise.all([
+      this.native.call("screen.capture", { maxWidth: MAX_WIDTH, format: SCREENSHOT_FORMAT }),
+      this.native.call("apps.frontmost", {}),
+    ]);
     this.pxPerPoint = shot.scale > 0 ? shot.scale : 1;
     this.screen = { width: shot.width / this.pxPerPoint, height: shot.height / this.pxPerPoint };
-    const front = await this.native.call("apps.frontmost", {});
     return {
       text: "OK",
       image: { data: shot.data, mediaType: shot.format === "png" ? "image/png" : "image/jpeg" },

@@ -53,11 +53,39 @@ export interface GeminiOptions {
   /** Dollars per million tokens. Defaults: gemini-3.8-flash paid tier, valid through 2026-12-31. */
   prices?: Prices;
   timeoutMs?: number;
+  /** Screenshots kept in the history that is resent every turn (the most recent ones). */
+  keepScreenshots?: number;
   /** For tests: replaces the network call. */
   transport?: GeminiTransport;
 }
 
 export const GEMINI_DEFAULT_MODEL = "gemini-3.8-flash";
+
+/**
+ * Stateless mode resends the whole history every turn, and Gemini Computer Use returns a screenshot with every
+ * action, so without a limit each turn uploads every screenshot taken so far (the request grows with every step, and
+ * so does the time to the next action). Only the latest few screens are kept, as in Google's own computer-use
+ * reference agent; older results keep their text. Only images in AGENCY's own function results are dropped: model
+ * steps (thought signatures) are always resent exactly.
+ */
+export const GEMINI_KEEP_SCREENSHOTS = 3;
+
+/** Replaces the image in all but the newest `keep` screenshot-carrying function results with a short note. */
+export function dropOldScreenshots(history: GeminiStep[], keep: number): void {
+  let seen = 0;
+  for (let i = history.length - 1; i >= 0; i--) {
+    const step = history[i]!;
+    if (step.type !== "function_result" || !Array.isArray(step.result)) continue;
+    const parts = step.result as { type: string }[];
+    if (!parts.some((p) => p.type === "image")) continue;
+    seen += 1;
+    if (seen <= keep) continue;
+    step.result = [
+      ...parts.filter((p) => p.type !== "image"),
+      { type: "text", text: "(older screenshot removed; the latest screenshots show the screen now)" },
+    ] as typeof step.result;
+  }
+}
 
 /** gemini-3.8-flash, paid tier, through 2026-12-31 (ai.google.dev/gemini-api/docs/pricing, read 2026-10-10). */
 export const GEMINI_38_FLASH_PRICES: Prices = { input: 0.75, output: 3.75, cachedInput: 0.075 };
@@ -94,9 +122,11 @@ export class GeminiModel implements AgentModel {
   private readonly thinkingLevel: GeminiThinkingLevel;
   private readonly prices: Prices;
   private readonly transport: GeminiTransport;
+  private readonly keepScreenshots: number;
 
   constructor(opts: GeminiOptions) {
     this.model = opts.model ?? GEMINI_DEFAULT_MODEL;
+    this.keepScreenshots = Math.max(1, opts.keepScreenshots ?? GEMINI_KEEP_SCREENSHOTS);
     // Low by default: each turn of a desktop task must come back in seconds, not tens of seconds.
     this.thinkingLevel = opts.thinkingLevel ?? "low";
     this.prices = opts.prices ?? GEMINI_38_FLASH_PRICES;
@@ -139,6 +169,7 @@ export class GeminiModel implements AgentModel {
           history.push({ type: "user_input", content: [{ type: "text", text: input }] });
         } else {
           for (const out of input) history.push(functionResult(out));
+          dropOldScreenshots(history, this.keepScreenshots);
         }
         const request: GeminiRequest = {
           model: this.model,
