@@ -1,0 +1,36 @@
+---
+// A photograph of people from src/assets/photos, with its alt text from src/data/photos.json (which also feeds
+// the credits page). The people in these photos are not AGENCY users: never caption them as if they were.
+import { Picture } from "astro:assets";
+import type { ImageMetadata } from "astro";
+import { photo } from "../data/photos";
+
+interface Props {
+  id: string;
+  /** Load straight away (only for a photo near the top of the page). */
+  eager?: boolean;
+  sizes?: string;
+  class?: string;
+}
+
+const { id, eager = false, sizes = "(min-width: 80rem) 36rem, 92vw", class: cls } = Astro.props;
+const meta = photo(id);
+const files = import.meta.glob<{ default: ImageMetadata }>("../assets/photos/*.jpg", { eager: true });
+const src = files[`../assets/photos/${meta.file}`]?.default;
+if (!src) throw new Error(`Photo file missing: ${meta.file}`);
+const widths = [400, 640, 960, 1280].filter((w) => w <= src.width);
+---
+
+<figure class:list={["photo", cls]}>
+  <Picture
+    src={src}
+    alt={meta.alt}
+    widths={widths}
+    sizes={sizes}
+    formats={["avif", "webp"]}
+    quality={eager ? 62 : 60}
+    loading={eager ? "eager" : "lazy"}
+    fetchpriority={eager ? "high" : "auto"}
+    decoding="async"
+  />
+</figure>
