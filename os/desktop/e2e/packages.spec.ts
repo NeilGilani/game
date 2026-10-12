@@ -83,6 +83,23 @@ test.describe("os/overlay (Instance 3) in the overlay windows", () => {
         .poll(() => app.windows().some((w) => w.url().startsWith("agency://overlay/index.html")))
         .toBe(true);
       const overlay = app.windows().find((w) => w.url().startsWith("agency://overlay/index.html"))!;
+      // While AGENCY's own window is in front the overlay stands down (the shell has its own Help and Stop); the rail
+      // is for every other app. Put another app in front, as far as AGENCY can tell (once the shell has shown itself).
+      await expect
+        .poll(() =>
+          app.evaluate(() =>
+            (
+              globalThis as unknown as { __agency: { shell: { isVisible(): boolean } } }
+            ).__agency.shell.isVisible(),
+          ),
+        )
+        .toBe(true);
+      await app.evaluate(() => {
+        const shell = (globalThis as unknown as { __agency: { shell: { blur(): void; hide(): void } } })
+          .__agency.shell;
+        shell.blur();
+        shell.hide();
+      });
       await expect(overlay.getByRole("button", { name: /help/i }).first()).toBeVisible();
       await expect(overlay.getByRole("button", { name: /stop/i }).first()).toBeVisible();
       const errors: string[] = [];
