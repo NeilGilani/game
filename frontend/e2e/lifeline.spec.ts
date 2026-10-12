@@ -124,6 +124,19 @@ test("unreachable caregiver: fails over, neighbour answers on the response page,
   await expect(responder.getByRole("heading", { name: "You're on the way" })).toBeVisible();
 
   await expect(overlay(page).getByRole("heading", { name: "Morgan is on the way" })).toBeVisible();
+  // Minimized, the alert is a bar above the dock: Help and Stop are never covered.
+  await overlay(page).getByRole("button", { name: "Minimize" }).click();
+  const bar = page.getByRole("status").filter({ hasText: "Morgan is on the way" });
+  await expect(bar).toBeVisible();
+  for (const name of [/^Help/, /Stop agent/]) {
+    const box = (await page.getByRole("button", { name }).first().boundingBox())!;
+    const onTop = await page.evaluate(({ x, y }) => !!document.elementFromPoint(x, y)?.closest(".dock"), {
+      x: box.x + box.width / 2,
+      y: box.y + box.height - 6,
+    });
+    expect(onTop, `${name} is uncovered`).toBe(true);
+  }
+  await bar.getByRole("button", { name: "Show alert" }).click();
   await overlay(page).getByRole("button", { name: "I'm OK now" }).click();
   await expect(overlay(page).getByText("End the alert and tell everyone you're OK?")).toBeVisible();
   await overlay(page).getByRole("button", { name: "Yes, I'm OK" }).click();
