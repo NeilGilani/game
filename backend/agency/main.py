@@ -170,6 +170,8 @@ def create_app(
             effort=settings.reasoning_effort,
             fallbacks=settings.anthropic_fallbacks,
             timeout_s=settings.reasoning_timeout_s,
+            relay_url=settings.relay_url,
+            identity_dir=settings.db_path.parent,
         )
         if provider is None:
             chosen = with_local_model(chosen, dict(os.environ))

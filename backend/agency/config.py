@@ -7,6 +7,7 @@ are read from the environment only and never returned by any endpoint.
 from __future__ import annotations
 
 import os
+from collections.abc import Mapping
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -68,6 +69,8 @@ class Settings:
     lifeline_loop: bool = True
     lifeline_tick_s: float = 1.0
     inline_runner: bool = False
+    # AGENCY Cloud (reasoning/cloud.py), used when no API key is set: None with AGENCY_RELAY=off.
+    relay_url: str | None = None
     extra: dict[str, str] = field(default_factory=dict)
 
     def response_base_url(self) -> str:
@@ -81,6 +84,17 @@ class Settings:
             name = socket.gethostname()
             host = name if name.endswith(".local") else f"{name}.local"
         return f"http://{host}:{self.port}"
+
+
+DEFAULT_RELAY_URL = "https://getagencyos.pages.dev"
+
+
+def relay_url_from_env(env: Mapping[str, str] | None = None) -> str | None:
+    """AGENCY Cloud's address (AGENCY_RELAY_URL, default the AGENCY site), or None with AGENCY_RELAY=off."""
+    env = os.environ if env is None else env
+    if (env.get("AGENCY_RELAY") or "").strip().lower() in {"0", "off", "false", "no"}:
+        return None
+    return (env.get("AGENCY_RELAY_URL") or DEFAULT_RELAY_URL).strip().rstrip("/") or None
 
 
 def load_settings(**overrides: object) -> Settings:
@@ -123,6 +137,7 @@ def load_settings(**overrides: object) -> Settings:
         ),
         frontend_dist=frontend_dist,
         public_url=os.environ.get("AGENCY_PUBLIC_URL") or None,
+        relay_url=relay_url_from_env(),
     )
     if overrides:
         from dataclasses import replace

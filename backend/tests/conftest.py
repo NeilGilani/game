@@ -12,6 +12,12 @@ from agency.main import create_app
 from agency.reasoning.provider import DisabledProvider
 
 
+@pytest.fixture(autouse=True)
+def _no_agency_cloud(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Tests never reach the real AGENCY Cloud relay: a test that wants it builds one against a fake transport."""
+    monkeypatch.setenv("AGENCY_RELAY", "off")
+
+
 def make_client(
     tmp_path: Path, *, provider: Any = None, token: str | None = None, db_name: str = "test.db", inline: bool = True
 ) -> TestClient:
