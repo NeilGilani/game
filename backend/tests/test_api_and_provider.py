@@ -78,6 +78,41 @@ def test_demo_reset_and_faults(client: TestClient) -> None:
     assert client.get("/api/demo/faults").json()["repair_slot_taken"] is False
 
 
+def test_presenter_controls_are_off_unless_asked_for(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    from agency.config import load_settings
+    from agency.main import create_app
+
+    monkeypatch.delenv("AGENCY_DEMO_CONTROLS", raising=False)
+    monkeypatch.setattr("agency.config._load_dotenv", lambda: None)  # a developer's own .env doesn't count here
+    settings = load_settings(db_path=tmp_path / "x.db", frontend_dist=None, lifeline_loop=False)
+    assert settings.demo_controls is False
+    with TestClient(create_app(settings, provider=DisabledProvider())) as c:
+        assert c.get("/api/health").json()["demo_controls"] is False
+        assert c.put("/api/demo/faults", json={"repair_slot_taken": True}).status_code == 403
+        assert c.put("/api/demo/network", json={"state": "offline"}).status_code == 403
+        assert c.post("/api/demo/reset").status_code == 403
+        assert c.post("/api/lifeline/demo/checkin-now").status_code == 403
+        assert c.get("/api/demo/faults").json()["repair_slot_taken"] is False
+    monkeypatch.setenv("AGENCY_DEMO_CONTROLS", "1")  # what make demo / make dev set
+    assert load_settings(db_path=tmp_path / "x.db").demo_controls is True
+
+
+def test_other_websites_cannot_change_a_tokenless_coordinator(client: TestClient) -> None:
+    start_repair(client)
+    # A page on another site can send a "simple" POST to localhost without a CORS preflight.
+    evil = {"Origin": "http://evil.example"}
+    assert client.post("/api/demo/reset", headers=evil).status_code == 403
+    assert client.post("/api/system/pause", headers=evil).status_code == 403
+    assert client.post("/api/lifeline/help", headers=evil, json={"test": True}).status_code == 403
+    assert client.post("/api/demo/reset", headers={"Origin": "null"}).status_code == 403
+    assert len(client.get("/api/cases", headers=evil).json()) == 1  # reading is CORS's job; nothing was changed
+    assert client.get("/api/health").json()["automation_paused"] is False
+    # AGENCY's own pages: the allowed origins, the coordinator itself, and callers that send no Origin.
+    assert client.post("/api/system/pause", headers={"Origin": "http://localhost:5173"}).status_code == 200
+    assert client.post("/api/system/resume", headers={"Origin": "http://testserver"}).status_code == 200
+    assert client.post("/api/system/pause").status_code == 200
+
+
 def test_explain_is_deterministic_without_cloud(client: TestClient) -> None:
     case = start_repair(client)
     approval = case["pending_approvals"][0]
