@@ -84,7 +84,7 @@
     --violet-soft: #2a2152;
     --sun: #ffd45c;
     --sun-hover: #ffde80;
-    --sun-soft: #2e2638;
+    --sun-soft: #312743;
     --coral: #ff9a7f;
     --coral-ink: #ffab94;
     --coral-soft: #33213a;
@@ -122,7 +122,7 @@
   --violet-soft: #2a2152;
   --sun: #ffd45c;
   --sun-hover: #ffde80;
-  --sun-soft: #2e2638;
+  --sun-soft: #312743;
   --coral: #ff9a7f;
   --coral-ink: #ffab94;
   --coral-soft: #33213a;
@@ -516,6 +516,13 @@ a:hover {
 .menu {
   display: none;
 }
+.menu .when-open,
+.menu[open] .when-closed {
+  display: none;
+}
+.menu[open] .when-open {
+  display: inline;
+}
 @media (max-width: 1260px) {
   .site-nav,
   .header-cta {
@@ -621,7 +628,7 @@ a:hover {
 .footer-cols {
   display: grid;
   gap: var(--gap) 48px;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 14rem), 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 9.5rem), 1fr));
 }
 .site-footer ul {
   list-style: none;

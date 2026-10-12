@@ -260,16 +260,13 @@ function renderProblem(ctx: Ctx, state: Exclude<ReleaseState, { kind: "ok" }>, p
         h(
           "p",
           {},
-          "Today you can try AGENCY in your browser, with nothing to install, or ",
+          "Today you can ",
+          h("a", { href: `${ctx.base}app/` }, "try AGENCY in your browser"),
+          ", with nothing to install, or ",
           h("a", { href: "#build" }, "build the Mac app yourself"),
           " from the source code.",
         ),
-        h(
-          "div",
-          { class: "actions" },
-          h("a", { class: "btn btn-primary", href: `${ctx.base}app/` }, "Try it in your browser"),
-          releasesButton(ctx, "Watch the releases page"),
-        ),
+        h("div", { class: "actions" }, releasesButton(ctx, "Watch the releases page")),
         other,
       );
       return;
