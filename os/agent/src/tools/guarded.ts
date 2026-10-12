@@ -57,8 +57,9 @@ export class GuardedTools {
           input: { submits: node.submits === true },
         };
       },
-      async (action) => {
-        const r = await bridge.click(ref);
+      async (action, approval) => {
+        // Tell the bridge whether the person approved this click: its own reading may find it consequential.
+        const r = await bridge.click(ref, { approved: approval !== undefined });
         if (!r.ok) throw new ToolError(r.error ?? `Clicking "${action.target?.label}" did not work.`);
         return `Clicked "${action.target?.label}".`;
       },
@@ -229,7 +230,7 @@ export class GuardedTools {
   /** Run an arbitrary already-resolved action through the guard (computer-use tier). */
   runAction<T>(
     resolve: () => Promise<AgentAction>,
-    exec: (a: AgentAction) => Promise<T>,
+    exec: (a: AgentAction, approval?: { approvalId: string }) => Promise<T>,
   ): Promise<GuardOutcome<T>> {
     return this.guard.run(this.ctx, resolve, exec);
   }
