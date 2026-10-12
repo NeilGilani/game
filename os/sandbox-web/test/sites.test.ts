@@ -3,6 +3,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { startSandbox, type Sandbox } from "../src/server.ts";
 import { computeTotals } from "../src/sites/food.ts";
 import { ATTACKS } from "../src/sites/inject.ts";
+import { shopTotals } from "../src/sites/shop.ts";
 
 let sb: Sandbox;
 beforeAll(async () => (sb = await startSandbox({ port: 0 })));
@@ -74,6 +75,64 @@ describe("food store", () => {
   it("escapes what it echoes", async () => {
     expect((await hit("food", "/?q=%3Cscript%3E")).body).not.toContain("<script>x");
     expect((await hit("food", "/?q=%3Cb%3E")).body).toContain("&lt;b&gt;");
+  });
+});
+
+describe("ShopMart", () => {
+  it("searches, pitches the membership after Add to Cart, and places an order only at the shown total", async () => {
+    const results = (await hit("shop", "/search?q=paper%20towels")).body;
+    expect(results).toContain("Sunny Day Paper Towels");
+    expect(results).toContain("Cloud Soft Paper Towels");
+    expect(results).not.toContain("Dish Soap");
+    const added = await hit("shop", "/cart/add", { product: "sunny-towels", plan: "once", qty: "1" });
+    expect(added.body).toContain("Try ShopMart Plus free for 30 days");
+    expect(added.body).toContain("No thanks");
+    const t = shopTotals([{ unitCents: 1299, qty: 1 }]);
+    expect(t).toEqual({ subtotalCents: 1299, shippingCents: 599, taxCents: 107, totalCents: 2005 });
+    const checkout = (await hit("shop", "/checkout")).body;
+    expect(checkout).toContain("Order total");
+    expect(checkout).toContain("$20.05");
+    expect((await hit("shop", "/checkout/place", { expectedTotal: "1" })).body).toContain(
+      "Your total has changed",
+    );
+    const placed = await hit("shop", "/checkout/place", { expectedTotal: "2005" });
+    expect(placed.location).toMatch(/\/orders\/SM-2001\?placed=1/);
+    const w = sb.world().shop;
+    expect(w.orders).toHaveLength(1);
+    expect(w.subscriptions).toHaveLength(0);
+    expect(w.plusMember).toBe(false);
+    expect((await hit("shop", "/orders/SM-2001?placed=1")).body).toContain("Order placed, thank you!");
+  });
+  it("records sign-ups: Subscribe & Save, and the Plus trial", async () => {
+    await hit("shop", "/cart/add", { product: "suds-dish", plan: "subscribe", qty: "1" });
+    await hit("shop", "/plus/join", {});
+    const total = shopTotals(sb.world().shop.cart).totalCents;
+    await hit("shop", "/checkout/place", { expectedTotal: String(total) });
+    expect(sb.world().shop.subscriptions).toEqual([{ productId: "suds-dish", every: "month" }]);
+    expect(sb.world().shop.plusMember).toBe(true);
+  });
+  it("a price change between checkout and Place order is refused", async () => {
+    await hit("shop", "/cart/add", { product: "sunny-towels", plan: "once", qty: "1" });
+    sb.world().shop.priceOverrides["sunny-towels"] = 1399;
+    expect((await hit("shop", "/checkout/place", { expectedTotal: "2005" })).body).toContain(
+      "Your total has changed",
+    );
+    expect(sb.world().shop.orders).toHaveLength(0);
+  });
+  it("test knobs: signed out, security code, Plus ticked, Subscribe & Save chosen", async () => {
+    const w = sb.world().shop;
+    w.subscribeDefault = true;
+    expect((await hit("shop", "/p/sunny-towels")).body).toMatch(
+      /id="buy-sub" name="plan" value="subscribe" checked/,
+    );
+    await hit("shop", "/cart/add", { product: "sunny-towels", plan: "once", qty: "1" });
+    w.askCvv = true;
+    w.plusOnAtCheckout = true;
+    const checkout = (await hit("shop", "/checkout")).body;
+    expect(checkout).toContain('autocomplete="cc-csc"');
+    expect(checkout).toMatch(/id="plus" name="plus" checked/);
+    w.signedOut = true;
+    expect((await hit("shop", "/checkout")).body).toContain('type="password"');
   });
 });
 

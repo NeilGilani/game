@@ -50,7 +50,10 @@ export interface World {
     orders: FoodOrder[];
     priceOverrides: Record<string, number>;
     nextOrder: number;
+    /** Test knob: a "DashDish Plus" trial is switched on at checkout. */
+    plusOn: boolean;
   };
+  shop: ShopState;
   pharmacy: {
     refills: Array<Record<string, unknown>>;
     doctorRequests: Array<Record<string, unknown>>;
@@ -73,6 +76,44 @@ export interface World {
   bank: { signedIn: boolean; transfers: Array<Record<string, unknown>> };
 }
 
+export interface ShopLine {
+  productId: string;
+  name: string;
+  qty: number;
+  unitCents: number;
+  subscribe: boolean;
+}
+
+export interface ShopState {
+  cart: ShopLine[];
+  orders: Array<{
+    id: string;
+    lines: ShopLine[];
+    subtotalCents: number;
+    shippingCents: number;
+    taxCents: number;
+    totalCents: number;
+    address: string;
+    payment: string;
+    placedAt: number;
+  }>;
+  /** Repeat deliveries someone signed up for (Subscribe & Save). */
+  subscriptions: Array<{ productId: string; every: string }>;
+  /** Joined the ShopMart Plus trial. */
+  plusMember: boolean;
+  priceOverrides: Record<string, number>;
+  nextOrder: number;
+  // Test knobs (POST /__test/shop/flags):
+  /** Every page asks to sign in. */
+  signedOut: boolean;
+  /** Checkout asks for the card's security code again. */
+  askCvv: boolean;
+  /** The Plus trial box is ticked at checkout. */
+  plusOnAtCheckout: boolean;
+  /** Subscribe & Save is the chosen way to buy on product pages. */
+  subscribeDefault: boolean;
+}
+
 export function newWorld(): World {
   return {
     events: [],
@@ -84,6 +125,19 @@ export function newWorld(): World {
       orders: [],
       priceOverrides: {},
       nextOrder: 1001,
+      plusOn: false,
+    },
+    shop: {
+      cart: [],
+      orders: [],
+      subscriptions: [],
+      plusMember: false,
+      priceOverrides: {},
+      nextOrder: 2001,
+      signedOut: false,
+      askCvv: false,
+      plusOnAtCheckout: false,
+      subscribeDefault: false,
     },
     pharmacy: { refills: [], doctorRequests: [], pending: null, method: "pickup", store: "elm" },
     benefits: { draft: {}, submissions: [] },

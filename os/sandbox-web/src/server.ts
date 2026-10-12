@@ -8,6 +8,9 @@
  *   POST /__test/reset             start over
  *   POST /__test/food/advance      move every order's tracking one step forward
  *   POST /__test/food/price        { item, cents } change a menu price (to test approvals going stale)
+ *   POST /__test/food/flags        { plusOn } a membership trial switched on at checkout
+ *   POST /__test/shop/price        { product, cents } change a ShopMart price
+ *   POST /__test/shop/flags        { signedOut, askCvv, plusOnAtCheckout, subscribeDefault }
  */
 
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
@@ -20,6 +23,7 @@ import { inject } from "./sites/inject.ts";
 import { mail } from "./sites/mail.ts";
 import { bank, flaky, lab } from "./sites/misc.ts";
 import { pharmacy } from "./sites/pharmacy.ts";
+import { shop } from "./sites/shop.ts";
 import { newWorld, type World } from "./world.ts";
 
 export const SITES: Record<
@@ -30,6 +34,11 @@ export const SITES: Record<
     title: "DashDish",
     about: "Food delivery: menus, options, cart, fees, tip, checkout, tracking.",
     handler: food,
+  },
+  shop: {
+    title: "ShopMart",
+    about: "Everyday goods: search, Subscribe & Save, a membership pitch, checkout, confirmation.",
+    handler: shop,
   },
   pharmacy: { title: "CareRx", about: "Prescription refills.", handler: pharmacy },
   benefits: {
@@ -129,6 +138,24 @@ export async function startSandbox(opts: SandboxOptions = {}): Promise<Sandbox> 
       if (!b?.item || typeof b.cents !== "number")
         return { kind: "json", status: 400, body: { error: "item and cents required" } };
       world.food.priceOverrides[b.item] = b.cents;
+      return { kind: "json", body: { ok: true } };
+    }
+    if (path === "/__test/food/flags" && method === "POST") {
+      const b = (body ?? {}) as { plusOn?: unknown };
+      if (typeof b.plusOn === "boolean") world.food.plusOn = b.plusOn;
+      return { kind: "json", body: { ok: true } };
+    }
+    if (path === "/__test/shop/price" && method === "POST") {
+      const b = body as { product?: string; cents?: number } | null;
+      if (!b?.product || typeof b.cents !== "number")
+        return { kind: "json", status: 400, body: { error: "product and cents required" } };
+      world.shop.priceOverrides[b.product] = b.cents;
+      return { kind: "json", body: { ok: true } };
+    }
+    if (path === "/__test/shop/flags" && method === "POST") {
+      const b = (body ?? {}) as Record<string, unknown>;
+      for (const k of ["signedOut", "askCvv", "plusOnAtCheckout", "subscribeDefault"] as const)
+        if (typeof b[k] === "boolean") world.shop[k] = b[k];
       return { kind: "json", body: { ok: true } };
     }
     return null;
