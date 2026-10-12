@@ -310,7 +310,7 @@ function Progress({ alert }: { alert: AlertDetail }) {
 }
 
 /** How far up from the bottom the dock starts (px), so a bar can sit just above it: Help and Stop stay visible. */
-function useAboveDock(): number {
+function useAboveDock(shown = true): number {
   const [bottom, setBottom] = useState(0);
   useLayoutEffect(() => {
     const measure = () => {
@@ -320,7 +320,7 @@ function useAboveDock(): number {
     measure();
     window.addEventListener("resize", measure);
     return () => window.removeEventListener("resize", measure);
-  }, []);
+  }, [shown]);
   return bottom;
 }
 
@@ -569,9 +569,11 @@ function Checkin() {
 /** Progress of the three-long-blink help signal, shown once the first long blink counts. */
 export function HelpSignalMeter() {
   const { pattern, open, queued } = useLifeline();
+  // Above the dock (it used to sit over the dock's middle buttons).
+  const bottom = useAboveDock(!open && !queued && pattern.counted > 0);
   if (open || queued || pattern.counted === 0) return null;
   return (
-    <div className="ll-meter" role="status" aria-live="polite">
+    <div className="ll-meter" role="status" aria-live="polite" style={{ bottom: bottom + 12 }}>
       <Icon name="eye" />
       <span>Help signal: {pattern.counted} of 3 long blinks</span>
       <span className="ll-dots" aria-hidden="true">
