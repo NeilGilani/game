@@ -37,5 +37,7 @@ camera.onStatus((status, error) => {
   if (status === "error") console.error(`gaze camera error: ${error ?? "unknown"}`);
 });
 void engine.attach(camera);
-// Main slows this window down while the shell (which tracks the eyes itself) is in front.
-window.agency.gaze.onPace?.((fps) => camera.setTargetFps(fps));
+// Main slows this window down while the shell (which tracks the eyes itself) is in front. Through the engine's
+// governor, which sets the camera's rate on every frame (setting the camera directly was undone by the next frame)
+// and never goes below the floor where Lifeline's help signal still works.
+window.agency.gaze.onPace?.((fps) => engine.setFrameRateCap(Number.isFinite(fps) && fps > 0 ? fps : null));
