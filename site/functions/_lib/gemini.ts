@@ -13,21 +13,37 @@ export interface Context {
 
 export const MODEL = "gemini-3.5-flash-lite"; // about a second; GEMINI_MODEL overrides
 const PER_MINUTE = 12;
+const MAX_VISITORS = 5000;
+// The API's own minimum deadline is 10 s; past this the page uses its built-in behaviour anyway.
+const TIMEOUT_MS = 15_000;
 const seen = new Map<string, number[]>();
 
-export function limited(request: Request): boolean {
+export const modelOf = (env: Env): string => env.GEMINI_MODEL || MODEL;
+
+/** True when this visitor has sent more than `perMinute` requests in the last minute. */
+export function limited(request: Request, perMinute = PER_MINUTE): boolean {
   const ip = request.headers.get("cf-connecting-ip") ?? "unknown";
   const now = Date.now();
   const recent = (seen.get(ip) ?? []).filter((t) => now - t < 60_000);
   recent.push(now);
-  seen.set(ip, recent);
-  if (seen.size > 5000) seen.clear();
-  return recent.length > PER_MINUTE;
+  seen.delete(ip);
+  seen.set(ip, recent); // most recent visitors last
+  if (seen.size > MAX_VISITORS) {
+    // Forget visitors who have been quiet for a minute, then the oldest, but never everyone's limits at once.
+    for (const [key, times] of seen) if (!times.some((t) => now - t < 60_000)) seen.delete(key);
+    for (const key of seen.keys()) {
+      if (seen.size <= MAX_VISITORS) break;
+      seen.delete(key);
+    }
+  }
+  return recent.length > perMinute;
 }
 
+/** One line of plain text: no control characters, single spaces, at most `max` characters. */
 export function clean(text: unknown, max: number): string {
   return String(text ?? "")
-    .replace(/[\u0000-\u001f]/g, " ")
+    .replace(/[\u0000-\u001f\u007f]/g, " ")
+    .replace(/\s+/g, " ")
     .trim()
     .slice(0, max);
 }
@@ -38,9 +54,26 @@ export const json = (body: unknown, status = 200) =>
     headers: { "content-type": "application/json", "cache-control": "no-store" },
   });
 
-/** One JSON answer from Gemini, or null. */
-export async function gemini(env: Env, system: string, user: string, maxTokens = 1024): Promise<unknown> {
-  const model = env.GEMINI_MODEL || MODEL;
+/** The answer shape for replies and sentence endings: {"items": [strings]}. */
+export const ITEMS_SCHEMA = {
+  type: "object",
+  properties: { items: { type: "array", items: { type: "string" } } },
+  required: ["items"],
+};
+
+/**
+ * One JSON answer from Gemini (any JSON value), or null when it fails, times out or isn't JSON. With a schema,
+ * Gemini's structured output keeps the answer in that shape (without one it sometimes drops the wrapper object).
+ */
+export async function gemini(
+  env: Env,
+  system: string,
+  user: string,
+  maxTokens = 1024,
+  temperature = 0.5,
+  schema?: Record<string, unknown>,
+): Promise<unknown> {
+  const model = modelOf(env);
   const reply = await fetch(
     `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
     {
@@ -52,44 +85,68 @@ export async function gemini(env: Env, system: string, user: string, maxTokens =
         generationConfig: {
           responseMimeType: "application/json",
           maxOutputTokens: maxTokens,
-          temperature: 0.5,
-          // Replies and sentence endings need speed, not deep thought (Gemini 3 models take a thinking level).
+          temperature,
+          ...(schema ? { responseJsonSchema: schema } : {}),
+          // Replies, sentence endings and short plans need speed, not deep thought (Gemini 3 models take a level).
           ...(model.startsWith("gemini-3") ? { thinkingConfig: { thinkingLevel: "low" } } : {}),
         },
       }),
+      signal: AbortSignal.timeout(TIMEOUT_MS),
     },
   ).catch(() => null);
   if (!reply || !reply.ok) return null;
   const data = (await reply.json().catch(() => null)) as {
-    candidates?: { content?: { parts?: { text?: string }[] } }[];
+    candidates?: { content?: { parts?: { text?: string; thought?: boolean }[] } }[];
   } | null;
-  const text = data?.candidates?.[0]?.content?.parts?.map((p) => p.text ?? "").join("") ?? "";
+  const parts = data?.candidates?.[0]?.content?.parts;
+  const text = Array.isArray(parts) ? parts.map((p) => (p && !p.thought ? (p.text ?? "") : "")).join("") : "";
   try {
-    return JSON.parse(text);
+    return JSON.parse(text) as unknown;
   } catch {
     return null;
   }
 }
 
-/** Short, distinct strings from {"items": [...]}. */
+/** Short, distinct strings from {"items": [...]} (or a bare list); anything else gives none. */
 export function items(data: unknown, count: number, max: number): string[] {
-  const list = (data as { items?: unknown } | null)?.items;
+  const list = Array.isArray(data)
+    ? data
+    : data && typeof data === "object"
+      ? (data as { items?: unknown }).items
+      : undefined;
   if (!Array.isArray(list)) return [];
   const out: string[] = [];
   for (const item of list) {
+    if (typeof item !== "string") continue;
     const text = clean(item, max);
     if (text && !out.some((o) => o.toLowerCase() === text.toLowerCase())) out.push(text);
   }
   return out.slice(0, count);
 }
 
-export async function body(request: Request): Promise<Record<string, unknown> | null> {
+/** The request's JSON object, or the error response to send instead (too large, not JSON, not an object). */
+export async function body(request: Request, maxBytes = 4000): Promise<Record<string, unknown> | Response> {
+  const declared = Number(request.headers.get("content-length") ?? "0");
+  if (declared > maxBytes) return json({ error: "Request too large." }, 413);
   const text = await request.text();
-  if (text.length > 4000) return null;
+  if (text.length > maxBytes) return json({ error: "Request too large." }, 413);
+  let value: unknown;
   try {
-    const value = JSON.parse(text) as unknown;
-    return value && typeof value === "object" ? (value as Record<string, unknown>) : null;
+    value = JSON.parse(text);
   } catch {
-    return null;
+    return json({ error: "Not JSON." }, 400);
   }
+  if (!value || typeof value !== "object" || Array.isArray(value))
+    return json({ error: "Expected a JSON object." }, 400);
+  return value as Record<string, unknown>;
+}
+
+/** Up to 20 short phrases from a list (anything else gives none). */
+export function phrases(value: unknown): string[] {
+  return Array.isArray(value)
+    ? value
+        .slice(0, 20)
+        .map((p) => clean(p, 80))
+        .filter(Boolean)
+    : [];
 }

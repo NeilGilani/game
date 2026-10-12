@@ -212,6 +212,9 @@ class SynapseRouter:
             route.network_source, route.simulated_network = "demo", True
             route.experts = budget(route.ideal, cap, strongest_only=mode == "Critical-Fusion")
             route.decision = decision_for(mode)
+        # Decided here, before the route is recorded, so the history shows the lane each request really took.
+        if route.decision != "built-in" and purpose in FAST_PURPOSES:
+            route.lane = "fast"
         self.history = (self.history + [route.to_dict()])[-50:]
         return route
 
@@ -341,10 +344,6 @@ class SynapseLayer:
                 cloud.expert_brief = ""
             return False
         self.skipped = None
-        if purpose in FAST_PURPOSES:
-            route.lane = "fast"
-        if self.router.history:
-            self.router.history[-1]["lane"] = route.lane
         if hasattr(cloud, "expert_brief"):
             cloud.expert_brief = route.brief()
         if hasattr(cloud, "lane"):

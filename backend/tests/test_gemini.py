@@ -308,3 +308,111 @@ def test_gemini_key_is_never_returned_by_the_api(tmp_path: Path, monkeypatch: py
     with make_client(tmp_path, provider=FakeGemini(lambda body: None).provider()) as c:
         for path in ("/api/health", "/api/runtime"):
             assert KEY not in c.get(path).text
+
+
+# -- the two models: fast lane, failover, and which model answered ---------------------------------
+
+LIST = {"type": "object", "properties": {"items": {"type": "array", "items": {"type": "string"}}}, "required": ["items"]}
+
+
+def model_of(request: httpx.Request) -> str:
+    return request.url.path.rsplit("/", 1)[-1].split(":")[0]
+
+
+def by_model(answers: dict[str, Any]) -> FakeGemini:
+    """Answers per model (the model is in the request's URL)."""
+
+    def respond(body: dict[str, Any] | None) -> Any:
+        answer = answers[model_of(fake.requests[-1])]
+        return answer(body) if callable(answer) else answer
+
+    fake = FakeGemini(respond)
+    return fake
+
+
+def fast_model() -> str:
+    return GeminiProvider(model=MODEL, client=object()).fast_model
+
+
+def test_fast_lane_falls_over_when_the_quick_model_is_misconfigured_and_says_so() -> None:
+    fast = fast_model()
+    fake = by_model({fast: api_error(404, "NOT_FOUND", f"models/{fast} is not found."), MODEL: {"items": ["ok"]}})
+    provider = fake.provider()
+    provider.lane = "fast"
+    assert asyncio.run(provider._call_json("complete_sentence", "I want", LIST)) == {"items": ["ok"]}
+    assert [model_of(r) for r in fake.requests] == [fast, MODEL]
+    assert provider.last_model == MODEL  # the label names the model that really answered
+    status = provider.status()
+    assert status["state"] == "ok"
+    # Not hidden by the fallback: the status names the model that isn't there.
+    assert status["model_problems"] == {fast: f"model {fast} was not found"}
+    assert f"model {fast} was not found" in status["description"]
+
+
+def test_when_both_models_fail_the_error_names_each_model() -> None:
+    fast = fast_model()
+    fake = FakeGemini(lambda body: api_error(404, "NOT_FOUND", "not found"))
+    provider = fake.provider()
+    assert asyncio.run(provider._call_json("explain", "x", LIST)) is None
+    assert provider.status()["last_error"] == f"model {MODEL} was not found; model {fast} was not found"
+    assert provider.last_model is None
+
+
+def test_a_rejected_key_is_not_retried_on_the_other_model() -> None:
+    fake = FakeGemini(lambda body: api_error(400, "INVALID_ARGUMENT", "API key not valid. Please pass a valid API key."))
+    provider = fake.provider()
+    provider.lane = "fast"
+    assert asyncio.run(provider._call_json("suggest_replies", "Hi", LIST)) is None
+    assert len(fake.requests) == 1
+    assert provider.status()["last_error"] == "the API key was rejected"
+    assert "model_problems" not in provider.status()  # a key problem, not a model problem
+
+
+def test_a_busy_model_hands_over_at_once_and_the_label_follows() -> None:
+    fast = fast_model()
+    fake = by_model({MODEL: api_error(503, "UNAVAILABLE", "overloaded"), fast: {"paragraphs": ["ok"]}})
+    provider = fake.provider()
+    assert asyncio.run(provider.explain({"headline": "x"})) == ["ok"]
+    assert [model_of(r) for r in fake.requests] == [MODEL, fast]
+    assert provider.last_model == fast
+    assert "model_problems" not in provider.status()  # busy is not a configuration mistake
+
+
+def test_an_unusable_answer_does_not_change_the_answering_model() -> None:
+    provider = FakeGemini(lambda body: reply({"items": ["x"]}, finish="SAFETY")).provider()
+    assert asyncio.run(provider._call_json("explain", "x", LIST)) is None
+    assert provider.last_model is None
+
+
+def test_a_fallback_keeps_the_lane_effort_and_lenses_it_started_with() -> None:
+    fast = fast_model()
+    provider: GeminiProvider
+
+    def first(body: dict[str, Any]) -> Any:
+        # Another request is prepared by the Synapse layer while this one waits.
+        provider.lane, provider.effort, provider.expert_brief = "deep", "high", "OTHER REQUEST'S LENSES"
+        return api_error(429, "RESOURCE_EXHAUSTED", "Quota exceeded.")
+
+    fake = by_model({fast: first, MODEL: {"items": ["ok"]}})
+    provider = fake.provider()
+    provider.lane, provider.effort, provider.expert_brief = "fast", "low", "THIS REQUEST'S LENSES"
+    assert asyncio.run(provider._call_json("plan_task", "x", LIST)) == {"items": ["ok"]}
+    first_body, second_body = fake.bodies
+    assert system_text(second_body) == system_text(first_body)
+    assert "THIS REQUEST'S LENSES" in system_text(second_body)
+    assert second_body["generationConfig"]["thinkingConfig"] == {"thinking_level": "LOW"}
+
+
+def system_text(body: dict[str, Any]) -> str:
+    return str(body["systemInstruction"]["parts"][0]["text"])
+
+
+def test_client_deadlines_are_never_below_the_api_minimum(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("GEMINI_API_KEY", KEY)
+
+    def timeouts(provider: GeminiProvider) -> tuple[Any, Any]:
+        return provider.client._api_client._http_options.timeout, provider.fast_client._api_client._http_options.timeout
+
+    # The API answers 400 "Minimum allowed deadline is 10s" to anything shorter, which broke every call.
+    assert timeouts(GeminiProvider(model=MODEL, timeout_s=5)) == (10_000, 10_000)
+    assert timeouts(GeminiProvider(model=MODEL, timeout_s=40)) == (40_000, 10_000)

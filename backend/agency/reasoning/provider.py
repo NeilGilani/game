@@ -455,7 +455,8 @@ def gemini_api_key() -> str | None:
 GEMINI_FAST_MODEL = "gemini-3.5-flash-lite"
 # A busy or limited model: move on to the next one immediately.
 _GEMINI_BUSY = {429, 500, 502, 503, 504}
-FAST_TIMEOUT_S = 10.0  # the API refuses deadlines under 10 s
+MIN_DEADLINE_S = 10.0  # the API refuses deadlines under 10 s ("Minimum allowed deadline is 10s")
+FAST_TIMEOUT_S = MIN_DEADLINE_S
 
 
 @dataclass
@@ -466,6 +467,9 @@ class GeminiProvider(CloudProvider):
     label: ClassVar[str] = "Gemini"
     fast_model: str = field(default_factory=lambda: os.environ.get("AGENCY_GEMINI_FAST_MODEL") or GEMINI_FAST_MODEL)
     fast_client: Any = None
+    # A model that failed for a reason of its own (not found, request rejected) while the other model answered:
+    # shown in the status so a configuration mistake is never hidden by the fallback.
+    model_problems: dict[str, str] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
         if self.client is not None and self.fast_client is None:
@@ -477,7 +481,7 @@ class GeminiProvider(CloudProvider):
             self.client = genai.Client(
                 api_key=gemini_api_key(),
                 http_options=types.HttpOptions(
-                    timeout=int(self.timeout_s * 1000),  # milliseconds
+                    timeout=int(max(self.timeout_s, MIN_DEADLINE_S) * 1000),  # milliseconds
                     retry_options=types.HttpRetryOptions(attempts=2),
                 ),
             )
@@ -489,18 +493,31 @@ class GeminiProvider(CloudProvider):
             self.fast_client = genai.Client(
                 api_key=gemini_api_key(),
                 http_options=types.HttpOptions(
-                    timeout=int(min(self.timeout_s, FAST_TIMEOUT_S) * 1000),
+                    timeout=int(FAST_TIMEOUT_S * 1000),
                     retry_options=types.HttpRetryOptions(attempts=1),
                 ),
             )
 
+    def status(self) -> dict[str, Any]:
+        out = super().status()
+        if self.model_problems:
+            problems = "; ".join(f"{m}: {e}" for m, e in self.model_problems.items())
+            out["model_problems"] = dict(self.model_problems)
+            out["description"] += f" Check the model settings ({problems}); the other model answered instead."
+        return out
+
     def _config(
-        self, schema: dict[str, Any] | None, effort: str | None, max_tokens: int, model: str | None = None
+        self,
+        schema: dict[str, Any] | None,
+        effort: str | None,
+        max_tokens: int,
+        model: str | None = None,
+        system: str | None = None,
     ) -> Any:
         from google.genai import types
 
         config = types.GenerateContentConfig(
-            system_instruction=self.system_prompt(),
+            system_instruction=system if system is not None else self.system_prompt(),
             response_mime_type="application/json",
             response_json_schema=schema,
             # Gemini counts thinking tokens against this limit, so leave room beyond the answer itself.
@@ -511,7 +528,7 @@ class GeminiProvider(CloudProvider):
             config.thinking_config = types.ThinkingConfig(thinking_level=types.ThinkingLevel(level))
         return config
 
-    def _api_error(self, exc: Exception) -> str:
+    def _api_error(self, exc: Exception, model: str | None = None) -> str:
         from google.genai import errors
 
         if not isinstance(exc, errors.APIError):
@@ -523,12 +540,21 @@ class GeminiProvider(CloudProvider):
         if code == 403:
             return "the API key lacks permission for this model"
         if code == 404:
-            return f"model {self.model} was not found"
+            return f"model {model or self.model} was not found"
         if code == 429:
             return "rate limited"
         if code == 400:
             return f"request rejected: {message}"[:200]
         return f"service error {code}"
+
+    @staticmethod
+    def _key_problem(exc: Exception) -> bool:
+        """An error every model would give (the key itself): no point asking the other model."""
+        from google.genai import errors
+
+        if not isinstance(exc, errors.APIError):
+            return False
+        return exc.code in (401, 403) or (exc.code == 400 and "api key" in str(exc.message or "").lower())
 
     async def _call_json(
         self, purpose: str, user: str, schema: dict[str, Any], *, effort: str | None = None, max_tokens: int = 16000
@@ -536,25 +562,35 @@ class GeminiProvider(CloudProvider):
         import httpx
         from google.genai import errors
 
+        # The Synapse layer sets the lane, effort and expert lenses per request: read them once, before the first
+        # await, so a request that runs at the same time can't change them halfway through a fallback.
+        lane, effort, system = self.lane, effort or self.effort, self.system_prompt()
         # Fast lane: the quick model, then the main one. Otherwise the main model, then the quick one.
-        order = [self.fast_model, self.model] if self.lane == "fast" else [self.model, self.fast_model]
+        order = [self.fast_model, self.model] if lane == "fast" else [self.model, self.fast_model]
         order = list(dict.fromkeys(m for m in order if m))
-        response = None
+        response, answered_by, failures = None, None, []
         for i, model in enumerate(order):
             last = i == len(order) - 1
-            client = self.client if (model == self.model and self.lane != "fast") else self.fast_client
+            client = self.client if (model == self.model and lane != "fast") else self.fast_client
             try:
                 response = await client.aio.models.generate_content(
-                    model=model, contents=user, config=self._config(schema, effort, max_tokens, model)
+                    model=model, contents=user, config=self._config(schema, effort, max_tokens, model, system)
                 )
-                self.last_model = model
+                answered_by = model
                 break
             except (errors.APIError, httpx.HTTPError, OSError, TimeoutError) as exc:
+                problem = self._api_error(exc, model)
+                failures.append(problem)
                 busy = not isinstance(exc, errors.APIError) or exc.code in _GEMINI_BUSY
-                if last or not busy:
-                    self._record(False, purpose, self._api_error(exc))
+                if not busy and not self._key_problem(exc):
+                    # This model's own problem (not found, request rejected): the other model may still answer,
+                    # but the mistake stays visible in the status until this model works again.
+                    self.model_problems[model] = problem
+                    log.warning("Gemini model %s failed (%s); trying the other model", model, problem)
+                if last or self._key_problem(exc):
+                    self._record(False, purpose, "; ".join(dict.fromkeys(failures)))
                     return None
-        if response is None:
+        if response is None or answered_by is None:
             return None
         feedback = getattr(response, "prompt_feedback", None)
         if feedback is not None and getattr(feedback, "block_reason", None):
@@ -568,7 +604,11 @@ class GeminiProvider(CloudProvider):
         if finish == "MAX_TOKENS":
             self._record(False, purpose, "the response was cut off")
             return None
-        return self._parse_object(purpose, response.text)
+        data = self._parse_object(purpose, response.text)
+        if data is not None:
+            self.last_model = answered_by
+            self.model_problems.pop(answered_by, None)
+        return data
 
     async def check(self) -> dict[str, Any]:
         """Cheap credential check: read the model's metadata (no tokens generated)."""

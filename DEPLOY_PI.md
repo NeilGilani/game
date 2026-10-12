@@ -105,8 +105,11 @@ To fall back to the MacBook entirely: stop `make dev-pi` and run `make demo`.
 - CORS is limited to the configured localhost origins.
 - The token travels over plain HTTP. That's acceptable on a home network for a demo. For anything wider, put the
   coordinator behind TLS (for example a reverse proxy) and keep the Pi off untrusted networks.
-- Presenter controls (fault injection, reset) are on by default for the hackathon; set `AGENCY_DEMO_CONTROLS=0` for
-  everyday use.
+- Presenter controls (fault injection, network override, reset) are off unless `AGENCY_DEMO_CONTROLS=1`. The Pi setup
+  writes `AGENCY_DEMO_CONTROLS=1` into `/etc/agency/agency.env` for the hackathon (behind the token); set it to `0`
+  for everyday use.
+- Without a token (a coordinator on this computer only), changes from another website open in the same browser are
+  refused: a request whose `Origin` is neither an allowed origin nor the coordinator itself gets 403.
 - No camera data ever reaches the Pi.
 
 ## What has been verified

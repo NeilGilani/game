@@ -57,7 +57,24 @@ function withPlanner(value: Json): Json {
   };
 }
 
-class StandIn {
+/**
+ * The recording was made on a coordinator with presenter controls on. The stand-in has no fault injection or
+ * network override behind them (GET/PUT /api/demo/* would answer 404 and the switches would do nothing), so the
+ * web demo says they're off and the interface doesn't offer them.
+ */
+function withoutPresenterControls(value: Json): Json {
+  if (!value || typeof value !== "object") return value;
+  const v = value as { demo_controls?: boolean; settings?: Record<string, unknown> };
+  return {
+    ...v,
+    ...("demo_controls" in v ? { demo_controls: false } : {}),
+    ...(v.settings && "demo_controls" in v.settings
+      ? { settings: { ...v.settings, demo_controls: false } }
+      : {}),
+  };
+}
+
+export class StandIn {
   private lifeline: Lifeline = "idle";
   private helpAt = 0;
   private lastAlert: Json = null;
@@ -87,7 +104,7 @@ class StandIn {
     switch (key) {
       case "GET /api/health":
       case "GET /api/runtime":
-        return ok(withPlanner(this.now(rec[key])));
+        return ok(withoutPresenterControls(withPlanner(this.now(rec[key]))));
       case "GET /api/approvals":
       case "GET /api/cases":
       case "GET /api/activity":
@@ -99,6 +116,15 @@ class StandIn {
         return ok(this.now(rec[key]));
       case "GET /api/preferences":
         return ok(this.preferences);
+      case "GET /api/demo/faults":
+        // Read by Status; nothing can be switched on here (presenter controls are off in the web demo).
+        return ok({
+          repair_slot_taken: false,
+          repair_timeout_after_commit: false,
+          messaging_unavailable: false,
+          lifeline_primary_unreachable: false,
+          lifeline_power_cut: false,
+        });
       case "PUT /api/preferences":
         this.preferences = { ...this.preferences, ...(body as Record<string, Json>) };
         return ok(this.preferences);

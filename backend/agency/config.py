@@ -107,7 +107,9 @@ def load_settings(**overrides: object) -> Settings:
         node_role=os.environ.get("AGENCY_NODE_ROLE", "auto"),
         api_token=os.environ.get("AGENCY_API_TOKEN") or None,
         allowed_origins=[o.strip() for o in origins.split(",") if o.strip()],
-        demo_controls=_bool("AGENCY_DEMO_CONTROLS", True),
+        # Presenter controls (fault injection, network override, reset) are for demos only: off unless asked for
+        # (make demo / make dev / make backend turn them on).
+        demo_controls=_bool("AGENCY_DEMO_CONTROLS", False),
         step_delay_ms=_int("AGENCY_STEP_DELAY_MS", 650),
         reasoning=os.environ.get("AGENCY_REASONING", "auto").lower(),
         gemini_model=os.environ.get("AGENCY_GEMINI_MODEL") or "gemini-3.8-flash",

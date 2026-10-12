@@ -192,7 +192,11 @@ class NetworkMonitor:
 
 def monitor_from_env(env: dict[str, str], cloud_configured: bool) -> NetworkMonitor:
     """Synapse-Mesh's Cisco sentinel when configured; otherwise AGENCY's own check when a cloud model is used."""
-    synapse = (env.get("AGENCY_SYNAPSE_URL") or env.get("AGENCY_LOCAL_MODEL_URL") or "").strip() or None
+    from .synapse import synapse_url_from_env
+
+    # The same address rules as the router (http(s), on this computer unless remote use is allowed): the sentinel
+    # is never polled, or its mock moved, somewhere the router itself refuses to use.
+    synapse = synapse_url_from_env(env)
     probe: str | None = None
     if (env.get("AGENCY_NETWORK_PROBE") or "1") != "0" and cloud_configured:
         probe = (env.get("AGENCY_NETWORK_PROBE_URL") or "").strip() or "https://generativelanguage.googleapis.com/"
