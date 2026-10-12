@@ -38,6 +38,16 @@ function displays(): DisplayInfo[] {
   return [{ id: "main", bounds, scaleFactor: devicePixelRatio || 2, primary: true, hasCamera: true }];
 }
 
+// Main slows this engine while the AGENCY window (which tracks the eyes itself) is in front. Listen from the very
+// start: main sends the pace as soon as this page has loaded, long before the face model is ready, and a message
+// sent before anyone listens is gone. The latest pace is applied once the engine exists.
+let host: Awaited<ReturnType<typeof startEngineHost>> | null = null;
+let pace: number | null = null;
+window.agency?.gaze?.onPace?.((fps) => {
+  pace = fps;
+  host?.setFps(fps);
+});
+
 async function main(): Promise<void> {
   const publish = window.agency?.gaze?.publish;
   if (!publish) {
@@ -59,9 +69,7 @@ async function main(): Promise<void> {
       if (event.type === "help-signal" || host?.engine.calibration) publish(event);
     },
   });
-  // Main slows this engine while the AGENCY window (which tracks the eyes itself) is in front.
-  window.agency?.gaze?.onPace?.((fps) => host?.setFps(fps));
+  if (pace !== null) host.setFps(pace);
 }
 
-let host: Awaited<ReturnType<typeof startEngineHost>> | null = null;
 void main().catch((err) => console.error("[gaze] engine failed to start", err));

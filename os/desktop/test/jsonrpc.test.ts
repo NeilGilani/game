@@ -67,6 +67,12 @@ describe("NativeRpcClient", () => {
       const snap = await client.call("ax.targets", { maxCount: 10 });
       expect(snap.targets.length).toBeGreaterThan(0);
       await expect(client.call("ax.press", { targetId: snap.targets[0]!.id })).resolves.toEqual({ ok: true });
+      // It can't open apps, so it says so instead of reporting a success while nothing opens.
+      for (const method of ["apps.launch", "apps.activate"] as const) {
+        const r = await client.call(method, { bundleId: "com.apple.Music" });
+        expect(r.ok).toBe(false);
+        expect((r as { error?: string }).error).toMatch(/stand-in macOS helper/);
+      }
       await new Promise((r) => setTimeout(r, 300));
       expect(events.some((e) => e.type === "frontmost-changed")).toBe(true);
     } finally {

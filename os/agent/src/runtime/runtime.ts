@@ -202,6 +202,7 @@ export class AgentRuntime {
           await task.checkpoint();
           task.countAction();
         },
+        ensureRunning: () => task.checkpoint(),
       },
       this.deps.bridge,
       this.deps.native,

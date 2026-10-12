@@ -39,8 +39,9 @@ export class HttpMemoryClient implements MemoryClient {
     });
   }
 
+  /** The coordinator only accepts its token as X-Agency-Token (backend/agency/main.py); a Bearer header got 401. */
   private headers(): Record<string, string> {
-    return this.token ? { authorization: `Bearer ${this.token}` } : {};
+    return this.token ? { "x-agency-token": this.token } : {};
   }
 }
 

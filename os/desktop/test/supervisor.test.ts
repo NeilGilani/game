@@ -122,4 +122,52 @@ describe("Supervisor", () => {
     expect(starts).toBe(1);
     expect(sup.status).toBe("stopped");
   });
+
+  it("stop() while still starting cancels the start and leaves no process behind (quit during startup)", async () => {
+    // Like the coordinator: the process exists at once, but start() only resolves once it is healthy.
+    const proc = fakeProcess();
+    const ready = deferred<void>();
+    let cancelled = false;
+    const sup = new Supervisor({
+      name: "coordinator",
+      start: async () => {
+        await ready.promise;
+        if (proc.killed()) throw new Error("coordinator exited during startup");
+        return proc.running;
+      },
+      cancelStart: () => {
+        cancelled = true;
+        proc.running.kill();
+        ready.resolve();
+      },
+      log: quietLog(),
+    });
+    void sup.start();
+    await vi.advanceTimersByTimeAsync(10);
+    expect(sup.status).toBe("starting");
+    await sup.stop();
+    expect(cancelled).toBe(true);
+    expect(proc.killed()).toBe(true);
+    expect(sup.status).toBe("stopped");
+    await vi.advanceTimersByTimeAsync(60_000);
+    expect(sup.status).toBe("stopped"); // and no restart
+  });
+
+  it("stop() while starting still kills a process that came up anyway", async () => {
+    const proc = fakeProcess();
+    const ready = deferred<void>();
+    const sup = new Supervisor({
+      name: "x",
+      start: async () => {
+        await ready.promise;
+        return proc.running;
+      },
+      log: quietLog(),
+    });
+    void sup.start();
+    const stopped = sup.stop();
+    ready.resolve();
+    await stopped;
+    expect(proc.killed()).toBe(true);
+  });
 });

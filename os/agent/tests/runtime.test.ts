@@ -7,7 +7,7 @@ import { FakeMemoryClient, rankWithMemory, surfaceFor } from "../src/memory";
 import { ScriptedModel, type ScriptTurn } from "../src/model/scripted";
 import type { AgentModel, ToolOutput } from "../src/model/types";
 import { AgentRuntime, type RuntimeDeps } from "../src/runtime/runtime";
-import { DEFAULT_BUDGETS, TaskRun, TaskStopped } from "../src/runtime/task";
+import { DEFAULT_BUDGETS, TaskRun, TaskStopped, withActiveTimeout } from "../src/runtime/task";
 
 const tick = () => new Promise((r) => setTimeout(r, 0));
 
@@ -106,6 +106,58 @@ describe("AgentRuntime", () => {
     ]);
     expect(events[0]).toMatchObject({ dryRun: true });
     expect(events.at(-1)).toMatchObject({ type: "task.done", verified: true });
+  });
+
+  it("a slow approval is never a timeout: the action runs once, in step with the model", async () => {
+    const model = script(
+      turn(["show_plan", { steps: [{ title: "Ask for refill", risk: "consequential" }] }]),
+      turn(
+        ["open_url", { url: `${SITES.PHARMACY}/refills` }],
+        ["click_element", { ref: "rx1", ...REV }],
+        ["click_element", { ref: "req", ...CONS("submit", "Refill") }],
+      ),
+      turn(["finish", { outcome: "Done", expect_text: "Refill request received" }]),
+    );
+    // Tool calls may take 50 ms of the agent's own time; the person takes 300 ms to decide (minutes in real life).
+    const { rt, web, events } = runtimeWith(model, { budgets: { toolTimeoutMs: 50 } });
+    rt.onEvent((e) => {
+      if (e.type === "approval.required")
+        setTimeout(
+          () =>
+            void rt.handle({
+              type: "approval.decide",
+              taskId: "slow",
+              decision: {
+                approvalId: e.approval.id,
+                fingerprint: e.approval.fingerprint,
+                decision: "approve",
+              },
+            }),
+          300,
+        );
+    });
+    await rt.handle({ type: "task.start", request: { id: "slow", goal: "Refill", origin: "home" } });
+    expect(events.at(-1)).toMatchObject({ type: "task.done", verified: true });
+    const outputs = model.inputs;
+    expect(JSON.stringify(outputs)).not.toMatch(/took longer/);
+    expect(web.effects).toHaveLength(1);
+  });
+
+  it("a pause doesn't count against the time a tool call may take", async () => {
+    const t = new TaskRun({ id: "p", goal: "g", origin: "home" }, DEFAULT_BUDGETS, () => undefined);
+    t.pause();
+    const work = (async () => {
+      await t.checkpoint(); // waits while paused, like an action would
+      return "done";
+    })();
+    const timed = withActiveTimeout(t, work, 50, "click");
+    await new Promise((r) => setTimeout(r, 200));
+    t.resume();
+    await expect(timed).resolves.toBe("done");
+    // Its own time still counts.
+    await expect(withActiveTimeout(t, new Promise(() => undefined), 50, "click")).rejects.toThrow(
+      /took longer/,
+    );
   });
 
   it("stop during an approval wait ends the task, revokes the request and does nothing", async () => {

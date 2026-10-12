@@ -92,7 +92,8 @@ export function nativeOverRpc(rpc: RpcPort): NativeClient {
 export function bridgeOverRpc(rpc: RpcPort): BrowserBridge {
   return {
     snapshot: () => rpc.call("bridge", "snapshot", {}) as Promise<PageSnapshot>,
-    click: (ref) => rpc.call("bridge", "click", { ref }) as Promise<BridgeResult>,
+    click: (ref, opts) =>
+      rpc.call("bridge", "click", { ref, approved: opts?.approved === true }) as Promise<BridgeResult>,
     type: (ref, text) => rpc.call("bridge", "type", { ref, text }) as Promise<BridgeResult>,
     navigate: (url) => rpc.call("bridge", "navigate", { url }) as Promise<BridgeResult>,
   };

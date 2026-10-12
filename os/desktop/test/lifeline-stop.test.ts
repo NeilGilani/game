@@ -73,6 +73,35 @@ describe("LifelineHost", () => {
     host.stop();
   });
 
+  it("a real request made while a test request is on its way is still sent", async () => {
+    const bodies: { source: string; test: boolean }[] = [];
+    const replies: (() => void)[] = [];
+    const host = new LifelineHost({
+      client: client(async (_url, init) => {
+        bodies.push(JSON.parse(String(init?.body)));
+        await new Promise<void>((r) => replies.push(r));
+        return Response.json({ alert: { id: `a${bodies.length}` }, created: true });
+      }),
+      log: quietLog(),
+      surface: () => undefined,
+      heartbeat: () => beat,
+      firstAttemptMs: 5_000,
+    });
+    const test = host.help("help_button", true);
+    await vi.waitFor(() => expect(bodies).toHaveLength(1));
+    const real = host.help("eye_signal");
+    replies.shift()!(); // the coordinator accepts the test request
+    expect(await test).toMatchObject({ delivered: true, alertId: "a1" });
+    await vi.waitFor(() => expect(bodies).toHaveLength(2));
+    expect(bodies[1]).toEqual({ source: "eye_signal", test: false });
+    expect(host.helpPending).toBe(true);
+    replies.shift()!();
+    // The person's caller hears about their own (real) request, not the test's.
+    expect(await real).toMatchObject({ delivered: true, alertId: "a2" });
+    expect(host.helpPending).toBe(false);
+    host.stop();
+  });
+
   it("a throwing surface never blocks the request", async () => {
     let posted = false;
     const host = new LifelineHost({

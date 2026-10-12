@@ -37,7 +37,8 @@ if (!test && !app.requestSingleInstanceLock()) {
 } else {
   let agency: AgencyApp | null = null;
 
-  app.on("second-instance", () => agency?.shell?.show());
+  // Opening AGENCY again brings its window back, even if the person had closed it.
+  app.on("second-instance", () => agency?.showShell());
 
   app.whenReady().then(async () => {
     const paths = resolvePaths({
