@@ -23,6 +23,9 @@ import {
   type OnboardingState,
   type OverlayDisplay,
   type OverlayMode,
+  type PaperFile,
+  type PapersFolder,
+  type PapersFolderChoice,
   type PermissionKind,
   type PermissionStatus,
   type ScreenRect,
@@ -107,6 +110,17 @@ const api: AgencyApi = {
       ipcRenderer.invoke(IPC.host, "setCoordinator", setting) as Promise<{ ok: boolean; error?: string }>,
     completeOnboardingStep: (step: string) =>
       ipcRenderer.invoke(IPC.host, "completeOnboardingStep", step) as Promise<OnboardingState>,
+  },
+  // Main allows these from the shell only, and checks every name and byte (src/main/papers.ts).
+  papers: {
+    folder: () => ipcRenderer.invoke(IPC.papers, "folder") as Promise<PapersFolder | null>,
+    chooseFolder: (choice: PapersFolderChoice) =>
+      ipcRenderer.invoke(IPC.papers, "chooseFolder", choice) as Promise<PapersFolder | null>,
+    clearFolder: () => ipcRenderer.invoke(IPC.papers, "clearFolder") as Promise<void>,
+    list: () => ipcRenderer.invoke(IPC.papers, "list") as Promise<PaperFile[]>,
+    read: (name: string) => ipcRenderer.invoke(IPC.papers, "read", name) as Promise<Uint8Array>,
+    saveCopy: (original: string, suffix: "filled" | "signed", bytes: Uint8Array) =>
+      ipcRenderer.invoke(IPC.papers, "saveCopy", original, suffix, bytes) as Promise<{ name: string }>,
   },
 };
 

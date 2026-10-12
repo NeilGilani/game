@@ -4,11 +4,13 @@
  */
 
 import { existsSync, readFileSync } from "node:fs";
+import { mkdir } from "node:fs/promises";
 import { join } from "node:path";
 import {
   BrowserWindow,
   Menu,
   app,
+  dialog,
   globalShortcut,
   ipcMain,
   protocol,
@@ -53,6 +55,7 @@ import { CoordinatorClient } from "./coordinator";
 import { LifelineHost, type HeartbeatBody } from "./lifeline";
 import { createLogger, setLogDir } from "./log";
 import { MouseGaze } from "./mouse-gaze";
+import { displayFolder, listPapers, readPaper, saveCopy, validFolder } from "./papers";
 import type { Paths } from "./paths";
 import { PERMISSION_KINDS, Permissions } from "./permissions";
 import { AgentHost, NativeHost, Sidecar } from "./processes";
@@ -1027,6 +1030,8 @@ export class AgencyApp {
 
     handle(IPC.memory, ["shell", "overlay"], (_e, _role, op, arg) => this.memory(String(op), arg));
 
+    handle(IPC.papers, ["shell"], (_e, _role, op, ...args) => this.papers(String(op), args));
+
     handle(IPC.overlayDisplay, ["overlay"], (e) => {
       for (const o of this.overlays.values()) if (o.win.webContents.id === e.sender.id) return o.display;
       return null;
@@ -1095,6 +1100,55 @@ export class AgencyApp {
     const win = this.showShell();
     this.sendTo(win, IPC.showHome, null);
     this.record("home");
+  }
+
+  /** Papers: only the folder a helper chose, through the checks in papers.ts. */
+  private async papers(op: string, args: unknown[]): Promise<unknown> {
+    const home = app.getPath("home");
+    const current = this.settings.papersFolder;
+    const describe = (folder: string | null) => (folder ? { display: displayFolder(folder, home) } : null);
+    if (op === "folder") return describe(current);
+    if (op === "clearFolder") {
+      this.settings.papersFolder = null;
+      saveSettings(this.settingsFile, this.settings);
+      return null;
+    }
+    if (op === "chooseFolder") {
+      let folder: string | null = null;
+      if (args[0] === "papers") {
+        folder = join(app.getPath("documents"), "AGENCY Papers");
+        await mkdir(folder, { recursive: true });
+      } else if (args[0] === "downloads") folder = app.getPath("downloads");
+      else if (args[0] === "pick") {
+        const options = {
+          title: "Choose the folder for Papers",
+          buttonLabel: "Use this folder",
+          properties: ["openDirectory", "createDirectory"] as ("openDirectory" | "createDirectory")[],
+        };
+        const r = this.shell ? await dialog.showOpenDialog(this.shell, options) : await dialog.showOpenDialog(options);
+        if (r.canceled || !r.filePaths[0]) return describe(current);
+        folder = r.filePaths[0];
+      } else throw new Error("unknown folder choice");
+      if (!(await validFolder(folder, home)))
+        throw new Error(
+          "AGENCY can't use that folder for Papers. Choose a folder of documents, not the whole disk or home folder.",
+        );
+      this.settings.papersFolder = folder;
+      saveSettings(this.settingsFile, this.settings);
+      this.record("papers-folder");
+      return describe(folder);
+    }
+    if (!current) throw new Error("No Papers folder is set up yet. A helper can choose one in Settings.");
+    if (op === "list") return listPapers(current);
+    if (op === "read") return readPaper(current, String(args[0] ?? ""));
+    if (op === "saveCopy") {
+      const raw = args[2];
+      const bytes = raw instanceof Uint8Array ? new Uint8Array(raw.buffer, raw.byteOffset, raw.byteLength) : raw;
+      const saved = await saveCopy(current, String(args[0] ?? ""), args[1], bytes);
+      this.record("papers-saved", { name: saved.name });
+      return saved;
+    }
+    throw new Error("unknown operation");
   }
 
   private async memory(op: string, arg: unknown): Promise<unknown> {

@@ -39,6 +39,8 @@ export const IPC = {
   memory: "agency:memory",
   /** main -> gaze: frames per second to track at (slow while the shell, which tracks for itself, is in front) */
   gazePace: "agency:gaze-pace",
+  /** shell -> main (invoke): Papers, the person's documents in the one folder a helper chose (PapersApi) */
+  papers: "agency:papers",
 } as const;
 
 export type IpcChannel = (typeof IPC)[keyof typeof IPC];

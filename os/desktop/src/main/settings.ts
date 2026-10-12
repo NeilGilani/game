@@ -15,6 +15,8 @@ export interface AppSettings {
   stopHotkey: string;
   /** Electron accelerator for Help (opt-in; empty disables). */
   helpHotkey: string;
+  /** The one folder Papers may read and save documents in, chosen by a helper. Null: Papers stays in practice. */
+  papersFolder: string | null;
 }
 
 export const DEFAULT_SETTINGS: AppSettings = {
@@ -22,6 +24,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   onboarding: { completedSteps: [], done: false },
   stopHotkey: "Command+Shift+Escape",
   helpHotkey: "",
+  papersFolder: null,
 };
 
 export function loadSettings(file: string): AppSettings {
