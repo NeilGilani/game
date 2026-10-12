@@ -7,6 +7,7 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { Icon } from "../components/Icon";
 import { sha256Hex } from "../../../os/tasks/src/core/sha256";
+import { hasReadableText } from "../../../os/tasks/src/documents/explain";
 import { copyName } from "../../../os/tasks/src/documents/fields";
 import { WHAT_SIGNING_MEANS } from "../../../os/tasks/src/documents/understand";
 import {
@@ -263,6 +264,12 @@ function SignSteps({ doc, gate, source, onBack, onStop }: FlowProps) {
                 <li key={m}>{m}</li>
               ))}
               <li>AGENCY saves the signed copy. It doesn't send it; a helper can.</li>
+              {!hasReadableText(doc.pages.join("\n")) && (
+                <li>
+                  <strong>AGENCY can't read the words in this one</strong>, so it couldn't check what kind of
+                  document it is. Only sign if you know what it says.
+                </li>
+              )}
               <li>{WHAT_SIGNING_MEANS[3]}</li>
             </ul>
           </div>
