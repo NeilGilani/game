@@ -383,4 +383,66 @@ describe("pages opened from Watch & listen and Browse", () => {
     expect(isExternalAllowed("https://youtube.com.evil.example/")).toBe(false);
     expect(isExternalAllowed("file:///etc/passwd")).toBe(false);
   });
+
+  it("can't be tricked by user names, ports, look-alike hosts or other schemes", async () => {
+    const { externalUrl, isExternalAllowed } = await import("../src/main/security");
+    const blocked = [
+      // A user name or password can disguise the real host, or ride along to an allowed one.
+      "https://www.youtube.com@evil.example/",
+      "https://www.youtube.com:x@evil.example/",
+      "https://user@www.youtube.com/",
+      "https://user:pass@www.youtube.com/",
+      "https://evil.example\\@www.youtube.com/",
+      // Only the default port.
+      "https://www.youtube.com:8443/",
+      "https://www.youtube.com:80/",
+      // Look-alikes: suffixes, international (Cyrillic "о") names, full-width dots, IP addresses.
+      "https://evilyoutube.com/",
+      "https://youtube.com.evil.example/",
+      "https://www.y\u043eutube.com/",
+      "https://www.youtube.com\uff0eevil.example/",
+      "https://127.0.0.1/",
+      "https://localhost/",
+      // Other schemes, in any case.
+      "javascript:alert(1)",
+      "JAVASCRIPT:alert(1)",
+      "JavaScript://www.youtube.com/%0aalert(1)",
+      "data:text/html,<script>alert(1)</script>",
+      "DATA:text/html;base64,PHNjcmlwdD4=",
+      "HTTP://www.youtube.com/",
+      "blob:https://www.youtube.com/123",
+      "agency://shell/",
+      "file:///etc/passwd",
+      "//www.youtube.com/",
+      "",
+    ];
+    for (const url of blocked) expect(isExternalAllowed(url), url).toBe(false);
+    expect(isExternalAllowed(undefined as unknown as string)).toBe(false);
+    // Upper-case schemes and hosts are fine once parsed; what opens is the parser's canonical form.
+    expect(externalUrl("HTTPS://WWW.YOUTUBE.COM/watch?v=x")).toBe("https://www.youtube.com/watch?v=x");
+    expect(externalUrl("https://www.youtube.com:443/feed")).toBe("https://www.youtube.com/feed");
+    expect(externalUrl(" https://en.wikipedia.org/wiki/Tea\n")).toBe("https://en.wikipedia.org/wiki/Tea");
+    expect(externalUrl("https://mail.google.com/mail/u/0/")).toBe("https://mail.google.com/mail/u/0/");
+    expect(externalUrl("https://google.com/")).toBeNull();
+  });
+
+  it("hands the browser the canonical address, never the raw string, and blocks the rest", async () => {
+    const { applySecurity } = await import("../src/main/security");
+    let created: ((e: unknown, contents: unknown) => void) | null = null;
+    const app = { on: (_: string, fn: typeof created) => (created = fn) };
+    const opened: string[] = [];
+    const log = { info: () => {}, warn: () => {}, error: () => {}, raw: () => {} };
+    applySecurity(app as never, {
+      allowedOrigins: () => ["agency://shell"],
+      mayUseCamera: () => false,
+      log,
+      openExternal: (u) => opened.push(u),
+    });
+    let handler: ((d: { url: string }) => { action: string }) | null = null;
+    created!(null, { setWindowOpenHandler: (fn: typeof handler) => (handler = fn), on: () => {} });
+    expect(handler!({ url: "HTTPS://WWW.YOUTUBE.COM/watch?v=1" })).toEqual({ action: "deny" });
+    expect(handler!({ url: "https://www.youtube.com@evil.example/" })).toEqual({ action: "deny" });
+    expect(handler!({ url: "javascript:alert(1)" })).toEqual({ action: "deny" });
+    expect(opened).toEqual(["https://www.youtube.com/watch?v=1"]);
+  });
 });
