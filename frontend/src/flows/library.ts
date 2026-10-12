@@ -4,6 +4,7 @@
  * list the person's real saved people (Mac app, once turned on in Settings), labelled Real (state/realMessaging.ts).
  */
 import { practiceLabelled, realPeopleOptions } from "../state/realMessaging";
+import { realPapers } from "../papers/flow";
 import type { FlowDef, FlowOption, Selections } from "./types";
 
 // ---- Food -------------------------------------------------------------------------------------------------------
@@ -276,6 +277,10 @@ const papers: FlowDef = {
     },
   },
 };
+
+// Real documents when there are some to work on (papers/flow.ts); the practice ones otherwise.
+const practicePapers = papers.screens.what!.options as FlowOption[];
+papers.screens.what!.options = () => realPapers(practicePapers);
 
 // ---- Shopping and choosing ----------------------------------------------------------------------------------
 

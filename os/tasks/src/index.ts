@@ -20,6 +20,8 @@ export * from "./calls/simulator";
 export * from "./documents/types";
 export * from "./documents/understand";
 export * from "./documents/ceremony";
+export * from "./documents/explain";
+export * from "./documents/fields";
 export * from "./documents/pdf/constants";
 export * from "./email/transport";
 export * from "./ordering/store";

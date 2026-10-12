@@ -92,6 +92,39 @@ export interface HostStatus {
   gazeSource: "engine" | "mouse" | "none";
 }
 
+/** The one folder Papers may use, chosen by a helper in Settings. Nothing outside it is listed, read or written. */
+export interface PapersFolder {
+  /** For the screen, with the home folder as "~": "~/Documents/AGENCY Papers". */
+  display: string;
+}
+
+/** A document in the Papers folder (PDF, PNG or JPEG), newest first in a listing. */
+export interface PaperFile {
+  /** The file's name inside the folder; the only way the shell refers to a file. */
+  name: string;
+  size: number;
+  /** ISO time it was last changed. */
+  modifiedAt: string;
+  kind: "pdf" | "image";
+}
+
+/** "papers": ~/Documents/AGENCY Papers (made if missing). "downloads": the Downloads folder. "pick": a folder dialog. */
+export type PapersFolderChoice = "papers" | "downloads" | "pick";
+
+/**
+ * Papers' narrow file access (shell only). Main checks every call: plain file names only, no "..", the file must
+ * really be inside the chosen folder (symlinks out are refused), PDF/PNG/JPEG only, a size limit, and a save always
+ * writes a new file next to the original ("...-filled.pdf", "...-signed.pdf"), never over an existing one.
+ */
+export interface PapersApi {
+  folder(): Promise<PapersFolder | null>;
+  chooseFolder(choice: PapersFolderChoice): Promise<PapersFolder | null>;
+  clearFolder(): Promise<void>;
+  list(): Promise<PaperFile[]>;
+  read(name: string): Promise<Uint8Array>;
+  saveCopy(original: string, suffix: "filled" | "signed", bytes: Uint8Array): Promise<{ name: string }>;
+}
+
 export type CoordinatorChoice = { mode: "bundled" } | { mode: "remote"; url: string; token: string };
 
 export interface OnboardingState {
@@ -181,6 +214,8 @@ export interface AgencyApi {
      */
     setCoordinator(setting: CoordinatorChoice): Promise<{ ok: boolean; error?: string }>;
   };
+  /** Shell only: Papers' documents in the helper's chosen folder (added additively; older hosts don't have it). */
+  papers?: PapersApi;
 }
 
 /**

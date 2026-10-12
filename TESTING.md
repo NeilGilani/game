@@ -70,7 +70,7 @@ from Settings and calibrate.
 | Food | Choose Thai, a dish and a time; the agent plans the order, asks you to approve the total | **Simulated** store (needs `make sandbox`); nothing is paid |
 | Messages, Shopping | Choose who or what; the agent asks before sending or buying | **Simulated** |
 | Watch & listen, Browse | Some choices open a real app (Music, Safari...); others hand the task to the agent | Real apps; agent tasks need a key |
-| Papers | Pick the benefits letter: it's explained in plain words, filled, then signed in the signing ceremony (read, then a deliberate confirmation) | Sample documents; nothing is sent |
+| Papers | First, Settings › For a helper › Papers: choose the folder (Documents › AGENCY Papers, Downloads, or any folder), add the person's details and, if you like, a signature picture. Then Explain a letter, Fill in a form or Sign a document on a PDF from that folder. Explaining shows what will be sent before sending; each date and amount shows the line it came from. Filled and signed copies are saved next to the original as `…-filled.pdf` / `…-signed.pdf` | **Real** on your own files. Only a letter's text goes to Gemini, after you agree (a switch in Settings turns that off). Nothing is ever sent to anyone; a helper sends the saved copy. Without a folder: practice documents |
 | Apps | Open or switch apps | Real apps |
 | Errands | The original repair demo with approvals and recovery | **Simulated** services |
 | Lifeline | See below | |

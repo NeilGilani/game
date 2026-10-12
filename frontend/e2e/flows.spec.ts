@@ -98,9 +98,9 @@ test("call, messages (typed), papers and shopping end in their task; browse and 
 
   await page.goto("/#/flow/papers");
   await pick(page, "Sign a document");
-  await pick(page, "Lease renewal");
-  // Documents are a task pack too: signing happens in Talk's papers screen.
-  await expect(page).toHaveURL(/#\/talk\/papers/);
+  // In a plain browser Papers works on the person's own documents (papers.spec.ts); the practice ones are for the
+  // web demo and a Mac app with no Papers folder yet.
+  await expect(page).toHaveURL(/#\/papers\/sign/);
 
   await page.goto("/#/flow/shopping");
   await pick(page, "Medical supplies");

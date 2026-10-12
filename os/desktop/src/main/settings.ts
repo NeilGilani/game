@@ -18,6 +18,8 @@ export interface AppSettings {
   helpHotkey: string;
   /** Real calls and texts through the person's iPhone (messaging.ts): off until turned on in Settings. */
   messaging: MessagingSettings;
+  /** The one folder Papers may read and save documents in, chosen by a helper. Null: Papers stays in practice. */
+  papersFolder: string | null;
 }
 
 export const DEFAULT_SETTINGS: AppSettings = {
@@ -26,6 +28,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   stopHotkey: "Command+Shift+Escape",
   helpHotkey: "",
   messaging: { enabled: false, textVia: "auto", callVia: "phone" },
+  papersFolder: null,
 };
 
 export function loadSettings(file: string): AppSettings {

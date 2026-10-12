@@ -36,6 +36,8 @@ import { PreferencesView, SettingsView, StatusView } from "./screens/SettingsVie
 import { ONBOARDED_KEY, Welcome } from "./screens/Welcome";
 import { MemoryExplorer } from "./memory";
 import { TalkRoute } from "./talk/TalkRoute";
+import { PapersScreen } from "./papers/PapersScreen";
+import { PapersSettings } from "./papers/PapersSettings";
 import { GamesRoute } from "./games/GamesRoute";
 
 function onboarded(): boolean {
@@ -64,6 +66,8 @@ function Screen({ route }: { route: Route }) {
   if (a === "settings" && b === "helper") return <HelperSettings />;
   if (a === "settings" && b === "gaze-lab") return <GazeLab />;
   if (a === "settings" && b === "connection") return <SettingsView />;
+  if (a === "settings" && b === "papers") return <PapersSettings />;
+  if (a === "papers" && b) return <PapersScreen key={b} action={b} />;
   if (a === "new" && !b) return <NewTask />;
   if (a === "new" && b === "phrases") return <Phrases />;
   if (a === "new" && b === "create") return <CreateCase key={route.query.toString()} route={route} />;

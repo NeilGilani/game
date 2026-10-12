@@ -41,6 +41,8 @@ export const IPC = {
   gazePace: "agency:gaze-pace",
   /** shell -> main (invoke): real texts and calls through the person's iPhone (messaging.ts) */
   messaging: "agency:messaging",
+  /** shell -> main (invoke): Papers, the person's documents in the one folder a helper chose (PapersApi) */
+  papers: "agency:papers",
 } as const;
 
 export type IpcChannel = (typeof IPC)[keyof typeof IPC];

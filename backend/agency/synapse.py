@@ -45,10 +45,11 @@ MODES = {
     "unknown": ("Ultra-Fusion", 1.0),
 }
 # Everyday requests (a short plan, a few replies, a sentence ending, reading a goal) need a fast answer more than
-# deep thought: Synapse sends them down the fast lane, low thinking. Explanations of papers and the like keep the
-# full budget the network allows.
+# deep thought: Synapse sends them down the fast lane, low thinking. Approval explanations keep the full budget the
+# network allows. Explaining a letter in Papers is fast too: the person is waiting at the screen, and every fact it
+# states is checked against the letter anyway.
 FAST_PURPOSES = frozenset(
-    {"plan_task", "suggest_replies", "complete_sentence", "interpret_goal", "draft_plan", "answer_question"}
+    {"plan_task", "suggest_replies", "complete_sentence", "interpret_goal", "draft_plan", "answer_question", "explain_letter"}
 )
 # After Synapse-Mesh fails to answer, route with the stand-in for this long instead of waiting on it each time.
 SYNAPSE_RETRY_S = 30.0

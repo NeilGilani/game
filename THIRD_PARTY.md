@@ -7,6 +7,8 @@
 | RealEye Webcam EyeTracker Light Open (`@realeye-io/webcam-eyetracker-light-open` 1.1.0, RealEye sp. z o.o., [github.com/RealEye-io/webcam-eyetracker-light-open](https://github.com/RealEye-io/webcam-eyetracker-light-open)): its eye-image feature extractor, called unchanged from `os/gaze/src/eyeImage.ts` | `node_modules` (npm), bundled into the interface | AGPL-3.0-or-later, or RealEye's commercial license (no fee for companies and academic projects under USD 1M) |
 | QR Code Generator for JavaScript (`qrcode-generator` 1.4.4, Kazuhiko Arase) | bundled into the interface (simulated phones page) | MIT License |
 | chess.js (`chess.js` 1.4.0, Jeff Hlywa) | bundled into the interface (Chess game: move rules and the computer player's search) | BSD 2-Clause License |
+| pdf-lib (`pdf-lib` 1.17.1, Andrew Dillon) and its `@pdf-lib/standard-fonts` and `@pdf-lib/upng` | bundled into the interface (Papers: reading and filling form fields, placing a signature) and `os/tasks` | MIT License |
+| PDF.js (`pdfjs-dist` 5.7.284, Mozilla), including its worker | bundled into the interface (Papers and Talk: the text and pictures of PDF pages) and `os/tasks` tests | Apache License 2.0 |
 | Atkinson Hyperlegible font (`@fontsource/atkinson-hyperlegible`) | bundled into the interface | SIL Open Font License 1.1 |
 | React, Vite, FastAPI, Pydantic, Uvicorn, Anthropic Python SDK and other dependencies | `package.json`, `backend/requirements*.txt` | Their respective open-source licenses |
 
