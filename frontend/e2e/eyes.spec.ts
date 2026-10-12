@@ -22,6 +22,9 @@ test.beforeEach(async ({ context }) => {
   await context.addInitScript(() => {
     localStorage.setItem("agency.onboarded", "1");
     localStorage.setItem("agency.testHooks", "1");
+    // Calibrated eye gaze, chosen by the person: the one-time move to the eye cursor (now the default) is done.
+    localStorage.setItem("agency.eyeCursorDefault.v1", "1");
+    localStorage.setItem("agency.gazeChosen", "1");
     localStorage.setItem(
       "agency.preferences",
       JSON.stringify({ input_mode: "gaze", show_gaze_cursor: true }),
