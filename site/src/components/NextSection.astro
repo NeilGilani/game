@@ -1,6 +1,6 @@
 ---
 // A large "next section" link at the end of each section, so gaze and switch users can move through the page
-// in steps instead of scrolling.
+// in steps instead of scrolling. Quiet to look at, but still a full 96 px target.
 interface Props {
   href: string;
   label: string;
@@ -9,12 +9,12 @@ const { href, label } = Astro.props;
 ---
 
 <p class="next-section">
-  <a class="btn" href={href}>
+  <a class="btn btn-quiet" href={href}>
     <span>Next: {label}</span>
     <svg
       viewBox="0 0 24 24"
-      width="28"
-      height="28"
+      width="22"
+      height="22"
       aria-hidden="true"
       fill="none"
       stroke="currentColor"

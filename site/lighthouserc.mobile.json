@@ -6,6 +6,7 @@
       "url": [
         "http://127.0.0.1:4332/game/",
         "http://127.0.0.1:4332/game/download/",
+        "http://127.0.0.1:4332/game/inside/",
         "http://127.0.0.1:4332/game/setup/"
       ],
       "numberOfRuns": 3

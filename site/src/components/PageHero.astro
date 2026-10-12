@@ -1,27 +1,16 @@
 ---
-// The colourful band at the top of each inner page: eyebrow, title, a short lede, and optional extra content.
+// The top of each inner page: a short label, a large title, a lede, and optional extra content.
 interface Props {
   eyebrow: string;
   title: string;
   lede?: string;
-  tone?: "sun" | "teal" | "violet" | "coral" | "pink";
 }
-const { eyebrow, title, lede, tone = "sun" } = Astro.props;
-const shapes: Record<string, [string, string]> = {
-  sun: ["var(--coral)", "var(--teal)"],
-  teal: ["var(--sun)", "var(--violet)"],
-  violet: ["var(--pink)", "var(--sun)"],
-  coral: ["var(--sun)", "var(--violet)"],
-  pink: ["var(--violet)", "var(--sun)"],
-};
-const [a, b] = shapes[tone] ?? shapes["sun"]!;
+const { eyebrow, title, lede } = Astro.props;
 ---
 
-<header class="page-hero" style={`--hero-bg: var(--${tone}-soft); --shape-a: ${a}; --shape-b: ${b};`}>
-  <span class="shape shape-a" aria-hidden="true"></span>
-  <span class="shape shape-b" aria-hidden="true"></span>
+<header class="page-hero">
   <div class="wrap">
-    <p class="eyebrow">{eyebrow}</p>
+    <p class="kicker">{eyebrow}</p>
     <h1>{title}</h1>
     {lede && <p class="lede">{lede}</p>}
     <slot />

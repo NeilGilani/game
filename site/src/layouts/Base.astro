@@ -4,13 +4,15 @@ import { getImage } from "astro:assets";
 import Logo from "../components/Logo.astro";
 import Icon from "../components/Icon.astro";
 import shareSrc from "../assets/screenshots/home.png";
+// The headline face, preloaded so the first headline doesn't change shape after it appears.
+import displayFont from "@fontsource-variable/fraunces/files/fraunces-latin-full-normal.woff2?url";
 import { RELEASES_URL, SOURCE_URL } from "../data/site";
 
 interface Props {
   title: string;
   description: string;
   /** Which page this is, for aria-current in the navigation. */
-  current?: "home" | "download" | "setup" | "accessibility" | "privacy" | "credits";
+  current?: "home" | "download" | "setup" | "accessibility" | "privacy" | "credits" | "inside";
 }
 
 const { title, description, current = "home" } = Astro.props;
@@ -25,7 +27,7 @@ const sections = [
   { href: `${home}#story`, label: "Our story" },
   { href: `${home}#faq`, label: "FAQ" },
 ];
-const headerSections = sections.filter((s) => s.label !== "Our story");
+const headerSections = sections.filter((s) => s.label !== "Our story" && s.label !== "FAQ");
 // The canonical address comes from SITE_URL (astro.config.mjs), never from a hard-coded host name.
 const canonical = new URL(Astro.url.pathname, Astro.site);
 const share = await getImage({ src: shareSrc, width: 1200, format: "png" });
@@ -41,9 +43,10 @@ const shareUrl = new URL(share.src, Astro.site);
     <meta name="description" content={description} />
     <link rel="canonical" href={canonical} />
     <link rel="icon" href={link("favicon.svg")} type="image/svg+xml" />
+    <link rel="preload" href={displayFont} as="font" type="font/woff2" crossorigin />
     <meta name="color-scheme" content="light dark" />
-    <meta name="theme-color" content="#fffaf2" media="(prefers-color-scheme: light)" />
-    <meta name="theme-color" content="#15112a" media="(prefers-color-scheme: dark)" />
+    <meta name="theme-color" content="#f6f3ec" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#0b0f1e" media="(prefers-color-scheme: dark)" />
     <meta name="referrer" content="no-referrer" />
     <meta property="og:title" content={title} />
     <meta property="og:description" content={description} />
@@ -74,7 +77,7 @@ const shareUrl = new URL(share.src, Astro.site);
     </script>
   </head>
   <body>
-    <a class="skip-link btn btn-sun" href="#main">
+    <a class="skip-link btn btn-primary" href="#main">
       Skip to content
     </a>
     <header class="site-header">
@@ -90,6 +93,11 @@ const shareUrl = new URL(share.src, Astro.site);
                 <a href={s.href}>{s.label}</a>
               </li>
             ))}
+            <li>
+              <a href={link("inside/")} aria-current={current === "inside" ? "page" : undefined}>
+                Inside AGENCY
+              </a>
+            </li>
           </ul>
         </nav>
         <ul class="header-cta" aria-label="Get AGENCY">
@@ -100,7 +108,7 @@ const shareUrl = new URL(share.src, Astro.site);
           </li>
           <li>
             <a
-              class="btn btn-sun"
+              class="btn btn-secondary"
               href={link("download/")}
               aria-current={current === "download" ? "page" : undefined}
             >
@@ -122,7 +130,7 @@ const shareUrl = new URL(share.src, Astro.site);
                 </a>
               </li>
               <li>
-                <a class="btn btn-sun" href={link("download/")}>
+                <a class="btn btn-secondary" href={link("download/")}>
                   Download for Mac
                 </a>
               </li>
@@ -133,6 +141,11 @@ const shareUrl = new URL(share.src, Astro.site);
                   </a>
                 </li>
               ))}
+              <li>
+                <a class="btn" href={link("inside/")}>
+                  Inside AGENCY
+                </a>
+              </li>
               <li>
                 <a class="btn" href={link("setup/")}>
                   Setup guide
@@ -157,8 +170,8 @@ const shareUrl = new URL(share.src, Astro.site);
               <span>AGENCY</span>
             </a>
             <p>
-              An eye-controlled computer for people who can only move their eyes. Free, and built in the open.
-              1st place, UCSC AI Hackathon, Cloud AI track.
+              A free, eye-controlled computer for people who can only move their eyes. Built in the open. 1st
+              place, UCSC AI Hackathon, Cloud AI track.
             </p>
           </div>
           <div class="footer-cols">
@@ -187,9 +200,14 @@ const shareUrl = new URL(share.src, Astro.site);
                 </li>
               </ul>
             </nav>
-            <nav aria-label="About this site">
+            <nav aria-label="About AGENCY">
               <h2>About</h2>
               <ul>
+                <li>
+                  <a class="target-link" href={link("inside/")}>
+                    Inside AGENCY
+                  </a>
+                </li>
                 <li>
                   <a class="target-link" href={link("accessibility/")}>
                     Accessibility

@@ -8,6 +8,8 @@
 | QR Code Generator for JavaScript (`qrcode-generator` 1.4.4, Kazuhiko Arase) | bundled into the interface (simulated phones page) | MIT License |
 | chess.js (`chess.js` 1.4.0, Jeff Hlywa) | bundled into the interface (Chess game: move rules and the computer player's search) | BSD 2-Clause License |
 | Atkinson Hyperlegible font (`@fontsource/atkinson-hyperlegible`) | bundled into the interface | SIL Open Font License 1.1 |
+| Atkinson Hyperlegible Next font (`@fontsource-variable/atkinson-hyperlegible-next` 5.3.0, Braille Institute of America) | served by the website (`site/`), text face | SIL Open Font License 1.1 |
+| Fraunces font (`@fontsource-variable/fraunces` 5.3.0, Undercase Type) | served by the website (`site/`), headline face | SIL Open Font License 1.1 |
 | React, Vite, FastAPI, Pydantic, Uvicorn, Anthropic Python SDK and other dependencies | `package.json`, `backend/requirements*.txt` | Their respective open-source licenses |
 
 The end-to-end camera test downloads MediaPipe's public sample image

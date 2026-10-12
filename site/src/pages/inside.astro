@@ -1,0 +1,606 @@
+---
+import Base from "../layouts/Base.astro";
+import PageHero from "../components/PageHero.astro";
+import Shot from "../components/Shot.astro";
+import Icon from "../components/Icon.astro";
+import CtaPair from "../components/CtaPair.astro";
+import { SOURCE_URL, STATUS_LABEL, STATUS_REVIEWED, type Status } from "../data/site";
+
+const base = import.meta.env.BASE_URL;
+
+interface Feature {
+  shot: string;
+  title: string;
+  body: string;
+  status: Status;
+  note?: string;
+}
+const features: Feature[] = [
+  {
+    shot: "home",
+    title: "A calm Home that knows your usuals",
+    body: "Twelve big apps, from Talk and Food to Lifeline. AGENCY learns what you usually choose and offers it first. You can see, change or erase what it remembers.",
+    status: "prototype",
+  },
+  {
+    shot: "talk",
+    title: "Talk, out loud",
+    body: "Build a sentence from big word buttons and AGENCY says it out loud, in your own Personal Voice if you've made one on your Mac. Listen mode shows what people say in big text.",
+    status: "prototype",
+  },
+  {
+    shot: "approval",
+    title: "An AI helper that asks first",
+    body: "Say what you want with a few looks. Google's Gemini plans the steps and does them. Before anything important, it shows you exactly what will happen and waits.",
+    status: "prototype",
+    note: "Shops and services are practice versions until someone sets up real ones.",
+  },
+  {
+    shot: "help-countdown",
+    title: "Lifeline: help when you need it",
+    body: "Three long blinks, or a look at Help. After 8 seconds, AGENCY contacts your people one by one until someone says “I'm on my way”. It never calls 911 by itself.",
+    status: "prototype",
+    note: "Contacts are practice phones until someone sets up real ones.",
+  },
+];
+
+const modes = [
+  { name: "Ultra-Fusion", net: "Good network", does: "Gemini with full thinking", level: 4 },
+  { name: "Lean-Fusion", net: "Congested", does: "Gemini with light thinking", level: 2 },
+  { name: "Critical-Fusion", net: "Critical", does: "Built-in plans, at once", level: 1 },
+  { name: "Safe-Mode", net: "Offline", does: "Built-in plans; Lifeline retries when back", level: 0 },
+];
+
+type Mark = "yes" | "no";
+const compareCols = [
+  "Control with your eyes",
+  "No special hardware",
+  "An AI agent finishes the task",
+  "Approve with a look",
+];
+const compare: { name: string; us?: boolean; cells: [Mark, string][] }[] = [
+  {
+    name: "AGENCY",
+    us: true,
+    cells: [
+      ["yes", "Eye cursor or eye gaze"],
+      ["yes", "Just a webcam"],
+      ["yes", "Gemini plans and acts"],
+      ["yes", "Your OK, for that exact action"],
+    ],
+  },
+  {
+    name: "Tobii Dynavox",
+    cells: [
+      ["yes", "Accurate"],
+      ["no", "$10,000+ hardware"],
+      ["no", "You click every step"],
+      ["no", "No agent"],
+    ],
+  },
+  {
+    name: "Apple Eye Tracking",
+    cells: [
+      ["yes", "A cursor"],
+      ["yes", "Device camera"],
+      ["no", "Cursor only"],
+      ["no", "No agent"],
+    ],
+  },
+  {
+    name: "Microsoft Eye Control",
+    cells: [
+      ["yes", "A cursor"],
+      ["no", "Needs a Tobii tracker"],
+      ["no", "Cursor only"],
+      ["no", "No agent"],
+    ],
+  },
+  {
+    name: "OpenAI Operator, Gemini agents",
+    cells: [
+      ["no", "Built for typing or talking"],
+      ["yes", "Any computer"],
+      ["yes", "Yes"],
+      ["no", "Built for typing or talking"],
+    ],
+  },
+  {
+    name: "Google Look to Speak",
+    cells: [
+      ["yes", "Picks phrases"],
+      ["yes", "Phone camera"],
+      ["no", "Talking only"],
+      ["no", "No agent"],
+    ],
+  },
+];
+
+/** Facts with their sources. Nothing here is an estimate of ours. */
+const stats = [
+  { value: "33,000", label: "Americans live with ALS, by the CDC's estimate.", source: "CDC" },
+  {
+    value: "80 to 95%",
+    label: "of people with ALS lose the ability to rely on speech.",
+    source: "Beukelman et al., 2011",
+  },
+  {
+    value: "$9,646",
+    label: "is what Medicare pays for one speech-generating device.",
+    source: "CMS 2026 fee schedule",
+  },
+  {
+    value: "3×",
+    label: "as likely to suffer a preventable harm in hospital, for patients who can't communicate.",
+    source: "Bartlett et al., CMAJ 2008",
+    href: "https://pmc.ncbi.nlm.nih.gov/articles/PMC2396356",
+  },
+];
+---
+
+<Base
+  title="Inside AGENCY: features, AI and how it compares"
+  description="What AGENCY can do today, how its AI adapts to your connection with Gemini, Synapse-Mesh and Cisco, how it reads your eyes with a webcam, and how it compares with other tools."
+  current="inside"
+>
+  <PageHero
+    eyebrow="Inside AGENCY"
+    title="What it does, and how"
+    lede="For the curious, the clinicians and the technical: what works today, how the AI thinks, how a webcam reads your eyes, and how AGENCY compares."
+  />
+
+  <section class="section inside-features" id="features" aria-labelledby="features-title">
+    <div class="wrap">
+      <div class="inside-head">
+        <h2 id="features-title">What it can do today</h2>
+        <p class="lede">
+          Real screenshots of the AGENCY app with practice data. Each feature says where it really stands, as
+          of {STATUS_REVIEWED}.
+        </p>
+      </div>
+      <div class="features">
+        {features.map((f) => (
+          <article class="feature">
+            <div class="feature-copy">
+              <p class="status">{STATUS_LABEL[f.status]}</p>
+              <h3>{f.title}</h3>
+              <p>{f.body}</p>
+              {f.note && <p class="fine">{f.note}</p>}
+            </div>
+            <Shot
+              name={f.shot}
+              caption="short"
+              sizes="(min-width: 84rem) 46rem, (min-width: 60rem) 55vw, 92vw"
+            />
+          </article>
+        ))}
+      </div>
+    </div>
+  </section>
+
+  <section class="section on-night" id="ai" aria-labelledby="ai-title">
+    <div class="wrap tech-grid">
+      <div>
+        <h2 id="ai-title">Cloud AI that adapts to your connection</h2>
+        <ol class="rules pipeline" aria-label="How each AI request is routed">
+          <li>
+            <span class="pipe-n" aria-hidden="true">
+              1
+            </span>
+            <p>Synapse-Mesh's Sifter, on the device, picks expert lenses.</p>
+          </li>
+          <li>
+            <span class="pipe-n" aria-hidden="true">
+              2
+            </span>
+            <p>Its Cisco sentinel measures the network.</p>
+          </li>
+          <li>
+            <span class="pipe-n" aria-hidden="true">
+              3
+            </span>
+            <p>Google's Gemini thinks as hard as the network allows.</p>
+          </li>
+        </ol>
+        <p class="fine-night">
+          Built on Ray's Synapse-Mesh. When it isn't running, AGENCY's built-in stand-in router picks the
+          mode.
+        </p>
+      </div>
+      <ul class="modes" aria-label="The four modes">
+        {modes.map((m) => (
+          <li class={`mode mode-${m.level}`}>
+            <span class="bars" aria-hidden="true">
+              {[1, 2, 3, 4].map((b) => (
+                <span class:list={[b <= m.level && "on"]} />
+              ))}
+            </span>
+            <span class="mode-name">{m.name}</span>
+            <span class="mode-does">
+              <strong>{m.net}.</strong> {m.does}.
+            </span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  </section>
+
+  <section class="section" id="eyes" aria-labelledby="eyes-title">
+    <div class="wrap tech-grid">
+      <div>
+        <h2 id="eyes-title">Eye tracking with an ordinary webcam</h2>
+        <p>
+          MediaPipe finds your eyes on the device, and RealEye's open-source eye-image model reads where you
+          look. The pointer glides smoothly, and a held button survives a blink or a quick glance away.
+        </p>
+        <p>
+          When two buttons are close, the AI's guess of your likely next choice breaks the tie. Never for pay,
+          send or sign.
+        </p>
+      </div>
+      <dl class="pair">
+        <div>
+          <dt>Eye cursor</dt>
+          <dd>The default. Instant, with no calibration.</dd>
+        </div>
+        <div>
+          <dt>Eye gaze</dt>
+          <dd>Adds a 5-second eye scan: a light glides, then you look at three dots.</dd>
+        </div>
+        <div>
+          <dt>What the AI sees</dt>
+          <dd>
+            Only what a task you started needs: the text of your request and, when the agent has to look, the
+            app it's working in. Never your camera. Screenshots aren't kept by default. AI tasks need a Google
+            Gemini API key, and Google's terms apply to what's sent.
+          </dd>
+        </div>
+      </dl>
+    </div>
+  </section>
+
+  <section class="section" id="compare" aria-labelledby="compare-title">
+    <div class="wrap">
+      <h2 id="compare-title">How AGENCY compares</h2>
+      <div class="compare">
+        <table>
+          <caption class="sr-only">How AGENCY compares with other eye-control tools and AI agents</caption>
+          <thead>
+            <tr>
+              <th scope="col">
+                <span class="sr-only">Product</span>
+              </th>
+              {compareCols.map((c) => (
+                <th scope="col">{c}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {compare.map((row) => (
+              <tr class:list={[row.us && "is-us"]}>
+                <th scope="row">{row.name}</th>
+                {row.cells.map(([mark, text], i) => (
+                  <td data-col={compareCols[i]}>
+                    <span class="cell">
+                      <span class:list={["mark", `mark-${mark}`]}>
+                        <Icon name={mark === "yes" ? "check" : "x"} />
+                        <span class="sr-only">{mark === "yes" ? "Yes:" : "No:"}</span>
+                      </span>
+                      <span>{text}</span>
+                    </span>
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <p class="fine">Based on each product's own public description, October 2026.</p>
+    </div>
+  </section>
+
+  <section class="section" id="why" aria-labelledby="why-title">
+    <div class="wrap">
+      <h2 id="why-title">Why it matters</h2>
+      <ul class="stats">
+        {stats.map((s) => (
+          <li>
+            <p class="stat-value">{s.value}</p>
+            <p class="stat-label">{s.label}</p>
+            <p class="fine">Source: {s.href ? <a href={s.href}>{s.source}</a> : s.source}</p>
+          </li>
+        ))}
+      </ul>
+      <p class="why-after">
+        Dedicated eye-gaze systems cost thousands, and you still click every step yourself. AGENCY uses the
+        webcam you already have, and an AI helper that finishes the job. Sources are listed on the{" "}
+        <a href={`${base}credits/#sources`}>credits page</a>; the code is on <a href={SOURCE_URL}>GitHub</a>.
+      </p>
+    </div>
+  </section>
+
+  <section class="section on-blue" id="start" aria-labelledby="start-title">
+    <div class="wrap">
+      <h2 id="start-title">Try it for yourself.</h2>
+      <CtaPair />
+    </div>
+  </section>
+</Base>
+
+<style>
+  .inside-head {
+    display: grid;
+    grid-template-columns: minmax(0, 6fr) minmax(0, 6fr);
+    gap: 0 clamp(32px, 5vw, 80px);
+    align-items: end;
+    margin-bottom: clamp(40px, 5vw, 72px);
+  }
+  .inside-head h2,
+  .inside-head .lede {
+    margin: 0;
+  }
+  .features {
+    display: grid;
+    gap: clamp(56px, 7vw, 104px);
+  }
+  .feature {
+    display: grid;
+    grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+    gap: clamp(32px, 5vw, 80px);
+    align-items: center;
+  }
+  .feature h3 {
+    font-family: var(--font-display);
+    font-variation-settings:
+      "SOFT" 100,
+      "WONK" 0;
+    font-weight: 560;
+    font-size: clamp(1.8rem, 2.8vw, 2.5rem);
+    letter-spacing: -0.02em;
+    line-height: 1.08;
+  }
+  .feature-copy p:last-child {
+    margin-bottom: 0;
+  }
+
+  .tech-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+    gap: clamp(32px, 5vw, 80px);
+    align-items: start;
+  }
+  .pipeline > li {
+    display: grid;
+    grid-template-columns: 2.4rem 1fr;
+    gap: 12px;
+    padding-block: 18px;
+  }
+  .pipe-n {
+    font-family: var(--font-display);
+    font-size: 1.8rem;
+    line-height: 1.1;
+    color: var(--yellow);
+  }
+  .pipeline p {
+    color: var(--on-night);
+  }
+  .fine-night {
+    margin-top: 24px;
+    font-size: 1.02rem;
+  }
+  .modes {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    max-width: none;
+  }
+  .mode {
+    display: grid;
+    grid-template-columns: auto 11rem 1fr;
+    gap: 20px;
+    align-items: center;
+    margin: 0;
+    padding-block: 26px;
+    border-top: 1px solid var(--night-line);
+    color: var(--on-night-soft);
+  }
+  .mode:last-child {
+    border-bottom: 1px solid var(--night-line);
+  }
+  .mode-name {
+    font-weight: 700;
+    color: var(--on-night);
+  }
+  .bars {
+    display: inline-flex;
+    align-items: flex-end;
+    gap: 4px;
+    height: 28px;
+  }
+  .bars span {
+    width: 8px;
+    border-radius: 2px;
+    background: rgb(255 255 255 / 0.22);
+  }
+  .bars span:nth-child(1) {
+    height: 30%;
+  }
+  .bars span:nth-child(2) {
+    height: 55%;
+  }
+  .bars span:nth-child(3) {
+    height: 78%;
+  }
+  .bars span:nth-child(4) {
+    height: 100%;
+  }
+  .bars .on {
+    background: var(--yellow);
+  }
+  @media (max-width: 560px) {
+    .mode {
+      grid-template-columns: auto 1fr;
+    }
+    .mode-does {
+      grid-column: 1 / -1;
+    }
+  }
+
+  .pair {
+    margin: 0;
+    max-width: none;
+  }
+  .pair > div {
+    padding-block: 22px;
+    border-top: 1px solid var(--line);
+  }
+  .pair > div:last-child {
+    border-bottom: 1px solid var(--line);
+  }
+  .pair dt {
+    font-weight: 700;
+  }
+  .pair dd {
+    margin: 4px 0 0;
+    color: var(--ink-soft);
+  }
+
+  .compare {
+    margin-top: 40px;
+  }
+  .compare table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 1.05rem;
+  }
+  .compare th,
+  .compare td {
+    padding: 20px 20px 20px 0;
+    text-align: left;
+    vertical-align: middle;
+    border-bottom: 1px solid var(--line);
+  }
+  .compare thead th {
+    font-size: 1rem;
+    color: var(--ink-soft);
+    border-bottom: 2px solid var(--ink);
+  }
+  .compare tbody th {
+    font-weight: 700;
+  }
+  .compare td {
+    color: var(--ink-soft);
+  }
+  .compare .is-us th,
+  .compare .is-us td {
+    color: var(--ink);
+    font-weight: 700;
+  }
+  .compare .is-us th {
+    font-size: 1.25rem;
+  }
+  .compare .is-us > * {
+    border-bottom: 2px solid var(--blue-ink);
+  }
+  .cell {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .mark {
+    display: inline-grid;
+    place-items: center;
+    width: 28px;
+    height: 28px;
+    flex: none;
+    border-radius: 50%;
+  }
+  .mark :global(svg) {
+    width: 16px;
+    height: 16px;
+    stroke-width: 3;
+  }
+  .mark-yes {
+    background: var(--blue);
+    color: #ffffff;
+  }
+  .mark-no {
+    border: 2px solid var(--line-strong);
+    color: var(--ink-soft);
+  }
+  @media (max-width: 899px) {
+    .compare thead {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+    }
+    .compare table,
+    .compare tbody,
+    .compare tr,
+    .compare th,
+    .compare td {
+      display: block;
+    }
+    .compare tr {
+      padding-block: 12px;
+      border-top: 1px solid var(--line);
+    }
+    .compare th,
+    .compare td {
+      border: 0 !important;
+      padding: 8px 0;
+    }
+    .compare td::before {
+      content: attr(data-col);
+      display: block;
+      font-size: 0.92rem;
+      color: var(--ink-soft);
+      font-weight: 400;
+    }
+  }
+
+  .stats {
+    list-style: none;
+    padding: 0;
+    margin: 40px 0 0;
+    max-width: none;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr));
+    gap: 0 clamp(24px, 4vw, 48px);
+  }
+  .stats li {
+    margin: 0;
+    padding-top: 24px;
+    border-top: 2px solid var(--ink);
+  }
+  .stat-value {
+    margin: 0 0 8px;
+    font-family: var(--font-display);
+    font-variation-settings:
+      "SOFT" 100,
+      "WONK" 0;
+    font-weight: 560;
+    font-size: clamp(2.4rem, 4vw, 3.4rem);
+    line-height: 1;
+    letter-spacing: -0.02em;
+    white-space: nowrap;
+  }
+  .why-after {
+    margin-top: 40px;
+    max-width: 44rem;
+    font-size: 1.2rem;
+  }
+
+  @media (max-width: 960px) {
+    .inside-head,
+    .feature,
+    .tech-grid {
+      grid-template-columns: 1fr;
+    }
+    .inside-head .lede {
+      margin-top: 8px;
+    }
+  }
+</style>
