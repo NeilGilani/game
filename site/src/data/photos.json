@@ -12,21 +12,8 @@
       "foundVia": "Openverse",
       "license": "CC0 1.0 (public domain dedication)",
       "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
-      "changes": "Downloaded at 960 px wide; resized and converted to AVIF and WebP for the web.",
+      "changes": "Downloaded at 960 px wide; resized and converted to AVIF and WebP; cropped on screen to fit its frame.",
       "alt": "An older woman in a wheelchair smiles while a younger man holds her hands."
-    },
-    {
-      "id": "home-laptop",
-      "file": "home-laptop.jpg",
-      "title": "Elderly woman with curly blonde hair putting her glasses on and smiling while looking at the laptop screen",
-      "author": "Shixart1985",
-      "authorUrl": "https://commons.wikimedia.org/wiki/User:Shixart1985",
-      "source": "https://commons.wikimedia.org/wiki/File:Elderly_woman_with_curly_blonde_hair_putting_her_glasses_on_and_smiling_while_looking_at_the_laptop_screen.jpg",
-      "foundVia": "Wikimedia Commons",
-      "license": "CC BY 2.0",
-      "licenseUrl": "https://creativecommons.org/licenses/by/2.0/",
-      "changes": "Resized to 1280 px wide and converted to AVIF and WebP; cropped on screen to fit its frame.",
-      "alt": "An older woman at home smiles at her laptop as she puts on her glasses."
     },
     {
       "id": "leading-meeting",

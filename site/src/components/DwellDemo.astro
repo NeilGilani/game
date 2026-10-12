@@ -1,0 +1,203 @@
+---
+// Try "look and hold" with a mouse: rest the pointer on a phrase until its ring fills. Built like AGENCY's Talk
+// screen (big phrase buttons, the dwell ring in the corner, the blue eye cursor), but nothing here is spoken.
+// See src/scripts/dwell.ts. Without JavaScript the phrases still show, with a note that the demo needs it.
+const phrases = ["Yes", "No", "Thank you", "I love you"];
+---
+
+<div class="dwell-demo" data-dwell-demo>
+  <div class="dd-bar">
+    <span class="dd-dots" aria-hidden="true">
+      <span></span>
+      <span></span>
+      <span></span>
+    </span>
+    <span class="dd-bar-title">Try it here</span>
+  </div>
+  <div class="dd-stage" data-dwell-stage>
+    <p class="dd-hint" id="dd-hint">
+      <span class="dd-hint-js">
+        Rest your pointer on a phrase and keep it still. Or tap it, or Tab to it and press Enter.
+      </span>
+      <span class="dd-hint-nojs">
+        This little demo needs JavaScript. The video above shows the real thing.
+      </span>
+    </p>
+    <div class="dd-words" role="group" aria-label="Phrases" aria-describedby="dd-hint">
+      {phrases.map((p) => (
+        <button type="button" class="dd-word" data-say={`${p}.`}>
+          <span>{p}</span>
+          <span class="ring dd-ring" aria-hidden="true" />
+        </button>
+      ))}
+    </div>
+    <div class="dd-out" data-dwell-out aria-live="polite">
+      <p class="dd-how">What you choose appears here.</p>
+    </div>
+    <span class="dd-dot" data-gaze-dot aria-hidden="true"></span>
+  </div>
+</div>
+
+<script>
+  import { initDwellDemo } from "../scripts/dwell";
+  initDwellDemo();
+</script>
+
+<style>
+  .dwell-demo {
+    border-radius: 20px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    box-shadow: 0 30px 60px -40px rgb(13 18 38 / 0.35);
+    overflow: hidden;
+  }
+  .dd-bar {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 14px 20px;
+    border-bottom: 1px solid var(--line);
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--ink-soft);
+  }
+  .dd-dots {
+    display: inline-flex;
+    gap: 7px;
+  }
+  .dd-dots span {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: var(--line);
+  }
+  .dd-stage {
+    position: relative;
+    padding: clamp(20px, 3vw, 36px);
+  }
+  .dd-hint {
+    margin: 0 0 24px;
+    font-size: 1.08rem;
+    color: var(--ink-soft);
+  }
+  .dd-hint-js {
+    display: none;
+  }
+  :global(.js) .dd-hint-js {
+    display: inline;
+  }
+  :global(.js) .dd-hint-nojs {
+    display: none;
+  }
+  .dd-words {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--gap);
+  }
+  .dd-word {
+    --p: 0;
+    position: relative;
+    min-height: 120px;
+    padding: 16px 64px 16px 24px;
+    border-radius: 16px;
+    border: 2px solid var(--line);
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--font-body);
+    font-size: clamp(1.35rem, 2vw, 1.65rem);
+    font-weight: 700;
+    text-align: left;
+    cursor: pointer;
+    transition:
+      border-color 120ms var(--ease),
+      background-color 120ms var(--ease);
+  }
+  .dd-word:hover,
+  .dd-word[data-dwelling] {
+    border-color: var(--blue);
+    outline: 3px solid var(--blue);
+    outline-offset: 2px;
+  }
+  .dd-word[data-chosen] {
+    background: var(--blue);
+    border-color: var(--blue);
+    color: var(--on-blue);
+  }
+  .dd-ring {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    width: 40px;
+    height: 40px;
+    opacity: 0;
+    transition: opacity 120ms linear;
+  }
+  .dd-word[data-dwelling] .dd-ring,
+  .dd-word[data-chosen] .dd-ring {
+    opacity: 1;
+  }
+  .dd-out {
+    min-height: 120px;
+    margin-top: 28px;
+    padding-top: 20px;
+    border-top: 1px solid var(--line);
+  }
+  .dd-out :global(.dd-said) {
+    margin: 0 0 4px;
+    font-family: var(--font-display);
+    font-variation-settings:
+      "SOFT" 100,
+      "WONK" 0;
+    font-weight: 560;
+    font-size: clamp(2rem, 3.6vw, 2.9rem);
+    line-height: 1.1;
+    letter-spacing: -0.02em;
+    color: var(--ink);
+  }
+  .dd-out :global(.dd-how) {
+    margin: 0;
+    color: var(--ink-soft);
+    font-size: 1.05rem;
+  }
+  .dd-dot {
+    position: absolute;
+    left: -12px;
+    top: -12px;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: var(--blue);
+    box-shadow:
+      0 0 0 3px #ffffff,
+      0 2px 8px rgb(13 18 38 / 0.35);
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 160ms linear;
+    z-index: 2;
+  }
+  .dd-dot[data-on] {
+    opacity: 1;
+  }
+  @media (pointer: fine) {
+    :global(.js) .dd-stage {
+      cursor: none;
+    }
+    :global(.js) .dd-word {
+      cursor: none;
+    }
+  }
+  @media (forced-colors: active) {
+    .dd-dot {
+      display: none;
+    }
+    :global(.js) .dd-stage,
+    :global(.js) .dd-word {
+      cursor: auto;
+    }
+  }
+  @media (max-width: 420px) {
+    .dd-words {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>

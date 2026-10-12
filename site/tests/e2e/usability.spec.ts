@@ -150,8 +150,8 @@ test("on a phone, the section menu opens in place with large, well-spaced links"
   await page.goto("");
   await page.locator(".menu summary").click();
   const links = page.locator(".menu a");
-  // Both main actions, the five home-page sections and the setup guide.
-  await expect(links).toHaveCount(8);
+  // Both main actions, the five home-page sections, Inside AGENCY and the setup guide.
+  await expect(links).toHaveCount(9);
   const boxes = await links.evaluateAll((els) =>
     els.map((e) => e.getBoundingClientRect().toJSON() as DOMRect),
   );

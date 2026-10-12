@@ -102,17 +102,17 @@ const shareUrl = new URL(share.src, Astro.site);
         </nav>
         <ul class="header-cta" aria-label="Get AGENCY">
           <li>
-            <a class="btn btn-primary" href={link("app/")}>
-              Try in browser
-            </a>
-          </li>
-          <li>
             <a
-              class="btn btn-secondary"
+              class="target-link header-download"
               href={link("download/")}
               aria-current={current === "download" ? "page" : undefined}
             >
-              Download
+              Download <Icon name="download" />
+            </a>
+          </li>
+          <li>
+            <a class="btn btn-primary" href={link("app/")}>
+              Try in browser
             </a>
           </li>
         </ul>

@@ -57,7 +57,7 @@
   --measure: 38rem;
   --wide: 84rem;
   --ease: cubic-bezier(0.2, 0.7, 0.2, 1);
-  --section: clamp(72px, 8.4vw, 128px);
+  --section: clamp(64px, 7.2vw, 112px);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -439,9 +439,29 @@ a:hover {
   text-decoration-thickness: 3px;
   text-underline-offset: 0.35em;
 }
+.header-cta {
+  align-items: center;
+}
 .header-cta .btn {
   font-size: 1.1rem;
   padding-inline: 1.15em;
+}
+.header-download {
+  gap: 8px;
+  justify-content: center;
+  font-size: 1.1rem;
+  color: var(--ink);
+  text-decoration: none;
+}
+.header-download svg {
+  width: 22px;
+  height: 22px;
+}
+.header-download:hover,
+.header-download[aria-current="page"] {
+  text-decoration: underline;
+  text-decoration-thickness: 3px;
+  text-underline-offset: 0.35em;
 }
 
 /* On narrower screens the links and both actions move into a Menu that opens in place (no script needed). */
