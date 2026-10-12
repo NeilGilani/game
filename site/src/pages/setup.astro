@@ -1,5 +1,6 @@
 ---
 import Base from "../layouts/Base.astro";
+import PageHero from "../components/PageHero.astro";
 import { REQUIREMENTS, SOURCE_URL } from "../data/site";
 
 const base = import.meta.env.BASE_URL;
@@ -35,21 +36,21 @@ const permissions = [
 ---
 
 <Base
-  title="Setting up AGENCY OS"
-  description="Install AGENCY OS on a Mac and give it the permissions it needs: camera, Accessibility, Screen Recording, and optionally the microphone and speech recognition."
+  title="Setting up AGENCY"
+  description="Install AGENCY on a Mac and give it the permissions it needs: camera, Accessibility, Screen Recording, and optionally the microphone and speech recognition."
   current="setup"
 >
+  <PageHero
+    eyebrow="Setup guide"
+    title="Setting up AGENCY"
+    lede="For whoever sets AGENCY up, often a family member or caregiver with a mouse and keyboard. It takes about fifteen minutes. AGENCY's own onboarding walks through the same steps, and the person can carry on by eye once the camera works."
+    tone="teal"
+  />
   <article class="wrap prose">
-    <p class="eyebrow">Setup guide</p>
-    <h1>Setting up AGENCY OS</h1>
-    <p class="lede">
-      This guide is written for whoever sets AGENCY up, often a family member or caregiver with a mouse and
-      keyboard. It takes about fifteen minutes. AGENCY's own onboarding walks through the same steps and shows
-      which ones are done, and the person can carry on by eye once the camera works.
-    </p>
     <p class="note">
-      AGENCY OS hasn't had its first release yet. This guide describes setup as it's designed, and will be
-      checked step by step against the first release.
+      The first Mac release is on its way. This guide describes setup as it's designed, and will be checked
+      step by step against the first release. You can <a href={`${base}app/`}>try AGENCY in your browser</a>{" "}
+      today.
     </p>
 
     <h2 id="before">1. Before you start</h2>
@@ -64,14 +65,14 @@ const permissions = [
     <h2 id="install">2. Install</h2>
     <ol>
       <li>
-        <a href={`${base}#download`}>Download AGENCY OS</a> for this Mac.
+        <a href={`${base}download/`}>Download AGENCY</a> for this Mac.
       </li>
       <li>
         Open the downloaded .dmg file and drag <strong>AGENCY</strong> into <strong>Applications</strong>.
       </li>
       <li>
         Open AGENCY from Applications. If macOS says it can't open it, follow{" "}
-        <a href={`${base}#unsigned`}>the steps for unsigned builds</a>.
+        <a href={`${base}download/#unsigned`}>the steps for unsigned builds</a>.
       </li>
     </ol>
 
@@ -155,8 +156,8 @@ const permissions = [
     </p>
 
     <p>
-      <a class="target-link" href={`${base}#download`}>
-        Back to the download
+      <a class="btn btn-sun" href={`${base}download/`}>
+        Go to the download
       </a>
     </p>
   </article>

@@ -1,7 +1,10 @@
 ---
 import Base from "../layouts/Base.astro";
+import PageHero from "../components/PageHero.astro";
 import { SOURCE_URL } from "../data/site";
 import { manifest } from "../data/screenshots";
+import { formatDate } from "../lib/release";
+import { photos, PHOTOS_CHECKED } from "../data/photos";
 
 const app = [
   {
@@ -59,15 +62,17 @@ const site = [
 ---
 
 <Base
-  title="Credits and licenses: AGENCY OS"
-  description="The open-source work AGENCY OS and this website are built on, and their licenses."
+  title="Credits and licenses: AGENCY"
+  description="The open-source work and the photographs AGENCY and this website use, with their authors and licenses."
   current="credits"
 >
+  <PageHero
+    eyebrow="Credits and licenses"
+    title="Built on the work of others"
+    lede="AGENCY and this site use these components and photographs. Thank you to everyone who made them."
+    tone="pink"
+  />
   <article class="wrap prose">
-    <p class="eyebrow">Credits and licenses</p>
-    <h1>Built on the work of others</h1>
-    <p class="lede">AGENCY OS and this site use these components. Thank you to everyone who made them.</p>
-
     <h2 id="app">In the AGENCY app</h2>
     <div class="table-scroll" role="region" aria-label="Components in the AGENCY app" tabindex="0">
       <table>
@@ -92,7 +97,7 @@ const site = [
     <p>
       The authoritative list, with versions and checksums, is{" "}
       <a href={`${SOURCE_URL}/blob/main/THIRD_PARTY.md`}>THIRD_PARTY.md</a> in the repository. It grows as
-      AGENCY OS adds parts such as the Mac app shell and the Chrome extension.
+      AGENCY adds parts such as the Mac app shell and the Chrome extension.
     </p>
 
     <h2 id="site">In this website</h2>
@@ -117,13 +122,50 @@ const site = [
       </table>
     </div>
 
+    <h2 id="photos">Photographs</h2>
+    <p>
+      The photographs of people on this site are freely licensed.{" "}
+      <strong>The people in them are not AGENCY users</strong> and have no connection to the project; we use
+      the photos to show who we build for. Each one was resized and converted to modern image formats for the
+      web; some are also cropped on screen to fit their frame. Checked on {formatDate(PHOTOS_CHECKED)}. A
+      machine-readable list is in the repository at
+      <code>site/src/data/photos.json</code>.
+    </p>
+    <div class="table-scroll" role="region" aria-label="Photographs and their licenses" tabindex="0">
+      <table>
+        <thead>
+          <tr>
+            <th scope="col">Photo</th>
+            <th scope="col">Author</th>
+            <th scope="col">License</th>
+            <th scope="col">Changes</th>
+          </tr>
+        </thead>
+        <tbody>
+          {photos.map((p) => (
+            <tr>
+              <th scope="row">
+                <a href={p.source}>{p.title}</a>
+                <span class="credit-alt">{p.alt}</span>
+              </th>
+              <td>{p.authorUrl ? <a href={p.authorUrl}>{p.author}</a> : p.author}</td>
+              <td>
+                <a href={p.licenseUrl}>{p.license}</a>
+              </td>
+              <td>{p.changes}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+
     <h2 id="screenshots">Screenshots</h2>
     <p>
       Every screenshot on this site is a real capture of the AGENCY app, taken automatically by a script in
       the repository (<code>site/scripts/capture-screenshots.mjs</code>) on {manifest.captured} from commit
       <code>{manifest.commit}</code>, using fictional demo data (“Jordan”, “Thai Basil” and practice services)
-      and the built-in demo agent. None are mock-ups. The eye-scan and network-mode pictures on the home page
-      are drawings, not screenshots.
+      and the built-in demo agent. None are mock-ups. The network-mode bars and the “look and hold” ring on
+      the home page are drawings, not screenshots.
     </p>
 
     <h2 id="sources">Sources</h2>
@@ -152,9 +194,20 @@ const site = [
 
     <h2 id="project">AGENCY itself</h2>
     <p>
-      AGENCY began at the UCSC AI Hackathon and is built in the open on <a href={SOURCE_URL}>GitHub</a>. The
-      project hasn't chosen a license for its own code yet; until it does, the code can be read but no license
-      to reuse it is granted.
+      AGENCY is made by Neil Gilani, Rayansh “Ray” Bakshi and Ryan Cho. It won 1st place in the Cloud AI track
+      at the UCSC AI Hackathon, and is built in the open on <a href={SOURCE_URL}>GitHub</a>. The project
+      hasn't chosen a license for its own code yet; until it does, the code can be read but no license to
+      reuse it is granted.
     </p>
   </article>
 </Base>
+
+<style>
+  .credit-alt {
+    display: block;
+    margin-top: 6px;
+    font-weight: 400;
+    font-size: 1rem;
+    color: var(--ink-soft);
+  }
+</style>

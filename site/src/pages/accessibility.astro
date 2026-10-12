@@ -1,5 +1,6 @@
 ---
 import Base from "../layouts/Base.astro";
+import PageHero from "../components/PageHero.astro";
 import { CONTACT_EMAIL, ISSUES_URL, SOURCE_URL } from "../data/site";
 
 const contact = CONTACT_EMAIL
@@ -8,18 +9,17 @@ const contact = CONTACT_EMAIL
 ---
 
 <Base
-  title="Accessibility statement: AGENCY OS"
+  title="Accessibility statement: AGENCY"
   description="How this website is built to work by eye gaze, a single switch, a keyboard, a screen reader or a mouse, how it's tested, and how to report a problem."
   current="accessibility"
 >
+  <PageHero
+    eyebrow="Accessibility statement"
+    title="This site should work for everyone AGENCY is for"
+    lede="If you use AGENCY, you should be able to use this website the same way: by eye gaze, a single switch, a keyboard, a screen reader, or a mouse."
+    tone="violet"
+  />
   <article class="wrap prose">
-    <p class="eyebrow">Accessibility statement</p>
-    <h1>This site should work for everyone AGENCY is for</h1>
-    <p class="lede">
-      If you use AGENCY, you should be able to use this website the same way: by eye gaze, a single switch, a
-      keyboard, a screen reader, or a mouse.
-    </p>
-
     <h2 id="target">Our target</h2>
     <p>
       WCAG 2.2 at level AA, plus the bar AGENCY sets for itself: every standalone control is at least 96
@@ -40,10 +40,13 @@ const contact = CONTACT_EMAIL
       </li>
       <li>
         Body text in Atkinson Hyperlegible, a typeface designed by the Braille Institute for low-vision
-        readers, at a large base size; headings use your computer's own system font. The site's own copy of
-        the font is used; nothing is loaded from another company.
+        readers, at a large base size; headings use your computer's own rounded system font where it has one.
+        The site's own copy of the font is used; nothing is loaded from another company.
       </li>
-      <li>Light and dark colours, following your Mac's setting or your choice, both checked for contrast.</li>
+      <li>
+        Bright colours that never carry meaning on their own. Every text colour is checked for contrast
+        against its background, in light and dark, and follows your computer's setting or your choice.
+      </li>
       <li>
         Motion is short, gentle and plays once; nothing loops. It's turned off completely if you've asked your
         computer to reduce motion.
@@ -53,8 +56,7 @@ const contact = CONTACT_EMAIL
       </li>
       <li>The page works at 400% zoom and on phone screens without scrolling sideways.</li>
       <li>
-        Screenshots have text descriptions. The demo video, when it exists, will have captions and never play
-        by itself.
+        Screenshots and photos have text descriptions. The demo video has captions and never plays by itself.
       </li>
       <li>Plain language, one idea at a time.</li>
     </ul>
@@ -109,7 +111,7 @@ const contact = CONTACT_EMAIL
       </a>
     </p>
     <p>
-      This statement was last reviewed on 11 October 2026. The site's source code is{" "}
+      This statement was last reviewed on 12 October 2026. The site's source code is{" "}
       <a href={`${SOURCE_URL}/tree/main/site`}>on GitHub</a>.
     </p>
   </article>

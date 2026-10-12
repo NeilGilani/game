@@ -1,31 +1,35 @@
 ---
 import "../styles/global.css";
+import { getImage } from "astro:assets";
 import Logo from "../components/Logo.astro";
+import Icon from "../components/Icon.astro";
+import shareSrc from "../assets/screenshots/home.png";
 import { RELEASES_URL, SOURCE_URL } from "../data/site";
 
 interface Props {
   title: string;
   description: string;
   /** Which page this is, for aria-current in the navigation. */
-  current?: "home" | "setup" | "accessibility" | "privacy" | "credits";
+  current?: "home" | "download" | "setup" | "accessibility" | "privacy" | "credits";
 }
 
 const { title, description, current = "home" } = Astro.props;
 const base = import.meta.env.BASE_URL;
 const home = base;
 const link = (path: string) => `${base}${path}`;
+// Sections of the home page, in the header on wide screens and in the menu on narrow ones.
 const sections = [
   { href: `${home}#how`, label: "How it works" },
-  { href: `${home}#features`, label: "Features" },
-  { href: `${home}#compare`, label: "Compare" },
+  { href: `${home}#who`, label: "Who it's for" },
   { href: `${home}#safety`, label: "Safety" },
-  { href: `${home}#download`, label: "Download" },
+  { href: `${home}#story`, label: "Our story" },
   { href: `${home}#faq`, label: "FAQ" },
-  { href: link("setup/"), label: "Setup guide", page: "setup" },
 ];
-// The header shows the main sections; the setup guide is in the menu, the download section and the footer.
-const headerSections = sections.slice(0, 6);
+const headerSections = sections.filter((s) => s.label !== "Our story");
+// The canonical address comes from SITE_URL (astro.config.mjs), never from a hard-coded host name.
 const canonical = new URL(Astro.url.pathname, Astro.site);
+const share = await getImage({ src: shareSrc, width: 1200, format: "png" });
+const shareUrl = new URL(share.src, Astro.site);
 ---
 
 <!doctype html>
@@ -38,12 +42,19 @@ const canonical = new URL(Astro.url.pathname, Astro.site);
     <link rel="canonical" href={canonical} />
     <link rel="icon" href={link("favicon.svg")} type="image/svg+xml" />
     <meta name="color-scheme" content="light dark" />
-    <meta name="theme-color" content="#f5f7fb" media="(prefers-color-scheme: light)" />
-    <meta name="theme-color" content="#05070f" media="(prefers-color-scheme: dark)" />
+    <meta name="theme-color" content="#fffaf2" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#15112a" media="(prefers-color-scheme: dark)" />
     <meta name="referrer" content="no-referrer" />
     <meta property="og:title" content={title} />
     <meta property="og:description" content={description} />
     <meta property="og:type" content="website" />
+    <meta property="og:url" content={canonical} />
+    <meta property="og:image" content={shareUrl} />
+    <meta
+      property="og:image:alt"
+      content="AGENCY's Home screen: twelve big app tiles you choose by looking at them."
+    />
+    <meta name="twitter:card" content="summary_large_image" />
     <!--
       The page talks to nothing but itself and GitHub (to find the latest release). No trackers, no analytics,
       no cookies, no third-party fonts.
@@ -63,17 +74,14 @@ const canonical = new URL(Astro.url.pathname, Astro.site);
     </script>
   </head>
   <body>
-    <div class="backdrop" aria-hidden="true"></div>
-    <a class="skip-link btn" href="#main">
+    <a class="skip-link btn btn-sun" href="#main">
       Skip to content
     </a>
     <header class="site-header">
       <div class="wrap">
         <a class="brand" href={home} aria-current={current === "home" ? "page" : undefined}>
           <Logo />
-          <span>
-            AGENCY <span class="brand-os">OS</span>
-          </span>
+          <span>AGENCY</span>
         </a>
         <nav class="site-nav" aria-label="Sections">
           <ul>
@@ -84,18 +92,40 @@ const canonical = new URL(Astro.url.pathname, Astro.site);
             ))}
           </ul>
         </nav>
-        <div class="header-tools">
-          <button class="btn theme-toggle" type="button" data-theme-toggle hidden>
-            <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"></path>
-            </svg>
-            <span data-theme-label>Dark</span>
-          </button>
-        </div>
+        <ul class="header-cta" aria-label="Get AGENCY">
+          <li>
+            <a class="btn btn-primary" href={link("app/")}>
+              Try in browser
+            </a>
+          </li>
+          <li>
+            <a
+              class="btn btn-sun"
+              href={link("download/")}
+              aria-current={current === "download" ? "page" : undefined}
+            >
+              Download
+            </a>
+          </li>
+        </ul>
         <details class="menu">
-          <summary class="btn">Menu: all sections</summary>
+          <summary class="btn">
+            <Icon name="menu" />
+            <span class="when-closed">Menu</span>
+            <span class="when-open">Close menu</span>
+          </summary>
           <nav aria-label="Sections (menu)">
             <ul>
+              <li>
+                <a class="btn btn-primary" href={link("app/")}>
+                  Try it in your browser
+                </a>
+              </li>
+              <li>
+                <a class="btn btn-sun" href={link("download/")}>
+                  Download for Mac
+                </a>
+              </li>
               {sections.map((s) => (
                 <li>
                   <a class="btn" href={s.href}>
@@ -103,6 +133,11 @@ const canonical = new URL(Astro.url.pathname, Astro.site);
                   </a>
                 </li>
               ))}
+              <li>
+                <a class="btn" href={link("setup/")}>
+                  Setup guide
+                </a>
+              </li>
             </ul>
           </nav>
         </details>
@@ -115,60 +150,83 @@ const canonical = new URL(Astro.url.pathname, Astro.site);
 
     <footer class="site-footer">
       <div class="wrap">
-        <div class="footer-grid">
-          <div>
-            <h2>AGENCY OS</h2>
+        <div class="footer-top">
+          <div class="footer-brand">
+            <a class="brand" href={home}>
+              <Logo />
+              <span>AGENCY</span>
+            </a>
             <p>
-              An eye-controlled Mac for people who can only move their eyes. Built for the UCSC AI Hackathon,
-              Cloud AI track.
+              An eye-controlled computer for people who can only move their eyes. Free, and built in the open.
+              1st place, UCSC AI Hackathon, Cloud AI track.
             </p>
           </div>
-          <nav aria-label="About this site">
-            <h2>About</h2>
-            <ul>
-              <li>
-                <a class="target-link" href={link("accessibility/")}>
-                  Accessibility statement
-                </a>
-              </li>
-              <li>
-                <a class="target-link" href={link("privacy/")}>
-                  Privacy policy
-                </a>
-              </li>
-              <li>
-                <a class="target-link" href={link("credits/")}>
-                  Credits and licenses
-                </a>
-              </li>
-            </ul>
-          </nav>
-          <nav aria-label="Project">
-            <h2>Project</h2>
-            <ul>
-              <li>
-                <a class="target-link" href={RELEASES_URL}>
-                  All releases on GitHub
-                </a>
-              </li>
-              <li>
-                <a class="target-link" href={SOURCE_URL}>
-                  Source code on GitHub
-                </a>
-              </li>
-              <li>
-                <a class="target-link" href={link("setup/")}>
-                  Setup guide
-                </a>
-              </li>
-            </ul>
-          </nav>
+          <div class="footer-cols">
+            <nav aria-label="Get AGENCY">
+              <h2>Get AGENCY</h2>
+              <ul>
+                <li>
+                  <a class="target-link" href={link("app/")}>
+                    Try it in your browser
+                  </a>
+                </li>
+                <li>
+                  <a class="target-link" href={link("download/")}>
+                    Download for Mac
+                  </a>
+                </li>
+                <li>
+                  <a class="target-link" href={link("setup/")}>
+                    Setup guide
+                  </a>
+                </li>
+                <li>
+                  <a class="target-link" href={RELEASES_URL}>
+                    All releases on GitHub
+                  </a>
+                </li>
+              </ul>
+            </nav>
+            <nav aria-label="About this site">
+              <h2>About</h2>
+              <ul>
+                <li>
+                  <a class="target-link" href={link("accessibility/")}>
+                    Accessibility
+                  </a>
+                </li>
+                <li>
+                  <a class="target-link" href={link("privacy/")}>
+                    Privacy
+                  </a>
+                </li>
+                <li>
+                  <a class="target-link" href={link("credits/")}>
+                    Credits and photos
+                  </a>
+                </li>
+                <li>
+                  <a class="target-link" href={SOURCE_URL}>
+                    Source code on GitHub
+                  </a>
+                </li>
+              </ul>
+            </nav>
+          </div>
         </div>
-        <p class="fine">
-          AGENCY OS is not a medical device and Lifeline is not an emergency service. Out of the box, shops,
-          phones and messages are practice versions until someone deliberately sets up real ones. This site
-          has no trackers, no analytics and no cookies.
-        </p>
+        <div class="footer-bottom">
+          <p class="fine">
+            AGENCY is not a medical device and Lifeline is not an emergency service. Out of the box, shops,
+            phones and messages are practice versions until someone deliberately sets up real ones. The people
+            in our photos are not AGENCY users; the photos are freely licensed (see{" "}
+            <a href={link("credits/#photos")}>credits</a>). This site has no trackers, no analytics and no
+            cookies.
+          </p>
+          <button class="btn theme-toggle" type="button" data-theme-toggle hidden>
+            <Icon name="moon" />
+            <span data-theme-label>Dark</span>
+          </button>
+        </div>
       </div>
     </footer>
 

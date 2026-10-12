@@ -102,11 +102,11 @@ function otherPlatforms(ctx: Ctx, os: Platform["os"]): HTMLElement {
   return h(
     "div",
     { class: "dl-other" },
-    h("h3", {}, `AGENCY OS for ${name}: not yet`),
+    h("h3", {}, `The AGENCY app for ${name}: not yet`),
     h(
       "p",
       {},
-      "AGENCY OS runs on a Mac for now, because it relies on macOS accessibility features to control every app. If you'd use it on ",
+      "The AGENCY app runs on a Mac for now, because it relies on macOS accessibility features to control every app. You can still try AGENCY in your browser. If you'd use the app on ",
       name,
       ", tell us and we'll write back when that changes.",
     ),
@@ -114,7 +114,7 @@ function otherPlatforms(ctx: Ctx, os: Platform["os"]): HTMLElement {
     h(
       "p",
       { class: "dl-small" },
-      "Setting it up for someone else's Mac? The download below works from any computer; copy it to their Mac.",
+      "Setting it up for someone else's Mac? You can download the Mac app on any computer and copy it to their Mac.",
     ),
   );
 }
@@ -207,7 +207,7 @@ function renderRelease(ctx: Ctx, release: GitHubRelease, platform: Platform): vo
       h(
         "a",
         {
-          class: "btn btn-primary btn-stack dl-primary",
+          class: "btn btn-sun btn-stack dl-primary",
           href: asset.browser_download_url,
           "data-kind": kind,
         },
@@ -255,14 +255,16 @@ function renderProblem(ctx: Ctx, state: Exclude<ReleaseState, { kind: "ok" }>, p
         h(
           "p",
           {},
-          "AGENCY OS is being built in the open. When the first version is ready, it will appear here with its size and checksum, and on the releases page.",
+          "AGENCY is being built in the open, and the first Mac version is on its way. When it's ready, it will appear here with its size and checksum, and on the releases page.",
         ),
         h(
           "p",
           {},
-          "Today you can try the AGENCY prototype (eye control, approvals and Lifeline in Chrome) by running it from the source code: see the ",
-          h("a", { href: `https://github.com/${ctx.repo}#quick-start-macbook` }, "quick start"),
-          ". It needs a few developer tools.",
+          "Today you can ",
+          h("a", { href: `${ctx.base}app/` }, "try AGENCY in your browser"),
+          ", with nothing to install, or ",
+          h("a", { href: "#build" }, "build the Mac app yourself"),
+          " from the source code.",
         ),
         h("div", { class: "actions" }, releasesButton(ctx, "Watch the releases page")),
         other,

@@ -9,7 +9,8 @@ for (const path of PAGES) {
       await page.emulateMedia({ colorScheme: scheme, reducedMotion: "reduce" });
       await mockGitHub(page, { status: 200, body: makeRelease({ body: "<!-- agency:unsigned -->" }) });
       await page.goto(path);
-      if (path === "") await expect(page.locator("#download-panel")).toHaveAttribute("aria-busy", "false");
+      if (path === "download/")
+        await expect(page.locator("#download-panel")).toHaveAttribute("aria-busy", "false");
       // Open every disclosure, so the hidden content is checked too.
       await page.$$eval("details", (all) => all.forEach((d) => d.setAttribute("open", "")));
       const results = await new AxeBuilder({ page })

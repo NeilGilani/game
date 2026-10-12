@@ -1,0 +1,27 @@
+---
+// The two things every visitor can do: try AGENCY in the browser now, or download it for a Mac.
+import Icon from "./Icon.astro";
+
+interface Props {
+  /** Show the second line under each label. */
+  detailed?: boolean;
+  class?: string;
+}
+const { detailed = true, class: cls } = Astro.props;
+const base = import.meta.env.BASE_URL;
+---
+
+<div class:list={["actions", "cta-pair", cls]}>
+  <a class="btn btn-primary btn-stack" href={`${base}app/`} data-cta="try">
+    <span class="btn-row">
+      <Icon name="browser" /> Try it in your browser
+    </span>
+    {detailed && <span class="sub">Free. Nothing to install.</span>}
+  </a>
+  <a class="btn btn-sun btn-stack" href={`${base}download/`} data-cta="download">
+    <span class="btn-row">
+      <Icon name="download" /> Download for Mac
+    </span>
+    {detailed && <span class="sub">macOS 13 or later</span>}
+  </a>
+</div>

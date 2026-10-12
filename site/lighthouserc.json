@@ -5,6 +5,7 @@
       "startServerReadyPattern": "Serving",
       "url": [
         "http://127.0.0.1:4331/game/",
+        "http://127.0.0.1:4331/game/download/",
         "http://127.0.0.1:4331/game/setup/",
         "http://127.0.0.1:4331/game/accessibility/",
         "http://127.0.0.1:4331/game/privacy/",

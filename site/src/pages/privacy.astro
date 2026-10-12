@@ -1,5 +1,6 @@
 ---
 import Base from "../layouts/Base.astro";
+import PageHero from "../components/PageHero.astro";
 import { CONTACT_EMAIL, ISSUES_URL, RELEASES_REPO, SOURCE_URL } from "../data/site";
 
 const contact = CONTACT_EMAIL
@@ -8,15 +9,17 @@ const contact = CONTACT_EMAIL
 ---
 
 <Base
-  title="Privacy policy: AGENCY OS"
-  description="This website has no trackers, analytics or cookies. AGENCY OS keeps camera video on your Mac and memory under your control."
+  title="Privacy policy: AGENCY"
+  description="This website has no trackers, analytics or cookies. AGENCY keeps camera video on your Mac and memory under your control."
   current="privacy"
 >
+  <PageHero
+    eyebrow="Privacy policy"
+    title="Privacy, in plain words"
+    lede="Two parts: this website, and the AGENCY app."
+    tone="teal"
+  />
   <article class="wrap prose">
-    <p class="eyebrow">Privacy policy</p>
-    <h1>Privacy, in plain words</h1>
-    <p class="lede">Two parts: this website, and the AGENCY OS app.</p>
-
     <h2 id="site">This website</h2>
     <ul>
       <li>
@@ -57,9 +60,9 @@ const contact = CONTACT_EMAIL
       </li>
     </ul>
 
-    <h2 id="app">The AGENCY OS app</h2>
+    <h2 id="app">The AGENCY app</h2>
     <p>
-      These are the rules AGENCY OS is built to follow. They are part of the project's safety rules, and every
+      These are the rules AGENCY is built to follow. They are part of the project's safety rules, and every
       part of the app is built and tested against them.
     </p>
     <ul>
@@ -93,7 +96,7 @@ const contact = CONTACT_EMAIL
         Real messages, calls and purchases need deliberate setup and your approval.
       </li>
       <li>
-        <strong>No telemetry.</strong> AGENCY OS doesn't report how you use it to anyone.
+        <strong>No telemetry.</strong> AGENCY doesn't report how you use it to anyone.
       </li>
     </ul>
     <p>
