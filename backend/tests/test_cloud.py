@@ -55,7 +55,13 @@ PLAN = {
 
 
 def answer(data: Any, finish: str = "STOP") -> dict[str, Any]:
-    return {"candidates": [{"content": {"role": "model", "parts": [{"text": json.dumps(data)}]}, "finishReason": finish}]}
+    """Shaped like a real answer, including fields newer than the SDK's models (a live run failed on these once)."""
+    part = {"text": json.dumps(data), "thoughtSignature": "c2lnbmF0dXJl", "someFutureField": {"x": 1}}
+    return {
+        "candidates": [{"content": {"role": "model", "parts": [part]}, "finishReason": finish}],
+        "usageMetadata": {"promptTokenCount": 120, "candidatesTokenCount": 40, "aFieldFromTomorrow": [1]},
+        "modelVersion": MODEL,
+    }
 
 
 def refusal(code: int, reason: str, message: str = "no", **extra: Any) -> httpx.Response:

@@ -320,8 +320,10 @@ class _Models:
             payload["thinkingLevel"] = str(getattr(level, "value", level))
         data = await self.cloud.request("POST", GENERATE, payload, timeout_s=self.timeout_s + OVERHEAD_S)
         try:
-            return types.GenerateContentResponse.model_validate(data)
-        except ValidationError as exc:
+            # The SDK's own parser: it tolerates fields newer than this SDK (thought signatures, usage details),
+            # which the strict pydantic models refuse.
+            return types.GenerateContentResponse._from_response(response=data, kwargs={})
+        except (ValidationError, TypeError, ValueError) as exc:
             raise _unreadable() from exc
 
     async def get(self, *, model: str) -> dict[str, Any]:
