@@ -222,6 +222,29 @@ test.describe("AGENCY.app", () => {
     expect(jsonl(ctx.nativeLog).some((e) => e.method === "screen.capture")).toBe(false);
   });
 
+  test("Order for real: only the shell can change it, and main writes it for the agent", async () => {
+    const file = join(ctx.dir, "userdata", "agent-settings.json");
+    const shell = await windowByUrl(ctx.app, "agency://shell/");
+    expect(await shell.evaluate(() => window.agency.host.realOrdering())).toEqual({ enabled: false, maxOrder: 60 });
+    const saved = await shell.evaluate(() => window.agency.host.setRealOrdering({ enabled: true, maxOrder: 45 }));
+    expect(saved).toEqual({ ok: true, setting: { enabled: true, maxOrder: 45 } });
+    expect(JSON.parse(readFileSync(file, "utf8"))).toEqual({ realOrdering: { enabled: true, maxOrder: 45 } });
+    // A cap out of range is refused, and nothing changes.
+    const bad = await shell.evaluate(() => window.agency.host.setRealOrdering({ enabled: true, maxOrder: 5000 }));
+    expect(bad.ok).toBe(false);
+    // The overlay (and anything else that isn't the shell) can't change it.
+    const overlay = await windowByUrl(ctx.app, "agency://overlay/");
+    const fromOverlay = await overlay.evaluate(() =>
+      window.agency.host.setRealOrdering({ enabled: false, maxOrder: 10 }).then(
+        () => "changed",
+        () => "refused",
+      ),
+    );
+    expect(fromOverlay).toBe("refused");
+    expect(await shell.evaluate(() => window.agency.host.realOrdering())).toEqual({ enabled: true, maxOrder: 45 });
+    await shell.evaluate(() => window.agency.host.setRealOrdering({ enabled: false, maxOrder: 45 }));
+  });
+
   test("agent commands and events flow through main", async () => {
     const shell = await windowByUrl(ctx.app, "agency://shell/");
     const events = await shell.evaluate(
