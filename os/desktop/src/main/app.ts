@@ -188,7 +188,10 @@ export class AgencyApp {
       allowedOrigins,
       mayUseCamera,
       log,
-      openExternal: (url) => void electronShell.openExternal(url),
+      openExternal: (url) =>
+        void electronShell
+          .openExternal(url)
+          .catch((err: Error) => log.warn(`could not open ${url}: ${err.message}`)),
     });
     applyPermissionHandlers(session.defaultSession, { allowedOrigins, mayUseCamera, log });
 
@@ -384,13 +387,7 @@ export class AgencyApp {
       // until it does, and again whenever it stops (camera off, eye control paused).
       this.setState("gaze", "starting");
       this.useMouseGaze();
-      this.gazeWatch = setInterval(() => {
-        if (this.gazeSource === "engine" && Date.now() - this.engineSeenAt > GAZE_STALE_MS) {
-          log.info("eye tracking stopped publishing; the mouse moves the pointer until it is back");
-          this.setState("gaze", "starting");
-          this.useMouseGaze();
-        }
-      }, 1_000);
+      this.watchGaze();
     } else if (mode === "engine") {
       const win = new BrowserWindow({
         show: false,
@@ -412,12 +409,25 @@ export class AgencyApp {
           1_000,
         );
       });
-      // Until the engine sends its first event, the mouse keeps working.
+      // Until the engine sends its first sample the mouse keeps working, and again whenever it stops publishing.
       this.useMouseGaze();
+      this.watchGaze();
     } else {
       this.setState("gaze", "absent");
       this.useMouseGaze();
     }
+  }
+
+  /** Real gaze went quiet (camera off, eye control paused, engine stuck): the mouse moves the pointer again. */
+  private watchGaze(): void {
+    if (this.gazeWatch) return;
+    this.gazeWatch = setInterval(() => {
+      if (this.gazeSource === "engine" && Date.now() - this.engineSeenAt > GAZE_STALE_MS) {
+        log.info("eye tracking stopped publishing; the mouse moves the pointer until it is back");
+        this.setState("gaze", "starting");
+        this.useMouseGaze();
+      }
+    }, 1_000);
   }
 
   private useMouseGaze(): void {
@@ -461,16 +471,21 @@ export class AgencyApp {
   }
 
   /**
-   * The shell tracks the eyes itself with its own camera pipeline. While it's in front, the hidden gaze window (which
-   * serves the overlay over other apps) idles at 5 frames a second instead of running a second full face tracker
-   * on the same camera; it goes back to 30 as soon as another app is in front.
+   * The shell tracks the eyes itself with its own camera pipeline. While it's in front (and showing the interface,
+   * not onboarding), the hidden gaze window (which serves the overlay over other apps) idles instead of running a
+   * second full face tracker on the same camera; it goes back to full rate as soon as another app is in front or the
+   * shell window closes. The engine never goes below its own floor (10 fps), where Lifeline's three long blinks are
+   * still resolved, whatever is asked here.
    */
-  private paceGaze(): void {
-    const fps = this.shell && !this.shell.isDestroyed() && this.shell.isFocused() ? 5 : 30;
-    if (this.gazeWin && !this.gazeWin.isDestroyed()) this.gazeWin.webContents.send(IPC.gazePace, fps);
+  paceGaze(): void {
+    const shell = this.shell;
+    const shellTracking =
+      !!shell && !shell.isDestroyed() && shell.isFocused() && this.roleOf(shell.webContents) === "shell";
+    this.sendTo(this.gazeWin, IPC.gazePace, gazePaceFps(shellTracking));
   }
 
-  private createShell(): void {
+  /** @param forceShell load the interface even if onboarding isn't finished (the emergency screen needs it). */
+  private createShell(forceShell = false): BrowserWindow {
     const win = new BrowserWindow({
       title: "AGENCY",
       show: false,
@@ -501,12 +516,44 @@ export class AgencyApp {
       this.scheduleTargets();
       this.paceGaze();
     });
+    win.on("closed", () => {
+      if (this.shell === win) this.shell = null;
+      // A closed shell tracks nothing: the gaze window must not stay slowed down for it.
+      this.paceGaze();
+      this.scheduleTargets();
+    });
     win.webContents.on("render-process-gone", (_e, details) => {
       log.error(`shell renderer gone (${details.reason}); reloading`);
       setTimeout(() => !win.isDestroyed() && void win.loadURL(this.shellUrl()), 500);
     });
-    const onboarding = !this.settings.onboarding.done && !this.opts.skipOnboarding;
+    const onboarding = !forceShell && !this.settings.onboarding.done && !this.opts.skipOnboarding;
     void win.loadURL(onboarding ? ONBOARDING_URL : this.shellUrl());
+    return win;
+  }
+
+  /** The shell window, shown and focused; recreated if the person closed it (AGENCY is their home). */
+  showShell(): BrowserWindow {
+    let win = this.shell;
+    if (!win || win.isDestroyed()) win = this.createShell();
+    if (win.isMinimized()) win.restore();
+    win.show();
+    if (process.platform === "darwin") app.focus({ steal: true });
+    win.focus();
+    return win;
+  }
+
+  /** Sends to one window, if it is still there. A closed or crashed window never breaks the caller. */
+  private sendTo(win: BrowserWindow | null | undefined, channel: string, payload: unknown): void {
+    if (!win || win.isDestroyed() || win.webContents.isDestroyed()) return;
+    try {
+      win.webContents.send(channel, payload);
+    } catch (err) {
+      log.warn(`${channel}: could not reach a window: ${(err as Error).message}`);
+    }
+  }
+
+  private toOverlays(channel: string, payload: unknown): void {
+    for (const o of this.overlays.values()) this.sendTo(o.win, channel, payload);
   }
 
   createOverlays(): void {
@@ -646,11 +693,12 @@ export class AgencyApp {
   surfaceEmergency(): void {
     this.surfaced = true;
     this.record("lifeline.surface");
-    const win = this.shell;
-    if (!win || win.isDestroyed()) {
-      this.createShell();
-      return;
-    }
+    const signal = { type: "lifeline.surface" } satisfies LifelineSignal;
+    // The person closed the shell: open it again, straight onto the interface (never onboarding), and raise it the
+    // same way as an open one.
+    const existing = this.shell;
+    const fresh = !existing || existing.isDestroyed();
+    const win = !existing || existing.isDestroyed() ? this.createShell(true) : existing;
     if (win.isMinimized()) win.restore();
     win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true, skipTransformProcessType: true });
     win.setAlwaysOnTop(true, "pop-up-menu");
@@ -659,11 +707,14 @@ export class AgencyApp {
     if (process.platform === "darwin") app.focus({ steal: true });
     win.focus();
     // Onboarding or a missing interface must not hide the emergency screen.
-    const url = win.webContents.getURL();
-    if (!url.startsWith(this.shellUrl())) void win.loadURL(this.shellUrl());
-    win.webContents.send(IPC.lifeline, { type: "lifeline.surface" } satisfies LifelineSignal);
-    for (const o of this.overlays.values())
-      o.win.webContents.send(IPC.lifeline, { type: "lifeline.surface" } satisfies LifelineSignal);
+    const loading = fresh || !win.webContents.getURL().startsWith(this.shellUrl());
+    if (loading) {
+      if (!fresh) void win.loadURL(this.shellUrl());
+      // A page that is still loading can't hear the signal yet: tell it again once it has loaded.
+      win.webContents.once("did-finish-load", () => this.sendTo(win, IPC.lifeline, signal));
+    }
+    this.sendTo(win, IPC.lifeline, signal);
+    this.toOverlays(IPC.lifeline, signal);
   }
 
   private releaseSurface(): void {
@@ -715,8 +766,8 @@ export class AgencyApp {
         native: () =>
           this.native?.rpc.connected ? this.native.call("input.stopAll", {}, 1_000).then((r) => r.ok) : null,
         notify: (r) => {
-          this.shell?.webContents.send(IPC.stopAll, r);
-          for (const o of this.overlays.values()) o.win.webContents.send(IPC.stopAll, r);
+          this.sendTo(this.shell, IPC.stopAll, r);
+          this.toOverlays(IPC.stopAll, r);
         },
       },
       log,
@@ -754,8 +805,8 @@ export class AgencyApp {
     if (ev.type === "tracking") this.lastTracking = { ...this.lastTracking, state: ev.state };
     if (ev.type === "blink") this.lastTracking = { ...this.lastTracking, face: ev.face };
     if (ev.type === "help-signal") void this.help("eye_signal");
-    for (const o of this.overlays.values()) if (!o.win.isDestroyed()) o.win.webContents.send(IPC.gaze, ev);
-    if (this.shell && !this.shell.isDestroyed()) this.shell.webContents.send(IPC.gaze, ev);
+    this.toOverlays(IPC.gaze, ev);
+    this.sendTo(this.shell, IPC.gaze, ev);
   }
 
   /**
@@ -778,12 +829,11 @@ export class AgencyApp {
       };
       this.takeEngine();
       this.lastTracking.face = true;
-      for (const o of this.overlays.values())
-        if (!o.win.isDestroyed()) o.win.webContents.send(IPC.gaze, global);
+      this.toOverlays(IPC.gaze, global);
       return;
     }
     this.lastTracking = { ...this.lastTracking, state: ev.state, face: ev.state !== "lost" };
-    for (const o of this.overlays.values()) if (!o.win.isDestroyed()) o.win.webContents.send(IPC.gaze, ev);
+    this.toOverlays(IPC.gaze, ev);
   }
 
   /** Real gaze is arriving: the mouse stops standing in for it. */
@@ -810,14 +860,14 @@ export class AgencyApp {
 
   private onAgentEvent(ev: AgentEvent): void {
     this.record("agent.event", ev.type);
-    this.shell?.webContents.send(IPC.agentEvent, ev);
-    for (const o of this.overlays.values()) o.win.webContents.send(IPC.agentEvent, ev);
+    this.sendTo(this.shell, IPC.agentEvent, ev);
+    this.toOverlays(IPC.agentEvent, ev);
   }
 
   private onNativeEvent(ev: NativeEvent): void {
     if (ev.type === "targets-changed" || ev.type === "frontmost-changed") void this.refreshAxTargets();
-    this.shell?.webContents.send(IPC.nativeEvent, ev);
-    for (const o of this.overlays.values()) o.win.webContents.send(IPC.nativeEvent, ev);
+    this.sendTo(this.shell, IPC.nativeEvent, ev);
+    this.toOverlays(IPC.nativeEvent, ev);
   }
 
   private shellFrontmost(): boolean {
@@ -846,8 +896,7 @@ export class AgencyApp {
     this.targetTimer = setTimeout(() => {
       this.targetTimer = null;
       const snap: TargetSnapshot = this.merger.merged(Date.now(), this.shellFrontmost(), this.selfBundleId);
-      for (const o of this.overlays.values())
-        if (!o.win.isDestroyed()) o.win.webContents.send(IPC.targets, snap);
+      this.toOverlays(IPC.targets, snap);
     }, 50);
   }
 
@@ -993,8 +1042,10 @@ export class AgencyApp {
     app.on("web-contents-created", (_e, contents) => {
       contents.on("did-navigate", (_ev, url) => {
         const role = this.roles.get(contents.id);
-        if (role === "shell" || role === "onboarding")
+        if (role === "shell" || role === "onboarding") {
           this.roles.set(contents.id, url.startsWith(ONBOARDING_URL) ? "onboarding" : "shell");
+          this.paceGaze();
+        }
       });
     });
   }
@@ -1028,13 +1079,9 @@ export class AgencyApp {
   }
 
   showHome(): void {
-    const win = this.shell;
-    if (!win || win.isDestroyed()) return;
-    if (win.isMinimized()) win.restore();
-    win.show();
-    if (process.platform === "darwin") app.focus({ steal: true });
-    win.focus();
-    win.webContents.send(IPC.showHome, null);
+    // Home must always be reachable, even after the person closed the AGENCY window.
+    const win = this.showShell();
+    this.sendTo(win, IPC.showHome, null);
     this.record("home");
   }
 
@@ -1171,6 +1218,11 @@ function sanitizeRects(input: unknown): ScreenRect[] {
     )
     .filter((r) => r.width > 0 && r.height > 0)
     .map((r) => ({ x: r.x, y: r.y, width: r.width, height: r.height }));
+}
+
+/** Frames a second for the hidden gaze engine: slowed while the shell tracks the eyes itself, full rate otherwise. */
+export function gazePaceFps(shellTracking: boolean): number {
+  return shellTracking ? 10 : 30;
 }
 
 function toOverlayDisplay(d: Display, primary: number): OverlayDisplay {
