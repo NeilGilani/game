@@ -92,6 +92,19 @@ function infer(action: AgentAction): Classification {
   if (READ_OPS.has(op)) return { risk: "read", reason: "only looks" };
   const label = (action.target?.label ?? "").trim();
 
+  if (op === "bridge.select") {
+    // Choosing in a list is like clicking that option: "Subscribe & Save" is a purchase, "Medium" is not.
+    const option = String(action.input?.option ?? "").trim();
+    for (const rule of LABEL_RULES) {
+      if (rule.re.test(option))
+        return {
+          risk: "consequential",
+          kind: rule.kind,
+          reason: `"${option}" can ${rule.kind.replace(/-/g, " ")}`,
+        };
+    }
+    return { risk: "reversible", reason: "chooses an option in a list" };
+  }
   if (op === "bridge.navigate" || op === "native.launch" || op === "native.activate") {
     return { risk: "reversible", reason: "opens a page or app" };
   }

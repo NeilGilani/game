@@ -5,7 +5,14 @@ export { AuditLog, type AuditEntry } from "./audit";
 export { ActionGuard, SpendLedger, type GuardOutcome } from "./guard";
 export { classify } from "./policy/classify";
 export { detectInjection } from "./policy/injection";
-export { DEFAULT_SETTINGS, originAllowed, type SafetySettings } from "./policy/settings";
+export {
+  DEFAULT_SETTINGS,
+  DEFAULT_REAL_ORDERING,
+  originAllowed,
+  realOrderingOf,
+  type RealOrdering,
+  type SafetySettings,
+} from "./policy/settings";
 export { GuardedTools, ToolError } from "./tools/guarded";
 export type { ComputerAction } from "./tools/computer";
 export { GeminiModel, GEMINI_DEFAULT_MODEL } from "./model/gemini";
@@ -18,3 +25,5 @@ export { FakeAgent } from "./fake/fakeAgent";
 export type * from "./types";
 
 export { HttpSynapseRouter, parseRoute, type SynapseRoute, type SynapseRouter } from "./synapse";
+export { createOrderingPack, orderingSelections, type OrderingSelections } from "./packs/ordering/pack";
+export { REAL_SITES, sandboxSites, onSite, type OrderSite, type SiteId } from "./packs/ordering/sites";

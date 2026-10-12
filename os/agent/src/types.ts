@@ -11,6 +11,7 @@ import type {
   RiskLevel,
   TaskRequest,
 } from "@agency/contracts";
+import type { SafetySettings } from "./policy/settings";
 import type { GuardedTools } from "./tools/guarded";
 
 /** The four tool tiers, most structured first. The runtime always prefers the earliest tier that works. */
@@ -79,6 +80,14 @@ export interface PageNode {
   risk?: ConsequentialKind;
   /** True for buttons that submit a form. */
   submits?: boolean;
+  /** Links: the absolute http(s) address. Lets a pack open a link instead of clicking it. */
+  href?: string;
+  /** Radios, checkboxes and switches: whether it is on. */
+  checked?: boolean;
+  /** Nesting under structural elements (groups, forms), when the bridge reports it. */
+  depth?: number;
+  /** Selects: the labels of its options. */
+  options?: string[];
 }
 
 export interface PageSnapshot {
@@ -104,6 +113,8 @@ export interface BrowserBridge {
   click(ref: string, opts?: { approved?: boolean }): Promise<BridgeResult>;
   type(ref: string, text: string): Promise<BridgeResult>;
   navigate(url: string): Promise<BridgeResult>;
+  /** Choose an option in a list (a <select>), by its label. Optional: older bridges can't. */
+  select?(ref: string, option: string): Promise<BridgeResult>;
 }
 
 // --- agency-native (Instance 3), reached through the main process ---------------------------------
@@ -129,11 +140,24 @@ export interface StepOutcome {
   verified: boolean;
   summary: string;
   evidence?: string;
+  /** What the whole task did, in the person's words, for the final report (the last step's wins). */
+  outcome?: string;
+  /**
+   * Something may have happened that couldn't be read back (an order placed with no confirmation shown): end the
+   * task now as "finished but not confirmed", and never run this step again.
+   */
+  unconfirmed?: boolean;
 }
 
 export interface TaskPack {
   id: string;
   title: string;
+  /**
+   * The safety settings this pack's actions run under, from the caregiver's. Only the ordering pack uses it: it
+   * narrows the sites to its own allow-list and its own spending cap. Every other pack and the model use the
+   * caregiver's settings as they are.
+   */
+  safety?(base: SafetySettings, request: TaskRequest): SafetySettings;
   /** True when this pack can do the request without a model. */
   matches(request: TaskRequest): boolean;
   steps(request: TaskRequest): PackStep[];
@@ -147,4 +171,8 @@ export interface PackContext {
   ask(question: Omit<ChoiceQuestion, "id">): Promise<{ optionId: string | null; other?: string }>;
   /** Values gathered so far (selections + answers). */
   values: Record<string, string>;
+  /** Throws when the task was stopped, waits while paused. For packs that wait for a page between actions. */
+  checkpoint?(): Promise<void>;
+  /** Aborted the moment the task is stopped. */
+  signal?: AbortSignal;
 }

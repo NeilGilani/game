@@ -9,6 +9,9 @@ import type { ActionClaim, AgentAction, BrowserBridge, NativeClient, PageNode, P
 
 export class ToolError extends Error {}
 
+/** A claim worked out from the live page and the element about to be clicked. */
+export type LiveClaim = (snapshot: PageSnapshot, node: PageNode) => ActionClaim;
+
 const DISCLOSURE =
   /\b(AI|artificial intelligence|AGENCY assistant|assistant helped|sent with (help from )?AGENCY|synthetic voice)\b/i;
 
@@ -43,7 +46,12 @@ export class GuardedTools {
     return snapshot.nodes.find((n) => match(n) && (!role || n.role === role) && !n.disabled);
   }
 
-  async click(ref: string, claim?: ActionClaim): Promise<GuardOutcome<string>> {
+  /**
+   * `claim` may be worked out from the live page each time the guard reads it (before asking and again right before
+   * clicking), so what the person approves always describes the page as it is now. It may throw a ToolError to
+   * refuse (the page started asking for a card number, the total went over the cap).
+   */
+  async click(ref: string, claim?: ActionClaim | LiveClaim): Promise<GuardOutcome<string>> {
     const bridge = this.requireBridge();
     let before = "";
     const outcome = await this.guard.run(
@@ -52,8 +60,9 @@ export class GuardedTools {
         const snap = await bridge.snapshot();
         before = snap.text;
         const node = nodeOrThrow(snap, ref);
+        const c = typeof claim === "function" ? claim(snap, node) : claim;
         return {
-          ...this.webAction("bridge.click", snap, node, claim),
+          ...this.webAction("bridge.click", snap, node, c),
           input: { submits: node.submits === true },
         };
       },
@@ -88,6 +97,25 @@ export class GuardedTools {
         fields.set(ref, text);
         this.typed.set(origin, fields);
         return `Typed into "${action.target?.label}".`;
+      },
+    );
+  }
+
+  /** Choose an option in a list on the page, by its label. */
+  select(ref: string, option: string, claim?: ActionClaim): Promise<GuardOutcome<string>> {
+    const bridge = this.requireBridge();
+    return this.guard.run(
+      this.ctx,
+      async () => {
+        const snap = await bridge.snapshot();
+        const node = nodeOrThrow(snap, ref);
+        return { ...this.webAction("bridge.select", snap, node, claim), input: { option } };
+      },
+      async (action) => {
+        if (!bridge.select) throw new ToolError("This version of the AGENCY Bridge can't choose from lists.");
+        const r = await bridge.select(ref, option);
+        if (!r.ok) throw new ToolError(r.error ?? `Choosing "${option}" did not work.`);
+        return `Chose "${option}" in "${action.target?.label}".`;
       },
     );
   }
