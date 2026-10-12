@@ -1,6 +1,6 @@
 # AGENCY: run everything from the repository root.
 #   make setup     install backend (Python 3.11+) and frontend (Node 20+) dependencies
-#   make demo      build the interface and serve everything at http://localhost:8000
+#   make demo      build the interface and serve everything at http://localhost:8000 (presenter controls on)
 #   make dev       backend on :8000 + live-reloading interface on http://localhost:5173
 #   make check     lint, type-check, unit tests and production build
 #   make e2e       browser end-to-end tests (Playwright)
@@ -47,7 +47,7 @@ setup-frontend:
 	npm run vendor -w frontend
 
 backend:
-	cd backend && .venv/bin/uvicorn agency.main:app --host 127.0.0.1 --port 8000 --reload
+	cd backend && AGENCY_DEMO_CONTROLS=$${AGENCY_DEMO_CONTROLS:-1} .venv/bin/uvicorn agency.main:app --host 127.0.0.1 --port 8000 --reload
 
 frontend:
 	cd frontend && npm run dev
@@ -55,7 +55,7 @@ frontend:
 dev:
 	@echo "Coordinator: http://127.0.0.1:8000   Interface: http://localhost:5173   (Ctrl-C stops both)"
 	@trap 'kill 0' EXIT; \
-	  (cd backend && AGENCY_FRONTEND_DIST=/nonexistent .venv/bin/uvicorn agency.main:app --host 127.0.0.1 --port 8000 --reload) & \
+	  (cd backend && AGENCY_FRONTEND_DIST=/nonexistent AGENCY_DEMO_CONTROLS=$${AGENCY_DEMO_CONTROLS:-1} .venv/bin/uvicorn agency.main:app --host 127.0.0.1 --port 8000 --reload) & \
 	  (cd frontend && npm run dev) & \
 	  wait
 
@@ -73,7 +73,7 @@ free-port:
 
 demo: build free-port
 	@echo "AGENCY is running at http://localhost:8000  (Ctrl-C to stop)"
-	cd backend && .venv/bin/uvicorn agency.main:app --host 127.0.0.1 --port 8000
+	cd backend && AGENCY_DEMO_CONTROLS=$${AGENCY_DEMO_CONTROLS:-1} .venv/bin/uvicorn agency.main:app --host 127.0.0.1 --port 8000
 
 # AGENCY plus the on-device model (Synapse-Mesh) on port 8100. See LOCAL_MODEL.md.
 SYNAPSE_DIR ?= $(HOME)/synapse
@@ -82,7 +82,7 @@ demo-local: build free-port
 	@echo "AGENCY: http://localhost:8000   On-device model: http://127.0.0.1:8100   (Ctrl-C stops both)"
 	@trap 'kill 0' EXIT; \
 	  (cd "$(SYNAPSE_DIR)/backend" && ../.venv/bin/python -m uvicorn synapse_mesh.api:app --host 127.0.0.1 --port 8100) & \
-	  (cd backend && AGENCY_LOCAL_MODEL_URL=$${AGENCY_LOCAL_MODEL_URL:-http://127.0.0.1:8100} .venv/bin/uvicorn agency.main:app --host 127.0.0.1 --port 8000) & \
+	  (cd backend && AGENCY_LOCAL_MODEL_URL=$${AGENCY_LOCAL_MODEL_URL:-http://127.0.0.1:8100} AGENCY_DEMO_CONTROLS=$${AGENCY_DEMO_CONTROLS:-1} .venv/bin/uvicorn agency.main:app --host 127.0.0.1 --port 8000) & \
 	  wait
 
 dev-pi:

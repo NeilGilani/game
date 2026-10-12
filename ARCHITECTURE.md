@@ -217,7 +217,7 @@ the real person; its tuning is kept on the device (`vision/tuning.ts`).
 | POST | `/api/system/pause` · `resume` | Stop / resume all automation |
 | GET/PUT | `/api/preferences` | Accessibility preferences |
 | GET | `/api/activity` | Recent verified outcomes and notable events |
-| GET/PUT, POST | `/api/demo/faults`, `/api/demo/reset` | Presenter controls (disable with `AGENCY_DEMO_CONTROLS=0`) |
+| GET/PUT, POST | `/api/demo/faults`, `/api/demo/reset` | Presenter controls: off unless `AGENCY_DEMO_CONTROLS=1` (`make demo`, `make dev` turn them on) |
 | GET | `/api/demo-services/...` | Each demo service's own records (slots, requests, programs, cases, events, outbox) |
 | GET | `/api/lifeline/status` | Settings, readiness problems, Watch over me state, the open alert, recent alerts |
 | GET/PUT | `/api/lifeline/settings` | Contacts, consent (time recorded by the coordinator), timings, responder card |

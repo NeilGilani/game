@@ -17,6 +17,7 @@ from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Any, Literal
+from urllib.parse import urlsplit
 
 from fastapi import APIRouter, FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -195,10 +196,15 @@ def create_app(
         app.state.agency = state
         supervisor = asyncio.create_task(lifeline.run(settings.lifeline_tick_s)) if settings.lifeline_loop else None
 
+        retries: set[asyncio.Task[Any]] = set()  # held until done, so a retry can't be garbage-collected midway
+
         def on_network(old: str, new: str) -> None:
-            # Back online after an outage: Lifeline retries at once instead of waiting for its next tick.
+            # Back online after an outage: alerts that couldn't get out are sent again at once, instead of
+            # waiting for the next escalation.
             if old in {"offline", "critical"} and new in {"good", "slow"}:
-                asyncio.get_running_loop().create_task(lifeline.tick())
+                task = asyncio.get_running_loop().create_task(lifeline.network_back())
+                retries.add(task)
+                task.add_done_callback(retries.discard)
 
         state.network.on_change(on_network)
         watcher = asyncio.create_task(state.network.run()) if settings.lifeline_loop and state.network.configured else None
@@ -228,6 +234,8 @@ def create_app(
         allow_headers=["Content-Type", "X-Agency-Token"],
     )
 
+    allowed_origins = set(settings.allowed_origins)
+
     @app.middleware("http")
     async def require_token(request: Request, call_next: Any) -> Any:
         path = request.url.path
@@ -235,6 +243,13 @@ def create_app(
             supplied = request.headers.get("X-Agency-Token", "")
             if not hmac.compare_digest(supplied, settings.api_token):
                 return JSONResponse({"detail": "This coordinator needs an access token. Add it in Settings."}, status_code=401)
+        elif path.startswith("/api/") and request.method not in {"GET", "HEAD", "OPTIONS"}:
+            # Without a token, CORS alone doesn't stop another website open in the same browser from sending a
+            # "simple" request (a POST with no body or a form body), e.g. resetting everything. Browsers say where
+            # such a request comes from: only the allowed origins and the coordinator's own pages may change things.
+            origin = request.headers.get("origin")
+            if origin is not None and origin not in allowed_origins and urlsplit(origin).netloc != request.headers.get("host"):
+                return JSONResponse({"detail": "Changes are only accepted from AGENCY's own pages."}, status_code=403)
         return await call_next(request)
 
     @app.exception_handler(EngineError)

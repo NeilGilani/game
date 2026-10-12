@@ -27,6 +27,7 @@ export class Coordinator {
           AGENCY_STEP_DELAY_MS: "120",
           AGENCY_REASONING: "deterministic",
           AGENCY_FRONTEND_DIST: "/nonexistent",
+          AGENCY_DEMO_CONTROLS: "1", // the tests use presenter faults and reset
         },
         stdio: "ignore",
       },

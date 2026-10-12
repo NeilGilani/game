@@ -136,7 +136,14 @@ def memory_router() -> APIRouter:
 
     @api.post("/forget-all")
     async def forget_all(request: Request, body: ForgetAllRequest | None = None) -> Any:
-        return run(request, MemoryService.forget_all, bool(body and body.confirm))
+        result = run(request, MemoryService.forget_all, bool(body and body.confirm))
+        if not isinstance(result, JSONResponse):
+            # Everything means everything: the AI assists' short-lived answers (built from words heard and recent
+            # phrases) go too.
+            from ..assist import forget as forget_assist_answers
+
+            forget_assist_answers()
+        return result
 
     @api.get("/export")
     async def export(request: Request) -> Any:
