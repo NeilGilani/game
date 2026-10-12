@@ -71,7 +71,8 @@ export function reduceTask(t: TaskView, e: AgentEvent, now: number): TaskView {
         ...newTask(t.request, t.startedAt),
         goal: e.goal,
         dryRun: e.dryRun,
-        phase: "working",
+        // Paused while the plan was being made: the agent waits, so the screen must keep showing Carry on.
+        phase: t.phase === "paused" ? "paused" : "working",
         updatedAt: now,
       };
     case "task.plan":

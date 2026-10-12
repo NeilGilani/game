@@ -19,7 +19,7 @@ import type {
 
 type Listener = (event: AgentEvent) => void;
 
-interface Script {
+export interface Script {
   steps: { title: string; risk: PlanStepView["risk"]; summary: string }[];
   /** Asked after the first step when the flow didn't already settle it. */
   question?: ChoiceQuestion;
@@ -52,10 +52,16 @@ export function setRemotePlanner(planner: RemotePlanner | null): void {
   remotePlanner = planner;
 }
 
-/** Gemini's steps in place of the built-in ones; the approval moves to Gemini's consequential step. */
-function withPlan(script: Script, plan: NonNullable<Awaited<ReturnType<RemotePlanner>>>): Script {
+/**
+ * Gemini's steps in place of the built-in ones; the approval moves to Gemini's consequential step. Every
+ * consequential step must be the one the person approves, so a plan whose consequential steps don't match the
+ * task's approval (one it has no approval for, more than one, or none when the task needs one) isn't used: the
+ * built-in plan runs instead.
+ */
+export function withPlan(script: Script, plan: NonNullable<Awaited<ReturnType<RemotePlanner>>>): Script {
   const at = plan.steps.findIndex((s) => s.risk === "consequential");
-  if (script.approval && at < 0) return script; // the task needs an approval Gemini didn't plan: keep ours
+  const consequential = plan.steps.filter((s) => s.risk === "consequential").length;
+  if (consequential !== (script.approval ? 1 : 0)) return script;
   return {
     ...script,
     steps: plan.steps.map((s) => ({
@@ -429,17 +435,19 @@ export class FakeAgent {
         const result = await this.approve(t, script);
         if (result !== "approved") {
           if (t.stopped) return;
+          // Change on something with nothing to change isn't a no: say what really happened.
+          const fixed = result === "unchangeable";
           this.emit({
             type: "task.step",
             taskId: id,
             stepId: step.id,
             status: "skipped",
-            summary: "You said no.",
+            summary: fixed ? "Nothing here can be changed." : "You said no.",
           });
           this.emit({
             type: "task.failed",
             taskId: id,
-            reason: `You said no, so nothing was done. ${script.approval.kind === "purchase" ? "Nothing was paid." : "Nothing was sent."}`,
+            reason: `${fixed ? "Nothing here can be changed, so nothing was done. Start again from Home to choose differently." : "You said no, so nothing was done."} ${script.approval.kind === "purchase" ? "Nothing was paid." : "Nothing was sent."}`,
             recoverable: true,
           });
           this.tasks.delete(id);
@@ -468,7 +476,7 @@ export class FakeAgent {
     this.tasks.delete(id);
   }
 
-  private async approve(t: Running, script: Script): Promise<"approved" | "declined"> {
+  private async approve(t: Running, script: Script): Promise<"approved" | "declined" | "unchangeable"> {
     const base = script.approval!;
     let details = { ...base.details };
     for (let round = 1; round <= 5; round++) {
@@ -498,7 +506,7 @@ export class FakeAgent {
       const changeable = Object.keys(script.changes ?? {});
       let field = decision.change && changeable.includes(decision.change) ? decision.change : null;
       if (!field) {
-        if (!changeable.length) return "declined";
+        if (!changeable.length) return "unchangeable";
         const which = await this.ask(t, {
           id: `change-${round}`,
           prompt: "What do you want to change?",
