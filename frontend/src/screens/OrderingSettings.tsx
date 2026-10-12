@@ -5,6 +5,7 @@
 import { useEffect, useState } from "react";
 import { ConfirmSheet } from "../components/common";
 import { Icon } from "../components/Icon";
+import { Page } from "../components/Shell";
 import { useAnnounce } from "../state/announcer";
 import {
   CAP_RANGE,
@@ -65,17 +66,20 @@ export function OrderingSettings() {
   const change = (patch: Partial<RealOrdering>) => void apply({ ...prefs, ...patch });
 
   return (
-    <div className="flow" aria-label="Order for real">
-      <div className="flow-head">
-        <div className="eyebrow">
-          <Icon name="gear" size={18} /> Settings · For a helper
+    <Page label="Order for real">
+      <div className="page-head">
+        <div>
+          <div className="eyebrow">Settings · For a helper</div>
+          <h1>Order for real</h1>
+          <p>
+            When this is on, Food and Shopping order for real on your own {SITE_NAMES[prefs.food]} and{" "}
+            {SITE_NAMES[prefs.shopping]} in Chrome. AGENCY finds what you chose, fills the cart and stops at
+            checkout. It shows the exact total, delivery address and card, and pays only after you approve.
+          </p>
         </div>
-        <h1>Order for real</h1>
-        <p className="muted">
-          When this is on, Food and Shopping order for real on your own {SITE_NAMES[prefs.food]} and{" "}
-          {SITE_NAMES[prefs.shopping]} in Chrome. AGENCY finds what you chose, fills the cart and stops at
-          checkout. It shows the exact total, delivery address and card, and pays only after you approve.
-        </p>
+        <button className="btn" onClick={() => navigate("/settings/helper")} data-dwell>
+          <Icon name="back" /> For a helper
+        </button>
       </div>
 
       {!available ? (
@@ -84,7 +88,7 @@ export function OrderingSettings() {
           bought.
         </p>
       ) : (
-        <div className="stack">
+        <>
           <section className="panel stack" aria-labelledby="ord-before">
             <h2 id="ord-before">
               <Icon name="list" /> Before turning it on, a helper should
@@ -103,62 +107,60 @@ export function OrderingSettings() {
             </p>
           </section>
 
-          <Toggle
-            label="Order for real with your own DoorDash / Amazon in Chrome"
-            value={prefs.enabled}
-            onChange={(on) => (on ? setConfirming(true) : change({ enabled: false }))}
-            help={prefs.enabled ? "You approve every total" : "Food and Shopping are practice"}
-          />
-
-          <Stepper
-            label="Most one order may cost"
-            value={prefs.maxOrder}
-            display={`$${prefs.maxOrder.toFixed(0)}`}
-            min={CAP_RANGE.min}
-            max={CAP_RANGE.max}
-            step={CAP_RANGE.step}
-            onChange={(v) => change({ maxOrder: v })}
-            help="Anything over this is refused before you are even asked."
-          />
-
-          <div className="flow-options" data-count={4} role="group" aria-label="Which sites">
-            {[...FOOD_SITES, ...SHOP_SITES].map((site) => {
-              const food = (FOOD_SITES as string[]).includes(site);
-              const chosen = food ? prefs.food === site : prefs.shopping === site;
-              return (
-                <button
-                  key={site}
-                  className="choice"
-                  aria-pressed={chosen}
-                  onClick={() => change(food ? { food: site as FoodSite } : { shopping: site as ShopSite })}
-                  data-dwell
-                >
-                  <span className="choice-pic" aria-hidden>
-                    <Icon name={chosen ? "check" : food ? "food" : "bag"} size={44} />
-                  </span>
-                  <span className="choice-label">{SITE_NAMES[site]}</span>
-                  <span className="choice-sub">{food ? "For Food" : "For Shopping"}</span>
-                </button>
-              );
-            })}
+          <div className="grid grid-2">
+            <Toggle
+              label="Order for real with your own DoorDash / Amazon in Chrome"
+              value={prefs.enabled}
+              onChange={(on) => (on ? setConfirming(true) : change({ enabled: false }))}
+              help={prefs.enabled ? "You approve every total" : "Food and Shopping are practice"}
+            />
+            <Stepper
+              label="Most one order may cost"
+              value={prefs.maxOrder}
+              display={`$${prefs.maxOrder.toFixed(0)}`}
+              min={CAP_RANGE.min}
+              max={CAP_RANGE.max}
+              step={CAP_RANGE.step}
+              onChange={(v) => change({ maxOrder: v })}
+              help="Anything over this is refused before you are even asked."
+            />
           </div>
+
+          <section className="stack" aria-labelledby="ord-sites">
+            <h2 id="ord-sites">
+              <Icon name="globe" /> Which sites
+            </h2>
+            <div className="grid grid-4" role="group" aria-labelledby="ord-sites">
+              {[...FOOD_SITES, ...SHOP_SITES].map((site) => {
+                const food = (FOOD_SITES as string[]).includes(site);
+                const chosen = food ? prefs.food === site : prefs.shopping === site;
+                return (
+                  <button
+                    key={site}
+                    className="tile"
+                    style={{ minHeight: 110 }}
+                    aria-pressed={chosen}
+                    onClick={() => change(food ? { food: site as FoodSite } : { shopping: site as ShopSite })}
+                    data-dwell
+                  >
+                    <span className="tile-title">{SITE_NAMES[site]}</span>
+                    <span className="tile-sub">{food ? "For Food" : "For Shopping"}</span>
+                    <span className="tile-check">
+                      <Icon name="check" size={22} />
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </section>
 
           {note && (
             <p className="panel" role="status">
               {note}
             </p>
           )}
-        </div>
+        </>
       )}
-
-      <div className="flow-bar" role="group" aria-label="Move around">
-        <button className="btn btn-xl" onClick={() => navigate("/settings/helper")} data-dwell>
-          <Icon name="back" /> Back
-        </button>
-        <button className="btn btn-xl" onClick={() => navigate("/")} data-dwell>
-          <Icon name="home" /> Home
-        </button>
-      </div>
 
       {confirming && (
         <ConfirmSheet
@@ -177,6 +179,6 @@ export function OrderingSettings() {
           </p>
         </ConfirmSheet>
       )}
-    </div>
+    </Page>
   );
 }
