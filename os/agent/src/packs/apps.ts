@@ -39,19 +39,29 @@ export const KNOWN_APPS: Record<string, string> = {
   zoom: "us.zoom.xos",
 };
 
-/** The app a request names, from the flow's choice or "Open X" / "... in the X app". */
-export function appFor(request: TaskRequest): { name: string; bundleId: string } | null {
-  const candidates = [
-    request.selections?.app,
-    /\bin (?:the )?([a-z ]+?) app\b/i.exec(request.goal)?.[1],
-    /^(?:open|switch to|launch|start)\s+(?:the\s+)?([a-z ]+?)(?:\s+app)?\.?$/i.exec(request.goal.trim())?.[1],
-  ];
-  for (const c of candidates) {
-    const name = c?.trim().toLowerCase();
-    if (name && KNOWN_APPS[name])
-      return { name: c!.trim().replace(/^\w/, (m) => m.toUpperCase()), bundleId: KNOWN_APPS[name]! };
-  }
-  return null;
+type App = { name: string; bundleId: string };
+
+function known(candidate: string | undefined): App | null {
+  const name = candidate?.trim().toLowerCase();
+  if (!name || !KNOWN_APPS[name]) return null;
+  return { name: candidate!.trim().replace(/^\w/, (m) => m.toUpperCase()), bundleId: KNOWN_APPS[name]! };
+}
+
+/** The whole goal is "Open X" (or switch to / launch / start), nothing more. */
+const OPEN_GOAL = /^(?:open|switch to|launch|start)\s+(?:the\s+)?([a-z ]+?)(?:\s+app)?\.?$/i;
+
+/** The app a goal asks to open and nothing else ("Open Notes"), or null ("Open a note in the Notes app and…"). */
+export function appToOpen(request: TaskRequest): App | null {
+  return known(OPEN_GOAL.exec(request.goal.trim())?.[1]);
+}
+
+/** The app a request names, from "Open X", the flow's choice or "... in the X app". */
+export function appFor(request: TaskRequest): App | null {
+  return (
+    appToOpen(request) ??
+    known(request.selections?.app) ??
+    known(/\bin (?:the )?([a-z ]+?) app\b/i.exec(request.goal)?.[1])
+  );
 }
 
 /** Playing something in Music (the Watch & listen flow): open Music, then press its Play control. */
@@ -59,13 +69,21 @@ function wantsPlay(request: TaskRequest, bundleId: string): boolean {
   return bundleId === "com.apple.Music" && /^play\b/i.test(request.goal.trim());
 }
 
-export function createAppsPack(): TaskPack {
+const PAUSE = /^pause$/i;
+
+export function createAppsPack(opts: { settleMs?: number; checks?: number } = {}): TaskPack {
+  const settleMs = opts.settleMs ?? 300;
+  const checks = opts.checks ?? 5;
   return {
     id: "apps",
     title: "Open an app",
-    matches: (r) =>
-      appFor(r) !== null &&
-      (/^(open|switch to|launch|start)\b/i.test(r.goal.trim()) || wantsPlay(r, appFor(r)!.bundleId)),
+    // Only a goal that is just "Open X", or playing in Music. Anything more ("Open a new note in the Notes app and
+    // write…") is left to the model: opening the app alone would report a task done that wasn't.
+    matches: (r) => {
+      if (appToOpen(r)) return true;
+      const app = appFor(r);
+      return app !== null && wantsPlay(r, app.bundleId);
+    },
     steps: (r) => {
       const app = appFor(r)!;
       const steps: PackStep[] = [
@@ -76,8 +94,12 @@ export function createAppsPack(): TaskPack {
           run: async ({ tools }) => {
             const failed = notDone(await tools.openApp(app.bundleId));
             if (failed) return { verified: false, summary: failed };
-            const front = await tools.readApp(5);
-            const verified = front.owner === app.bundleId;
+            // A cold start takes a moment: look a few times before trying the launch again.
+            let verified = false;
+            for (let i = 0; i < checks && !verified; i++) {
+              if (i > 0) await new Promise((r) => setTimeout(r, settleMs));
+              verified = (await tools.readApp(5)).owner === app.bundleId;
+            }
             return verified
               ? {
                   verified,
@@ -94,8 +116,17 @@ export function createAppsPack(): TaskPack {
           title: "Start playing",
           risk: "reversible",
           run: async ({ tools }) => {
-            const before = await tools.readApp(300);
-            if (before.targets.some((t) => /^pause$/i.test(t.label))) {
+            let before = await tools.readApp(300);
+            // The Play button and the space bar act on whatever app is in front: make sure that is Music, or a
+            // "Play" in another app (or a key press into AGENCY itself) would be the one pressed.
+            if (before.owner !== app.bundleId) {
+              const failed = notDone(await tools.openApp(app.bundleId));
+              if (failed) return { verified: false, summary: failed };
+              before = await tools.readApp(300);
+              if (before.owner !== app.bundleId)
+                return { verified: false, summary: `${app.name} isn't in front, so I didn't press Play.` };
+            }
+            if (before.targets.some((t) => PAUSE.test(t.label))) {
               return {
                 verified: true,
                 summary: "Music is already playing.",
@@ -105,14 +136,21 @@ export function createAppsPack(): TaskPack {
             const play = before.targets.find((t) => /^play$/i.test(t.label) && /button/i.test(t.role));
             const failed = notDone(play ? await tools.press(play.id) : await tools.key("space"));
             if (failed) return { verified: false, summary: failed };
-            const after = await tools.readApp(300);
-            const playing = after.targets.some((t) => /^pause$/i.test(t.label));
-            return playing
-              ? { verified: true, summary: "Music is playing.", evidence: "Music now shows a Pause control." }
-              : {
-                  verified: false,
-                  summary: "Music is open, but it didn't start playing (choose a song first).",
+            // Music takes a moment to swap Play for Pause: look a few times before deciding it didn't start.
+            for (let i = 0; i < checks; i++) {
+              if (i > 0) await new Promise((r) => setTimeout(r, settleMs));
+              const after = await tools.readApp(300);
+              if (after.owner === app.bundleId && after.targets.some((t) => PAUSE.test(t.label)))
+                return {
+                  verified: true,
+                  summary: "Music is playing.",
+                  evidence: "Music now shows a Pause control.",
                 };
+            }
+            return {
+              verified: false,
+              summary: "Music is open, but it didn't start playing (choose a song first).",
+            };
           },
         });
       }
