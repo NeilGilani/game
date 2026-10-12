@@ -83,7 +83,10 @@ export function blockerOf(snap: PageSnapshot): Blocker | null {
       kind: "captcha",
       message: `${snap.title ? "The site" : "This page"} wants to check that a person is there (a robot check). I can't do that part.`,
     };
-  const secure = snap.nodes.filter((n) => n.secure);
+  // Only a field that takes typing can ask for a secret (a bridge may flag a "One-time purchase" choice too).
+  const secure = snap.nodes.filter(
+    (n) => n.secure && /^(textbox|searchbox|spinbutton|combobox)$/.test(n.role),
+  );
   const secureText = secure.map((n) => `${n.name} ${n.autocomplete ?? ""}`).join(" ");
   if (secure.length && /\b(cc-|card|cvv|cvc|csc|security code|expir)/i.test(secureText))
     return {
@@ -510,8 +513,15 @@ export const TOTAL_CHANGED =
 const PLACED =
   /\b(order (is |was |has been )?(placed|confirmed|received)|thank(s| you)[^\n]{0,40}\border\b|order number|order #|your order is on (its|the) way)\b/i;
 const ORDER_NO = /\border\s*(?:number|no\.?|#|id)?\s*[:#]?\s*([A-Z0-9][A-Z0-9-]{3,30})\b/gi;
-const ETA =
-  /\b(?:arriv\w*|deliver\w*|estimated|eta|expected)\b[^\n]{0,40}?(\d{1,2}(?::\d{2})?\s*(?:am|pm)(?:\s*(?:–|-|to)\s*\d{1,2}(?::\d{2})?\s*(?:am|pm))?|\d+\s*(?:–|-|to)\s*\d+\s*min\w*|in (?:about )?\d+\s*min\w*|today|tomorrow|(?:mon|tues|wednes|thurs|fri|satur|sun)day,?\s+[a-z]+\.? \d{1,2})/i;
+const CLOCK = String.raw`\d{1,2}(?::\d{2})?\s*(?:am|pm)`;
+const DAY = String.raw`(?:today|tomorrow|(?:mon|tues|wednes|thurs|fri|satur|sun)day(?:,?\s+[a-z]+\.? \d{1,2})?)`;
+const ETA = new RegExp(
+  String.raw`\b(?:arriv\w*|deliver\w*|estimated|eta|expected)\b[^\n]{0,40}?(?:` +
+    String.raw`${DAY}(?:,?\s+(?:by|before|after|at|between)\s+${CLOCK}(?:\s*(?:–|-|to|and)\s*${CLOCK})?)?` +
+    String.raw`|${CLOCK}(?:\s*(?:–|-|to)\s*${CLOCK})?` +
+    String.raw`|\d+\s*(?:–|-|to)\s*\d+\s*min\w*|in (?:about )?\d+\s*min\w*)`,
+  "i",
+);
 
 export type AfterPlace =
   | { kind: "placed"; orderNumber: string | null; eta: string | null; evidence: string }

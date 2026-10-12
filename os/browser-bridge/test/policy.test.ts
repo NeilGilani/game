@@ -70,6 +70,9 @@ describe("secret fields", () => {
     [{ tag: "input", type: "email", autocomplete: "email" }, false],
     [{ tag: "input", type: "text", label: "Spinach quantity" }, false],
     [{ tag: "select", label: "Password hint" }, false],
+    [{ tag: "input", type: "radio", id: "buy-once", label: "One-time purchase: $12.99" }, false],
+    [{ tag: "input", type: "checkbox", label: "Remember my security code" }, false],
+    [{ tag: "input", type: "text", label: "One-time code" }, true],
   ])("%j -> %s", (f, secret) => {
     expect(isSecretField(f)).toBe(secret);
   });

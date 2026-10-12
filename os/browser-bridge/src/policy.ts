@@ -167,7 +167,11 @@ export interface FieldFacts {
 export function isSecretField(f: FieldFacts): boolean {
   const tag = f.tag.toLowerCase();
   if (tag !== "input" && tag !== "textarea") return false;
-  if ((f.type ?? "").toLowerCase() === "password") return true;
+  const type = (f.type ?? "").toLowerCase();
+  if (type === "password") return true;
+  // Choices and buttons hold no typed secret: "One-time purchase" is a way to buy, not a one-time code.
+  if (["radio", "checkbox", "submit", "button", "reset", "image", "range", "color"].includes(type))
+    return false;
   for (const token of (f.autocomplete ?? "").toLowerCase().split(/\s+/))
     if (SECRET_AUTOCOMPLETE.has(token)) return true;
   const hay = [f.name, f.id, f.label].filter(Boolean).join(" ");
