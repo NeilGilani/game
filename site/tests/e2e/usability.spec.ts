@@ -12,7 +12,8 @@ for (const path of PAGES) {
     await pretend(page, "macOS", "arm");
     await mockGitHub(page, { status: 200, body: makeRelease() });
     await page.goto(path);
-    if (path === "") await expect(page.locator("#download-panel")).toHaveAttribute("aria-busy", "false");
+    if (path === "download/")
+      await expect(page.locator("#download-panel")).toHaveAttribute("aria-busy", "false");
     const problems = await page.$$eval(TARGETS, (els) => {
       const visible = els
         .filter((el) => {
@@ -87,7 +88,7 @@ test("keyboard: skip link first, every stop visibly focused, the download reacha
   test.skip(info.project.name !== "desktop", "keyboard test runs on desktop");
   await pretend(page, "macOS", "arm");
   await mockGitHub(page, { status: 200, body: makeRelease() });
-  await page.goto("");
+  await page.goto("download/");
   await expect(page.locator("#download-panel")).toHaveAttribute("aria-busy", "false");
   await page.keyboard.press("Tab");
   await expect(page.locator(":focus")).toHaveText("Skip to content");
@@ -147,9 +148,10 @@ test("on a phone, the section menu opens in place with large, well-spaced links"
   test.skip(info.project.name !== "phone", "the menu only exists on narrow screens");
   await mockGitHub(page, { status: 404 });
   await page.goto("");
-  await page.getByText("Menu: all sections").click();
+  await page.locator(".menu summary").click();
   const links = page.locator(".menu a");
-  await expect(links).toHaveCount(7);
+  // Both main actions, the five home-page sections and the setup guide.
+  await expect(links).toHaveCount(8);
   const boxes = await links.evaluateAll((els) =>
     els.map((e) => e.getBoundingClientRect().toJSON() as DOMRect),
   );
@@ -160,4 +162,38 @@ test("on a phone, the section menu opens in place with large, well-spaced links"
   }
   await links.filter({ hasText: "FAQ" }).click();
   await expect(page).toHaveURL(/#faq$/);
+});
+
+for (const path of PAGES) {
+  test(`both main actions are on the page, in the header and the footer: /${path}`, async ({ page }) => {
+    await mockGitHub(page, { status: 404 });
+    await page.goto(path);
+    for (const where of [".site-header", ".site-footer"]) {
+      await expect(page.locator(`${where} a[href$="/app/"]`).first()).toBeAttached();
+      await expect(page.locator(`${where} a[href$="/download/"]`).first()).toBeAttached();
+    }
+  });
+}
+
+test("the home page offers both actions at the top and again at the end", async ({ page }) => {
+  await mockGitHub(page, { status: 404 });
+  await page.goto("");
+  for (const where of [".hero", "#start"]) {
+    await expect(page.locator(`${where} a[data-cta="try"]`)).toHaveAttribute("href", /\/app\/$/);
+    await expect(page.locator(`${where} a[data-cta="download"]`)).toHaveAttribute("href", /\/download\/$/);
+  }
+  await expect(page.locator(".hero a[data-cta='try']")).toBeInViewport();
+});
+
+test("every photo has a description and is credited on the credits page", async ({ page }) => {
+  await mockGitHub(page, { status: 404 });
+  await page.goto("");
+  const alts = await page.$$eval(".photo img", (imgs) => imgs.map((i) => i.getAttribute("alt") ?? ""));
+  expect(alts.length).toBeGreaterThan(0);
+  for (const alt of alts) expect(alt.length).toBeGreaterThan(10);
+  await page.goto("credits/");
+  const credited = await page.$$eval("#photos ~ .table-scroll tbody tr", (rows) =>
+    rows.map((r) => r.querySelector("th span")?.textContent?.trim() ?? ""),
+  );
+  for (const alt of alts) expect(credited).toContain(alt);
 });

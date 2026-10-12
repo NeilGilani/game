@@ -7,9 +7,14 @@ import { join, resolve } from "node:path";
 const dist = resolve(process.argv[2] ?? "dist");
 const base = (process.env.SITE_BASE ?? "/game/").replace(/\/?$/, "/");
 
+// The browser demo in app/ is a separate build (make web-demo) with its own base path and its own tests: links
+// to it are checked (app/index.html must exist), links inside it are not.
+const SEPARATE_BUILDS = new Set([join(dist, "app")]);
+
 function htmlFiles(dir) {
   return readdirSync(dir).flatMap((name) => {
     const p = join(dir, name);
+    if (SEPARATE_BUILDS.has(p)) return [];
     return statSync(p).isDirectory() ? htmlFiles(p) : p.endsWith(".html") ? [p] : [];
   });
 }
