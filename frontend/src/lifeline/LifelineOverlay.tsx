@@ -4,7 +4,7 @@
  * happening and cancel, and nothing behind it can be selected by accident.
  */
 
-import { useEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useState } from "react";
 import type { AlertDetail } from "../api/types";
 import { Icon } from "../components/Icon";
 import { SELECTION_RESET_EVENT } from "../components/common";
@@ -309,6 +309,38 @@ function Progress({ alert }: { alert: AlertDetail }) {
   );
 }
 
+/** How far up from the bottom the dock starts (px), so a bar can sit just above it: Help and Stop stay visible. */
+function useAboveDock(): number {
+  const [bottom, setBottom] = useState(0);
+  useLayoutEffect(() => {
+    const measure = () => {
+      const top = document.querySelector(".topbar.dock")?.getBoundingClientRect().top;
+      setBottom(top === undefined ? 0 : Math.max(0, Math.min(window.innerHeight, window.innerHeight - top)));
+    };
+    measure();
+    window.addEventListener("resize", measure);
+    return () => window.removeEventListener("resize", measure);
+  }, []);
+  return bottom;
+}
+
+/** The minimized alert: a bar above the dock (it used to cover the dock, hiding Help and Stop). */
+function MiniBar({ alert, onShow }: { alert: AlertDetail; onShow: () => void }) {
+  const bottom = useAboveDock();
+  return (
+    <div className="ll-minibar" role="status" style={{ bottom }}>
+      <Icon name="check" />
+      <span>
+        <strong>{alert.acknowledged_by} is on the way.</strong> Answered {clockTime(alert.acknowledged_at)}.
+      </span>
+      <span className="spacer" />
+      <button className="btn" onClick={onShow} data-dwell>
+        <Icon name="bell" /> Show alert
+      </button>
+    </div>
+  );
+}
+
 type View = "main" | "situation" | "ok" | "ambulance";
 
 function Active({ alert }: { alert: AlertDetail }) {
@@ -327,20 +359,7 @@ function Active({ alert }: { alert: AlertDetail }) {
   if (view === "situation") return <SituationPicker alert={alert} onDone={() => setView("main")} />;
   if (view === "ambulance") return <ConfirmAmbulance alert={alert} onDone={() => setView("main")} />;
 
-  if (acked && minimized) {
-    return (
-      <div className="ll-minibar" role="status">
-        <Icon name="check" />
-        <span>
-          <strong>{alert.acknowledged_by} is on the way.</strong> Answered {clockTime(alert.acknowledged_at)}.
-        </span>
-        <span className="spacer" />
-        <button className="btn" onClick={() => setMinimized(false)} data-dwell>
-          <Icon name="bell" /> Show alert
-        </button>
-      </div>
-    );
-  }
+  if (acked && minimized) return <MiniBar alert={alert} onShow={() => setMinimized(false)} />;
 
   let title: string;
   let tone: "danger" | "ok" | "test";
