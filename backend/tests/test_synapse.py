@@ -256,3 +256,38 @@ def test_budget_and_keyword_router_match_synapse_rules() -> None:
     assert keyword_experts("Sign the benefits renewal form for my clinic appointment") == {"medical": 0.333, "legal": 0.667}
     assert keyword_experts("hello there") == {"general": 1.0}
     assert classify_rtt(120) == "good" and classify_rtt(900) == "slow" and classify_rtt(2500) == "critical"
+
+
+def test_the_recorded_route_shows_the_lane_and_effort_comes_back_after_the_fast_lane() -> None:
+    gemini = FakeGemini(lambda body: None)
+    cloud = gemini.provider()
+    layer = SynapseLayer(cloud, SynapseRouter(monitor=NetworkMonitor()))
+
+    async def run() -> list[bool]:
+        out = [await layer._prepare("Order soup", "plan_task")]
+        assert (cloud.lane, cloud.effort) == ("fast", "low")
+        out.append(await layer._prepare("Explain this letter", "explain"))
+        assert (cloud.lane, cloud.effort) == ("deep", "medium")  # the configured effort, restored
+        await layer.monitor.set_demo("critical")
+        out.append(await layer._prepare("Order soup", "plan_task"))
+        return out
+
+    assert asyncio.run(run()) == [True, True, False]
+    recent = layer.router.recent(3)
+    assert [(r["purpose"], r["lane"]) for r in recent] == [("plan_task", "deep"), ("explain", "deep"), ("plan_task", "fast")]
+    assert recent[0]["decision"] == "built-in"  # Critical-Fusion: no cloud call, so no lane to take
+    assert "light thinking" in recent[2]["note"]  # the history tells the same story as the answer
+
+
+def test_the_sentinel_is_only_polled_where_the_router_may_go() -> None:
+    from agency.network import monitor_from_env
+
+    assert monitor_from_env({"AGENCY_SYNAPSE_URL": "http://127.0.0.1:8100"}, cloud_configured=False).synapse_url == (
+        "http://127.0.0.1:8100"
+    )
+    # Not on this computer and not explicitly allowed: the router refuses it, and so does the network monitor.
+    remote = monitor_from_env({"AGENCY_SYNAPSE_URL": "http://192.0.2.10:8100"}, cloud_configured=False)
+    assert remote.synapse_url is None and not remote.configured
+    assert monitor_from_env({"AGENCY_SYNAPSE_URL": "file:///etc/passwd"}, cloud_configured=False).synapse_url is None
+    allowed = {"AGENCY_SYNAPSE_URL": "http://192.0.2.10:8100", "AGENCY_LOCAL_MODEL_ALLOW_REMOTE": "1"}
+    assert monitor_from_env(allowed, cloud_configured=False).synapse_url == "http://192.0.2.10:8100"
