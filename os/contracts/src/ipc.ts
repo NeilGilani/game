@@ -43,6 +43,13 @@ export const IPC = {
   messaging: "agency:messaging",
   /** shell -> main (invoke): Papers, the person's documents in the one folder a helper chose (PapersApi) */
   papers: "agency:papers",
+  /** shell -> main (invoke): AGENCY Browser (BrowserApi); main -> shell: BrowserEvent */
+  browser: "agency:browser",
+  browserEvent: "agency:browser-event",
+  /** main -> a browser page's preload: a request; page -> main: its reply and its events (pages only) */
+  page: "agency:page",
+  pageReply: "agency:page-reply",
+  pageEvent: "agency:page-event",
 } as const;
 
 export type IpcChannel = (typeof IPC)[keyof typeof IPC];

@@ -51,6 +51,24 @@ await build({
   ssr: { noExternal: true },
 });
 
+// AGENCY Browser's page preload: sandboxed too, one CommonJS file, isolated world, nothing exposed to pages.
+await build({
+  ...common,
+  build: {
+    outDir: "out/browser-preload",
+    emptyOutDir: true,
+    target: "chrome130",
+    minify: false,
+    sourcemap: false,
+    ssr: resolve(root, "src/browser-page/index.ts"),
+    rollupOptions: {
+      external: ["electron"],
+      output: { format: "cjs", entryFileNames: "index.cjs", inlineDynamicImports: true },
+    },
+  },
+  ssr: { noExternal: true },
+});
+
 // Built-in pages: fallback overlay, onboarding, "interface not built".
 await build({
   ...common,

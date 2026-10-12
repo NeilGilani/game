@@ -15,6 +15,11 @@ export interface SecurityPolicy {
   log: Logger;
   /** Opens an allow-listed https page in the person's browser (Electron's shell.openExternal). */
   openExternal?: (url: string) => void;
+  /**
+   * AGENCY Browser's pages (its own session): they get AGENCY Browser's rules (main/browser/host.ts: web pages in
+   * tabs, new windows become tabs) instead of these, which keep AGENCY's own windows on agency://.
+   */
+  isBrowser?: (contents: WebContents) => boolean;
 }
 
 export function isAllowedNavigation(target: string, allowedOrigins: string[]): boolean {
@@ -78,6 +83,7 @@ export function isExternalAllowed(url: string): boolean {
 
 export function applySecurity(app: App, policy: SecurityPolicy): void {
   app.on("web-contents-created", (_event, contents) => {
+    if (policy.isBrowser?.(contents)) return;
     contents.setWindowOpenHandler(({ url }) => {
       // A page the person chose in Watch & listen or Browse opens in their own browser, never in an AGENCY window.
       // Only these well-known https sites; anything else stays blocked.

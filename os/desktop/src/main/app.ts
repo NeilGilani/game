@@ -53,6 +53,8 @@ import {
   type WindowRole,
 } from "@agency/contracts";
 import { BridgeHost } from "./bridge";
+import { BrowserHost } from "./browser/host";
+import { browserCall } from "./browser/ipc";
 import { CoordinatorClient } from "./coordinator";
 import { LifelineHost, type HeartbeatBody } from "./lifeline";
 import { createLogger, setLogDir } from "./log";
@@ -119,6 +121,10 @@ export class AgencyApp {
   agent: AgentHost | null = null;
   sidecar: Sidecar | null = null;
   bridge: BridgeHost | null = null;
+  /** AGENCY Browser (main/browser): web pages in the shell, for the person and the assistant. */
+  browser: BrowserHost | null = null;
+  /** Where the assistant's web tools go for the current task: AGENCY Browser or Chrome (the AGENCY Bridge). */
+  webTarget: "agency" | "chrome" = "agency";
   readonly supervisors: Supervisor[] = [];
   lifeline: LifelineHost;
   /** Real texts and calls through the person's iPhone; off until turned on in Settings. */
@@ -215,8 +221,10 @@ export class AgencyApp {
         void electronShell
           .openExternal(url)
           .catch((err: Error) => log.warn(`could not open ${url}: ${err.message}`)),
+      isBrowser: (contents) => this.browser?.owns(contents) ?? false,
     });
     applyPermissionHandlers(session.defaultSession, { allowedOrigins, mayUseCamera, log });
+    if (process.env.AGENCY_BROWSER !== "0") this.startBrowser();
 
     protocol.handle(
       SCHEME,
@@ -267,6 +275,7 @@ export class AgencyApp {
     if (this.statusTimer) clearInterval(this.statusTimer);
     if (this.regionTimer) clearInterval(this.regionTimer);
     if (this.gazeWatch) clearInterval(this.gazeWatch);
+    this.browser?.flush();
     await Promise.allSettled([...this.supervisors.map((s) => s.stop()), this.bridge?.stop()]);
   }
 
@@ -364,6 +373,63 @@ export class AgencyApp {
     bridge.start().catch((err: Error) => blog.error(`bridge did not start: ${err.message}`));
   }
 
+  private startBrowser(): void {
+    const blog = createLogger("browser");
+    try {
+      this.browser = new BrowserHost({
+        userData: this.opts.userData,
+        preload: this.opts.paths.browserPreload,
+        log: blog,
+        internalOrigins: () => this.internalOrigins(),
+        emit: (ev) => {
+          if (ev.type !== "state") this.record("browser.event", ev.type);
+          this.sendTo(this.shell, IPC.browserEvent, ev);
+        },
+        downloadsDir: () => app.getPath("downloads"),
+        agentSettingsFile: this.agentSettingsFile,
+      });
+    } catch (err) {
+      blog.error(`AGENCY Browser did not start: ${(err as Error).message}`);
+      this.browser = null;
+    }
+  }
+
+  /** AGENCY's own services, which no web page may reach: the coordinator and the development shell. */
+  internalOrigins(): string[] {
+    const out: string[] = [];
+    const add = (url: string | null | undefined) => {
+      if (!url) return;
+      try {
+        out.push(new URL(url).origin);
+      } catch {
+        // not an address
+      }
+    };
+    add(this.client.current?.url);
+    add(this.opts.coordinatorUrl);
+    add(this.opts.shellDevUrl);
+    return out;
+  }
+
+  /**
+   * Which browser the assistant's web tools use for the task starting now: AGENCY Browser unless the task (or the
+   * helper's setting, with Chrome's bridge connected) says the person's Chrome.
+   */
+  private chooseWebTarget(selections: Record<string, string>): void {
+    const b = this.browser;
+    const chromeReady = this.bridge?.connection === "ready";
+    if (!b) {
+      this.webTarget = "chrome";
+      return;
+    }
+    const wanted = selections.browser;
+    const chrome =
+      wanted === "chrome" || (wanted !== "agency" && b.settings.agentBrowser === "chrome" && chromeReady);
+    this.webTarget = chrome ? "chrome" : "agency";
+    this.record("agent.web", this.webTarget);
+    if (!chrome) b.startAgentTask(selections.browserTab === "current");
+  }
+
   private startAgent(): void {
     if (this.shuttingDown) return;
     const spec = this.opts.paths.agent;
@@ -382,6 +448,8 @@ export class AgencyApp {
             AGENCY_AGENT_DATA: join(this.opts.userData, "agent"),
             AGENCY_AUDIT_FILE: join(this.opts.userData, "agent-audit.jsonl"),
             AGENCY_AGENT_SETTINGS: this.agentSettingsFile,
+            // The agent's web tools: main serves them from AGENCY Browser even when Chrome's bridge is off.
+            ...(this.browser ? { AGENCY_BRIDGE: "1" } : {}),
             ...(this.client.current
               ? {
                   AGENCY_COORDINATOR_URL: this.client.current.url,
@@ -743,6 +811,8 @@ export class AgencyApp {
       // A page that is still loading can't hear the signal yet: tell it again once it has loaded.
       win.webContents.once("did-finish-load", () => this.sendTo(win, IPC.lifeline, signal));
     }
+    // No web page may sit in front of the emergency screen, whatever the shell last asked for.
+    this.browser?.setEmergency(true);
     this.sendTo(win, IPC.lifeline, signal);
     this.toOverlays(IPC.lifeline, signal);
   }
@@ -755,6 +825,7 @@ export class AgencyApp {
       win.setAlwaysOnTop(false);
       win.setVisibleOnAllWorkspaces(false, { skipTransformProcessType: true });
     }
+    this.browser?.setEmergency(false);
     this.record("lifeline.release");
   }
 
@@ -789,6 +860,8 @@ export class AgencyApp {
   private async runStop(): Promise<StopAllResult> {
     // No real text or call goes out after Stop, even one already approved and waiting.
     this.messaging.cancelAll();
+    // The assistant does nothing more in AGENCY Browser until the person starts a new task.
+    this.browser?.stopAgent();
     const result = await stopAll(
       {
         agent: () => {
@@ -892,6 +965,7 @@ export class AgencyApp {
 
   private onAgentEvent(ev: AgentEvent): void {
     this.record("agent.event", ev.type);
+    if (ev.type === "task.done" || ev.type === "task.failed" || ev.type === "task.stopped") this.browser?.agentEnded();
     this.sendTo(this.shell, IPC.agentEvent, ev);
     this.toOverlays(IPC.agentEvent, ev);
   }
@@ -940,6 +1014,8 @@ export class AgencyApp {
       }
       return this.callNative(method as NativeMethod, params);
     }
+    // The same tools, served by AGENCY Browser or by the person's Chrome, as chosen when the task started.
+    if (this.webTarget === "agency" && this.browser) return this.browser.agentCall(method, params);
     if (!this.bridge) return Promise.reject(new Error("The AGENCY Bridge is not connected."));
     return this.bridge.agentCall(method, params);
   }
@@ -1019,7 +1095,10 @@ export class AgencyApp {
         return;
       }
       // The person started a task: Chrome may act again after an earlier Stop (only for a task the agent will run).
-      if (cmd.type === "task.start" && this.agent?.running) this.bridge?.newTask();
+      if (cmd.type === "task.start" && this.agent?.running) {
+        this.bridge?.newTask();
+        this.chooseWebTarget(cmd.request.selections ?? {});
+      }
       if (!this.agent?.send(cmd)) log.warn(`agent not running; dropped ${cmd.type}`);
     });
 
@@ -1055,6 +1134,13 @@ export class AgencyApp {
     // Real texts and calls: the shell only. Main resolves numbers and checks every rule itself (messaging.ts).
     handle(IPC.messaging, ["shell"], (_e, _role, op, arg) => this.messagingCall(String(op), arg));
     handle(IPC.papers, ["shell"], (_e, _role, op, ...args) => this.papers(String(op), args));
+    // AGENCY Browser: the shell only. Pages reach main only through their preload, checked by the browser host.
+    handle(IPC.browser, ["shell"], (e, _role, op, ...args) => {
+      if (!this.browser) throw new Error("AGENCY Browser is off.");
+      return browserCall(this.browser, e.sender, String(op), args);
+    });
+    ipcMain.on(IPC.pageReply, (e, msg) => this.browser?.onPageMessage(e, "reply", msg));
+    ipcMain.on(IPC.pageEvent, (e, msg) => this.browser?.onPageMessage(e, "event", msg));
 
     handle(IPC.overlayDisplay, ["overlay"], (e) => {
       for (const o of this.overlays.values()) if (o.win.webContents.id === e.sender.id) return o.display;

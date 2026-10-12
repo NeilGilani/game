@@ -8,7 +8,21 @@ import { contextBridge, ipcRenderer, type IpcRendererEvent } from "electron";
 import {
   CONTRACTS_VERSION,
   IPC,
+  type ActivateResult,
   type AgencyApi,
+  type BrowserApi,
+  type BrowserEvent,
+  type BrowserSettings,
+  type BrowserState,
+  type Favourite,
+  type FieldResult,
+  type HistoryEntry,
+  type OpenResult,
+  type PageFrame,
+  type PopupInfo,
+  type ReaderArticle,
+  type SitePermissionEntry,
+  type VideoState,
   type AgentCommand,
   type AgentEvent,
   type CoordinatorChoice,
@@ -52,6 +66,47 @@ function subscribe<T>(channel: string, listener: (value: T) => void): () => void
 }
 
 const role = (ipcRenderer.sendSync("agency:role") ?? "shell") as WindowRole;
+
+/** AGENCY Browser's calls (main allows them from the shell only and checks every argument). */
+const b = (op: string, ...args: unknown[]) => ipcRenderer.invoke(IPC.browser, op, ...args);
+
+const browser: BrowserApi = {
+  state: () => b("state") as Promise<BrowserState>,
+  onEvent: (l) => subscribe<BrowserEvent>(IPC.browserEvent, l),
+  layout: (rect, visible) => void b("layout", rect, visible).catch(() => undefined),
+  open: (request) => b("open", request) as Promise<OpenResult>,
+  navigate: (tabId, url) => b("navigate", tabId, url) as Promise<OpenResult>,
+  back: (tabId) => b("back", tabId) as Promise<void>,
+  forward: (tabId) => b("forward", tabId) as Promise<void>,
+  reload: (tabId) => b("reload", tabId) as Promise<void>,
+  stopLoading: (tabId) => b("stopLoading", tabId) as Promise<void>,
+  start: (tabId) => b("start", tabId) as Promise<void>,
+  newTab: () => b("newTab") as Promise<number>,
+  closeTab: (tabId) => b("closeTab", tabId) as Promise<void>,
+  activateTab: (tabId) => b("activateTab", tabId) as Promise<void>,
+  zoom: (tabId, change) => b("zoom", tabId, change) as Promise<number>,
+  thumbnails: () => b("thumbnails") as Promise<Record<number, string>>,
+  frame: (tabId) => b("frame", tabId) as Promise<PageFrame | null>,
+  activate: (tabId, ref, confirmed) => b("activate", tabId, ref, confirmed === true) as Promise<ActivateResult>,
+  field: (tabId, ref, op) => b("field", tabId, ref, op) as Promise<FieldResult>,
+  chooseOption: (tabId, ref, option) => b("chooseOption", tabId, ref, option) as Promise<boolean>,
+  scroll: (tabId, request) => void b("scroll", tabId, request).catch(() => undefined),
+  reader: (tabId) => b("reader", tabId) as Promise<ReaderArticle | null>,
+  popup: (tabId) => b("popup", tabId) as Promise<PopupInfo | null>,
+  closePopup: (tabId, ref) => b("closePopup", tabId, ref) as Promise<boolean>,
+  video: (tabId, command) => b("video", tabId, command) as Promise<VideoState | null>,
+  exitBigScreen: () => void b("exitBigScreen").catch(() => undefined),
+  answer: (id, answer) => void b("answer", id, answer).catch(() => undefined),
+  history: () => b("history") as Promise<HistoryEntry[]>,
+  clearHistory: () => b("clearHistory") as Promise<void>,
+  favourites: () => b("favourites") as Promise<Favourite[]>,
+  setFavourites: (list) => b("setFavourites", list) as Promise<Favourite[]>,
+  settings: () => b("settings") as Promise<BrowserSettings>,
+  setSettings: (s) => b("setSettings", s) as Promise<BrowserSettings>,
+  sitePermissions: () => b("sitePermissions") as Promise<SitePermissionEntry[]>,
+  forgetSitePermission: (origin, permission) => b("forgetSitePermission", origin, permission) as Promise<void>,
+  clearSiteData: () => b("clearSiteData") as Promise<void>,
+};
 
 const api: AgencyApi = {
   contractsVersion: CONTRACTS_VERSION,
@@ -147,6 +202,8 @@ const api: AgencyApi = {
     saveCopy: (original: string, suffix: "filled" | "signed", bytes: Uint8Array) =>
       ipcRenderer.invoke(IPC.papers, "saveCopy", original, suffix, bytes) as Promise<{ name: string }>,
   },
+  // Main allows AGENCY Browser from the shell only (the role is checked there, on every call).
+  browser,
 };
 
 contextBridge.exposeInMainWorld("agency", api);

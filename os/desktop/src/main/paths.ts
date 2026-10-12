@@ -14,6 +14,8 @@ export interface Paths {
   repoDir: string | null;
   resourcesDir: string;
   preload: string;
+  /** AGENCY Browser's page preload: no API for pages, only main's requests (src/browser-page). */
+  browserPreload: string;
   /** Built-in pages: fallback overlay, onboarding, gaze placeholder. */
   hostRenderer: string;
   shellDir: string | null;
@@ -98,6 +100,7 @@ export function resolvePaths(opts: {
     repoDir,
     resourcesDir,
     preload: join(out, "preload", "index.cjs"),
+    browserPreload: join(out, "browser-preload", "index.cjs"),
     hostRenderer: join(out, "renderer"),
     shellDir: shellIndex ? resolve(shellIndex, "..") : null,
     overlayDir: overlayIndex

@@ -153,6 +153,7 @@ function makeApp(onboardingDone = true) {
       repoDir: null,
       resourcesDir: dir,
       preload: join(dir, "preload.cjs"),
+      browserPreload: join(dir, "browser-preload.cjs"),
       hostRenderer: dir,
       shellDir: dir,
       overlayDir: { dir, entry: "overlay/index.html", builtin: true },

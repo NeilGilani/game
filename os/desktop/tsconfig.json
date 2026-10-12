@@ -3,7 +3,8 @@
   "compilerOptions": {
     "lib": [
       "ES2023",
-      "DOM"
+      "DOM",
+      "DOM.Iterable"
     ],
     "types": [
       "node"
@@ -13,6 +14,7 @@
   "include": [
     "src/main",
     "src/preload",
+    "src/browser-page",
     "test",
     "vitest.config.ts"
   ]

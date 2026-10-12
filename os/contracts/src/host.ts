@@ -7,6 +7,7 @@
  */
 
 import type { AgentCommand, AgentEvent } from "./agent";
+import type { BrowserApi } from "./browser";
 import type { GazeEvent } from "./gaze";
 import type { HelpSource, LifelineSignal } from "./lifeline";
 import type { NativeEvent, NativeMethod, NativeMethods, PermissionKind, PermissionStatus } from "./native";
@@ -222,6 +223,8 @@ export interface AgencyApi {
   };
   /** Shell only: Papers' documents in the helper's chosen folder (added additively; older hosts don't have it). */
   papers?: PapersApi;
+  /** Shell only: AGENCY Browser (browser.ts; added additively, older hosts don't have it). */
+  browser?: BrowserApi;
 }
 
 /** "Order for real" in Settings: on or off, and the most one order may cost, in dollars. */
