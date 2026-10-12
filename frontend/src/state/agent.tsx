@@ -17,6 +17,7 @@ import { STOP_ALL_EVENT } from "../components/common";
 import { useConnection } from "./connection";
 import { FakeAgent } from "./fakeAgent";
 import { fakeForced, host } from "./host";
+import { realOrderRequest } from "./realOrdering";
 import { answered, decided, newTask, reduceTask, type TaskView } from "./tasks";
 
 interface AgentLink {
@@ -51,7 +52,8 @@ function fakeDelay(): number {
 const PRACTICE_KINDS = new Set(["food", "shopping", "call", "message", "papers"]);
 
 export function practiceTask(request: TaskRequest): boolean {
-  return PRACTICE_KINDS.has(request.selections?.kind ?? "");
+  // Food and Shopping ordered for real (Settings, state/realOrdering.ts) go to the Mac app's agent instead.
+  return PRACTICE_KINDS.has(request.selections?.kind ?? "") && !request.selections?.orderSite;
 }
 
 /** Exported for tests. */
@@ -144,7 +146,8 @@ export function AgentProvider({ children }: { children: ReactNode }) {
 
   const start = useCallback(
     (req: Omit<TaskRequest, "id"> & { id?: string }) => {
-      const request: TaskRequest = { dryRun: true, ...req, id: req.id ?? taskId() };
+      const asked: TaskRequest = { dryRun: true, ...req, id: req.id ?? taskId() };
+      const request = realOrderRequest(asked) ?? asked;
       order.current = [request.id, ...order.current];
       if (halted.current) {
         const now = Date.now();

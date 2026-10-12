@@ -29,6 +29,7 @@ import type { Suggestion } from "../state/contracts";
 import { memory } from "../state/memory";
 import { host } from "../state/host";
 import { apps } from "../state/native";
+import { forRealOrdering } from "../state/realOrdering";
 import { navigate } from "../state/router";
 
 /** Memory gets a moment to offer the usual, so it never appears under the gaze after the choices did. */
@@ -64,7 +65,7 @@ const PACK_SCREENS: Record<string, string> = {
 };
 
 export function FlowScreen({ id }: { id: string }) {
-  const flow = FLOWS[id];
+  const flow = useMemo(() => FLOWS[id] && forRealOrdering(FLOWS[id]), [id]);
   if (!flow) {
     return (
       <div className="panel stack">
