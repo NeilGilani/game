@@ -100,7 +100,8 @@ export interface BridgeResult {
 
 export interface BrowserBridge {
   snapshot(): Promise<PageSnapshot>;
-  click(ref: string): Promise<BridgeResult>;
+  /** `approved`: the guard got the person's approval for this exact click (the bridge may insist on it). */
+  click(ref: string, opts?: { approved?: boolean }): Promise<BridgeResult>;
   type(ref: string, text: string): Promise<BridgeResult>;
   navigate(url: string): Promise<BridgeResult>;
 }

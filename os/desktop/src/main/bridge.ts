@@ -95,7 +95,7 @@ export class BridgeHost {
   /** The agent's BrowserBridge interface (os/agent/src/types.ts), over the bridge protocol. */
   async agentCall(method: string, params: unknown): Promise<unknown> {
     const s = this.requireServer();
-    const p = (params ?? {}) as { ref?: string; text?: string; url?: string };
+    const p = (params ?? {}) as { ref?: string; text?: string; url?: string; approved?: unknown };
     const tabId = await this.activeTab();
     switch (method) {
       case "snapshot": {
@@ -125,12 +125,22 @@ export class BridgeHost {
         };
       }
       case "click": {
-        // The agent's guard has already bound the person's approval to this exact action; the bridge re-describes
-        // the live element so its own fingerprint check also passes only for the same page state.
+        // The bridge re-describes the live element. When by its own reading the click is consequential, it goes
+        // through only if the agent's guard got the person's approval for it (`approved`), and then the bridge's own
+        // fingerprint check also passes only for the same page state. Main never approves on the person's behalf a
+        // click the agent's guard thought harmless (a "Continue" button that actually submits a payment form).
         const d = (await s.call("page.describeAction", { tabId, ref: String(p.ref) })) as Untrusted<{
           fingerprint: string;
           consequential: string | null;
         }>;
+        if (d.data.consequential && p.approved !== true) {
+          // Only the kind goes back (a fixed word), never page text: this message reaches the model.
+          const kind = /^[a-z-]{1,40}$/.test(d.data.consequential) ? d.data.consequential : "consequential";
+          throw new Error(
+            `The AGENCY Bridge reads this click as "${kind}", so the person has to approve it first. ` +
+              `Nothing was clicked. Click it again marked with kind "${kind}" so they can approve it.`,
+          );
+        }
         await s.call("page.click", {
           tabId,
           ref: String(p.ref),

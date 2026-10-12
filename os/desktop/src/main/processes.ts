@@ -190,7 +190,14 @@ export class AgentHost {
         clearTimeout(timer);
         resolve(true);
       });
-      proc.postMessage({ kind: "ping", id } satisfies HostToAgent);
+      try {
+        proc.postMessage({ kind: "ping", id } satisfies HostToAgent);
+      } catch {
+        // The process is going away: unhealthy, never an unhandled rejection in main.
+        clearTimeout(timer);
+        this.pongs.delete(id);
+        resolve(false);
+      }
     });
   }
 
