@@ -24,6 +24,11 @@ interface AgentLink {
   simulated: boolean;
   /** Mac app only: stop the practice tasks (main stops its own agent; this must not echo stop.all to it). */
   stopPractice?: () => void;
+  /**
+   * Mac app only: a Stop from anywhere else (the overlay's Stop, the hotkey, the menu, Chrome) stops the practice
+   * tasks too. Main's broadcast is state, not a command: it is never sent back to main. Returns the unsubscribe.
+   */
+  followHostStop?: () => () => void;
 }
 
 function fakeDelay(): number {
@@ -47,7 +52,8 @@ export function practiceTask(request: TaskRequest): boolean {
   return PRACTICE_KINDS.has(request.selections?.kind ?? "");
 }
 
-function connect(): AgentLink {
+/** Exported for tests. */
+export function connect(): AgentLink {
   const h = host();
   const fake = new FakeAgent(fakeDelay());
   if (!h || fakeForced("agent")) {
@@ -78,6 +84,10 @@ function connect(): AgentLink {
     },
     simulated: false,
     stopPractice: () => fake.send({ type: "stop.all" }),
+    // The practice agent is in this page, so stopping it here reaches nobody else: no echo, no amplification.
+    // Stopping already-stopped practice tasks does nothing, so a Stop pressed here (which also arrives back as
+    // main's broadcast) still stops each task once.
+    followHostStop: () => h.onStopAll(() => fake.send({ type: "stop.all" })),
   };
 }
 
@@ -121,6 +131,8 @@ export function AgentProvider({ children }: { children: ReactNode }) {
       ),
     [link],
   );
+
+  useEffect(() => link.followHostStop?.(), [link]);
 
   const start = useCallback(
     (req: Omit<TaskRequest, "id"> & { id?: string }) => {
