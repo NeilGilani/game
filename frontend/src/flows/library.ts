@@ -1,7 +1,9 @@
 /**
  * The flows behind Home's tiles. Places, people and prices are fictional demo data; everything the agent does with
- * them happens in the sandbox and is simulated until the person configures real services.
+ * them happens in the sandbox and is simulated until the person configures real services. Calls and messages also
+ * list the person's real saved people (Mac app, once turned on in Settings), labelled Real (state/realMessaging.ts).
  */
+import { practiceLabelled, realPeopleOptions } from "../state/realMessaging";
 import type { FlowDef, FlowOption, Selections } from "./types";
 
 // ---- Food -------------------------------------------------------------------------------------------------------
@@ -137,6 +139,11 @@ const PEOPLE: FlowOption[] = [
   },
 ];
 
+/** The person's real saved people first (labelled Real), then the practice people (labelled Practice). */
+function peopleFor(next: string, practice: FlowOption[]): FlowOption[] {
+  return [...realPeopleOptions(next), ...practiceLabelled(practice.map((p) => ({ ...p, next })))];
+}
+
 const call: FlowDef = {
   id: "call",
   title: "Call someone",
@@ -148,8 +155,8 @@ const call: FlowDef = {
     who: {
       id: "who",
       prompt: "Who do you want to call?",
-      help: "You talk by choosing what to say. They hear a synthetic voice, and AGENCY tells them so.",
-      options: PEOPLE,
+      help: "You talk by choosing what to say. Practice people are pretend. Real people get a real call, after you approve it.",
+      options: () => peopleFor("why", PEOPLE),
     },
     why: {
       id: "why",
@@ -428,17 +435,18 @@ const messages: FlowDef = {
     who: {
       id: "who",
       prompt: "Who is it for?",
-      options: [
-        ...PEOPLE.slice(0, 3).map((p) => ({ ...p, next: "say" })),
-        {
-          id: "family",
-          label: "Family group",
-          sub: "4 people",
-          icon: "name",
-          set: { person: "Family group" },
-          next: "say",
-        },
-      ],
+      options: () =>
+        peopleFor("say", [
+          ...PEOPLE.slice(0, 3),
+          {
+            id: "family",
+            label: "Family group",
+            sub: "4 people",
+            icon: "name",
+            set: { person: "Family group" },
+            next: "say",
+          },
+        ]),
     },
     say: {
       id: "say",

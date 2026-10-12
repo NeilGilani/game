@@ -57,6 +57,13 @@ const SETTINGS: Choice[] = [
     path: "/settings/memory",
   },
   {
+    id: "phone",
+    label: "Calls and texts",
+    sub: "Real ones through your iPhone, or practice",
+    icon: "phone",
+    path: "/settings/phone",
+  },
+  {
     id: "lifeline",
     label: "Lifeline",
     sub: "Contacts, care plan, emergency services",

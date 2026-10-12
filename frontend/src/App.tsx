@@ -29,6 +29,7 @@ import { Onboarding } from "./screens/Onboarding";
 import { HelperSettings, MemorySettings, SettingsHub, VoiceSettings } from "./screens/OsSettings";
 import { TaskScreen } from "./screens/Task";
 import { LifelineAlertView, LifelineHome, LifelineSetup } from "./screens/Lifeline";
+import { PhoneSettings } from "./screens/PhoneSettings";
 import { PhoneSimulator } from "./screens/PhoneSimulator";
 import { NewTask, Phrases } from "./screens/NewTask";
 import { PreferencesView, SettingsView, StatusView } from "./screens/SettingsViews";
@@ -58,6 +59,7 @@ function Screen({ route }: { route: Route }) {
   if (a === "onboarding") return <Onboarding />;
   if (a === "settings" && !b) return <SettingsHub />;
   if (a === "settings" && b === "voice") return <VoiceSettings />;
+  if (a === "settings" && b === "phone") return <PhoneSettings />;
   if (a === "settings" && b === "memory") return <MemorySettings />;
   if (a === "settings" && b === "helper") return <HelperSettings />;
   if (a === "settings" && b === "gaze-lab") return <GazeLab />;
