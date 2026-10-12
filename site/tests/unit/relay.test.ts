@@ -380,6 +380,17 @@ describe("POST /api/relay/v1/interactions", () => {
       [withResult({ type: "image", data: "A".repeat(3_000_001), mime_type: "image/png" }), 413],
       [withResult({ type: "video", data: PIXELS, mime_type: "video/mp4" }), 400],
       [withResult({ type: "audio", data: PIXELS, mime_type: "audio/wav" }), 400],
+      [withResult({ type: "text", text: "x".repeat(1_000_001) }), 413],
+      [
+        {
+          ...turn(),
+          input: Array.from({ length: 300 }, () => ({
+            type: "user_input",
+            content: [{ type: "text", text: "y".repeat(4000) }],
+          })),
+        },
+        413,
+      ],
       [{ ...turn(), store: true }, 400],
       [{ ...turn(), background: true }, 400],
       [{ ...turn(), previous_interaction_id: "abc" }, 400],

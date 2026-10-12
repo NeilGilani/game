@@ -40,8 +40,8 @@ follow.
 - **Interactions:** `store: false` and Gemini's prompt-injection detection are forced on. Only `function` and
   `computer_use` tools are allowed, so no Google Search, URL context or code execution. Turns can't use background
   mode, webhooks or `previous_interaction_id`. A turn carries at most 4 screenshots, inline PNG, JPEG or WebP only,
-  each under 3 MB of base64. Links to files, audio and video are refused. Limits: 16,384 output tokens and an 8 MB
-  body.
+  each under 3 MB of base64. Links to files, audio and video are refused. Limits: 16,384 output tokens, 1 million
+  characters of text per turn (history included, roughly 250k tokens) and an 8 MB body.
 - Only the fields the apps read are returned. Google's answer is capped at 2 MB.
 
 ## Abuse and cost limits

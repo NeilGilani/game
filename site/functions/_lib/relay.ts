@@ -82,6 +82,8 @@ export const GENERATE_MAX_BYTES = 200_000;
 export const INTERACTIONS_MAX_BYTES = 8_000_000;
 export const MAX_IMAGES = 4; // the agent keeps its newest 3 screenshots in a turn
 export const MAX_IMAGE_CHARS = 3_000_000; // base64; a 1280-wide JPEG is far smaller
+/** Text in one agent turn (history included, screenshots not): about 250k tokens, a bounded cost per turn. */
+export const MAX_TURN_TEXT_CHARS = 1_000_000;
 export const MAX_RESPONSE_BYTES = 2_000_000;
 const SKEW_S = 300;
 const GOOGLE = "https://generativelanguage.googleapis.com/v1beta";
@@ -514,8 +516,14 @@ const AGENT_THINKING = new Set(["minimal", "low", "medium", "high"]);
 const TOOL_CHOICE = new Set(["auto", "any", "none", "validated"]);
 
 /** Screenshots are counted and must be inline; files, links, audio and video are refused anywhere in a turn. */
-function scanContent(value: unknown, state: { images: number }, depth = 0): void {
+function scanContent(value: unknown, state: { images: number; chars: number }, depth = 0): void {
   if (depth > 32) throw new Rejected("The request is nested too deeply.");
+  if (typeof value === "string") {
+    state.chars += value.length;
+    if (state.chars > MAX_TURN_TEXT_CHARS)
+      throw new Rejected("This turn carries too much text.", 413, "too_large");
+    return;
+  }
   if (Array.isArray(value)) {
     for (const v of value) scanContent(v, state, depth + 1);
     return;
@@ -534,7 +542,10 @@ function scanContent(value: unknown, state: { images: number }, depth = 0): void
       throw new Rejected("A screenshot must be inline PNG, JPEG or WebP data.");
     if (data.length > MAX_IMAGE_CHARS) throw new Rejected("A screenshot is too large.", 413, "too_large");
   }
-  for (const v of Object.values(value)) scanContent(v, state, depth + 1);
+  for (const [k, v] of Object.entries(value)) {
+    if (type === "image" && k === "data") continue; // counted as a screenshot, not as text
+    scanContent(v, state, depth + 1);
+  }
 }
 
 function checkTool(tool: unknown): Json {
@@ -601,7 +612,7 @@ export function buildInteraction(b: Json, env: RelayEnv): { model: string; body:
         "input steps must be user input, model output, thoughts, function calls or results.",
       );
   }
-  scanContent(input, { images: 0 });
+  scanContent(input, { images: 0, chars: 0 });
   return {
     model,
     timeoutMs: 90_000,
