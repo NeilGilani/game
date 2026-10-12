@@ -1,19 +1,23 @@
 ---
 import Base from "../layouts/Base.astro";
+import PageHero from "../components/PageHero.astro";
+import CtaPair from "../components/CtaPair.astro";
 const base = import.meta.env.BASE_URL;
 ---
 
-<Base title="Page not found: AGENCY OS" description="This page doesn't exist.">
-  <article class="wrap prose">
-    <h1>That page doesn't exist</h1>
-    <p class="lede">The link may be old, or mistyped.</p>
-    <div class="actions">
-      <a class="btn btn-primary" href={base}>
+<Base title="Page not found: AGENCY" description="This page doesn't exist.">
+  <PageHero
+    eyebrow="Page not found"
+    title="That page doesn't exist"
+    lede="The link may be old, or mistyped. Here's where you can go instead."
+    tone="coral"
+  />
+  <section class="wrap prose">
+    <CtaPair />
+    <p class="home-link">
+      <a class="target-link" href={base}>
         Go to the home page
       </a>
-      <a class="btn" href={`${base}#download`}>
-        Go to the download
-      </a>
-    </div>
-  </article>
+    </p>
+  </section>
 </Base>

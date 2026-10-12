@@ -1,0 +1,490 @@
+---
+import Base from "../layouts/Base.astro";
+import PageHero from "../components/PageHero.astro";
+import Icon from "../components/Icon.astro";
+import {
+  CONTACT_EMAIL,
+  ISSUES_URL,
+  RELEASES_REPO,
+  RELEASES_URL,
+  REQUIREMENTS,
+  SOURCE_URL,
+} from "../data/site";
+
+const base = import.meta.env.BASE_URL;
+const contactHref = CONTACT_EMAIL
+  ? `mailto:${CONTACT_EMAIL}?subject=${encodeURIComponent("AGENCY on my computer")}`
+  : `${ISSUES_URL}?q=label%3Aplatforms`;
+const contactLabel = CONTACT_EMAIL ? "Email us" : "Tell us on GitHub";
+const cloneUrl = `${SOURCE_URL}.git`;
+
+// Installing, as in docs/os/INSTALL.md and the release workflow (.github/workflows/release.yml).
+const steps = [
+  {
+    tone: "sun",
+    icon: "download" as const,
+    title: "Download",
+    body: "Pick the file for your Mac above. Apple silicon Macs get the arm64 file, Intel Macs the x64 file.",
+  },
+  {
+    tone: "teal",
+    icon: "laptop" as const,
+    title: "Drag to Applications",
+    body: "Open the downloaded .dmg file and drag AGENCY into your Applications folder.",
+  },
+  {
+    tone: "coral",
+    icon: "shield" as const,
+    title: "Open it",
+    body: "Open AGENCY from Applications. If macOS says it can't check it, follow the steps just below. You only do this once per version.",
+  },
+  {
+    tone: "violet",
+    icon: "camera" as const,
+    title: "Allow the camera",
+    body: "AGENCY asks for each permission on its own screen, in plain words. The camera is needed: the picture never leaves the Mac and is never saved.",
+  },
+];
+---
+
+<Base
+  title="Download AGENCY for Mac"
+  description="Download AGENCY, the eye-controlled computer, for macOS 13 or later on Apple silicon or Intel. Free. Or try it in your browser first."
+  current="download"
+>
+  <PageHero
+    eyebrow="Download"
+    title="Get AGENCY for your Mac"
+    lede="Free, for macOS 13 Ventura or later, on Apple silicon or Intel. A helper with a mouse usually does the first start; after that, everything works by eye."
+    tone="sun"
+  />
+
+  <section class="section dl-section" aria-labelledby="dl-title">
+    <div class="wrap">
+      <h2 id="dl-title" class="sr-only">
+        The latest version
+      </h2>
+      <div class="download-grid">
+        <div
+          class="card download-panel"
+          id="download-panel"
+          aria-live="polite"
+          data-repo={RELEASES_REPO}
+          data-releases-url={RELEASES_URL}
+          data-contact-href={contactHref}
+          data-contact-label={contactLabel}
+          data-base={base}
+        >
+          <h3>Checking for the latest version…</h3>
+          <p>Every version of AGENCY is on its releases page on GitHub.</p>
+          <div class="actions">
+            <a class="btn btn-sun" href={`${RELEASES_URL}/latest`}>
+              Open the releases page on GitHub
+            </a>
+          </div>
+        </div>
+        <aside class="card try-card" aria-labelledby="try-title">
+          <span class="badge tone-violet" aria-hidden="true">
+            <Icon name="browser" />
+          </span>
+          <h3 id="try-title">No Mac, or not sure yet?</h3>
+          <p>
+            Try AGENCY in your web browser first. It's the real interface with practice services. Camera video
+            stays in your browser.
+          </p>
+          <a class="btn btn-primary" href={`${base}app/`}>
+            Try it in your browser
+          </a>
+        </aside>
+      </div>
+
+      <div class="req-grid">
+        <div class="card requirements">
+          <h3>What you need</h3>
+          <ul class="ticks">
+            <li>
+              <Icon name="check" /> {REQUIREMENTS.macos}
+            </li>
+            <li>
+              <Icon name="check" /> {REQUIREMENTS.chips}
+            </li>
+            <li>
+              <Icon name="check" /> {REQUIREMENTS.camera}
+            </li>
+            <li>
+              <Icon name="check" /> {REQUIREMENTS.browser}
+            </li>
+            <li>
+              <Icon name="check" /> {REQUIREMENTS.ai}
+            </li>
+          </ul>
+        </div>
+        <div class="card signed-card">
+          <h3>Is it signed by Apple?</h3>
+          <p>
+            Each release says so in its notes. AGENCY is signed and notarized by Apple only once the project's
+            Apple Developer ID is set up. Until then, releases are marked “Unsigned build”, and macOS asks you
+            to confirm the first time you open AGENCY.
+          </p>
+          <p>
+            That's expected, and the steps below cover it. If the download box above says a build isn't
+            signed, those steps open on their own.
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section band-tint" id="install" aria-labelledby="install-title">
+    <div class="wrap">
+      <div class="section-head">
+        <p class="eyebrow">Install</p>
+        <h2 id="install-title">Four steps, about fifteen minutes</h2>
+        <p class="lede">
+          The full walk-through, including every permission, is in the{" "}
+          <a href={`${base}setup/`}>setup guide</a>.
+        </p>
+      </div>
+      <ol class="install-steps">
+        {steps.map((s, i) => (
+          <li class:list={["install-step", `tone-${s.tone}`]}>
+            <span class="step-n" aria-hidden="true">
+              {i + 1}
+            </span>
+            <span class="badge" aria-hidden="true">
+              <Icon name={s.icon} />
+            </span>
+            <h3>{s.title}</h3>
+            <p>{s.body}</p>
+          </li>
+        ))}
+      </ol>
+
+      <div class="help-list">
+        <details class="disclosure" id="unsigned">
+          <summary class="btn">If macOS says it can't open AGENCY</summary>
+          <div class="disclosure-body">
+            <p>
+              Until AGENCY is signed with an Apple Developer ID, macOS blocks it the first time. You only need
+              to do this once per version.
+            </p>
+            <ol>
+              <li>
+                Open the downloaded .dmg and drag <strong>AGENCY</strong> into <strong>Applications</strong>.
+              </li>
+              <li>
+                Open AGENCY from Applications. macOS says it can't verify it. Click <strong>Done</strong> (not
+                <strong>Move to Bin</strong>).
+              </li>
+              <li>
+                Open <strong>System Settings</strong>, then <strong>Privacy &amp; Security</strong>. Scroll
+                down to <strong>Security</strong>. Next to “AGENCY was blocked to protect your Mac”, click
+                <strong>Open Anyway</strong>, and enter your Mac password or use Touch ID.
+              </li>
+              <li>
+                Open AGENCY again and click <strong>Open Anyway</strong> once more.
+              </li>
+            </ol>
+            <p>
+              On macOS 13 or 14 you can instead Control-click (or right-click) AGENCY in Applications, choose
+              <strong>Open</strong>, then <strong>Open</strong> again. macOS 15 and later only offer the
+              System Settings route above.
+            </p>
+            <p>
+              <strong>After each update</strong> of an unsigned build, macOS forgets that it allowed AGENCY to
+              use Accessibility and Screen Recording. Turn them back on as in the{" "}
+              <a href={`${base}setup/#permissions`}>setup guide</a>. Signed builds don't have this problem.
+            </p>
+          </div>
+        </details>
+
+        <details class="disclosure">
+          <summary class="btn">Which Mac do I have?</summary>
+          <div class="disclosure-body">
+            <ol>
+              <li>
+                Click the Apple menu in the top-left corner of the screen, then{" "}
+                <strong>About This Mac</strong>.
+              </li>
+              <li>
+                If it lists a <strong>Chip</strong> such as Apple M1, M2, M3 or M4, you have
+                <strong>Apple silicon</strong>.
+              </li>
+              <li>
+                If it lists a <strong>Processor</strong> with “Intel” in its name, you have{" "}
+                <strong>Intel</strong>.
+              </li>
+              <li>The same window shows your macOS version: it needs to be 13 (Ventura) or later.</li>
+            </ol>
+          </div>
+        </details>
+
+        <details class="disclosure">
+          <summary class="btn">Check that the download is genuine</summary>
+          <div class="disclosure-body">
+            <p>
+              Each release lists a SHA-256 checksum for every file, shown in the download box above when
+              GitHub provides it, and in the release's <code>SHA256SUMS</code> file.
+            </p>
+            <p>
+              Open Terminal and run <code>shasum -a 256 ~/Downloads/</code> followed by the file's name. The
+              result must match exactly.
+            </p>
+          </div>
+        </details>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" id="build" aria-labelledby="build-title">
+    <div class="wrap build-grid">
+      <div>
+        <p class="eyebrow">For developers</p>
+        <h2 id="build-title">Build it yourself</h2>
+        <p>
+          You can run AGENCY straight from the source code on a Mac. You need Git, Node 20.19 or later and
+          Python 3.11 or later.
+        </p>
+        <p>
+          <code>make setup</code> installs the npm and Python dependencies once. <code>make os-dev</code>{" "}
+          builds and opens the desktop app in a window.
+        </p>
+        <p>
+          <a class="target-link" href={SOURCE_URL}>
+            Source code on GitHub
+          </a>
+        </p>
+      </div>
+      <figure class="terminal">
+        <figcaption class="terminal-bar">
+          <span aria-hidden="true"></span>
+          <span aria-hidden="true"></span>
+          <span aria-hidden="true"></span>
+          Terminal
+        </figcaption>
+        <pre
+          tabindex="0"
+          role="region"
+          aria-label="Commands to build AGENCY from source"
+        ><code>git clone {cloneUrl} agency
+cd agency
+make setup
+make os-dev</code></pre>
+      </figure>
+    </div>
+  </section>
+</Base>
+
+<script>
+  import { initDownload } from "../scripts/download";
+  void initDownload();
+</script>
+
+<style>
+  .dl-section {
+    padding-top: clamp(40px, 5vw, 64px);
+  }
+  .download-grid {
+    display: grid;
+    gap: var(--gap);
+    grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr);
+    align-items: start;
+  }
+  .download-panel {
+    border-top: 10px solid var(--sun);
+  }
+  .download-panel :global(h3) {
+    font-size: clamp(1.5rem, 2.6vw, 2rem);
+  }
+  .download-panel :global(.dl-status) {
+    display: inline-flex;
+    padding: 4px 14px;
+    border-radius: 999px;
+    background: var(--ok-soft);
+    color: var(--ok);
+    font-weight: 700;
+    font-size: 1rem;
+  }
+  .download-panel :global(.dl-facts) {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 12rem), 1fr));
+    gap: 12px 24px;
+    margin: 24px 0;
+    max-width: none;
+  }
+  .download-panel :global(.dl-facts dt) {
+    font-size: 0.95rem;
+    color: var(--ink-soft);
+  }
+  .download-panel :global(.dl-facts dd) {
+    margin: 0;
+    font-weight: 700;
+  }
+  .download-panel :global(.sha) {
+    font-size: 0.8rem;
+  }
+  .download-panel :global(.dl-reason),
+  .download-panel :global(.dl-small) {
+    color: var(--ink-soft);
+    margin-top: 20px;
+  }
+  .download-panel :global(.dl-other) {
+    margin-top: 28px;
+    padding-top: 24px;
+    border-top: 1px solid var(--line);
+  }
+  .download-panel :global(.note) {
+    margin-top: 20px;
+  }
+  .download-panel :global(ol) {
+    padding-left: 1.4em;
+  }
+  .try-card {
+    background: var(--violet-soft);
+    border: 0;
+  }
+  .try-card h3 {
+    margin-top: 18px;
+  }
+  .req-grid {
+    display: grid;
+    gap: var(--gap);
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 24rem), 1fr));
+    margin-top: var(--gap);
+  }
+  .ticks {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+  .ticks li {
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+  }
+  .ticks :global(svg) {
+    flex: none;
+    margin-top: 2px;
+    width: 28px;
+    height: 28px;
+    padding: 4px;
+    border-radius: 50%;
+    background: var(--teal);
+    color: var(--on-bright);
+    stroke-width: 3;
+  }
+  .signed-card {
+    background: var(--coral-soft);
+    border: 0;
+  }
+  @media (max-width: 900px) {
+    .download-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  .install-steps {
+    list-style: none;
+    padding: 0;
+    margin: 0 0 48px;
+    max-width: none;
+    display: grid;
+    gap: var(--gap);
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr));
+  }
+  .install-step {
+    position: relative;
+    margin: 0;
+    padding: 32px 28px;
+    border-radius: var(--radius-lg);
+    background: var(--surface);
+    box-shadow: var(--shadow);
+    border-top: 10px solid var(--tone);
+  }
+  .install-step h3 {
+    margin-top: 18px;
+  }
+  .install-step p {
+    margin: 0;
+    color: var(--ink-soft);
+  }
+  .step-n {
+    position: absolute;
+    right: 24px;
+    top: 16px;
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 3.6rem;
+    line-height: 1;
+    color: var(--tone);
+    opacity: 0.45;
+  }
+  .help-list {
+    display: grid;
+    gap: var(--gap);
+    max-width: 56rem;
+    margin-inline: auto;
+  }
+  .help-list :global(summary.btn) {
+    font-size: 1.25rem;
+  }
+  .help-list ol {
+    padding-left: 1.4em;
+  }
+
+  .build-grid {
+    display: grid;
+    gap: clamp(32px, 5vw, 64px);
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    align-items: center;
+  }
+  .terminal {
+    margin: 0;
+    border-radius: 24px;
+    overflow: hidden;
+    background: #1b1530;
+    color: #f7f3ff;
+    box-shadow: var(--shadow-lg);
+  }
+  .terminal-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 14px 18px;
+    background: #2b2350;
+    color: #ddd5ff;
+    font-size: 1rem;
+  }
+  .terminal-bar span {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: #ff7a59;
+  }
+  .terminal-bar span:nth-child(2) {
+    background: #ffc83d;
+  }
+  .terminal-bar span:nth-child(3) {
+    background: #2ec4b6;
+    margin-right: 8px;
+  }
+  .terminal pre {
+    margin: 0;
+    padding: 24px;
+    overflow-x: auto;
+    font-size: 1.05rem;
+    line-height: 1.8;
+  }
+  .terminal code {
+    background: none;
+    border: 0;
+    padding: 0;
+    color: inherit;
+    overflow-wrap: normal;
+  }
+  @media (max-width: 900px) {
+    .build-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>

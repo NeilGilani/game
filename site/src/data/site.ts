@@ -18,6 +18,13 @@ export const ISSUES_URL = `${SOURCE_URL}/issues`;
 export const DEMO_VIDEO: string = import.meta.env["PUBLIC_DEMO_VIDEO"] ?? "demo/agency-demo.mp4";
 export const DEMO_CAPTIONS: string = import.meta.env["PUBLIC_DEMO_CAPTIONS"] ?? "demo/agency-demo.vtt";
 
+/** The people building AGENCY. Names only: roles and photos go here once each person has chosen them. */
+export const TEAM = [
+  { name: "Neil Gilani", initials: "NG" },
+  { name: "Rayansh “Ray” Bakshi", initials: "RB" },
+  { name: "Ryan Cho", initials: "RC" },
+];
+
 export const REQUIREMENTS = {
   macos: "macOS 13 Ventura or later",
   chips: "A Mac with Apple silicon (M1 or later) or an Intel processor",
