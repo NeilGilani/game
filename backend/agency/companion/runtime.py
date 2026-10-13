@@ -25,7 +25,8 @@ class CompanionRuntime:
         self.service = CompanionService(db, lifeline)
         self.limits = Limits()
         self.listener = CompanionListener(self.config)
-        self.app = build_phone_app(state, self.service, self.config, frontend_dist, self.limits)
+        dist = Path(self.config.dist) if self.config.dist else frontend_dist
+        self.app = build_phone_app(state, self.service, self.config, dist, self.limits)
 
     async def on_startup(self) -> None:
         """Bring the phone server back after a restart if a helper had left caregiver phones on."""

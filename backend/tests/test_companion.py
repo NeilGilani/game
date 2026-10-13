@@ -568,6 +568,25 @@ def test_config_from_environment() -> None:
     assert tls.base_url() == "https://10.0.0.2:8470"
     assert not load_config({"AGENCY_COMPANION": "off"}).available
     assert load_config({"AGENCY_COMPANION_URL": "https://riley.local:8470/"}).base_url() == "https://riley.local:8470"
+    assert load_config({"AGENCY_COMPANION_DIST": "/app/dist"}).dist == "/app/dist"
+
+
+def test_the_phone_page_can_come_from_its_own_folder(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """The Mac app's coordinator serves no interface itself, but phones still get their page."""
+    dist = tmp_path / "dist"
+    (dist / "assets").mkdir(parents=True)
+    (dist / "companion.html").write_text("<!doctype html><title>AGENCY companion</title>")
+    (dist / "assets" / "a.js").write_text("console.log(1)")
+    monkeypatch.setenv("AGENCY_COMPANION_LISTEN", "0")
+    monkeypatch.setenv("AGENCY_COMPANION_DIST", str(dist))
+    with make_client(tmp_path) as mac:
+        c = C(mac, mac.app.state.agency.companion)  # type: ignore[attr-defined]
+        c.enable()
+        page = c.phone().get("/")
+        assert page.status_code == 200 and "AGENCY companion" in page.text
+        assert "script-src 'self'" in page.headers["Content-Security-Policy"]
+        assert c.phone().get("/assets/a.js").status_code == 200
+        assert c.phone().get("/index.html").status_code == 404  # only the phone page, not the person's interface
 
 
 def test_turning_on_is_refused_when_the_coordinator_disables_it(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

@@ -24,6 +24,9 @@ class CompanionConfig:
     extra_networks: list[ipaddress.IPv4Network | ipaddress.IPv6Network] = field(default_factory=list)
     # Tests drive the phone app in-process and never open a port.
     listen: bool = True
+    # Where companion.html is built (frontend/dist). The Mac app sets it, because there the coordinator itself
+    # serves no interface (AGENCY_FRONTEND_DIST is off) but phones still need their page.
+    dist: str | None = None
 
     @property
     def tls(self) -> bool:
@@ -75,4 +78,5 @@ def load_config(env: Mapping[str, str] | None = None) -> CompanionConfig:
         public_url=env.get("AGENCY_COMPANION_URL") or None,
         extra_networks=extra,
         listen=(env.get("AGENCY_COMPANION_LISTEN") or "").strip().lower() not in {"0", "off", "false", "no"},
+        dist=env.get("AGENCY_COMPANION_DIST") or None,
     )

@@ -134,6 +134,7 @@ real phone for this build** (see "What was and wasn't checked").
 | `AGENCY_COMPANION_HOST` | Coordinator environment | `0.0.0.0` (the home network; other addresses are refused anyway) |
 | `AGENCY_COMPANION_URL` | Coordinator environment | `http://<the Mac's Wi-Fi address>:8470` (the address in the QR code) |
 | `AGENCY_COMPANION_TLS_CERT`, `AGENCY_COMPANION_TLS_KEY` | Coordinator environment | Not set: plain HTTP |
+| `AGENCY_COMPANION_DIST` | Coordinator environment | The interface build the coordinator serves (`frontend/dist`). The Mac app sets it to its own copy |
 | `AGENCY_COMPANION_ALLOW` | Coordinator environment | Not set. Extra address ranges to accept, e.g. `100.64.0.0/10` for a VPN like Tailscale. This reaches beyond the home network: only set it on purpose |
 
 The companion runs inside the coordinator. With a Raspberry Pi coordinator, phones connect to the Pi's address, and
