@@ -67,6 +67,23 @@ Messages (System Settings, Privacy & Security, Automation). Not verified yet on 
 a call hears AGENCY's spoken voice (FaceTime's voice processing ducks or cancels other Mac audio; screen-reader users
 report needing a virtual audio device such as Loopback). So a real call offers to text a fixed note first.
 
+### The home by eye (`src/main/home/`)
+
+Lights, the TV, a fan, heating and blinds through Apple Shortcuts, for My day's Home tab
+([docs/DAILY_LIVING.md](../../docs/DAILY_LIVING.md)). A helper makes one shortcut per button in the Shortcuts app
+and saves the devices in Settings, For a helper, My day and home (`<userData>/home.json`, off until switched on).
+Only the shell may use it (`IPC.home`), and it names a device and an action by id: the shortcut's name always comes
+from the saved setup. Main runs `/usr/bin/shortcuts run [--input-path <file>] -- <name>` with `execFile` (no shell;
+the name after `--`, so it can't be read as an option; a value goes in a private temporary file, never in the
+command). Names that look like a lock, door, garage door or gate are refused on load, on save and before every run
+(`refusedHomeReason` in `os/contracts/src/home.ts`); heating, ovens and anything a helper ticks need the person's
+confirmation look (`needsConfirmation`). One shortcut at a time, at most 12 a minute, a 20 s timeout, no retries,
+and Stop aborts a running one. AGENCY can't read a device, so the state shown is what it last set.
+
+Not verified on a real Mac yet: running a real shortcut that controls a HomeKit device (the development Mac had no
+shortcuts, so only `shortcuts run` failing cleanly for a missing name was checked), and which macOS prompts a
+shortcut shows when run from AGENCY rather than from the Shortcuts app.
+
 ### Lifeline and Stop
 
 - **Heartbeat**: main posts `/api/lifeline/heartbeat` every 5 s with honest fields (the eye help signal is

@@ -29,10 +29,9 @@ import {
   type GazeEvent,
   type HelpResult,
   type HelpSource,
-  type HomePrepareResult,
   type HomeRunResult,
   type HomeSaveResult,
-  type HomeSettings,
+  type HomeSetup,
   type HomeShortcutsResult,
   type HomeStatus,
   type HostStatus,
@@ -210,19 +209,13 @@ const api: AgencyApi = {
     saveCopy: (original: string, suffix: "filled" | "signed", bytes: Uint8Array) =>
       ipcRenderer.invoke(IPC.papers, "saveCopy", original, suffix, bytes) as Promise<{ name: string }>,
   },
-  // Main allows the home from the shell only, and looks up every shortcut itself (src/main/home).
+  // Main allows the home from the shell only, and runs only shortcuts a helper saved (src/main/home/control.ts).
   home: {
     status: () => ipcRenderer.invoke(IPC.home, "status") as Promise<HomeStatus>,
-    refresh: () => ipcRenderer.invoke(IPC.home, "refresh") as Promise<HomeStatus>,
-    settings: () => ipcRenderer.invoke(IPC.home, "settings") as Promise<HomeSettings>,
-    setSettings: (settings: HomeSettings) =>
-      ipcRenderer.invoke(IPC.home, "setSettings", settings) as Promise<HomeSaveResult>,
+    save: (setup: HomeSetup) => ipcRenderer.invoke(IPC.home, "save", setup) as Promise<HomeSaveResult>,
     shortcuts: () => ipcRenderer.invoke(IPC.home, "shortcuts") as Promise<HomeShortcutsResult>,
-    prepare: (deviceId: string, actionId: string) =>
-      ipcRenderer.invoke(IPC.home, "prepare", deviceId, actionId) as Promise<HomePrepareResult>,
-    run: (ticket: string, fingerprint: string) =>
-      ipcRenderer.invoke(IPC.home, "run", ticket, fingerprint) as Promise<HomeRunResult>,
-    cancel: (ticket: string) => ipcRenderer.invoke(IPC.home, "cancel", ticket) as Promise<void>,
+    run: (deviceId: string, actionId: string, confirmed: boolean) =>
+      ipcRenderer.invoke(IPC.home, "run", deviceId, actionId, confirmed) as Promise<HomeRunResult>,
   },
   // Main allows AGENCY Browser from the shell only (the role is checked there, on every call).
   browser,

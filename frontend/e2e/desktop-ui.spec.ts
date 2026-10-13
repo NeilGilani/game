@@ -127,7 +127,7 @@ for (const size of [
     await page.setViewportSize(size);
     await page.goto("/#/");
     await expect(page.locator(".home-usuals .usual-placeholder")).toHaveCount(0);
-    await expect(page.locator(".home-tile")).toHaveCount(13);
+    await expect(page.locator(".home-tile")).toHaveCount(12);
     for (const tile of await page.locator(".home-tile").all()) {
       await tile.scrollIntoViewIfNeeded();
       const box = await tile.boundingBox();

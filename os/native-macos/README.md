@@ -49,6 +49,7 @@ stdout ← {"jsonrpc":"2.0","method":"event","params":{"type":"targets-changed",
 | `apps.list` | Installed apps (`/Applications`, `/System/Applications`, their `Utilities`, `~/Applications`) plus running regular apps, sorted by name; `includeIcons` adds 32 × 32 PNGs (base64). |
 | `apps.launch`, `apps.activate`, `apps.frontmost` | As in the contract. There is **no quit**: quitting goes through the agent's approval. |
 | `apps.hide` | Hides a running app. Returns `ok: false` when it isn't running. |
+| `calendar.today` | Read-only: today's events from the Calendar app (EventKit), sorted, at most 50, titles and places cut to 200 characters. Asks for Calendar access the first time (usage strings in `Support/Info.plist`); without it, `{ ok: false, error }` naming the System Settings pane. Never writes, never keeps a copy. The shell may call it (`NATIVE_ALLOWED`); nothing in the interface uses it yet. |
 | `screen.capture` | ScreenCaptureKit (`SCScreenshotManager`, macOS 14+). Downscaled to `maxWidth` (default 1280, never upscaled), JPEG by default, base64 in memory, **never written to disk**. `scale` = output pixels per screen point: pixel (px, py) is at point (px / scale, py / scale) from the display's top-left. |
 | `speech.say` | AVSpeechSynthesizer. `voiceId` from `speech.voices`; `rate` is a multiplier of normal speed (1 = normal, 0.5–2). Returns when speech starts. |
 | `speech.voices` | All installed voices, Personal Voices first (`personal: true`). On macOS 14+ the first call asks for Personal Voice access. |

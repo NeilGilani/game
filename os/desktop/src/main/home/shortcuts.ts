@@ -1,122 +1,94 @@
 /**
- * Running Apple Shortcuts from the main process: `/usr/bin/shortcuts` with an argument vector (execFile, no shell),
- * so a name or an input can never change what runs. An input goes through a private temporary file
- * (`--input-path`), and a shortcut's text output comes back through another (`--output-path`). Both are deleted
- * straight after.
+ * Running Apple Shortcuts from the main process: `/usr/bin/shortcuts` with an argument list (execFile, no shell).
+ *
+ * - The shortcut's name always comes after "--", so no name can be read as an option.
+ * - A value for the shortcut (a temperature, say) is written to a temporary file and passed with --input-path,
+ *   because the shortcuts tool takes input only from files. It never goes into the command.
+ * - Every run has a timeout, a small output limit, and can be stopped (Stop aborts it).
  */
 
-import { execFile, type ChildProcess } from "node:child_process";
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { execFile } from "node:child_process";
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 export const SHORTCUTS_BIN = "/usr/bin/shortcuts";
-export const RUN_TIMEOUT_MS = 30_000;
-const MAX_OUTPUT = 4 * 1024;
+export const RUN_TIMEOUT_MS = 20_000;
+export const LIST_TIMEOUT_MS = 10_000;
 
-export interface ExecResult {
+export interface ShortcutsResult {
   code: number | null;
   stdout: string;
   stderr: string;
   timedOut: boolean;
+  aborted: boolean;
 }
 
-/** Runs a program with arguments (never through a shell). Returns the child so Stop can end it. */
-export type Exec = (
-  file: string,
+export type ShortcutsRunner = (
   args: string[],
   timeoutMs: number,
-) => { child: ChildProcess | null; done: Promise<ExecResult> };
+  signal?: AbortSignal,
+) => Promise<ShortcutsResult>;
 
-export const realExec: Exec = (file, args, timeoutMs) => {
-  let child: ChildProcess | null = null;
-  const done = new Promise<ExecResult>((resolve) => {
-    child = execFile(
-      file,
+/** `shortcuts run [--input-path <file>] -- <name>`. */
+export function runArgs(name: string, inputPath: string | null): string[] {
+  return inputPath ? ["run", "--input-path", inputPath, "--", name] : ["run", "--", name];
+}
+
+export const LIST_ARGS = ["list"];
+
+/** The real runner. Never rejects: failures come back as a result. */
+export const runShortcuts: ShortcutsRunner = (args, timeoutMs, signal) =>
+  new Promise((resolve) => {
+    execFile(
+      SHORTCUTS_BIN,
       args,
-      { timeout: timeoutMs, maxBuffer: 256 * 1024, windowsHide: true },
+      { timeout: timeoutMs, maxBuffer: 256 * 1024, windowsHide: true, ...(signal ? { signal } : {}) },
       (err, stdout, stderr) => {
         const e = err as (NodeJS.ErrnoException & { killed?: boolean; code?: number | string }) | null;
         resolve({
           code: e ? (typeof e.code === "number" ? e.code : 1) : 0,
           stdout: String(stdout ?? ""),
           stderr: String(stderr ?? e?.message ?? ""),
-          timedOut: Boolean(e?.killed),
+          timedOut: Boolean(e?.killed) && !signal?.aborted,
+          aborted: Boolean(signal?.aborted),
         });
       },
     );
   });
-  return { child, done };
-};
 
-/** The argument list for one run. The name is a separate argument; files carry the input and output. */
-export function runArgs(name: string, inputPath: string | null, outputPath: string): string[] {
-  const args = ["run", name];
-  if (inputPath) args.push("--input-path", inputPath);
-  args.push("--output-path", outputPath, "--output-type", "public.plain-text");
-  return args;
+export interface InputFile {
+  path: string;
+  remove(): Promise<void>;
 }
 
-/** A shortcut's output as one short line for the screen, or null when it said nothing. */
-export function cleanOutput(raw: string): string | null {
-  const line = raw
-    .replace(/[\u0000-\u001f\u007f]/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
-  return line ? line.slice(0, 40) : null;
+/** Writes a shortcut's input to a new private temporary folder, removed after the run. */
+export async function writeInputFile(text: string): Promise<InputFile> {
+  const dir = await mkdtemp(join(tmpdir(), "agency-home-"));
+  const path = join(dir, "input.txt");
+  await writeFile(path, text, { encoding: "utf8", mode: 0o600 });
+  return { path, remove: () => rm(dir, { recursive: true, force: true }) };
 }
 
-/** What went wrong, in words a helper can act on. */
-export function describeShortcutFailure(r: ExecResult, name: string): string {
-  if (r.timedOut)
-    return `The shortcut "${name}" took too long, so AGENCY stopped waiting. Check the device before trying again.`;
+/** The tool's failure in plain words, with what a helper can do. */
+export function describeRunFailure(r: ShortcutsResult, shortcut: string): string {
+  if (r.aborted) return "Stopped.";
+  if (r.timedOut) return `"${shortcut}" took too long. AGENCY didn't try again.`;
   const err = r.stderr.toLowerCase();
-  if (/couldn.t find|not found|no shortcut/.test(err))
-    return `There's no shortcut called "${name}" on this Mac. A helper can check its name in the Shortcuts app.`;
-  if (/not allowed|permission|privacy/.test(err))
-    return `macOS didn't let "${name}" run. A helper can open it once in the Shortcuts app and allow what it asks.`;
-  return `The shortcut "${name}" didn't finish${r.code !== null ? ` (code ${r.code})` : ""}. Nothing more was tried.`;
+  if (err.includes("couldn’t find shortcut") || err.includes("couldn't find shortcut"))
+    return `There's no shortcut called "${shortcut}" on this Mac. A helper can check its exact name in the Shortcuts app.`;
+  if (err.includes("not authorized") || err.includes("not allowed") || err.includes("permission"))
+    return `macOS didn't allow "${shortcut}" to run. A helper can open it once in the Shortcuts app and allow what it asks.`;
+  if (r.code === 127 || err.includes("enoent"))
+    return "The Shortcuts tool isn't on this Mac (it needs macOS 12 or later).";
+  return `"${shortcut}" didn't finish. Nothing more was tried.`;
 }
 
-export interface ShortcutRun {
-  child: ChildProcess | null;
-  done: Promise<{ ok: true; output: string | null } | { ok: false; error: string }>;
-}
-
-/** Run one shortcut with an optional fixed input. Never retries. */
-export function runShortcut(exec: Exec, name: string, input: string | undefined): ShortcutRun {
-  const dir = mkdtempSync(join(tmpdir(), "agency-home-"));
-  const inputPath = input !== undefined ? join(dir, "input.txt") : null;
-  const outputPath = join(dir, "output.txt");
-  if (inputPath) writeFileSync(inputPath, input ?? "", { mode: 0o600 });
-  const { child, done } = exec(SHORTCUTS_BIN, runArgs(name, inputPath, outputPath), RUN_TIMEOUT_MS);
-  return {
-    child,
-    done: done
-      .then((r) => {
-        if (r.code !== 0) return { ok: false as const, error: describeShortcutFailure(r, name) };
-        let out = "";
-        try {
-          out = readFileSync(outputPath, "utf8").slice(0, MAX_OUTPUT);
-        } catch {
-          /* the shortcut gave no output */
-        }
-        return { ok: true as const, output: cleanOutput(out) };
-      })
-      .finally(() => rmSync(dir, { recursive: true, force: true })),
-  };
-}
-
-/** The names of the shortcuts on this Mac (`shortcuts list`). */
-export async function listShortcuts(
-  exec: Exec,
-): Promise<{ ok: true; names: string[] } | { ok: false; error: string }> {
-  const r = await exec(SHORTCUTS_BIN, ["list"], 15_000).done;
-  if (r.code !== 0) return { ok: false, error: "AGENCY couldn't read the list of shortcuts on this Mac." };
-  const names = r.stdout
+/** Names from `shortcuts list`: one per line. */
+export function parseList(stdout: string): string[] {
+  return stdout
     .split("\n")
     .map((l) => l.trim())
-    .filter((l) => l && l.length <= 100)
+    .filter(Boolean)
     .slice(0, 500);
-  return { ok: true, names };
 }

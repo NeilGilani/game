@@ -1,298 +1,208 @@
-"""My day: the schedule, care routines and non-urgent requests to a carer.
-
-Requests go through Lifeline's channels but never through Lifeline's emergency path: no alert, no escalation,
-no call. Time is driven by a fake clock.
-"""
+"""Daily living's "tell my carer" (agency/daily): off by default, the person approves the exact words, one
+carer, once, through Lifeline's channels (a simulated phone, or a real text only with Twilio), never a call,
+never an alert, and limited."""
 
 from __future__ import annotations
 
 from collections.abc import Iterator
-from dataclasses import dataclass
-from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
 import pytest
 from fastapi.testclient import TestClient
 
-from agency.daily.service import DailyService
+from agency.daily.service import DUPLICATE_S, LIMIT_COUNT, TICKET_TTL_S
 from agency.lifeline.channels import TwilioChannel
 from conftest import make_client
-
-DAY = "2026-10-12"
 
 
 class Clock:
     def __init__(self) -> None:
-        self.t = datetime(2026, 10, 12, 16, 0, 0, tzinfo=UTC)
+        self.t = 1000.0
 
-    def __call__(self) -> datetime:
+    def __call__(self) -> float:
         return self.t
-
-    def advance(self, seconds: float) -> None:
-        self.t += timedelta(seconds=seconds)
-
-
-@dataclass
-class D:
-    client: TestClient
-    clock: Clock
-
-    @property
-    def svc(self) -> DailyService:
-        svc: DailyService = self.client.app.state.daily  # type: ignore[attr-defined]
-        return svc
-
-    def state(self) -> dict[str, Any]:
-        res = self.client.get(f"/api/daily?day={DAY}")
-        assert res.status_code == 200, res.text
-        out: dict[str, Any] = res.json()
-        return out
-
-    def settings(self, **body: Any) -> dict[str, Any]:
-        res = self.client.put("/api/daily/settings", json=body)
-        assert res.status_code == 200, res.text
-        out: dict[str, Any] = res.json()
-        return out
-
-    def ask(self, text: str, kind: str = "help") -> dict[str, Any]:
-        res = self.client.post("/api/daily/requests", json={"kind": kind, "text": text})
-        assert res.status_code == 200, res.text
-        out: dict[str, Any] = res.json()
-        return out
-
-    def link(self) -> str:
-        messages = self.client.get("/api/daily/outbox").json()["messages"]
-        assert messages, "no message reached a simulated phone"
-        link: str = messages[0]["link"]
-        return link
 
 
 @pytest.fixture
-def d(tmp_path: Path) -> Iterator[D]:
-    with make_client(tmp_path) as client:
-        clock = Clock()
-        client.get(f"/api/daily?day={DAY}")  # make the service
-        client.app.state.daily.now = clock  # type: ignore[attr-defined]
-        yield D(client, clock)
+def clock() -> Clock:
+    return Clock()
 
 
-ITEM = {"id": "physio", "kind": "visit", "title": "Physio visit", "time": "15:00", "date": DAY, "note": "Sam"}
-ROUTINE = {"id": "water", "kind": "water", "title": "Drink some water", "every_min": 90, "start": "08:00", "end": "21:00"}
+@pytest.fixture
+def client(tmp_path: Path, clock: Clock) -> Iterator[TestClient]:
+    with make_client(tmp_path) as c:
+        c.app.state.daily_clock = clock  # type: ignore[attr-defined]
+        yield c
 
 
-# -- defaults ------------------------------------------------------------------------------
+def turn_on(client: TestClient, **extra: Any) -> dict[str, Any]:
+    r = client.put("/api/daily/settings", json={"notify_enabled": True, **extra})
+    assert r.status_code == 200, r.text
+    return r.json()
 
 
-def test_everything_starts_empty_and_carer_requests_off(d: D) -> None:
-    s = d.state()
-    assert s["settings"] == {"carer_notify": False, "carer_id": None, "speak_prompts": False}
-    assert s["items"] == [] and s["routines"] == [] and s["marks"] == {}
-    assert s["carer"] is None
-    # The carers to choose from are Lifeline's contacts; the demo ones are simulated phones.
-    assert [c["id"] for c in s["carers"]] == ["jordan", "morgan", "monitoring"]
-    assert all(c["simulated"] and c["reachable"] for c in s["carers"])
+def prepare(client: TestClient, text: str = "I'm cold. Could you bring a blanket?", **extra: Any) -> dict[str, Any]:
+    r = client.post("/api/daily/prepare", json={"kind": "help", "text": text, **extra})
+    assert r.status_code == 200, r.text
+    return r.json()
 
 
-def test_day_must_be_a_date(d: D) -> None:
-    assert d.client.get("/api/daily?day=today").status_code == 422
+def test_off_by_default_and_nothing_can_be_prepared(client: TestClient) -> None:
+    view = client.get("/api/daily/settings").json()
+    assert view["settings"] == {"notify_enabled": False, "carer_id": None, "enabled_at": None}
+    assert view["carer"]["id"] == "jordan"  # who it would go to, shown before turning it on
+    r = client.post("/api/daily/prepare", json={"kind": "help", "text": "I'm cold"})
+    assert r.status_code == 409
+    assert "off" in r.json()["detail"]
+    assert client.get("/api/daily/messages").json()["messages"] == []
 
 
-# -- schedule -------------------------------------------------------------------------------
+def test_turning_on_records_when_and_lists_lifeline_contacts(client: TestClient) -> None:
+    view = turn_on(client)
+    assert view["settings"]["enabled_at"]
+    assert [c["id"] for c in view["contacts"]] == ["jordan", "morgan", "monitoring"]
+    assert view["carer"]["simulated"] is True
+    again = turn_on(client)
+    assert again["settings"]["enabled_at"] == view["settings"]["enabled_at"]
+    off = client.put("/api/daily/settings", json={"notify_enabled": False}).json()
+    assert off["settings"]["enabled_at"] is None
 
 
-def test_schedule_is_validated_and_cleaned(d: D) -> None:
-    put = d.client.put
-    assert put("/api/daily/items", json={"items": [{**ITEM, "time": "25:00"}]}).status_code == 422
-    assert put("/api/daily/items", json={"items": [{**ITEM, "days": [1]}]}).status_code == 422
-    assert put("/api/daily/items", json={"items": [{**ITEM, "date": None, "days": [7]}]}).status_code == 422
-    assert put("/api/daily/items", json={"items": [ITEM, ITEM]}).status_code == 422
-    assert put("/api/daily/items", json={"items": [{**ITEM, "title": "   "}]}).status_code == 422
-    assert put("/api/daily/items", json={"items": [{**ITEM, "extra": 1}]}).status_code == 422
-    res = put("/api/daily/items", json={"items": [{**ITEM, "title": "Physio\n  visit\t"}]})
-    assert res.status_code == 200, res.text
-    assert d.state()["items"][0]["title"] == "Physio visit"
+def test_carer_must_be_a_lifeline_contact(client: TestClient) -> None:
+    r = client.put("/api/daily/settings", json={"notify_enabled": True, "carer_id": "stranger"})
+    assert r.status_code == 409
+    assert turn_on(client, carer_id="morgan")["carer"]["id"] == "morgan"
+    assert client.put("/api/daily/settings", json={"notify_enabled": True, "extra": 1}).status_code == 422
 
 
-def test_done_later_and_undo(d: D) -> None:
-    d.client.put("/api/daily/items", json={"items": [ITEM]})
-    mark = d.client.post
-    res = mark("/api/daily/marks", json={"item_id": "physio", "day": DAY, "status": "later"})
-    assert res.status_code == 409 and "time" in res.json()["detail"]
-    res = mark("/api/daily/marks", json={"item_id": "physio", "day": DAY, "status": "later", "until": "15:30"})
-    assert res.json()["marks"]["physio"]["status"] == "later"
-    assert d.state()["marks"]["physio"]["until"] == "15:30"
-    mark("/api/daily/marks", json={"item_id": "physio", "day": DAY, "status": "done"})
-    assert d.state()["marks"]["physio"]["status"] == "done"
-    assert d.state()["marks"]["physio"]["until"] is None
-    mark("/api/daily/marks", json={"item_id": "physio", "day": DAY, "status": "clear"})
-    assert d.state()["marks"] == {}
-    # Another day has its own marks.
-    assert d.client.get("/api/daily?day=2026-10-13").json()["marks"] == {}
-    gone = mark("/api/daily/marks", json={"item_id": "nothing", "day": DAY, "status": "done"})
-    assert gone.status_code == 409
+def test_prepare_shows_the_exact_words_and_send_reaches_the_simulated_phone_once(client: TestClient) -> None:
+    turn_on(client)
+    p = prepare(client)
+    assert p["to"]["name"] == "Jordan"
+    assert p["to"]["simulated"] is True
+    assert p["body"] == "Riley (not urgent): I'm cold. Could you bring a blanket?\nSent from AGENCY. Nothing else will follow."
+    sent = client.post("/api/daily/send", json={"ticket": p["ticket"]}).json()
+    assert sent["status"] == "delivered"
+    assert sent["simulated"] is True
+    again = client.post("/api/daily/send", json={"ticket": p["ticket"]})
+    assert again.status_code == 409, "a ticket is used once"
+    messages = client.get("/api/daily/messages").json()["messages"]
+    assert len(messages) == 1
+    assert messages[0]["body"] == p["body"]
+    assert messages[0]["kind"] == "help"
 
 
-def test_only_two_weeks_of_marks_are_kept(d: D) -> None:
-    d.client.put("/api/daily/items", json={"items": [{**ITEM, "date": None}]})
-    for n in range(1, 18):
-        day = f"2026-10-{n:02d}"
-        d.client.post("/api/daily/marks", json={"item_id": "physio", "day": day, "status": "done"})
-    kept = d.client.app.state.agency.db.get_state("daily_marks")  # type: ignore[attr-defined]
-    assert len(kept) == 14 and "2026-10-01" not in kept and "2026-10-17" in kept
+def test_never_an_alert(client: TestClient) -> None:
+    turn_on(client)
+    p = prepare(client)
+    client.post("/api/daily/send", json={"ticket": p["ticket"]})
+    status = client.get("/api/lifeline/status").json()
+    assert status["open_alert"] is None
+    assert status["recent"] == []
+    assert client.get("/api/lifeline/alerts").json() == []
+    assert client.get("/api/lifeline/outbox").json()["messages"] == []
 
 
-# -- routines -------------------------------------------------------------------------------
+def test_words_are_cleaned_and_limited(client: TestClient) -> None:
+    turn_on(client)
+    p = prepare(client, text="Turn\nme\x07  please")
+    assert "Turn me please" in p["body"]
+    assert client.post("/api/daily/prepare", json={"kind": "help", "text": "x" * 161}).status_code == 422
+    assert client.post("/api/daily/prepare", json={"kind": "emergency", "text": "help"}).status_code == 422
+    r = client.post("/api/daily/prepare", json={"kind": "help", "text": "\x07\x07"})
+    assert r.status_code == 409
 
 
-def test_routines_done_and_later(d: D) -> None:
-    put = d.client.put
-    assert put("/api/daily/routines", json={"routines": [{**ROUTINE, "every_min": 5}]}).status_code == 422
-    assert put("/api/daily/routines", json={"routines": [{**ROUTINE, "end": "08:00"}]}).status_code == 422
-    assert put("/api/daily/routines", json={"routines": [ROUTINE]}).status_code == 200
-    done = d.client.post("/api/daily/routines/water/done").json()
-    assert done == {"last_done_at": "2026-10-12T16:00:00.000Z", "snoozed_until": None}
-    d.clock.advance(60)
-    later = d.client.post("/api/daily/routines/water/later", json={"minutes": 20}).json()
-    assert later == {"last_done_at": "2026-10-12T16:00:00.000Z", "snoozed_until": "2026-10-12T16:21:00.000Z"}
-    assert d.state()["routine_state"]["water"] == later
-    assert d.client.post("/api/daily/routines/water/later", json={"minutes": 1}).status_code == 422
-    assert d.client.post("/api/daily/routines/nope/done").status_code == 409
-    # Removing a routine forgets its state.
-    put("/api/daily/routines", json={"routines": []})
-    assert d.state()["routine_state"] == {}
+def test_a_ticket_runs_out_and_cancel_forgets_it(client: TestClient, clock: Clock) -> None:
+    turn_on(client)
+    p = prepare(client)
+    clock.t += TICKET_TTL_S + 1
+    assert client.post("/api/daily/send", json={"ticket": p["ticket"]}).status_code == 409
+    q = prepare(client)
+    client.post("/api/daily/cancel", json={"ticket": q["ticket"]})
+    assert client.post("/api/daily/send", json={"ticket": q["ticket"]}).status_code == 409
+    assert client.get("/api/daily/messages").json()["messages"] == []
 
 
-# -- requests to a carer --------------------------------------------------------------------
+def test_turning_off_drops_waiting_requests(client: TestClient) -> None:
+    turn_on(client)
+    p = prepare(client)
+    client.put("/api/daily/settings", json={"notify_enabled": False})
+    r = client.post("/api/daily/send", json={"ticket": p["ticket"]})
+    assert r.status_code == 409
+    assert client.get("/api/daily/messages").json()["messages"] == []
 
 
-def test_with_carer_requests_off_nothing_leaves_the_screen(d: D) -> None:
-    r = d.ask("I'm cold")
-    assert r["status"] == "shown" and r["carer"] is None
-    assert d.client.get("/api/daily/outbox").json()["messages"] == []
-    assert d.client.get("/api/lifeline/outbox").json()["messages"] == []
-    assert d.state()["requests"][0]["text"] == "I'm cold"
+def test_the_same_words_are_not_sent_twice_in_a_minute(client: TestClient, clock: Clock) -> None:
+    turn_on(client)
+    client.post("/api/daily/send", json={"ticket": prepare(client)["ticket"]})
+    r = client.post("/api/daily/send", json={"ticket": prepare(client)["ticket"]})
+    assert r.status_code == 409
+    assert "less than a minute ago" in r.json()["detail"]
+    clock.t += DUPLICATE_S + 1
+    assert client.post("/api/daily/send", json={"ticket": prepare(client)["ticket"]}).status_code == 200
 
 
-def test_carer_must_be_a_saved_contact(d: D) -> None:
-    res = d.client.put("/api/daily/settings", json={"carer_notify": True, "carer_id": "stranger"})
-    assert res.status_code == 409
+def test_rate_limited(client: TestClient, clock: Clock) -> None:
+    turn_on(client)
+    for i in range(LIMIT_COUNT):
+        r = client.post("/api/daily/send", json={"ticket": prepare(client, text=f"Request {i}")["ticket"]})
+        assert r.status_code == 200
+    r = client.post("/api/daily/send", json={"ticket": prepare(client, text="One more")["ticket"]})
+    assert r.status_code == 409
+    assert "a lot of requests" in r.json()["detail"]
+    clock.t += 11 * 60
+    assert client.post("/api/daily/send", json={"ticket": prepare(client, text="Later")["ticket"]}).status_code == 200
 
 
-def test_a_request_reaches_the_chosen_carer_once_and_is_not_an_alert(d: D) -> None:
-    d.settings(carer_notify=True, carer_id="jordan")
-    assert d.state()["carer"]["name"] == "Jordan" and d.state()["carer"]["simulated"] is True
-    r = d.ask("Turn me, please")
-    assert r["status"] == "delivered" and r["simulated"] is True
-    assert r["carer"] == {"id": "jordan", "name": "Jordan"}
-    assert "token" not in r
-    messages = d.client.get("/api/daily/outbox").json()["messages"]
-    assert len(messages) == 1 and messages[0]["contact_id"] == "jordan"
-    assert '"Turn me, please."' in messages[0]["body"] and "Not an emergency" in messages[0]["body"]
-    # Lifeline's emergency path is untouched: no alert, nothing on its simulated phones.
-    assert d.client.get("/api/lifeline/status").json()["open_alert"] is None
-    assert d.client.get("/api/lifeline/outbox").json()["messages"] == []
-    # The same words again within a minute aren't sent twice.
-    again = d.ask("Turn me, please")
-    assert again["duplicate"] is True and again["id"] == r["id"]
-    assert len(d.client.get("/api/daily/outbox").json()["messages"]) == 1
+def real_contact(client: TestClient, channel: str = "sms_call") -> None:
+    settings = client.get("/api/lifeline/settings").json()
+    settings["contacts"] = [{"id": "alex", "name": "Alex", "channel": channel, "address": "+14155550100"}]
+    assert client.put("/api/lifeline/settings", json=settings).status_code == 200
 
 
-def test_the_carer_answers_from_the_link_and_the_person_sees_it(d: D) -> None:
-    d.settings(carer_notify=True, carer_id="jordan")
-    d.ask("I need the bathroom")
-    link = d.link()
-    page = d.client.get(link)
-    assert page.status_code == 200
-    assert "is asking for you" in page.text and "Not an emergency" in page.text
-    assert page.headers["cache-control"] == "no-store"
-    assert "<script" not in page.text
-    res = d.client.post(f"{link}/coming", follow_redirects=False)
-    assert res.status_code == 303 and res.headers["location"].endswith("?done=coming")
-    assert "can see that you&#x27;re on your way" in d.client.get(f"{link}?done=coming").text
-    seen = d.state()["requests"][0]
-    assert seen["reply"] == "coming" and seen["reply_words"] == "On my way"
-    # Changing the answer works; nonsense answers and links don't.
-    d.client.post(f"{link}/soon")
-    assert d.state()["requests"][0]["reply_words"] == "In a few minutes"
-    assert d.client.post(f"{link}/unlock").status_code == 404
-    assert d.client.get("/carer/not-a-real-token").status_code == 404
+def test_a_real_contact_needs_twilio(client: TestClient) -> None:
+    real_contact(client)
+    view = turn_on(client)
+    assert view["carer"]["simulated"] is False
+    r = client.post("/api/daily/prepare", json={"kind": "help", "text": "I'm cold"})
+    assert r.status_code == 409
+    assert "aren't set up" in r.json()["detail"]
 
 
-def test_the_request_text_is_escaped_on_the_carer_page(d: D) -> None:
-    d.settings(carer_notify=True, carer_id="jordan")
-    d.ask('<script>alert("x")</script> please')
-    page = d.client.get(d.link()).text
-    assert "<script>" not in page and "&lt;script&gt;" in page
-
-
-def test_old_requests_cant_be_answered(d: D) -> None:
-    d.settings(carer_notify=True, carer_id="jordan")
-    d.ask("I'm thirsty")
-    link = d.link()
-    d.clock.advance(7 * 3600)
-    res = d.client.post(f"{link}/coming", follow_redirects=False)
-    assert res.headers["location"].endswith("?done=old")
-    assert d.state()["requests"][0]["reply"] is None
-    assert "too old" in d.client.get(link).text
-
-
-def test_requests_are_rate_limited(d: D) -> None:
-    d.settings(carer_notify=True, carer_id="jordan")
-    for n in range(6):
-        d.ask(f"Request number {n}")
-    res = d.client.post("/api/daily/requests", json={"kind": "help", "text": "One more"})
-    assert res.status_code == 409 and "Lifeline" in res.json()["detail"]
-    d.clock.advance(11 * 60)
-    assert d.ask("One more")["status"] == "delivered"
-
-
-def test_request_text_is_validated(d: D) -> None:
-    post = d.client.post
-    assert post("/api/daily/requests", json={"kind": "help", "text": ""}).status_code == 422
-    assert post("/api/daily/requests", json={"kind": "help", "text": "x" * 161}).status_code == 422
-    assert post("/api/daily/requests", json={"kind": "alarm", "text": "hi"}).status_code == 422
-    assert post("/api/daily/requests", json={"kind": "help", "text": " \n\t "}).status_code == 422
-
-
-def _real_carer(d: D, channel: str) -> None:
-    current = d.client.get("/api/lifeline/settings").json()
-    real = {"id": "sam", "name": "Sam", "role": "caregiver", "channel": channel, "address": "+14155550123"}
-    res = d.client.put("/api/lifeline/settings", json={**current, "contacts": [*current["contacts"], real]})
-    assert res.status_code == 200, res.text
-    d.settings(carer_notify=True, carer_id="sam")
-
-
-def test_a_real_carer_without_twilio_fails_plainly(d: D) -> None:
-    _real_carer(d, "sms")
-    assert "aren't set up" in d.state()["carer"]["how"]
-    r = d.ask("Please come when you can")
-    assert r["status"] == "failed" and r["simulated"] is False
-    assert "aren't configured" in r["error"]
-    assert d.client.get("/api/daily/outbox").json()["messages"] == []
-
-
-def test_a_real_carer_gets_one_text_and_never_a_call(d: D) -> None:
-    sent: list[str] = []
+def test_a_real_contact_gets_one_text_and_never_a_call(client: TestClient) -> None:
+    calls: list[str] = []
 
     def transport(url: str, form: dict[str, str], auth: str) -> tuple[int, dict[str, Any]]:
-        sent.append(url.rsplit("/", 1)[-1])
-        assert form["To"] == "+14155550123"
+        calls.append(url.rsplit("/", 1)[-1])
         return 201, {"sid": "SM1"}
 
-    d.client.app.state.agency.lifeline.channels.twilio = TwilioChannel(  # type: ignore[attr-defined]
-        "AC1", "t", "+15005550006", transport=transport
-    )
-    _real_carer(d, "sms_call")  # even a contact Lifeline would call only gets a text
-    assert d.state()["carer"]["how"] == "a real text message"
-    r = d.ask("I'm too warm")
-    assert r["status"] == "sent" and r["simulated"] is False
-    assert sent == ["Messages.json"]
+    client.app.state.agency.lifeline.channels.twilio = TwilioChannel("AC1", "t", "+15005550006", transport=transport)  # type: ignore[attr-defined]
+    real_contact(client, "sms_call")
+    turn_on(client)
+    p = prepare(client)
+    assert "text message" in p["to"]["how"]
+    sent = client.post("/api/daily/send", json={"ticket": p["ticket"]}).json()
+    assert sent["status"] == "sent"
+    assert sent["simulated"] is False
+    assert calls == ["Messages.json"], "a text only: no phone call for a non-urgent request"
 
 
-def test_daily_api_needs_the_token_but_the_carer_page_does_not(tmp_path: Path) -> None:
-    with make_client(tmp_path, token="secret") as client:
-        assert client.get(f"/api/daily?day={DAY}").status_code == 401
-        headers = {"X-Agency-Token": "secret"}
-        assert client.get(f"/api/daily?day={DAY}", headers=headers).status_code == 200
-        assert client.get("/carer/anything").status_code == 404  # reached the page, not refused by the token
+def test_a_removed_carer_gets_nothing(client: TestClient) -> None:
+    turn_on(client, carer_id="morgan")
+    p = prepare(client)
+    settings = client.get("/api/lifeline/settings").json()
+    settings["contacts"] = [c for c in settings["contacts"] if c["id"] != "morgan"]
+    client.put("/api/lifeline/settings", json=settings)
+    r = client.post("/api/daily/send", json={"ticket": p["ticket"]})
+    assert r.status_code == 409
+    assert "isn't one of your contacts" in r.json()["detail"]
+
+
+def test_needs_the_coordinator_token_when_one_is_set(tmp_path: Path) -> None:
+    with make_client(tmp_path, token="s3cret") as c:
+        assert c.get("/api/daily/settings").status_code == 401
+        assert c.put("/api/daily/settings", json={"notify_enabled": True}).status_code == 401
+        ok = c.get("/api/daily/settings", headers={"X-Agency-Token": "s3cret"})
+        assert ok.status_code == 200

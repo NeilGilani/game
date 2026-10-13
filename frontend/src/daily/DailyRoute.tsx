@@ -1,18 +1,16 @@
-/** My day's screens under /day. */
+/** My day inside the shell (#/day/...): today, care reminders, the home and asking for help. */
 import "./daily.css";
-import type { Route } from "../state/router";
-import { AskHelp, Tell } from "./Help";
-import { HomeScreen } from "./HomeScreen";
-import { MyDayHub, Today } from "./MyDay";
-import { Routines } from "./Routines";
+import { AskHelp } from "./AskHelp";
+import { CareRoutines } from "./CareRoutines";
+import { HomeTiles } from "./HomeTiles";
+import { MyDay } from "./MyDay";
+import { RemindMe } from "./RemindMe";
 
-export function DailyRoute({ route }: { route: Route }) {
-  const page = route.segments[1];
-  if (!page) return <MyDayHub />;
-  if (page === "today") return <Today />;
-  if (page === "routines") return <Routines />;
-  if (page === "home") return <HomeScreen />;
-  if (page === "help") return <AskHelp />;
-  if (page === "tell") return <Tell key={route.query.toString()} />;
-  return <MyDayHub />;
+export function DailyRoute({ segments }: { segments: string[] }) {
+  const [a = ""] = segments;
+  if (a === "care") return <CareRoutines />;
+  if (a === "home") return <HomeTiles />;
+  if (a === "help") return <AskHelp />;
+  if (a === "remind") return <RemindMe />;
+  return <MyDay />;
 }

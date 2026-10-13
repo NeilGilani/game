@@ -9,10 +9,10 @@
 import type { AgentCommand, AgentEvent } from "./agent";
 import type { BrowserApi } from "./browser";
 import type { GazeEvent } from "./gaze";
+import type { HomeApi } from "./home";
 import type { HelpSource, LifelineSignal } from "./lifeline";
 import type { NativeEvent, NativeMethod, NativeMethods, PermissionKind, PermissionStatus } from "./native";
 import type { SelectionEvent, Suggestion, Surface } from "./memory";
-import type { HomeApi } from "./home";
 import type { MessagingApi } from "./messaging";
 import type { ScreenRect, Target, TargetSnapshot } from "./targets";
 
@@ -227,7 +227,7 @@ export interface AgencyApi {
   papers?: PapersApi;
   /** Shell only: AGENCY Browser (browser.ts; added additively, older hosts don't have it). */
   browser?: BrowserApi;
-  /** Shell only: lights, TV and more through Shortcuts a helper named (home.ts; additive, older hosts don't have it). */
+  /** Shell only: lights, TV and more through named Apple Shortcuts (home.ts; added additively). */
   home?: HomeApi;
 }
 

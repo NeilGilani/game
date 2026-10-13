@@ -1,302 +1,286 @@
 /**
- * My day end to end. Practice mode (the browser version and web demo): a due routine, the day's plans with Done and
- * Later, the practice home with a confirmation look for heating, and an everyday request the practice carer answers.
- * Against the real coordinator: telling a carer is off by default; once a helper turns it on, a request reaches the
- * simulated phone, the carer answers from its link, and the person sees the answer. Lifeline is never involved.
- * And the Mac app's home (its main process stood in for here): real devices, no practice label, prepare then run.
+ * My day end to end, in practice mode (the sample day, the practice home, the practice carer's phone) and against
+ * a real coordinator (telling a carer is off until turned on, then one message reaches the simulated phone and no
+ * Lifeline alert starts). The clock is fixed at Monday 12 October 2026, 10:00, so care reminders are asking.
  */
-import { expect, test, type Page } from "@playwright/test";
+import { type Page, expect, test } from "@playwright/test";
 import { BACKEND, Coordinator } from "./backend";
 
-const pick = (page: Page, name: string | RegExp) => page.getByRole("button", { name }).first().click();
+const coordinator = new Coordinator();
+test.beforeAll(async () => coordinator.start());
+test.afterAll(async () => coordinator.stop());
 
-async function base(page: Page, fakes: string) {
-  // A fixed afternoon, so the practice day reads the same whenever the tests run. Time then runs as usual.
-  await page.clock.install({ time: new Date(2026, 9, 12, 14, 5, 0) });
-  await page.clock.resume();
+const MONDAY_10AM = new Date(2026, 9, 12, 10, 0);
+
+async function practice(page: Page, fakes = "memory,agent,native,daily") {
+  await page.clock.setFixedTime(MONDAY_10AM);
   await page.addInitScript((f) => {
     localStorage.setItem("agency.onboarded", "1");
     localStorage.setItem("agency.fakes", f);
-    localStorage.setItem("agency.preferences", JSON.stringify({ reduced_motion: true }));
+    localStorage.setItem("agency.fakeAgentDelayMs", "100");
   }, fakes);
 }
 
-test.describe("practice mode", () => {
-  test.beforeEach(async ({ page }) => {
-    await base(page, "memory,agent,native,daily,home");
+/** The screen fits without scrolling and every target is at least 96 px, 24 px apart (screens.spec's rules). */
+async function fits(page: Page, name: string) {
+  const r = await page.evaluate(() => {
+    const main = document.getElementById("main")!;
+    const boxes = Array.from(document.querySelectorAll<HTMLElement>("#main [data-dwell]"))
+      .filter((el) => el.offsetParent !== null)
+      .map((el) => ({
+        name: (el.getAttribute("aria-label") ?? el.textContent ?? "").trim(),
+        r: el.getBoundingClientRect(),
+      }));
+    return {
+      scroll: main.scrollHeight - main.clientHeight,
+      docScroll: document.documentElement.scrollHeight - innerHeight,
+      small: boxes.filter((b) => Math.min(b.r.width, b.r.height) < 96).map((b) => b.name),
+      close: boxes.flatMap((a, i) =>
+        boxes.slice(i + 1).flatMap((b) => {
+          const dx = Math.max(0, Math.max(a.r.x, b.r.x) - Math.min(a.r.right, b.r.right));
+          const dy = Math.max(0, Math.max(a.r.y, b.r.y) - Math.min(a.r.bottom, b.r.bottom));
+          return Math.max(dx, dy) < 23.5 ? [`${a.name} / ${b.name}`] : [];
+        }),
+      ),
+      cut: boxes.filter((b) => b.r.bottom > main.getBoundingClientRect().bottom + 1).map((b) => b.name),
+    };
   });
+  expect(r.scroll, `${name} scrolls`).toBeLessThanOrEqual(1);
+  expect(r.docScroll, `${name} page scrolls`).toBeLessThanOrEqual(1);
+  expect(r.small, `${name}: small targets`).toEqual([]);
+  expect(r.close, `${name}: targets too close`).toEqual([]);
+  expect(r.cut, `${name}: cut off`).toEqual([]);
+}
 
-  test("Home opens My day; a due routine asks gently and goes away when done", async ({ page }) => {
-    await page.goto("/#/");
-    await page.getByRole("button", { name: /^My day:/ }).click();
-    await expect(page).toHaveURL(/#\/day$/);
-    await expect(page.getByTestId("day-practice").first()).toBeVisible();
-    await expect(page.getByRole("heading", { level: 1 })).toHaveText("Time to drink some water?");
-    await expect(page.getByText("Only if you'd like to.")).toBeVisible();
-    await pick(page, /^Done$/);
-    await expect(page.getByRole("heading", { level: 1 })).toHaveText(/^Next: Physio visit at/);
-    // Every choice on the hub is big enough to look at.
-    for (const b of await page.locator(".day-options .choice").all()) {
-      const box = await b.boundingBox();
-      expect(Math.min(box!.width, box!.height)).toBeGreaterThanOrEqual(96);
-    }
-  });
-
-  test("Today: what's next, Done, Later and undo", async ({ page }) => {
-    await page.goto("/#/day/today");
-    const physio = page.getByTestId("day-item-physio");
-    await expect(physio).toHaveAttribute("data-status", "next");
-    await expect(page.getByTestId("day-item-eye-drops-am")).toHaveAttribute("data-status", "done");
-    await physio.getByRole("button", { name: "Done: Physio visit" }).click();
-    await expect(physio).toHaveAttribute("data-status", "done");
-    await physio.getByRole("button", { name: /Not done/ }).click();
-    await expect(physio).toHaveAttribute("data-status", "next");
-    await physio.getByRole("button", { name: "Later: Physio visit" }).click();
-    await expect(physio).toHaveAttribute("data-status", /later|upcoming|next/);
-    for (const b of await page.locator(".day-item .btn-xl").all()) {
-      const box = await b.boundingBox();
-      expect(box!.height).toBeGreaterThanOrEqual(96);
-    }
-  });
-
-  test("the practice home: a lamp in one look, heating only after a confirmation look", async ({ page }) => {
-    await page.goto("/#/day/home");
-    await expect(page.getByText("Practice home").first()).toBeVisible();
-    await expect(page.getByText(/nothing in your home changes/i)).toBeVisible();
-    await expect(page.getByTestId("day-device-bedroom-lamp")).toContainText("Off");
-    await page.getByTestId("day-device-bedroom-lamp").click();
-    await pick(page, /^Turn on/);
-    await expect(page.getByText("Done: Turn on: Bedroom lamp.")).toBeVisible();
-    await expect(page.getByText("The home · On")).toBeVisible();
-    await pick(page, /^Back$/);
-
-    await page.getByTestId("day-device-thermostat").click();
-    await pick(page, /^Heating off/);
-    await expect(page.getByRole("heading", { level: 1 })).toHaveText("Are you sure?");
-    const yes = page.getByRole("button", { name: /Yes: Heating off: Thermostat/ });
-    await expect(yes).toBeEnabled({ timeout: 5000 });
-    await expect(page.getByText("The home · 20°C")).toBeVisible(); // nothing changed before the yes
-    await yes.click();
-    await expect(page.getByText("The home · Heating off")).toBeVisible();
-    // No doors or locks anywhere.
-    await pick(page, /^Back$/);
-    await expect(page.locator(".day-options")).not.toContainText(/door|lock|garage/i);
-  });
-
-  test("ask for help: exactly what goes to whom, a second look, then the carer's answer", async ({
-    page,
-  }) => {
-    await page.goto("/#/day/help");
-    await expect(page.locator(".day-options .choice")).toHaveCount(8);
-    await expect(page.getByRole("button", { name: /It's urgent/ })).toBeVisible();
-    await pick(page, /^I'm cold/);
-    await expect(page.getByRole("heading", { level: 1 })).toHaveText("Tell Jordan?");
-    await expect(page.getByTestId("day-tell-text")).toHaveText('"I\'m cold"');
-    await expect(page.getByText(/practice phone/).first()).toBeVisible();
-    await pick(page, /^Send to Jordan/);
-    const yes = page.getByRole("button", { name: /Yes, send it/ });
-    await expect(yes).toBeEnabled({ timeout: 5000 });
-    await yes.click();
-    await expect(page.getByRole("heading", { level: 1 })).toHaveText("Sent to Jordan");
-    await expect(page.getByText(/Waiting for Jordan to answer/)).toBeVisible();
-    await expect(page.getByRole("heading", { level: 1 })).toHaveText("Jordan: On my way", {
-      timeout: 15_000,
-    });
-  });
-
-  test("the reminder waits in the dock on other screens, never on Lifeline, and opens Routines", async ({
-    page,
-  }) => {
-    await page.goto("/#/settings");
-    const dock = page.getByTestId("day-nudge");
-    await expect(dock).toContainText("Drink some water?");
-    await expect(dock).toHaveAttribute("aria-label", "Time to drink some water? Open routines.");
-    const box = await dock.boundingBox();
-    expect(Math.min(box!.width, box!.height)).toBeGreaterThanOrEqual(96);
-    await page.goto("/#/lifeline");
-    await expect(page.locator('main[data-zone="lifeline"]')).toBeVisible();
-    await expect(page.getByTestId("day-nudge")).toHaveCount(0);
-    await page.goto("/#/settings");
-    await page.getByTestId("day-nudge").click();
-    await expect(page).toHaveURL(/#\/day\/routines$/);
-    await page
-      .getByTestId("day-routine-water")
-      .getByRole("button", { name: /In 30 minutes/ })
-      .click();
-    await expect(page.getByTestId("day-routine-water")).toHaveAttribute("data-due", "false");
-    await page.goto("/#/apps");
-    await expect(page.getByTestId("day-nudge")).toHaveCount(0);
-    // Home shows it on the My day tile too.
-    await page.goto("/#/");
-    await expect(page.getByRole("button", { name: /^My day:/ })).toHaveAttribute(
-      "aria-label",
-      "My day: Plans, home & help",
-    );
-  });
+test("Home's My day card shows what's next and opens My day", async ({ page }) => {
+  await practice(page);
+  await page.goto("/#/");
+  const card = page.getByTestId("day-card");
+  await expect(card).toContainText("Care reminder");
+  await expect(card).toContainText("Eye drops");
+  await expect(page.locator(".home-tile")).toHaveCount(12);
+  await card.click();
+  await expect(page).toHaveURL(/#\/day\/care$/);
 });
 
-test.describe("with the real coordinator", () => {
-  const coordinator = new Coordinator();
-  test.beforeAll(async () => coordinator.start());
-  test.afterAll(async () => coordinator.stop());
-  test.beforeEach(async ({ page }) => {
-    await base(page, "memory,agent,native,home");
-  });
-
-  test("telling a carer is off by default: the request stays on screen", async ({ page }) => {
-    await page.goto("/#/day/help");
-    await pick(page, /^Turn me, please/);
-    await expect(page.getByRole("heading", { level: 1 })).toHaveText("Telling a carer by phone is off");
-    await pick(page, /Show it big/);
-    await expect(page.getByTestId("day-big")).toHaveText("Turn me, please");
-    const outbox = await coordinator.api<{ messages: unknown[] }>("/api/daily/outbox");
-    expect(outbox.messages).toHaveLength(0);
-  });
-
-  test("a helper sets up the day and a carer; the carer answers from the phone's link", async ({
-    page,
-    context,
-  }) => {
-    // A helper adds a visit and turns on telling Jordan (a simulated phone) in Settings.
-    await page.goto("/#/settings/day");
-    await page.getByRole("form", { name: "Add to the schedule" }).getByLabel("What").fill("Speech therapist");
-    await page.getByRole("form", { name: "Add to the schedule" }).getByLabel("Time").fill("23:30");
-    await page.getByRole("button", { name: /Add to the schedule/ }).click();
-    await expect(page.getByText("Added Speech therapist.").first()).toBeVisible();
-    await page.getByLabel("Who requests go to").selectOption("jordan");
-    await page.getByRole("button", { name: /Let the person tell a carer/ }).click();
-    await expect(page.getByRole("button", { name: /Let the person tell a carer/ })).toHaveAttribute(
-      "aria-pressed",
-      "true",
-    );
-
-    await page.goto("/#/day/today");
-    await expect(page.getByText("Speech therapist")).toBeVisible();
-
-    // The person asks for help.
-    await page.goto("/#/day/help");
-    await pick(page, /^I need the bathroom/);
-    await expect(page.getByText(/practice phone/).first()).toBeVisible();
-    await pick(page, /^Send to Jordan/);
-    const yes = page.getByRole("button", { name: /Yes, send it/ });
-    await expect(yes).toBeEnabled({ timeout: 5000 });
-    await yes.click();
-    await expect(page.getByRole("heading", { level: 1 })).toHaveText("Sent to Jordan");
-
-    // It's on Jordan's simulated phone, separate from Lifeline's alerts, and Lifeline has no alert.
-    const phones = await context.newPage();
-    await phones.goto("/#/phones");
-    const request = phones.getByTestId("phone-requests-jordan");
-    await expect(request).toContainText("Not an emergency");
-    const lifeline = await coordinator.api<{ open_alert: unknown }>("/api/lifeline/status");
-    expect(lifeline.open_alert).toBeNull();
-    const [carer] = await Promise.all([
-      context.waitForEvent("page"),
-      request.getByRole("link", { name: "Answer as this person" }).click(),
-    ]);
-    await expect(carer.getByRole("heading", { level: 1 })).toContainText("is asking for you");
-    await expect(carer.getByText('"I need the bathroom"')).toBeVisible();
-    await carer.getByRole("button", { name: "On my way" }).click();
-    await expect(carer.getByText(/can see that you.re on your way/)).toBeVisible();
-
-    await expect(page.getByRole("heading", { level: 1 })).toHaveText("Jordan: On my way", {
-      timeout: 10_000,
-    });
-  });
-
-  test("the carer page needs no token but shows only that one request", async ({ page }) => {
-    await coordinator.api("/api/daily/settings", {
-      method: "PUT",
-      body: JSON.stringify({ carer_notify: true, carer_id: "morgan", speak_prompts: false }),
-    });
-    await coordinator.api("/api/daily/requests", {
-      method: "POST",
-      body: JSON.stringify({ kind: "help", text: "Fix my pillow, please" }),
-    });
-    const { messages } = await coordinator.api<{ messages: { link: string; contact_id: string }[] }>(
-      "/api/daily/outbox",
-    );
-    const link = messages.find((m) => m.contact_id === "morgan")!.link;
-    await page.goto(`${BACKEND}${link}`);
-    await expect(page.getByText('"Fix my pillow, please"')).toBeVisible();
-    await expect(page.locator("body")).not.toContainText(/medication|allerg|address/i);
-    await page.goto(`${BACKEND}/carer/not-a-real-link`);
-    await expect(page.getByRole("heading", { level: 1 })).toHaveText("This link doesn't work");
-  });
+test("every My day screen fits a 1280×800 and a 1440×900 screen", async ({ page }) => {
+  await practice(page);
+  for (const size of [
+    { width: 1280, height: 800 },
+    { width: 1440, height: 900 },
+  ]) {
+    await page.setViewportSize(size);
+    for (const path of ["/#/day", "/#/day/care", "/#/day/home", "/#/day/help", "/#/day/remind"]) {
+      await page.goto(path);
+      await expect(page.locator("#day-title")).toBeVisible();
+      await page.waitForTimeout(300);
+      await page.screenshot({
+        path: `test-results/daily/${size.width}x${size.height}-${path.replace(/\W+/g, "-")}.png`,
+      });
+      await fits(page, `${path} at ${size.width}×${size.height}`);
+    }
+  }
 });
 
-test.describe("the Mac app's home", () => {
-  test("real devices from the main process: no practice label, heating confirmed, the run uses the ticket", async ({
-    page,
-  }) => {
-    await page.addInitScript(() => {
-      localStorage.setItem("agency.onboarded", "1");
-      localStorage.setItem("agency.fakes", "memory,agent,native,daily");
-      localStorage.setItem("agency.preferences", JSON.stringify({ reduced_motion: true }));
-      const calls: string[] = [];
-      let state = "18°C";
-      const devices = () => [
-        {
-          id: "heat",
-          name: "Living room heating",
-          kind: "thermostat",
-          actions: [{ id: "warm", label: "Warmer", confirm: true }],
-          state,
-          stateFromDevice: true,
-          stateAt: null,
-        },
-      ];
-      (window as unknown as Record<string, unknown>).__homeCalls = calls;
-      (window as unknown as Record<string, unknown>).agency = {
-        role: "shell",
-        agent: { send: () => {}, onEvent: () => () => {} },
-        stopAll: async () => ({}),
-        onStopAll: () => () => {},
-        native: { call: async () => ({ ok: true, voices: [], apps: [] }) },
-        permissions: { status: async () => ({}), request: async () => ({}), openSettings: async () => {} },
-        home: {
-          status: async () => ({ available: true, enabled: true, devices: devices() }),
-          refresh: async () => ({ available: true, enabled: true, devices: devices() }),
-          settings: async () => ({ enabled: true, devices: [] }),
-          setSettings: async () => ({ ok: false, error: "not in this test" }),
-          shortcuts: async () => ({ ok: true, names: [] }),
-          prepare: async (d: string, a: string) => {
-            calls.push(`prepare ${d} ${a}`);
-            return {
-              ok: true,
-              ticket: "t1",
-              fingerprint: "f1",
-              device: "Living room heating",
-              action: "Warmer",
-              confirm: true,
-              summary: "Warmer: Living room heating",
-            };
-          },
-          run: async (t: string, f: string) => {
-            calls.push(`run ${t} ${f}`);
-            state = "21°C";
-            return { ok: true, state, summary: "Warmer: Living room heating" };
-          },
-          cancel: async (t: string) => void calls.push(`cancel ${t}`),
-        },
-      };
-    });
-    await page.goto("/#/day/home");
-    await expect(page.getByTestId("day-device-heat")).toContainText("18°C");
-    await expect(page.getByText("Practice home")).toHaveCount(0);
-    await page.getByTestId("day-device-heat").click();
-    await pick(page, /^Warmer/);
-    await expect(page.getByRole("heading", { level: 1 })).toHaveText("Are you sure?");
-    expect(await page.evaluate(() => (window as unknown as { __homeCalls: string[] }).__homeCalls)).toEqual([
-      "prepare heat warm",
-    ]);
-    const yes = page.getByRole("button", { name: /Yes: Warmer: Living room heating/ });
-    await expect(yes).toBeEnabled({ timeout: 5000 });
-    await yes.click();
-    await expect(page.getByText("The home · 21°C")).toBeVisible();
-    expect(await page.evaluate(() => (window as unknown as { __homeCalls: string[] }).__homeCalls)).toEqual([
-      "prepare heat warm",
-      "run t1 f1",
-    ]);
+test("today: Done, Later and Not done, paging, and reading the day", async ({ page }) => {
+  await practice(page);
+  await page.goto("/#/day");
+  await expect(page.locator("#day-title")).toHaveText("Today, Monday 12 October");
+  await expect(page.getByText("5 still to do.")).toBeVisible();
+  const rows = page.getByTestId("day-entry");
+  await expect(rows).toHaveCount(3);
+  await expect(rows.first()).toContainText("Morning wash with Jordan");
+
+  await page.getByRole("button", { name: "Done: Morning wash with Jordan" }).click();
+  await expect(page.getByText("4 still to do.")).toBeVisible();
+  // Nothing moves when something is marked: the rows stay where the person is looking.
+  await expect(rows.first()).toContainText("Morning wash with Jordan");
+  await expect(rows.first()).toHaveAttribute("data-state", "done");
+  await page.getByRole("button", { name: "Later: Physiotherapy visit" }).click();
+  await expect(rows.nth(1)).toContainText("Later: back at 10:30 am");
+  await rows.first().getByRole("button", { name: "Not done" }).click();
+  await expect(page.getByText("5 still to do.")).toBeVisible();
+
+  await page.getByRole("button", { name: /More/ }).click();
+  await expect(page.getByText("2 of 2")).toBeVisible();
+  await expect(rows).toHaveCount(2);
+  // Kept on this computer: survives a reload.
+  await page.getByRole("button", { name: "Done: Call Mom" }).click();
+  await page.reload();
+  await expect(page.getByText("4 still to do.")).toBeVisible();
+
+  await page.evaluate(() => {
+    (window as unknown as { spoken: string[] }).spoken = [];
+    window.speechSynthesis.speak = (u: SpeechSynthesisUtterance) => {
+      (window as unknown as { spoken: string[] }).spoken.push(u.text);
+    };
   });
+  await page.getByRole("button", { name: "Read my day" }).click();
+  const spoken = await page.evaluate(() => (window as unknown as { spoken: string[] }).spoken.join(" "));
+  expect(spoken).toContain("Today is Monday 12 October.");
+  expect(spoken).toContain("At 11:00 am: Physiotherapy visit.");
+  expect(spoken).toContain("Eye drops: now, when you're ready.");
+});
+
+test("Remind me adds the person's own reminder in two looks", async ({ page }) => {
+  await practice(page);
+  await page.goto("/#/day");
+  await page.getByRole("button", { name: "Remind me" }).click();
+  await page.getByRole("button", { name: /Have a rest/ }).click();
+  await expect(page.locator("#day-title")).toHaveText("Have a rest: when?");
+  await page.getByRole("button", { name: /In an hour/ }).click();
+  await expect(page.locator("#day-title")).toHaveText("I'll remind you: Have a rest, in an hour (11:00 am).");
+  await page.getByRole("button", { name: "Back to my day" }).click();
+  await expect(page.getByText("6 still to do.")).toBeVisible();
+});
+
+test("care reminders ask, snooze and can tell the practice carer", async ({ page }) => {
+  await practice(page);
+  await page.goto("/#/day/care");
+  await expect(page.locator("#day-title")).toHaveText("1 asking now");
+  await expect(page.getByText("Not medical advice and not an alarm.")).toBeVisible();
+  const drops = page.getByTestId("day-routine").filter({ hasText: "Eye drops" });
+  await expect(drops).toHaveAttribute("data-state", "due");
+  await drops.getByRole("button", { name: "Later: Eye drops" }).click();
+  await expect(page.locator("#day-title")).toHaveText("Care reminders");
+  await expect(page.getByTestId("day-routine").filter({ hasText: "Eye drops" })).toContainText("10:30 am");
+
+  // Back to asking, then tell the carer: the exact words, a pause, then one message.
+  await page.evaluate(() => {
+    const d = JSON.parse(localStorage.getItem("agency.daily.v1")!);
+    for (const r of d.routines) if (r.label === "Eye drops") r.snoozedUntil = null;
+    localStorage.setItem("agency.daily.v1", JSON.stringify(d));
+  });
+  await page.reload();
+  await page.getByRole("button", { name: "Tell Jordan: Eye drops" }).click();
+  await expect(page.locator("#day-title")).toHaveText("Send this to Jordan?");
+  await expect(page.getByTestId("day-message")).toContainText(
+    "Care reminder: Eye drops. Could you help me with it when you can?",
+  );
+  await expect(page.getByRole("button", { name: "One moment…" })).toBeDisabled();
+  await page.getByRole("button", { name: "Send to Jordan" }).click();
+  await expect(page.locator("#day-title")).toHaveText(
+    "Sent to Jordan's practice phone. Nobody was really contacted.",
+  );
+  await page.getByTestId("day-tell-done").click();
+
+  await page.getByRole("button", { name: "Done: Eye drops" }).click();
+  await expect(page.locator("#day-title")).toHaveText("Care reminders");
+  await expect(page.getByTestId("day-routine").filter({ hasText: "Eye drops" })).toContainText("2:00 pm");
+});
+
+test("the practice home: a light in one look, heating only after a confirmation look", async ({ page }) => {
+  await practice(page);
+  await page.goto("/#/day/home");
+  await expect(page.getByText("Practice home: nothing real changes.")).toBeVisible();
+  await expect(page.getByTestId("day-device")).toHaveCount(5);
+  await expect(page.getByTestId("day-device").filter({ hasText: /door|lock|garage|gate/i })).toHaveCount(0);
+
+  await page.getByTestId("day-device").filter({ hasText: "Bedroom light" }).click();
+  await page.getByRole("button", { name: /^On/ }).click();
+  await expect(page.locator("#day-title")).toHaveText("Bedroom light: On. (Practice: nothing real changed.)");
+  await page.getByRole("button", { name: /All devices/ }).click();
+  await expect(page.getByTestId("day-device").filter({ hasText: "Bedroom light" })).toContainText(
+    "Last set: On",
+  );
+
+  await page.getByTestId("day-device").filter({ hasText: "Heating" }).click();
+  await page.getByRole("button", { name: /Heating off/ }).click();
+  await expect(page.locator("#day-title")).toHaveText("Heating: Heating off?");
+  await expect(page.getByRole("button", { name: "One moment…" })).toBeDisabled();
+  await page.getByRole("button", { name: "No, go back" }).click();
+  await expect(page.locator("#day-title")).toHaveText("Heating");
+  await page.getByRole("button", { name: /Heating off/ }).click();
+  await page.getByRole("button", { name: "Yes, heating off" }).click();
+  await expect(page.locator("#day-title")).toHaveText("Heating: Off. (Practice: nothing real changed.)");
+});
+
+test("asking for help: say it out loud, or send it to the practice carer after seeing the words", async ({
+  page,
+}) => {
+  await practice(page);
+  await page.goto("/#/day/help");
+  await expect(page.getByText(/For an emergency, look at Help/)).toBeVisible();
+  await expect(page.locator(".flow-options .choice")).toHaveCount(6);
+  await page.getByRole("button", { name: /I'm cold/ }).click();
+  await page.evaluate(() => {
+    (window as unknown as { spoken: string[] }).spoken = [];
+    window.speechSynthesis.speak = (u: SpeechSynthesisUtterance) => {
+      (window as unknown as { spoken: string[] }).spoken.push(u.text);
+    };
+  });
+  await page.getByRole("button", { name: /Say it out loud/ }).click();
+  expect(await page.evaluate(() => (window as unknown as { spoken: string[] }).spoken)).toEqual([
+    "I'm cold. Could you bring a blanket or turn the heating up?",
+  ]);
+  await page.getByRole("button", { name: /Send to Jordan/ }).click();
+  await expect(page.getByTestId("day-message")).toHaveText(
+    "The person you care for (not urgent): I'm cold. Could you bring a blanket or turn the heating up?\nSent from AGENCY. Nothing else will follow.",
+  );
+  await page.getByRole("button", { name: "No, go back" }).click();
+  await expect(page.locator("#day-title")).toHaveText("I'm cold");
+});
+
+test("with the coordinator: off by default; once on, one message reaches the simulated phone and no alert starts", async ({
+  page,
+  request,
+}) => {
+  await request.put(`${BACKEND}/api/daily/settings`, { data: { notify_enabled: false, carer_id: null } });
+  await practice(page, "memory,agent,native");
+  await page.goto("/#/day/help");
+  await page.getByRole("button", { name: /I'm cold/ }).click();
+  await expect(page.getByText("Sending to a carer is off.", { exact: false })).toBeVisible();
+  await expect(page.getByRole("button", { name: /Send to/ })).toHaveCount(0);
+
+  // A helper turns it on with the person, in settings.
+  await page.goto("/#/settings/daily");
+  await page.getByRole("button", { name: /Tell my carer/ }).click();
+  await expect(page.locator("p[role=status]")).toHaveText(
+    "Requests can go to Jordan. Each one asks the person first.",
+  );
+
+  await page.goto("/#/day/help");
+  await page.getByRole("button", { name: /Turn me, please/ }).click();
+  await page.getByRole("button", { name: /Send to Jordan/ }).click();
+  await expect(page.getByTestId("day-message")).toContainText(
+    "Riley (not urgent): Could you help me change position, please?",
+  );
+  await expect(page.locator(".day-big")).toContainText("practice phone (simulated");
+  await page.getByRole("button", { name: "Send to Jordan" }).click();
+  await expect(page.locator("#day-title")).toHaveText(
+    "Sent to Jordan's practice phone. Nobody was really contacted.",
+  );
+
+  const messages = (await (await request.get(`${BACKEND}/api/daily/messages`)).json()).messages;
+  expect(messages).toHaveLength(1);
+  expect(messages[0]).toMatchObject({
+    contact_name: "Jordan",
+    status: "delivered",
+    simulated: true,
+    kind: "help",
+  });
+  const status = await (await request.get(`${BACKEND}/api/lifeline/status`)).json();
+  expect(status.open_alert).toBeNull();
+
+  // The simulated phones page shows it on Jordan's phone, apart from Lifeline's messages.
+  await page.goto("/#/phones");
+  await expect(page.getByLabel("Jordan's simulated phone").getByTestId("phone-request")).toContainText(
+    "Could you help me change position, please?",
+  );
+
+  await request.put(`${BACKEND}/api/daily/settings`, { data: { notify_enabled: false, carer_id: null } });
+});
+
+test("settings refuse a door, and the person can't be sent a door tile", async ({ page }) => {
+  await practice(page);
+  await page.goto("/#/settings/daily");
+  await page.getByLabel("New device").fill("Front door");
+  await expect(page.locator(".ll-field-error")).toContainText(
+    "AGENCY never controls locks, doors, garage doors or gates.",
+  );
+  await expect(page.getByRole("button", { name: "Add device" })).toBeDisabled();
+  await page.getByLabel("New device").fill("Reading lamp");
+  await page.getByRole("button", { name: "Add device" }).click();
+  await page.getByRole("button", { name: "Save the home setup" }).click();
+  await expect(page.locator("p[role=status]")).toHaveText("Home setup saved.");
 });

@@ -46,7 +46,7 @@ export const IPC = {
   /** shell -> main (invoke): AGENCY Browser (BrowserApi); main -> shell: BrowserEvent */
   browser: "agency:browser",
   browserEvent: "agency:browser-event",
-  /** shell -> main (invoke): the home through Apple Shortcuts a helper set up (HomeApi, home.ts) */
+  /** shell -> main (invoke): the home by eye, named Apple Shortcuts a helper set up (HomeApi, home.ts) */
   home: "agency:home",
   /** main -> a browser page's preload: a request; page -> main: its reply and its events (pages only) */
   page: "agency:page",

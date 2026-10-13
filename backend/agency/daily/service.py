@@ -1,404 +1,242 @@
-"""The day's schedule, care routines and non-urgent requests to a carer.
+"""Daily living's "tell my carer": non-urgent requests to one chosen carer.
 
-Rules:
+Separate from Lifeline's emergency path on purpose. A request here:
 
-* The schedule and routines are only shown on the person's screen. Nothing here is a clinical alarm or
-  medication advice, and nothing escalates.
-* A request reaches a carer only when ``carer_notify`` is on and a carer is chosen. It goes to that one
-  person, once, through Lifeline's channels: a simulated phone for practice contacts, a real text message
-  only for a contact with a real number on a coordinator with Twilio. Never a phone call.
-* Requests are rate limited, and an identical request within a minute is not sent twice.
-* The carer's reply link opens only that one request, shows only the words of the request, and stops
-  accepting replies after a few hours.
+* is off until the person (or a helper, with them) turns it on;
+* goes to one carer, once: no escalation, no repeats, never a phone call, never emergency services;
+* goes through Lifeline's existing channels: a simulated phone for practice ("demo") contacts, a real
+  text message only for a contact with a real number on a coordinator with Twilio;
+* needs the person's approval of exactly what will be sent: ``prepare`` returns the words, who gets
+  them and how, with a ticket; ``send`` sends exactly that ticket, once, before it runs out;
+* is rate limited, and the same words to the same person within a minute are not sent twice.
+
+The schedule and care routines themselves live on the person's screen (frontend/src/daily). Nothing
+here is a clinical alarm or medication advice.
 """
 
 from __future__ import annotations
 
-import asyncio
 import logging
+import re
 import secrets
+import time
 from collections.abc import Callable
-from datetime import UTC, datetime, timedelta
+from dataclasses import dataclass
 from typing import Any
 
-from ..db import Database
-from ..lifeline.channels import ChannelRouter, Delivery, Outgoing
+from ..db import Database, utcnow
+from ..lifeline.channels import ChannelRouter, Outgoing
 from ..lifeline.models import Contact, LifelineSettings
-from .models import (
-    DailySettings,
-    MarkBody,
-    RequestBody,
-    Routine,
-    ScheduleItem,
-)
+from .models import DailySettings, PrepareRequest
 
 log = logging.getLogger("agency.daily")
 
 SETTINGS_KEY = "daily_settings"
-ITEMS_KEY = "daily_items"
-ROUTINES_KEY = "daily_routines"
-ROUTINE_STATE_KEY = "daily_routine_state"
-MARKS_KEY = "daily_marks"
-
-KEEP_MARK_DAYS = 14
-KEEP_REQUESTS = 200
-REPLY_HOURS = 6
-DUPLICATE_S = 60
-# Requests that reach a phone: at most this many in this many minutes.
+TICKET_TTL_S = 5 * 60
+MAX_PENDING = 8
 LIMIT_COUNT = 6
-LIMIT_MINUTES = 10
+LIMIT_WINDOW_S = 10 * 60
+DUPLICATE_S = 60
+KEEP_MESSAGES = 200
 
+# Its own table, created here rather than as a numbered migration: several workstreams add migrations
+# at once, and this table needs nothing from the others.
 SCHEMA = """
-CREATE TABLE IF NOT EXISTS daily_requests (
-    id TEXT PRIMARY KEY,
-    kind TEXT NOT NULL,
-    text TEXT NOT NULL,
+CREATE TABLE IF NOT EXISTS daily_messages (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
     created_at TEXT NOT NULL,
-    carer_id TEXT,
-    carer_name TEXT,
-    channel TEXT,
+    kind TEXT NOT NULL,
+    contact_id TEXT NOT NULL,
+    contact_name TEXT NOT NULL,
+    channel TEXT NOT NULL,
+    body TEXT NOT NULL,
     status TEXT NOT NULL,
-    simulated INTEGER NOT NULL DEFAULT 1,
-    error TEXT,
-    body TEXT,
-    token TEXT,
-    reply TEXT,
-    replied_at TEXT
-);
-CREATE UNIQUE INDEX IF NOT EXISTS idx_daily_requests_token ON daily_requests(token);
-CREATE INDEX IF NOT EXISTS idx_daily_requests_created ON daily_requests(created_at)
+    simulated INTEGER NOT NULL,
+    error TEXT
+)
 """
 
-REPLY_WORDS = {
-    "coming": "On my way",
-    "soon": "In a few minutes",
-    "cant": "Can't come right now",
+CHANNEL_WORDS = {
+    "demo": "their practice phone (simulated: nobody is really contacted)",
+    "sms": "a text message to their phone",
+    "sms_call": "a text message to their phone (never a call for this)",
 }
 
 
-class DailyError(RuntimeError):
-    """A request the daily service refuses, shown to the person as-is."""
+class DailyError(Exception):
+    """A request that can't go ahead, in plain words for the person."""
 
 
-def iso(dt: datetime) -> str:
-    return dt.astimezone(UTC).strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3] + "Z"
+@dataclass
+class _Ticket:
+    contact: Contact
+    kind: str
+    text: str
+    body: str
+    expires: float
 
 
-def parse(value: str | None) -> datetime | None:
-    if not value:
-        return None
-    return datetime.fromisoformat(value.replace("Z", "+00:00"))
+def clean_words(text: str) -> str:
+    """The person's words on one line: no control characters, single spaces."""
+    return re.sub(r"\s+", " ", re.sub(r"[\x00-\x1f\x7f]", " ", text)).strip()
 
 
 class DailyService:
-    def __init__(
-        self,
-        db: Database,
-        channels: ChannelRouter,
-        lifeline_settings: Callable[[], LifelineSettings],
-        *,
-        public_url: str,
-    ) -> None:
+    def __init__(self, db: Database, channels: Callable[[], ChannelRouter], lifeline: Callable[[], LifelineSettings]) -> None:
         self.db = db
-        self.channels = channels
-        self.lifeline_settings = lifeline_settings
-        self.public_url = public_url.rstrip("/")
-        self.now: Callable[[], datetime] = lambda: datetime.now(UTC)
-        self.lock = asyncio.Lock()
-        for statement in SCHEMA.split(";"):
-            if statement.strip():
-                self.db.execute(statement)
+        self._channels = channels
+        self._lifeline = lifeline
+        self.clock: Callable[[], float] = time.monotonic
+        self._tickets: dict[str, _Ticket] = {}
+        self._sent: list[tuple[float, str, str]] = []  # (when, contact id, words)
+        with db.transaction():
+            db.execute(SCHEMA)
 
-    # ------------------------------------------------------------------------------
-    # settings, schedule and routines
-    # ------------------------------------------------------------------------------
+    # Settings ----------------------------------------------------------------------------------
+
     def settings(self) -> DailySettings:
         raw = self.db.get_state(SETTINGS_KEY)
-        try:
-            return DailySettings.model_validate(raw) if raw else DailySettings()
-        except ValueError:
-            return DailySettings()
+        return DailySettings.model_validate(raw) if raw else DailySettings()
 
     def save_settings(self, new: DailySettings) -> DailySettings:
-        if new.carer_id and not any(c.id == new.carer_id for c in self.lifeline_settings().contacts):
-            raise DailyError("That carer isn't one of the saved Lifeline contacts.")
-        self.db.set_state(SETTINGS_KEY, new.model_dump())
-        log.info("carer requests %s", "on" if new.carer_notify else "off")
-        return new
+        old = self.settings()
+        if new.carer_id is not None and self._contact(new.carer_id) is None:
+            raise DailyError("That person isn't one of your Lifeline contacts.")
+        enabled_at = (old.enabled_at if old.notify_enabled else utcnow()) if new.notify_enabled else None
+        saved = new.model_copy(update={"enabled_at": enabled_at})
+        self.db.set_state(SETTINGS_KEY, saved.model_dump())
+        if not saved.notify_enabled:
+            self._tickets.clear()
+        log.info("daily: telling a carer %s", "on" if saved.notify_enabled else "off")
+        return saved
 
-    def items(self) -> list[ScheduleItem]:
-        raw = self.db.get_state(ITEMS_KEY) or []
-        return [ScheduleItem.model_validate(i) for i in raw]
-
-    def save_items(self, items: list[ScheduleItem]) -> list[ScheduleItem]:
-        self.db.set_state(ITEMS_KEY, [i.model_dump() for i in items])
-        return items
-
-    def routines(self) -> list[Routine]:
-        raw = self.db.get_state(ROUTINES_KEY) or []
-        return [Routine.model_validate(r) for r in raw]
-
-    def save_routines(self, routines: list[Routine]) -> list[Routine]:
-        self.db.set_state(ROUTINES_KEY, [r.model_dump() for r in routines])
-        ids = {r.id for r in routines}
-        state = {k: v for k, v in self._routine_state().items() if k in ids}
-        self.db.set_state(ROUTINE_STATE_KEY, state)
-        return routines
-
-    def _routine_state(self) -> dict[str, dict[str, str | None]]:
-        raw = self.db.get_state(ROUTINE_STATE_KEY) or {}
-        return raw if isinstance(raw, dict) else {}
-
-    def routine_done(self, routine_id: str) -> dict[str, Any]:
-        self._routine(routine_id)
-        with self.db.transaction():
-            state = self._routine_state()
-            state[routine_id] = {"last_done_at": iso(self.now()), "snoozed_until": None}
-            self.db.set_state(ROUTINE_STATE_KEY, state)
-        return state[routine_id]
-
-    def routine_later(self, routine_id: str, minutes: int) -> dict[str, Any]:
-        self._routine(routine_id)
-        with self.db.transaction():
-            state = self._routine_state()
-            current = state.get(routine_id) or {"last_done_at": None}
-            state[routine_id] = {
-                "last_done_at": current.get("last_done_at"),
-                "snoozed_until": iso(self.now() + timedelta(minutes=minutes)),
-            }
-            self.db.set_state(ROUTINE_STATE_KEY, state)
-        return state[routine_id]
-
-    def _routine(self, routine_id: str) -> Routine:
-        for r in self.routines():
-            if r.id == routine_id:
-                return r
-        raise DailyError("That routine isn't set up any more.")
-
-    def _marks(self) -> dict[str, dict[str, dict[str, str | None]]]:
-        raw = self.db.get_state(MARKS_KEY) or {}
-        return raw if isinstance(raw, dict) else {}
-
-    def mark(self, body: MarkBody) -> dict[str, dict[str, str | None]]:
-        if not any(i.id == body.item_id for i in self.items()):
-            raise DailyError("That isn't in the schedule any more.")
-        if body.status == "later" and not body.until:
-            raise DailyError("Later needs a time to show it again.")
-        with self.db.transaction():
-            marks = self._marks()
-            day = marks.setdefault(body.day, {})
-            if body.status == "clear":
-                day.pop(body.item_id, None)
-            else:
-                day[body.item_id] = {
-                    "status": body.status,
-                    "until": body.until if body.status == "later" else None,
-                    "at": iso(self.now()),
-                }
-            # Keep only the last couple of weeks.
-            for old in sorted(marks)[:-KEEP_MARK_DAYS]:
-                marks.pop(old, None)
-            self.db.set_state(MARKS_KEY, marks)
-        return marks.get(body.day, {})
-
-    def carers(self) -> list[dict[str, Any]]:
-        """The Lifeline contacts a request could go to, and how each would get it."""
-        return [
-            {
-                "id": c.id,
-                "name": c.name,
-                "role": c.role,
-                "channel": c.channel,
-                "simulated": c.channel == "demo",
-                "reachable": c.channel == "demo" or self.channels.twilio_configured,
-            }
-            for c in self.lifeline_settings().contacts
-            if c.enabled
-        ]
-
-    def state(self, day: str) -> dict[str, Any]:
+    def view(self) -> dict[str, Any]:
+        """Settings plus who could be told, for the person's and the helper's screens."""
+        settings = self.settings()
+        carer = self.carer(settings)
         return {
-            "settings": self.settings().model_dump(),
-            "items": [i.model_dump() for i in self.items()],
-            "routines": [r.model_dump() for r in self.routines()],
-            "routine_state": self._routine_state(),
-            "marks": self._marks().get(day, {}),
-            "carers": self.carers(),
-            "carer": self._carer_view(),
-            "requests": self.requests(10),
+            "settings": settings.model_dump(),
+            "carer": self._describe(carer) if carer else None,
+            "contacts": [self._describe(c) for c in self._lifeline().enabled_contacts()],
+            "twilio_configured": self._channels().twilio_configured,
         }
 
-    # ------------------------------------------------------------------------------
-    # requests to a carer
-    # ------------------------------------------------------------------------------
-    def _carer(self) -> Contact | None:
-        s = self.settings()
-        if not s.carer_notify or not s.carer_id:
-            return None
-        for c in self.lifeline_settings().contacts:
-            if c.id == s.carer_id and c.enabled:
-                return c
-        return None
+    def _contact(self, contact_id: str) -> Contact | None:
+        return next((c for c in self._lifeline().enabled_contacts() if c.id == contact_id), None)
 
-    def _carer_view(self) -> dict[str, Any] | None:
-        """Who a request would reach right now, in words for the confirmation screen. None: nobody (off)."""
-        c = self._carer()
-        if c is None:
-            return None
-        if c.channel == "demo":
-            how = "a simulated phone (practice: nobody real is contacted)"
-        elif self.channels.twilio_configured:
-            how = "a real text message"
-        else:
-            how = "a text message, but real texts aren't set up on this coordinator"
-        return {"id": c.id, "name": c.name, "role": c.role, "simulated": c.channel == "demo", "how": how}
+    def carer(self, settings: DailySettings | None = None) -> Contact | None:
+        settings = settings or self.settings()
+        if settings.carer_id:
+            return self._contact(settings.carer_id)
+        contacts = self._lifeline().enabled_contacts()
+        return contacts[0] if contacts else None
 
-    def _person(self) -> str:
-        return self.lifeline_settings().responder.person_name or "The person you care for"
+    def _describe(self, c: Contact) -> dict[str, Any]:
+        return {
+            "id": c.id,
+            "name": c.name,
+            "role": c.role,
+            "channel": c.channel,
+            "simulated": c.channel == "demo",
+            "how": CHANNEL_WORDS.get(c.channel, c.channel),
+        }
 
-    def _compose(self, kind: str, text: str, token: str) -> str:
-        link = f"{self.public_url}/carer/{token}"
-        lead = {"help": "asks", "routine": "asks", "schedule": "wants you to know"}[kind]
-        said = text.rstrip(".!?")
-        return f'AGENCY for {self._person()}: they {lead}: "{said}." Not an emergency. Reply here: {link}'
+    # Prepare and send ----------------------------------------------------------------------------
 
-    def _recent_phone_requests(self, since: datetime) -> int:
-        row = self.db.query_one(
-            "SELECT COUNT(*) AS n FROM daily_requests WHERE created_at >= ? AND carer_id IS NOT NULL", (iso(since),)
+    def _body(self, words: str) -> str:
+        name = clean_words(self._lifeline().responder.person_name) or "The person you care for"
+        return f"{name} (not urgent): {words}\nSent from AGENCY. Nothing else will follow."
+
+    def prepare(self, req: PrepareRequest) -> dict[str, Any]:
+        settings = self.settings()
+        if not settings.notify_enabled:
+            raise DailyError("Telling a carer is off. It can be turned on in Settings, My day and home.")
+        words = clean_words(req.text)
+        if not words:
+            raise DailyError("There's nothing to send.")
+        contact = self._contact(req.contact_id) if req.contact_id else self.carer(settings)
+        if contact is None:
+            raise DailyError("No carer is chosen. Add one in Lifeline setup, then choose them in My day settings.")
+        if contact.channel != "demo" and not self._channels().twilio_configured:
+            raise DailyError(f"Text messages to {contact.name} aren't set up on this coordinator.")
+        now = self.clock()
+        self._expire(now)
+        if len(self._tickets) >= MAX_PENDING:
+            raise DailyError("Too many requests are waiting for your OK. Send or cancel one first.")
+        ticket = secrets.token_urlsafe(18)
+        body = self._body(words)
+        self._tickets[ticket] = _Ticket(contact, req.kind, words, body, now + TICKET_TTL_S)
+        return {"ticket": ticket, "to": self._describe(contact), "body": body, "expires_in_s": TICKET_TTL_S}
+
+    def cancel(self, ticket: str) -> None:
+        self._tickets.pop(ticket, None)
+
+    def _expire(self, now: float) -> None:
+        for key in [k for k, t in self._tickets.items() if t.expires <= now]:
+            del self._tickets[key]
+
+    async def send(self, ticket: str) -> dict[str, Any]:
+        now = self.clock()
+        self._expire(now)
+        t = self._tickets.pop(ticket, None)
+        if t is None:
+            raise DailyError("That request ran out or was already sent. Nothing was sent.")
+        if not self.settings().notify_enabled:
+            raise DailyError("Telling a carer was turned off. Nothing was sent.")
+        if self._contact(t.contact.id) is None:
+            raise DailyError(f"{t.contact.name} isn't one of your contacts any more. Nothing was sent.")
+        self._sent = [s for s in self._sent if now - s[0] < LIMIT_WINDOW_S]
+        if any(cid == t.contact.id and w == t.text and now - when < DUPLICATE_S for when, cid, w in self._sent):
+            raise DailyError(f"You sent that to {t.contact.name} less than a minute ago. It wasn't sent twice.")
+        if len(self._sent) >= LIMIT_COUNT:
+            raise DailyError("That's a lot of requests in a few minutes. Wait a little, then try again.")
+        self._sent.append((now, t.contact.id, t.text))
+        delivery = await self._channels().send(
+            Outgoing(contact=t.contact, body=t.body, voice_text=t.body, purpose="daily", primary=False)
         )
-        return int(row["n"]) if row else 0
-
-    async def request(self, body: RequestBody) -> dict[str, Any]:
-        """Record a request and, when turned on, send it to the chosen carer once."""
-        async with self.lock:
-            now = self.now()
-            dup = self.db.query_one(
-                "SELECT * FROM daily_requests WHERE text = ? AND kind = ? AND created_at >= ? ORDER BY created_at DESC LIMIT 1",
-                (body.text, body.kind, iso(now - timedelta(seconds=DUPLICATE_S))),
-            )
-            if dup:
-                return {**self._view(dict(dup)), "duplicate": True}
-            carer = self._carer()
-            rid = f"req_{secrets.token_hex(5)}"
-            if carer is None:
-                self.db.execute(
-                    "INSERT INTO daily_requests(id, kind, text, created_at, status, simulated) VALUES (?,?,?,?,?,?)",
-                    (rid, body.kind, body.text, iso(now), "shown", 1),
-                )
-                self._prune()
-                return self._view(self._row(rid))
-            if self._recent_phone_requests(now - timedelta(minutes=LIMIT_MINUTES)) >= LIMIT_COUNT:
-                raise DailyError(
-                    f"{LIMIT_COUNT} requests already went to {carer.name} in the last {LIMIT_MINUTES} minutes. "
-                    "So they aren't flooded, wait a little. For anything urgent, use Lifeline."
-                )
-            token = secrets.token_urlsafe(18)
-            text_body = self._compose(body.kind, body.text, token)
-            self.db.execute(
-                "INSERT INTO daily_requests(id, kind, text, created_at, carer_id, carer_name, channel, status, simulated,"
-                " body, token) VALUES (?,?,?,?,?,?,?,?,?,?,?)",
+        with self.db.transaction():
+            cur = self.db.execute(
+                "INSERT INTO daily_messages(created_at, kind, contact_id, contact_name, channel, body, status, simulated, error)"
+                " VALUES (?,?,?,?,?,?,?,?,?)",
                 (
-                    rid,
-                    body.kind,
-                    body.text,
-                    iso(now),
-                    carer.id,
-                    carer.name,
-                    carer.channel,
-                    "sending",
-                    1 if carer.channel == "demo" else 0,
-                    text_body,
-                    token,
+                    utcnow(),
+                    t.kind,
+                    t.contact.id,
+                    t.contact.name,
+                    t.contact.channel,
+                    t.body,
+                    delivery.status,
+                    int(delivery.simulated),
+                    delivery.error,
                 ),
             )
-            # Purpose "request": Twilio sends a text only (calls are only ever for Lifeline alerts).
-            out = Outgoing(contact=carer, body=text_body, voice_text=text_body, purpose="request", primary=False)
-            try:
-                delivery = await self.channels.send(out)
-            except Exception as exc:  # a channel bug must not lose the request
-                log.exception("daily request channel crashed")
-                delivery = Delivery(status="failed", simulated=False, error=f"Unexpected error: {type(exc).__name__}")
             self.db.execute(
-                "UPDATE daily_requests SET status = ?, error = ?, simulated = ? WHERE id = ?",
-                (delivery.status, delivery.error, 1 if delivery.simulated else 0, rid),
+                "DELETE FROM daily_messages WHERE id <= (SELECT MAX(id) FROM daily_messages) - ?",
+                (KEEP_MESSAGES,),
             )
-            log.info("daily request %s to %s: %s", rid, carer.id, delivery.status)
-            self._prune()
-            return self._view(self._row(rid))
-
-    def _row(self, rid: str) -> dict[str, Any]:
-        row = self.db.query_one("SELECT * FROM daily_requests WHERE id = ?", (rid,))
-        if not row:
-            raise DailyError("That request isn't there any more.")
-        return dict(row)
-
-    def _prune(self) -> None:
-        self.db.execute(
-            "DELETE FROM daily_requests WHERE id NOT IN (SELECT id FROM daily_requests ORDER BY created_at DESC LIMIT ?)",
-            (KEEP_REQUESTS,),
-        )
-
-    def _view(self, r: dict[str, Any]) -> dict[str, Any]:
-        """A request as the person's screen sees it (never the token)."""
+        log.info("daily: %s request to %s: %s", t.kind, t.contact.id, delivery.status)
         return {
-            "id": r["id"],
-            "kind": r["kind"],
-            "text": r["text"],
-            "created_at": r["created_at"],
-            "status": r["status"],
-            "simulated": bool(r["simulated"]),
-            "carer": {"id": r["carer_id"], "name": r["carer_name"]} if r["carer_id"] else None,
-            "error": r["error"],
-            "reply": r["reply"],
-            "reply_words": REPLY_WORDS.get(r["reply"] or ""),
-            "replied_at": r["replied_at"],
+            "id": cur.lastrowid,
+            "status": delivery.status,
+            "simulated": delivery.simulated,
+            "error": delivery.error,
+            "to": self._describe(t.contact),
         }
 
-    def requests(self, limit: int = 20) -> list[dict[str, Any]]:
-        rows = self.db.query("SELECT * FROM daily_requests ORDER BY created_at DESC, rowid DESC LIMIT ?", (limit,))
-        return [self._view(dict(r)) for r in rows]
-
-    def outbox(self) -> list[dict[str, Any]]:
-        """Requests to simulated phones, with their working reply links, for the Simulated phones screen."""
-        rows = self.db.query(
-            "SELECT * FROM daily_requests WHERE channel = 'demo' AND status != 'failed' AND token IS NOT NULL "
-            "ORDER BY created_at DESC, rowid DESC LIMIT 30"
-        )
+    def messages(self, limit: int = 50) -> list[dict[str, Any]]:
+        rows = self.db.query("SELECT * FROM daily_messages ORDER BY id DESC LIMIT ?", (max(1, min(limit, KEEP_MESSAGES)),))
         return [
             {
                 "id": r["id"],
-                "contact_id": r["carer_id"],
-                "contact_name": r["carer_name"],
-                "body": r["body"],
                 "created_at": r["created_at"],
-                "reply": r["reply"],
-                "link": f"/carer/{r['token']}",
+                "kind": r["kind"],
+                "contact_id": r["contact_id"],
+                "contact_name": r["contact_name"],
+                "channel": r["channel"],
+                "body": r["body"],
+                "status": r["status"],
+                "simulated": bool(r["simulated"]),
+                "error": r["error"],
             }
             for r in rows
         ]
-
-    # ------------------------------------------------------------------------------
-    # the carer's reply page
-    # ------------------------------------------------------------------------------
-    def find(self, token: str) -> dict[str, Any] | None:
-        if not token or len(token) > 64:
-            return None
-        row = self.db.query_one("SELECT * FROM daily_requests WHERE token = ?", (token,))
-        return dict(row) if row else None
-
-    def expired(self, r: dict[str, Any]) -> bool:
-        created = parse(r["created_at"])
-        return created is None or self.now() - created > timedelta(hours=REPLY_HOURS)
-
-    def reply(self, token: str, reply: str) -> dict[str, Any] | None:
-        r = self.find(token)
-        if r is None or reply not in REPLY_WORDS:
-            return None
-        if self.expired(r):
-            raise DailyError("This request is too old to answer.")
-        self.db.execute("UPDATE daily_requests SET reply = ?, replied_at = ? WHERE id = ?", (reply, iso(self.now()), r["id"]))
-        log.info("daily request %s answered: %s", r["id"], reply)
-        return self.find(token)
-
-    def person(self) -> str:
-        return self._person()

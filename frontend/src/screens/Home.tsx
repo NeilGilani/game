@@ -4,6 +4,7 @@
  * screen at 1280 × 800 without scrolling.
  */
 import { useEffect, useState } from "react";
+import { DayCard } from "../daily/DayCard";
 import { AppIcon, BrandMark, Icon } from "../components/Icon";
 import { useLifeline } from "../lifeline/LifelineProvider";
 import { useAgent } from "../state/agent";
@@ -13,7 +14,6 @@ import type { Suggestion } from "../state/contracts";
 import { memory } from "../state/memory";
 import { navigate } from "../state/router";
 import { isFinished, needsPerson, type TaskView } from "../state/tasks";
-import { useDueNote } from "../daily/RoutineNudge";
 
 interface Tile {
   id: string;
@@ -26,7 +26,6 @@ interface Tile {
 
 export const HOME_TILES: Tile[] = [
   { id: "talk", label: "Talk", sub: "Say something out loud", icon: "speak", path: "/talk" },
-  { id: "day", label: "My day", sub: "Plans, home & help", icon: "calendar", path: "/day" },
   { id: "call", label: "Call someone", sub: "Friends & family", icon: "phone", path: "/flow/call" },
   { id: "food", label: "Food", sub: "Order a meal", icon: "food", path: "/flow/food" },
   { id: "messages", label: "Messages", sub: "Send a message", icon: "message", path: "/flow/messages" },
@@ -128,14 +127,6 @@ export function Home() {
   const unfinished = agent.tasks.filter((t) => !isFinished(t) || needsPerson(t));
   const resume = unfinished[0];
   const watching = !!ll.status?.monitor.armed;
-  const dueNote = useDueNote();
-  /** A tile's second line: what's live on it now, else its usual words. */
-  const subOf = (tile: Tile) =>
-    tile.id === "lifeline" && watching
-      ? "Watch over me is on"
-      : tile.id === "day" && dueNote
-        ? dueNote
-        : tile.sub;
 
   const startUsual = (s: Suggestion) => {
     if (!s.task) return;
@@ -148,8 +139,8 @@ export function Home() {
     navigate(tile.path);
   };
 
-  // Setup, Continue and suggestions share three slots, including while memory loads.
-  const fixed = (resume ? 1 : 0) + (needsEyeSetup(input) ? 1 : 0);
+  // Setup, Continue, My day and suggestions share three slots, including while memory loads.
+  const fixed = (resume ? 1 : 0) + (needsEyeSetup(input) ? 1 : 0) + 1;
   const slots = (usuals ?? []).slice(0, Math.max(0, USUALS - fixed));
 
   return (
@@ -197,6 +188,7 @@ export function Home() {
               </span>
             </button>
           )}
+          <DayCard />
           {usuals === null
             ? Array.from({ length: Math.max(0, USUALS - fixed) }, (_, i) => (
                 <div key={i} className="usual usual-placeholder" aria-hidden />
@@ -235,14 +227,16 @@ export function Home() {
             data-tile={tile.id}
             onClick={() => open(tile)}
             data-dwell
-            aria-label={`${tile.label}: ${subOf(tile)}`}
+            aria-label={`${tile.label}: ${tile.id === "lifeline" && watching ? "Watch over me is on" : tile.sub}`}
           >
             <span className="home-tile-icon" aria-hidden>
               <AppIcon name={tile.icon} size={108} />
             </span>
             <span className="home-tile-caption" aria-hidden>
               <span className="home-tile-label">{tile.label}</span>
-              <span className="home-tile-sub">{subOf(tile)}</span>
+              <span className="home-tile-sub">
+                {tile.id === "lifeline" && watching ? "Watch over me is on" : tile.sub}
+              </span>
             </span>
           </button>
         ))}

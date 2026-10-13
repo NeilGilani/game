@@ -4,7 +4,7 @@ import { defineConfig } from "@playwright/test";
 // Use the pre-installed Chromium when present (cloud dev boxes); otherwise Playwright's own.
 const bundled = "/opt/pw-browsers/chromium";
 const executablePath = process.env.PW_CHROMIUM ?? (existsSync(bundled) ? bundled : undefined);
-// Other ports let several checkouts run end-to-end tests at once.
+// Other ports, so two checkouts can run their end-to-end tests at the same time (defaults: 4173 and 8765).
 const port = process.env.AGENCY_E2E_PORT ?? "4173";
 const backendPort = process.env.AGENCY_E2E_BACKEND_PORT ?? "8765";
 

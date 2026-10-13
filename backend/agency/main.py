@@ -31,7 +31,7 @@ from .companion import CompanionError
 from .companion import build_router as companion_router
 from .companion.runtime import CompanionRuntime
 from .config import Settings, load_settings
-from .daily import build_routers as daily_routers
+from .daily import daily_router
 from .db import Database, dumps, loads, utcnow
 from .engine.engine import Engine, EngineError
 from .engine.runner import CaseRunner
@@ -739,9 +739,7 @@ def create_app(
     app.include_router(respond_pages)
     app.include_router(memory_router())
     app.include_router(assist_router())
-    daily_api, carer_pages = daily_routers()
-    app.include_router(daily_api)
-    app.include_router(carer_pages)
+    app.include_router(daily_router())
     app.include_router(companion_router())
 
     if settings.frontend_dist and (settings.frontend_dist / "index.html").is_file():

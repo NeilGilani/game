@@ -1,329 +1,318 @@
 /**
- * The home through Apple Shortcuts (src/main/home) with the `shortcuts` program faked: off by default, only named
- * devices, never doors, locks, garages or gates, a run binds the exact ticket, safety devices need a confirmation,
- * Stop and the rate limit hold, failures are told plainly, and names and inputs only ever reach the program as
- * separate arguments.
+ * The home by eye (src/main/home) with the shortcuts tool faked: off by default, only saved devices, names always
+ * after "--", values only through a file, never locks or doors, a confirmation look for heating, one at a time,
+ * Stop aborts, and failures are told plainly.
  */
 
 import { existsSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import type { HomeSettings } from "@agency/contracts";
-import { DEFAULT_HOME, FORBIDDEN, loadHome, saveHome, validateHome } from "../src/main/home/config";
-import { HomeControl, MAX_RUNS_PER_MINUTE, TICKET_TTL_MS, homeCall } from "../src/main/home/control";
+import { checkHomeSetup, needsConfirmation, refusedHomeReason, type HomeSetup } from "@agency/contracts";
 import {
-  SHORTCUTS_BIN,
-  cleanOutput,
-  describeShortcutFailure,
-  listShortcuts,
+  EMPTY_SETUP,
+  HomeControl,
+  MAX_RUNS_PER_MINUTE,
+  homeCall,
+  loadHomeSetup,
+} from "../src/main/home/control";
+import {
+  describeRunFailure,
+  parseList,
   runArgs,
-  type Exec,
-  type ExecResult,
+  writeInputFile,
+  type ShortcutsResult,
 } from "../src/main/home/shortcuts";
-import { quietLog } from "./helpers";
+import { deferred, quietLog } from "./helpers";
 
-const LAMP = {
-  id: "lamp",
-  name: "Bedroom lamp",
-  kind: "light" as const,
-  actions: [
-    { id: "on", label: "Turn on", shortcut: "Lamp On", confirm: false },
-    { id: "off", label: "Turn off", shortcut: "Lamp Off", confirm: false },
+const SETUP: HomeSetup = {
+  enabled: true,
+  devices: [
+    {
+      id: "lamp",
+      name: "Bedroom light",
+      kind: "light",
+      actions: [
+        { id: "on", label: "On", shortcut: "Bedroom light on" },
+        { id: "off", label: "Off", shortcut: "Bedroom light off" },
+      ],
+    },
+    {
+      id: "heat",
+      name: "Heating",
+      kind: "thermostat",
+      actions: [{ id: "warm", label: "Warmer", shortcut: "Set heating", input: "22", state: "22°" }],
+    },
   ],
-  statusShortcut: "Lamp Status",
-};
-const HEAT = {
-  id: "heat",
-  name: "Thermostat",
-  kind: "thermostat" as const,
-  actions: [{ id: "set21", label: "Set to", shortcut: "Set Heat", input: "21", confirm: false }],
 };
 
-const HOSTILE = `Lamp"; rm -rf ~; echo "`;
+const OK: ShortcutsResult = { code: 0, stdout: "", stderr: "", timedOut: false, aborted: false };
 
-interface Call {
-  file: string;
-  args: string[];
-  input: string | null;
-}
-
-function setup(
-  opts: { platform?: string; enabled?: boolean; reply?: Partial<ExecResult>; output?: string } = {},
-) {
-  let settings: HomeSettings = validateHome({ enabled: opts.enabled ?? true, devices: [LAMP, HEAT] });
+function setup(opts: { platform?: string; setup?: HomeSetup | null; reply?: Partial<ShortcutsResult> } = {}) {
+  const dir = mkdtempSync(join(tmpdir(), "agency-home-"));
+  const file = join(dir, "home.json");
+  if (opts.setup !== null) writeFileSync(file, JSON.stringify(opts.setup ?? SETUP));
+  const calls: { args: string[]; input: string | null; signal?: AbortSignal }[] = [];
+  let reply: ShortcutsResult = { ...OK, ...opts.reply };
+  let gate: Promise<void> | null = null;
   let now = 1_000_000;
-  const calls: Call[] = [];
-  let reply: ExecResult = { code: 0, stdout: "", stderr: "", timedOut: false, ...opts.reply };
-  let output: string | undefined = opts.output;
-  let hold: Promise<void> | null = null;
-  const killed: string[] = [];
-  const exec: Exec = (file, args) => {
-    const inputAt = args.indexOf("--input-path");
-    const outAt = args.indexOf("--output-path");
-    const input = inputAt >= 0 ? readFileSync(args[inputAt + 1]!, "utf8") : null;
-    calls.push({ file, args, input });
-    const child = {
-      kill: () => killed.push(args[1]!),
-    } as unknown as import("node:child_process").ChildProcess;
-    const done = (async () => {
-      if (hold) await hold;
-      if (outAt >= 0 && output !== undefined && reply.code === 0) writeFileSync(args[outAt + 1]!, output);
-      return reply;
-    })();
-    return { child, done };
-  };
-  const dir = mkdtempSync(join(tmpdir(), "agency-home-test-"));
-  const logFile = join(dir, "home-actions.jsonl");
+  const removed: string[] = [];
   const home = new HomeControl({
     platform: opts.platform ?? "darwin",
-    settings: () => settings,
-    saveSettings: (s) => (settings = s),
-    exec,
-    logFile,
+    file,
+    run: async (args, _timeout, signal) => {
+      const i = args.indexOf("--input-path");
+      calls.push({ args, input: i >= 0 ? readFileSync(args[i + 1]!, "utf8") : null, signal });
+      if (gate) await gate;
+      return signal?.aborted ? { ...reply, code: 15, aborted: true } : reply;
+    },
+    writeInput: async (text) => {
+      const f = await writeInputFile(text);
+      return { path: f.path, remove: async () => (removed.push(f.path), f.remove()) };
+    },
     log: quietLog(),
     now: () => now,
   });
   return {
     home,
+    file,
     calls,
-    killed,
-    logFile,
+    removed,
+    setReply: (r: Partial<ShortcutsResult>) => (reply = { ...OK, ...r }),
+    hold: (p: Promise<void> | null) => (gate = p),
     advance: (ms: number) => (now += ms),
-    setReply: (r: Partial<ExecResult>) => (reply = { ...reply, ...r }),
-    setOutput: (o: string | undefined) => (output = o),
-    holdRuns: () => {
-      let release!: () => void;
-      hold = new Promise((r) => (release = r));
-      return () => {
-        hold = null;
-        release();
-      };
-    },
-    settings: () => settings,
   };
 }
 
-async function choose(h: ReturnType<typeof setup>, device: string, action: string) {
-  const p = h.home.prepare(device, action);
-  if (!p.ok) throw new Error(p.error);
-  return h.home.run(p.ticket, p.fingerprint);
-}
-
-describe("home setup", () => {
-  it("is off with no devices by default, and only an explicit true turns it on", () => {
-    const dir = mkdtempSync(join(tmpdir(), "agency-home-cfg-"));
-    expect(loadHome(join(dir, "missing.json"))).toEqual(DEFAULT_HOME);
-    expect(validateHome({ enabled: "yes", devices: [] }).enabled).toBe(false);
-    const file = join(dir, "home.json");
-    saveHome(file, validateHome({ enabled: true, devices: [LAMP] }));
-    expect(loadHome(file).devices[0]!.name).toBe("Bedroom lamp");
-    writeFileSync(file, "{not json");
-    expect(loadHome(file)).toEqual(DEFAULT_HOME);
-    // A file edited by hand to add a door is not loaded at all.
-    writeFileSync(file, JSON.stringify({ enabled: true, devices: [{ ...LAMP, name: "Front door" }] }));
-    expect(loadHome(file)).toEqual(DEFAULT_HOME);
-  });
-
-  it("never accepts doors, locks, garage doors or gates, wherever the word appears", () => {
-    const bad = [
-      { ...LAMP, name: "Front door" },
-      { ...LAMP, name: "Garage" },
-      { ...LAMP, actions: [{ id: "u", label: "Unlock", shortcut: "Lamp On", confirm: false }] },
-      { ...LAMP, actions: [{ id: "o", label: "Open", shortcut: "Open Gate", confirm: false }] },
-      { ...LAMP, actions: [{ id: "o", label: "Go", shortcut: "Lamp", input: "lock", confirm: false }] },
-      { ...LAMP, statusShortcut: "Door Status" },
-    ];
-    for (const d of bad)
-      expect(() => validateHome({ enabled: true, devices: [d] })).toThrow(/never controls doors/);
-    // Whole words only: these are fine.
-    for (const ok of ["Clock radio", "Indoor fan", "Block heater", "Entryway light"])
-      expect(FORBIDDEN.test(ok)).toBe(false);
-  });
-
-  it("checks names, ids and limits, and makes heating always ask for a confirmation", () => {
-    expect(() => validateHome({ enabled: true, devices: [{ ...LAMP, kind: "robot" }] })).toThrow(/what kind/);
-    expect(() => validateHome({ enabled: true, devices: [{ ...LAMP, actions: [] }] })).toThrow(
-      /at least one/,
-    );
-    expect(() => validateHome({ enabled: true, devices: [LAMP, LAMP] })).toThrow(/same id/);
-    expect(() =>
-      validateHome({
-        enabled: true,
-        devices: [{ ...LAMP, actions: [{ ...LAMP.actions[0], shortcut: "--help" }] }],
-      }),
-    ).toThrow(/start with "-"/);
-    expect(() => validateHome({ enabled: true, devices: [{ ...LAMP, id: "Bad Id" }] })).toThrow(/id/);
-    const s = validateHome({ enabled: true, devices: [{ ...LAMP, name: "  Bedroom\n lamp " }, HEAT] });
-    expect(s.devices[0]!.name).toBe("Bedroom lamp");
-    expect(s.devices[1]!.actions[0]!.confirm).toBe(true);
-    expect(s.devices[0]!.actions[0]!.confirm).toBe(false);
-  });
+describe("refusedHomeReason (owner rule: no locks, doors, garage doors or gates)", () => {
+  it.each([
+    "Front door",
+    "Unlock the door",
+    "Garage",
+    "garage light",
+    "FrontDoorUnlock",
+    "front_door-lock",
+    "Deadbolt",
+    "Side gate",
+    "Lock",
+    "Locks",
+    "keypad",
+  ])("refuses %s", (name) => expect(refusedHomeReason(name)).toMatch(/never controls locks/));
+  it.each([
+    "Bedroom light",
+    "TV",
+    "Fan",
+    "Clock radio",
+    "Blinds",
+    "Doorbell camera light",
+    "Heating",
+    "Block heater",
+  ])("allows %s", (name) => expect(refusedHomeReason(name)).toBeNull());
 });
 
-describe("running shortcuts", () => {
-  it("passes the name and input as separate arguments, never through a shell", async () => {
-    expect(runArgs(HOSTILE, "/tmp/in.txt", "/tmp/out.txt")).toEqual([
-      "run",
-      HOSTILE,
-      "--input-path",
-      "/tmp/in.txt",
-      "--output-path",
-      "/tmp/out.txt",
-      "--output-type",
-      "public.plain-text",
-    ]);
-    const h = setup();
-    const r = await choose(h, "heat", "set21");
-    expect(r.ok).toBe(true);
-    expect(h.calls[0]!.file).toBe(SHORTCUTS_BIN);
-    expect(h.calls[0]!.args.slice(0, 2)).toEqual(["run", "Set Heat"]);
-    expect(h.calls[0]!.input).toBe("21");
-    // The temporary files are gone afterwards.
-    const inputPath = h.calls[0]!.args[h.calls[0]!.args.indexOf("--input-path") + 1]!;
-    expect(existsSync(inputPath)).toBe(false);
+describe("checkHomeSetup", () => {
+  it("keeps a good setup, and only an explicit true turns it on", () => {
+    const r = checkHomeSetup({ ...SETUP, enabled: "yes" });
+    expect(r.ok && r.setup.enabled).toBe(false);
+    expect(r.ok && r.setup.devices[1]!.actions[0]).toEqual(SETUP.devices[1]!.actions[0]);
   });
 
-  it("keeps a shortcut's output as the state, or the action's name when it says nothing", async () => {
-    const h = setup({ output: "On\n" });
-    expect(await choose(h, "lamp", "on")).toEqual({
-      ok: true,
-      state: "On",
-      summary: "Turn on: Bedroom lamp",
-    });
-    expect(h.home.status().devices[0]).toMatchObject({ state: "On", stateFromDevice: true });
-    h.setOutput(undefined);
-    await choose(h, "lamp", "off");
-    expect(h.home.status().devices[0]).toMatchObject({ state: "Turn off", stateFromDevice: false });
-    expect(cleanOutput("  21\u0007 °C \n\n")).toBe("21 °C");
-    expect(cleanOutput("")).toBeNull();
+  it("refuses doors anywhere: the device, an action's label, its shortcut or its value", () => {
+    const door = structuredClone(SETUP);
+    door.devices[0]!.name = "Front door";
+    expect(checkHomeSetup(door)).toMatchObject({ ok: false, error: /never controls locks/ });
+    const sneaky = structuredClone(SETUP);
+    sneaky.devices[0]!.actions[0]!.shortcut = "Unlock everything";
+    expect(checkHomeSetup(sneaky)).toMatchObject({ ok: false, error: /never controls locks/ });
+    const value = structuredClone(SETUP);
+    value.devices[1]!.actions[0]!.input = "garage";
+    expect(checkHomeSetup(value)).toMatchObject({ ok: false });
   });
 
-  it("refresh runs each status shortcut", async () => {
-    const h = setup({ output: "Off" });
-    const s = await h.home.refresh();
-    expect(h.calls.map((c) => c.args[1])).toEqual(["Lamp Status"]);
-    expect(s.devices[0]!.state).toBe("Off");
-  });
-
-  it("says plainly what went wrong, and never tries again", async () => {
-    const h = setup({ reply: { code: 1, stderr: "Error: Couldn't find shortcut" } });
-    const r = await choose(h, "lamp", "on");
-    expect(r).toEqual({ ok: false, error: expect.stringContaining('no shortcut called "Lamp On"') });
-    expect(h.calls).toHaveLength(1);
-    expect(describeShortcutFailure({ code: null, stdout: "", stderr: "", timedOut: true }, "X")).toMatch(
-      /too long/,
-    );
-    expect(
-      describeShortcutFailure({ code: 1, stdout: "", stderr: "not allowed", timedOut: false }, "X"),
-    ).toMatch(/didn't let/);
-    const lines = readFileSync(h.logFile, "utf8")
-      .trim()
-      .split("\n")
-      .map((l) => JSON.parse(l) as { ok: boolean });
-    expect(lines).toEqual([expect.objectContaining({ device: "lamp", action: "on", ok: false })]);
-  });
-
-  it("lists the shortcuts on this Mac", async () => {
-    const exec: Exec = () => ({
-      child: null,
-      done: Promise.resolve({ code: 0, stdout: "Lamp On\nLamp Off\n\n", stderr: "", timedOut: false }),
-    });
-    expect(await listShortcuts(exec)).toEqual({ ok: true, names: ["Lamp On", "Lamp Off"] });
-  });
-});
-
-describe("the rules", () => {
-  it("does nothing while off, or outside a Mac", async () => {
-    const off = setup({ enabled: false });
-    expect(off.home.status()).toMatchObject({ available: true, enabled: false, devices: [] });
-    expect(off.home.prepare("lamp", "on")).toEqual({ ok: false, error: expect.stringContaining("off") });
-    const linux = setup({ platform: "linux" });
-    expect(linux.home.status().available).toBe(false);
-    expect(linux.home.prepare("lamp", "on").ok).toBe(false);
-    expect(off.calls).toHaveLength(0);
-    expect(linux.calls).toHaveLength(0);
-  });
-
-  it("runs only a prepared ticket with its fingerprint, once", async () => {
-    const h = setup();
-    const p = h.home.prepare("lamp", "on");
-    if (!p.ok) throw new Error(p.error);
-    expect(p).toMatchObject({ device: "Bedroom lamp", action: "Turn on", confirm: false });
-    expect(await h.home.run(p.ticket, "wrong")).toMatchObject({ ok: false });
-    // A wrong fingerprint uses the ticket up.
-    expect(await h.home.run(p.ticket, p.fingerprint)).toMatchObject({ ok: false });
-    expect(h.calls).toHaveLength(0);
-    expect(h.home.prepare("lamp", "explode")).toMatchObject({ ok: false });
-    expect(h.home.prepare("door", "on")).toMatchObject({ ok: false });
-  });
-
-  it("marks safety actions for a confirmation and lets tickets run out", async () => {
-    const h = setup();
-    const p = h.home.prepare("heat", "set21");
-    expect(p).toMatchObject({ ok: true, confirm: true, summary: "Set to (21): Thermostat" });
-    if (!p.ok) return;
-    h.advance(TICKET_TTL_MS + 1);
-    expect(await h.home.run(p.ticket, p.fingerprint)).toEqual({
-      ok: false,
-      error: expect.stringContaining("ran out"),
-    });
-    expect(h.calls).toHaveLength(0);
-  });
-
-  it("refuses when the setup changed after the choice was shown", async () => {
-    const h = setup();
-    const p = h.home.prepare("lamp", "on");
-    if (!p.ok) throw new Error(p.error);
-    h.home.setSettings({
+  it("refuses a shortcut name that could be read as an option, bad ids and too many devices", () => {
+    const dash = structuredClone(SETUP);
+    dash.devices[0]!.actions[0]!.shortcut = "--output-path=/etc/x";
+    expect(checkHomeSetup(dash)).toMatchObject({ ok: false, error: /exact name/ });
+    const id = structuredClone(SETUP);
+    id.devices[0]!.id = "../x";
+    expect(checkHomeSetup(id).ok).toBe(false);
+    const many = {
       enabled: true,
-      devices: [
-        { ...LAMP, actions: [{ id: "on", label: "Turn on", shortcut: "Something Else", confirm: false }] },
-      ],
-    });
-    expect(await h.home.run(p.ticket, p.fingerprint)).toMatchObject({ ok: false });
-    expect(h.calls).toHaveLength(0);
-    // Saving a door through the API is refused and changes nothing.
-    const bad = h.home.setSettings({ enabled: true, devices: [{ ...LAMP, name: "Garage door" }] });
-    expect(bad).toEqual({ ok: false, error: expect.stringContaining("never controls doors") });
-    expect(h.settings().devices[0]!.actions[0]!.shortcut).toBe("Something Else");
+      devices: Array.from({ length: 13 }, (_, i) => ({ ...SETUP.devices[0]!, id: `d${i}` })),
+    };
+    expect(checkHomeSetup(many)).toMatchObject({ ok: false, error: /At most 12/ });
+    expect(checkHomeSetup(null).ok).toBe(false);
+    expect(checkHomeSetup({ devices: [{ ...SETUP.devices[0]!, kind: "door" }] }).ok).toBe(false);
   });
 
-  it("one run at a time per device, and a few runs a minute", async () => {
-    const h = setup();
-    const release = h.holdRuns();
-    const first = choose(h, "lamp", "on");
-    expect(await choose(h, "lamp", "off")).toEqual({
+  it("strips control characters", () => {
+    const s = structuredClone(SETUP);
+    s.devices[0]!.name = "Bed\u0007room light";
+    const r = checkHomeSetup(s);
+    expect(r.ok && r.setup.devices[0]!.name).toBe("Bedroom light");
+  });
+});
+
+describe("needsConfirmation", () => {
+  it("asks for heating, ovens and anything a helper marked", () => {
+    const [lamp, heat] = SETUP.devices as [HomeSetup["devices"][0], HomeSetup["devices"][0]];
+    expect(needsConfirmation(lamp, lamp.actions[0]!)).toBe(false);
+    expect(needsConfirmation(heat, heat.actions[0]!)).toBe(true);
+    expect(needsConfirmation({ ...lamp, name: "Oven plug" }, lamp.actions[1]!)).toBe(true);
+    expect(needsConfirmation(lamp, { ...lamp.actions[0]!, confirm: true })).toBe(true);
+  });
+});
+
+describe("HomeControl", () => {
+  it("is off and empty with no saved setup, and refuses to run", async () => {
+    const t = setup({ setup: null });
+    expect(t.home.status()).toMatchObject({ available: true, setup: EMPTY_SETUP });
+    expect(await t.home.run("lamp", "on", false)).toMatchObject({ ok: false, error: /isn't one of|off/ });
+    expect(t.calls).toHaveLength(0);
+  });
+
+  it("does nothing until a helper turns it on", async () => {
+    const t = setup({ setup: { ...SETUP, enabled: false } });
+    expect(await t.home.run("lamp", "on", false)).toMatchObject({ ok: false, error: /Home control is off/ });
+    expect(t.calls).toHaveLength(0);
+  });
+
+  it("needs macOS", async () => {
+    const t = setup({ platform: "linux" });
+    expect(t.home.status()).toMatchObject({ available: false, reason: /macOS/ });
+    expect(await t.home.run("lamp", "on", false)).toMatchObject({ ok: false });
+    expect(await t.home.shortcuts()).toMatchObject({ ok: false });
+    expect(t.calls).toHaveLength(0);
+  });
+
+  it("runs the saved shortcut by name after --, and remembers what it last set", async () => {
+    const t = setup();
+    expect(await t.home.run("lamp", "on", false)).toEqual({ ok: true, state: "On" });
+    expect(t.calls[0]!.args).toEqual(["run", "--", "Bedroom light on"]);
+    expect(t.home.status().states.lamp).toEqual({ state: "On", at: 1_000_000 });
+  });
+
+  it("only runs saved devices and actions", async () => {
+    const t = setup();
+    expect(await t.home.run("lamp", "explode", false)).toMatchObject({ ok: false });
+    expect(await t.home.run("Bedroom light on", "on", false)).toMatchObject({ ok: false });
+    expect(t.calls).toHaveLength(0);
+  });
+
+  it("passes a value only through a private temporary file, then removes it", async () => {
+    const t = setup();
+    expect(await t.home.run("heat", "warm", true)).toEqual({ ok: true, state: "22°" });
+    const args = t.calls[0]!.args;
+    expect(args.slice(0, 2)).toEqual(["run", "--input-path"]);
+    expect(args.slice(3)).toEqual(["--", "Set heating"]);
+    expect(args).not.toContain("22");
+    expect(t.calls[0]!.input).toBe("22");
+    expect(t.removed).toHaveLength(1);
+    expect(existsSync(t.removed[0]!)).toBe(false);
+  });
+
+  it("needs the confirmation look for heating", async () => {
+    const t = setup();
+    expect(await t.home.run("heat", "warm", false)).toMatchObject({ ok: false, error: /confirmation look/ });
+    expect(await t.home.run("heat", "warm", "yes")).toMatchObject({ ok: false });
+    expect(t.calls).toHaveLength(0);
+  });
+
+  it("refuses a door even if one was written into the file by hand", async () => {
+    const t = setup({ setup: null });
+    const bad = structuredClone(SETUP);
+    bad.devices[0]!.actions[0]!.shortcut = "Unlock front door";
+    writeFileSync(t.file, JSON.stringify(bad));
+    expect(loadHomeSetup(t.file)).toEqual(EMPTY_SETUP);
+  });
+
+  it("runs one shortcut at a time, and Stop aborts it", async () => {
+    const t = setup();
+    const gate = deferred<void>();
+    t.hold(gate.promise);
+    const first = t.home.run("lamp", "on", false);
+    await Promise.resolve();
+    expect(await t.home.run("lamp", "off", false)).toMatchObject({ ok: false, error: /still changing/ });
+    t.home.stopAll();
+    gate.resolve();
+    expect(await first).toEqual({ ok: false, error: "Stopped." });
+    expect(t.calls[0]!.signal?.aborted).toBe(true);
+    expect(t.home.status().states.lamp).toBeUndefined();
+  });
+
+  it("limits how many changes a minute, without retrying", async () => {
+    const t = setup();
+    for (let i = 0; i < MAX_RUNS_PER_MINUTE; i++)
+      expect((await t.home.run("lamp", "on", false)).ok).toBe(true);
+    expect(await t.home.run("lamp", "on", false)).toMatchObject({ ok: false, error: /a lot of changes/ });
+    t.advance(61_000);
+    expect((await t.home.run("lamp", "on", false)).ok).toBe(true);
+    expect(t.calls).toHaveLength(MAX_RUNS_PER_MINUTE + 1);
+  });
+
+  it("tells failures plainly and doesn't change the state", async () => {
+    const t = setup({
+      reply: { code: 1, stderr: "Error: The operation couldn’t be completed. Couldn’t find shortcut" },
+    });
+    expect(await t.home.run("lamp", "on", false)).toMatchObject({
       ok: false,
-      error: expect.stringContaining("Still working"),
+      error: /no shortcut called "Bedroom light on"/,
     });
-    release();
-    expect((await first).ok).toBe(true);
-    for (let i = 1; i < MAX_RUNS_PER_MINUTE; i++) expect((await choose(h, "lamp", "on")).ok).toBe(true);
-    expect(await choose(h, "lamp", "on")).toEqual({
-      ok: false,
-      error: expect.stringContaining("a lot of changes"),
-    });
-    h.advance(60_001);
-    expect((await choose(h, "lamp", "on")).ok).toBe(true);
+    expect(t.home.status().states).toEqual({});
+    t.setReply({ code: null, timedOut: true });
+    expect(await t.home.run("lamp", "off", false)).toMatchObject({ ok: false, error: /took too long/ });
+    expect(t.calls).toHaveLength(2);
   });
 
-  it("Stop ends a running shortcut and forgets every ticket", async () => {
-    const h = setup();
-    const waiting = h.home.prepare("heat", "set21");
-    const release = h.holdRuns();
-    const running = choose(h, "lamp", "on");
-    h.home.stopAll();
-    expect(h.killed).toEqual(["Lamp On"]);
-    release();
-    expect(await running).toEqual({ ok: false, error: expect.stringContaining("Stopped") });
-    expect(h.home.pending).toBe(0);
-    if (waiting.ok) expect((await h.home.run(waiting.ticket, waiting.fingerprint)).ok).toBe(false);
+  it("saves a checked setup to its file, refuses a bad one, and forgets states of removed devices", async () => {
+    const t = setup();
+    await t.home.run("lamp", "on", false);
+    const door = structuredClone(SETUP);
+    door.devices.push({
+      id: "g",
+      name: "Garage",
+      kind: "other",
+      actions: [{ id: "o", label: "Open", shortcut: "Open" }],
+    });
+    expect(t.home.save(door)).toMatchObject({ ok: false });
+    const only = { enabled: true, devices: [SETUP.devices[1]!] };
+    expect(t.home.save(only)).toMatchObject({ ok: true });
+    expect(JSON.parse(readFileSync(t.file, "utf8"))).toEqual(only);
+    expect(t.home.status().states).toEqual({});
   });
 
-  it("answers only the known operations", async () => {
-    const h = setup();
-    expect(homeCall(h.home, "status", [])).toMatchObject({ enabled: true });
-    expect(() => homeCall(h.home, "runAnything", ["rm -rf /"])).toThrow(/unknown/);
+  it("lists the Mac's shortcuts", async () => {
+    const t = setup({ reply: { stdout: "Bedroom light on\nBedroom light off\n\n" } });
+    expect(await t.home.shortcuts()).toEqual({ ok: true, names: ["Bedroom light on", "Bedroom light off"] });
+    expect(t.calls[0]!.args).toEqual(["list"]);
+  });
+
+  it("answers the shell's operations and rejects unknown ones", async () => {
+    const t = setup();
+    expect(await homeCall(t.home, "status", [])).toMatchObject({ available: true });
+    expect(await homeCall(t.home, "run", ["lamp", "off", false])).toEqual({ ok: true, state: "Off" });
+    await expect(homeCall(t.home, "exec", ["rm -rf /"])).rejects.toThrow(/unknown home operation/);
+  });
+});
+
+describe("shortcuts helpers", () => {
+  it("builds argument lists with the name last, after --", () => {
+    expect(runArgs("-h", null)).toEqual(["run", "--", "-h"]);
+    expect(runArgs("Fan on", "/tmp/a/input.txt")).toEqual([
+      "run",
+      "--input-path",
+      "/tmp/a/input.txt",
+      "--",
+      "Fan on",
+    ]);
+  });
+
+  it("describes failures and parses the list", () => {
+    expect(describeRunFailure({ ...OK, aborted: true }, "x")).toBe("Stopped.");
+    expect(describeRunFailure({ ...OK, code: 1, stderr: "Error: not authorized" }, "x")).toMatch(
+      /didn't allow/,
+    );
+    expect(describeRunFailure({ ...OK, code: 1, stderr: "weird" }, "x")).toMatch(/didn't finish/);
+    expect(parseList(" A \n\nB\n")).toEqual(["A", "B"]);
   });
 });

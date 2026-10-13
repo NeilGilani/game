@@ -159,13 +159,6 @@ export function HelperSettings() {
       path: "/settings/ordering",
     },
     {
-      id: "day",
-      label: "My day",
-      sub: "Schedule, routines, telling a carer, the home",
-      icon: "calendar",
-      path: "/settings/day",
-    },
-    {
       id: "browser",
       label: "AGENCY Browser",
       sub: "Start page sites, ads, the assistant on websites",
@@ -192,6 +185,13 @@ export function HelperSettings() {
       sub: "Documents folder, details for forms, signature",
       icon: "document",
       path: "/settings/papers",
+    },
+    {
+      id: "daily",
+      label: "My day and home",
+      sub: "Schedule, care reminders, home devices, telling a carer",
+      icon: "calendar",
+      path: "/settings/daily",
     },
     {
       id: "companion",

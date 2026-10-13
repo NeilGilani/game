@@ -1,309 +1,399 @@
 /**
- * My day's rules: today's order and what's next, routines that ask only when due and never while put off, the words
- * read aloud, the practice day (and its practice carer), the practice home's prepare-then-run rule, and the
- * Calendar's events as read-only items.
+ * My day (src/daily): the schedule and its marks, care routines that ask within waking hours and can be snoozed,
+ * what Home shows next, the day read aloud, storage that never trusts what it reads, the practice home (never a
+ * door, a confirmation look for heating) and telling a carer (off unless on, exact words, once).
  */
-import { afterEach, describe, expect, it, vi } from "vitest";
-import { calendarItems, readCalendar } from "../src/daily/calendar";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
-  agenda,
+  at,
+  checkData,
+  clock,
   dayKey,
-  daySummary,
-  dueRoutines,
-  everyText,
-  formatTime,
+  daySpeech,
+  entriesFor,
+  every,
   isDue,
-  laterTime,
+  mark,
+  newRoutine,
   nextDue,
+  nextUp,
   occursOn,
-  routinePrompt,
-} from "../src/daily/day";
-import { PracticeHome } from "../src/daily/home";
-import { PRACTICE_REPLY_MS, PracticeDaily, practiceDay } from "../src/daily/source";
-import { HELP_REQUESTS, readTell, tellPath } from "../src/daily/tell";
-import type { Routine, ScheduleItem } from "../src/daily/types";
+  routineDone,
+  routineLater,
+  sampleDay,
+  unmark,
+  type DailyData,
+  type DayItem,
+} from "../src/daily/model";
+import { clearDaily, DAILY_KEY, loadDaily, practiceMode, saveDaily, updateDaily } from "../src/daily/store";
+import { homeSource, PRACTICE_SETUP, PracticeHome, resetPracticeHome } from "../src/daily/homeControl";
+import { carerSource, coordinatorCarer, PracticeCarer } from "../src/daily/carer";
+import { reminderItem, whenChoices } from "../src/daily/RemindMe";
+import { cardText } from "../src/daily/DayCard";
+import { HELP_REQUESTS } from "../src/daily/parts";
 
-// Monday 12 October 2026, 2:05 pm local time.
-const NOW = new Date(2026, 9, 12, 14, 5, 0);
-const at = (h: number, m = 0) => new Date(2026, 9, 12, h, m, 0);
+function memoryStorage() {
+  const m = new Map<string, string>();
+  return {
+    getItem: (k: string) => m.get(k) ?? null,
+    setItem: (k: string, v: string) => void m.set(k, v),
+    removeItem: (k: string) => void m.delete(k),
+    map: m,
+  };
+}
 
-const item = (over: Partial<ScheduleItem>): ScheduleItem => ({
-  id: "x",
-  kind: "reminder",
-  title: "Thing",
+/** Monday 12 October 2026, local time. */
+const MON = (h: number, m = 0) => new Date(2026, 9, 12, h, m).getTime();
+const TODAY = "2026-10-12";
+
+const item = (id: string, over: Partial<DayItem> = {}): DayItem => ({
+  id,
+  title: id,
+  kind: "appointment",
+  date: TODAY,
   time: "10:00",
-  date: null,
-  days: [],
-  note: "",
-  set_by: "carer",
+  repeat: "once",
+  addedBy: "helper",
   ...over,
 });
 
-const WATER: Routine = {
-  id: "water",
-  kind: "water",
-  title: "Drink some water",
-  every_min: 90,
-  start: "08:00",
-  end: "21:00",
-  enabled: true,
-};
+const data = (over: Partial<DailyData> = {}): DailyData => ({ items: [], routines: [], marks: {}, ...over });
 
 afterEach(() => {
-  vi.useRealTimers();
   vi.unstubAllGlobals();
+  vi.unstubAllEnvs();
+  resetPracticeHome();
 });
 
-describe("times and days", () => {
-  it("formats times and dates plainly", () => {
-    expect(formatTime("15:00")).toBe("3:00 pm");
-    expect(formatTime("00:30")).toBe("12:30 am");
-    expect(formatTime("12:05")).toBe("12:05 pm");
-    expect(dayKey(NOW)).toBe("2026-10-12");
-    expect(laterTime(NOW, 30)).toBe("14:35");
-    expect(laterTime(at(23, 50), 30)).toBe("23:59");
-    expect(everyText(120)).toBe("every 2 hours");
-    expect(everyText(60)).toBe("every hour");
-    expect(everyText(90)).toBe("every 90 minutes");
-  });
-
-  it("knows which items are on today", () => {
-    expect(occursOn(item({ date: "2026-10-12" }), NOW)).toBe(true);
-    expect(occursOn(item({ date: "2026-10-13" }), NOW)).toBe(false);
-    expect(occursOn(item({}), NOW)).toBe(true); // every day
-    expect(occursOn(item({ days: [0, 2] }), NOW)).toBe(true); // Monday is 0
-    expect(occursOn(item({ days: [1] }), NOW)).toBe(false);
+describe("times", () => {
+  it("formats plainly, with no locale surprises", () => {
+    expect(clock("00:05")).toBe("12:05 am");
+    expect(clock("12:00")).toBe("12:00 pm");
+    expect(clock("14:30")).toBe("2:30 pm");
+    expect(dayKey(MON(23, 59))).toBe(TODAY);
+    expect(at(MON(3), "14:30")).toBe(MON(14, 30));
+    expect(every(60)).toBe("every hour");
+    expect(every(120)).toBe("every 2 hours");
+    expect(every(90)).toBe("every 90 minutes");
   });
 });
 
-describe("today's agenda", () => {
-  const items = [
-    item({ id: "drops", title: "Eye drops", time: "08:30" }),
-    item({ id: "physio", title: "Physio visit", time: "15:00", note: "with Sam" }),
-    item({ id: "mom", title: "Call Mom", time: "18:00" }),
-    item({ id: "lunch", title: "Lunch", time: "12:00" }),
-    item({ id: "tue", title: "Tuesday only", time: "16:00", days: [1] }),
-  ];
+describe("My day", () => {
+  it("knows which days an item happens on", () => {
+    expect(occursOn(item("a"), TODAY)).toBe(true);
+    expect(occursOn(item("a"), "2026-10-13")).toBe(false);
+    expect(occursOn(item("a", { repeat: "daily" }), "2026-10-20")).toBe(true);
+    expect(occursOn(item("a", { repeat: "daily" }), "2026-10-11")).toBe(false);
+    expect(occursOn(item("a", { repeat: "weekdays" }), "2026-10-16")).toBe(true); // Friday
+    expect(occursOn(item("a", { repeat: "weekdays" }), "2026-10-17")).toBe(false); // Saturday
+    expect(occursOn(item("a", { repeat: "weekly" }), "2026-10-19")).toBe(true);
+    expect(occursOn(item("a", { repeat: "weekly" }), "2026-10-20")).toBe(false);
+  });
 
-  it("orders the day and marks exactly one thing next", () => {
-    const a = agenda(items, { drops: { status: "done", until: null, at: "" } }, NOW);
-    expect(a.map((e) => [e.item.id, e.status])).toEqual([
-      ["drops", "done"],
-      ["lunch", "earlier"],
-      ["physio", "next"],
-      ["mom", "upcoming"],
+  it("lists the day in time order with any-time items last, and marking never reorders it", () => {
+    const d = data({
+      items: [item("late", { time: "15:00" }), item("any", { time: null }), item("early", { time: "08:00" })],
+    });
+    const now = MON(9);
+    expect(entriesFor(d, TODAY, now).map((e) => e.item.id)).toEqual(["early", "late", "any"]);
+    const early = entriesFor(d, TODAY, now)[0]!;
+    const done = mark(d, early, "done", now);
+    expect(entriesFor(done, TODAY, now).map((e) => [e.item.id, e.state])).toEqual([
+      ["early", "done"],
+      ["late", "open"],
+      ["any", "open"],
     ]);
+    expect(entriesFor(unmark(done, early), TODAY, now)[0]!.state).toBe("open");
   });
 
-  it("puts something off until later, and brings it back when the time comes", () => {
-    const marks = { physio: { status: "later" as const, until: "16:30", at: "" } };
-    const a = agenda(items, marks, NOW);
-    expect(a.find((e) => e.item.id === "physio")).toMatchObject({ status: "later", at: "16:30" });
-    expect(a.find((e) => e.status === "next")!.item.id).toBe("mom");
+  it("brings a 'later' back after half an hour, and marks are per day", () => {
+    const d = data({ items: [item("x", { repeat: "daily" })] });
+    const e = entriesFor(d, TODAY, MON(9))[0]!;
+    const later = mark(d, e, "later", MON(9));
+    expect(entriesFor(later, TODAY, MON(9, 10))[0]!.state).toBe("later");
+    expect(entriesFor(later, TODAY, MON(9, 31))[0]!.state).toBe("open");
+    expect(entriesFor(mark(d, e, "done", MON(9)), "2026-10-13", MON(9))[0]!.state).toBe("open");
   });
 
-  it("brings a put-off item back once its later time has passed", () => {
-    const marks = { lunch: { status: "later" as const, until: "13:00", at: "" } };
-    expect(agenda(items, marks, NOW).find((e) => e.item.id === "lunch")).toMatchObject({
-      status: "earlier",
-      at: "13:00",
+  it("forgets marks after two weeks", () => {
+    const d = data({
+      items: [item("x")],
+      marks: { "old@2026-09-01": { status: "done", at: MON(9) - 20 * 86_400_000 } },
+    });
+    const e = entriesFor(d, TODAY, MON(9))[0]!;
+    expect(Object.keys(mark(d, e, "done", MON(9)).marks)).toEqual([`x@${TODAY}`]);
+  });
+});
+
+describe("care routines", () => {
+  const r = { ...newRoutine("eye_drops", "drops"), everyMinutes: 240, from: "08:00", to: "22:00" };
+
+  it("asks first at the start of waking hours, then every so often after it was done", () => {
+    expect(nextDue(r, MON(6))).toBe(MON(8));
+    expect(isDue(r, MON(7, 59))).toBe(false);
+    expect(isDue(r, MON(8))).toBe(true);
+    const done = { ...r, lastDone: MON(9) };
+    expect(nextDue(done, MON(10))).toBe(MON(13));
+  });
+
+  it("never asks outside waking hours: tomorrow morning instead", () => {
+    const done = { ...r, lastDone: MON(20) };
+    expect(nextDue(done, MON(21))).toBe(new Date(2026, 9, 13, 8).getTime());
+    expect(isDue({ ...r, lastDone: MON(10) }, MON(22, 30))).toBe(false);
+    expect(nextDue({ ...r, lastDone: new Date(2026, 9, 11, 21).getTime() }, MON(6))).toBe(MON(8));
+  });
+
+  it("a 'to' before 'from' means until midnight", () => {
+    expect(isDue({ ...r, from: "09:00", to: "00:00", lastDone: MON(19) }, MON(23, 30))).toBe(true);
+  });
+
+  it("snoozes, and Done clears the snooze", () => {
+    const now = MON(12);
+    const d = data({ routines: [{ ...r, lastDone: MON(7) }] });
+    expect(isDue(d.routines[0]!, now)).toBe(true);
+    const snoozed = routineLater(d, "drops", now);
+    expect(isDue(snoozed.routines[0]!, now + 10 * 60_000)).toBe(false);
+    expect(isDue(snoozed.routines[0]!, now + 31 * 60_000)).toBe(true);
+    const done = routineDone(snoozed, "drops", now);
+    expect(done.routines[0]).toMatchObject({ lastDone: now, snoozedUntil: null });
+  });
+
+  it("is silent when switched off", () => {
+    expect(nextDue({ ...r, enabled: false }, MON(12))).toBeNull();
+  });
+});
+
+describe("what's next and reading the day aloud", () => {
+  it("puts a routine that is asking first, then the next open item, then nothing", () => {
+    const routine = { ...newRoutine("water", "w"), lastDone: MON(9) };
+    const d = data({
+      items: [item("past", { time: "08:00" }), item("visit", { time: "14:00" })],
+      routines: [routine],
+    });
+    expect(nextUp(d, MON(12))).toMatchObject({ type: "routine" });
+    expect(nextUp(routineDone(d, "w", MON(12)), MON(12))).toMatchObject({
+      type: "item",
+      entry: { item: { id: "visit" } },
+    });
+    expect(nextUp(data(), MON(12))).toEqual({ type: "nothing" });
+    expect(cardText(nextUp(data(), MON(12))).title).toBe("Nothing else today");
+    expect(cardText(nextUp(d, MON(12))).path).toBe("/day/care");
+  });
+
+  it("reads the day in plain sentences", () => {
+    const d = data({
+      items: [item("Physio visit", { time: "11:00" }), item("Call Mom", { time: null })],
+      routines: [{ ...newRoutine("reposition", "t"), lastDone: MON(9) }],
+    });
+    const text = daySpeech(d, MON(10));
+    expect(text).toContain("Today is Monday 12 October.");
+    expect(text).toContain("At 11:00 am: Physio visit.");
+    expect(text).toContain("Any time: Call Mom.");
+    expect(text).toContain("Change position: next at 11:00 am.");
+    expect(daySpeech(data(), MON(10))).toContain("Nothing is planned today.");
+  });
+});
+
+describe("checking stored data", () => {
+  it("keeps good data and drops anything malformed", () => {
+    const good = sampleDay(MON(9));
+    expect(checkData(JSON.parse(JSON.stringify(good)))).toEqual(good);
+    const bad = checkData({
+      items: [
+        item("ok"),
+        { ...item("bad"), time: "25:00" },
+        { ...item("x"), title: "" },
+        { ...item("y"), date: "2026-02-31" },
+        null,
+      ],
+      routines: [
+        { ...newRoutine("water", "w"), everyMinutes: 1 },
+        { ...newRoutine("water", "v"), kind: "medication" },
+      ],
+      marks: { a: { status: "done", at: 1 }, b: { status: "exploded", at: 1 }, c: "x" },
+    });
+    expect(bad.items.map((i) => i.id)).toEqual(["ok"]);
+    expect(bad.routines).toEqual([]);
+    expect(Object.keys(bad.marks)).toEqual(["a"]);
+    expect(checkData("nonsense")).toEqual(data());
+  });
+
+  it("turns control characters in titles into spaces", () => {
+    const d = checkData({ items: [{ ...item("a"), title: "Phy\u0007sio\nvisit" }] });
+    expect(d.items[0]!.title).toBe("Phy sio visit");
+  });
+});
+
+describe("storage", () => {
+  beforeEach(() => vi.stubGlobal("localStorage", memoryStorage()));
+
+  it("starts empty, outside practice", () => {
+    expect(practiceMode()).toBe(false);
+    expect(loadDaily()).toEqual(data());
+  });
+
+  it("seeds a sample day once in practice, and Clear doesn't bring it back", () => {
+    localStorage.setItem("agency.fakes", "daily");
+    expect(loadDaily(MON(9)).items.length).toBeGreaterThan(0);
+    clearDaily();
+    expect(loadDaily(MON(9))).toEqual(data());
+  });
+
+  it("saves and updates, and survives broken storage", () => {
+    updateDaily((d) => ({ ...d, items: [item("a")] }));
+    expect(loadDaily().items.map((i) => i.id)).toEqual(["a"]);
+    localStorage.setItem(DAILY_KEY, "{not json");
+    expect(loadDaily()).toEqual(data());
+    saveDaily(data({ items: [item("b")] }));
+    expect(JSON.parse(localStorage.getItem(DAILY_KEY)!).items[0].id).toBe("b");
+  });
+
+  it("practice in the web demo too", () => {
+    vi.stubEnv("VITE_WEB_DEMO", "1");
+    expect(practiceMode()).toBe(true);
+  });
+});
+
+describe("Remind me", () => {
+  it("offers later today and tomorrow, and this evening only while it's to come", () => {
+    const morning = whenChoices(MON(9, 2)).map((w) => [w.id, w.date, w.time]);
+    expect(morning).toEqual([
+      ["30m", TODAY, "09:35"],
+      ["1h", TODAY, "10:05"],
+      ["2h", TODAY, "11:05"],
+      ["evening", TODAY, "18:00"],
+      ["tomorrow", "2026-10-13", "09:00"],
+    ]);
+    expect(whenChoices(MON(19)).map((w) => w.id)).not.toContain("evening");
+    expect(whenChoices(MON(23, 50))[0]).toMatchObject({ date: "2026-10-13", time: "00:20" });
+    expect(reminderItem("Call someone", whenChoices(MON(9))[0]!, "me-1")).toMatchObject({
+      kind: "reminder",
+      addedBy: "person",
+      repeat: "once",
     });
   });
-
-  it("reads the day aloud, the next thing first", () => {
-    const a = agenda(items, { drops: { status: "done", until: null, at: "" } }, NOW);
-    const words = daySummary(a, [WATER], NOW);
-    expect(words).toBe(
-      "It's Monday, 2:05 pm. Time to drink some water? Next: Physio visit at 3:00 pm, with Sam. Then: Call Mom at 6:00 pm. One thing is done.",
-    );
-    expect(daySummary([], [], NOW)).toBe("It's Monday, 2:05 pm. Nothing is planned for today.");
-  });
 });
 
-describe("routines ask, they don't tell", () => {
-  it("is due once the interval has passed since it was last done", () => {
-    const done = (h: number, m = 0) => ({ last_done_at: at(h, m).toISOString(), snoozed_until: null });
-    expect(isDue(WATER, done(13, 0), NOW)).toBe(false); // 65 minutes ago
-    expect(isDue(WATER, done(12, 30), NOW)).toBe(true); // 95 minutes ago
-    expect(nextDue(WATER, done(13, 0), NOW)).toEqual(at(14, 30));
+describe("practice home", () => {
+  it("changes its pretend devices and remembers what it last set", async () => {
+    const home = new PracticeHome(() => 0);
+    expect(await home.run("bedroom-light", "on", false)).toEqual({ ok: true, state: "On" });
+    expect((await home.status()).states["bedroom-light"]?.state).toBe("On");
   });
 
-  it("never asks outside waking hours, and starts fresh each morning", () => {
-    const lastNight = { last_done_at: new Date(2026, 9, 11, 20, 0).toISOString(), snoozed_until: null };
-    expect(isDue(WATER, lastNight, at(7, 30))).toBe(false);
-    expect(nextDue(WATER, lastNight, at(7, 30))).toEqual(at(8, 0));
-    expect(isDue(WATER, lastNight, at(8, 0))).toBe(true);
-    expect(isDue(WATER, undefined, at(22, 0))).toBe(false);
-    // Due late in the evening: the next one waits for the morning.
-    expect(
-      nextDue(WATER, { last_done_at: at(20, 0).toISOString(), snoozed_until: null }, at(20, 30)),
-    ).toEqual(new Date(2026, 9, 13, 8, 0));
+  it("needs a confirmation look for heating", async () => {
+    const home = new PracticeHome(() => 0);
+    expect(await home.run("heating", "off", false)).toMatchObject({ ok: false, error: /confirmation look/ });
+    expect(home.ran).toEqual([]);
+    expect(await home.run("heating", "off", true)).toEqual({ ok: true, state: "Off" });
   });
 
-  it("handles a window that runs overnight", () => {
-    const night: Routine = { ...WATER, id: "turn", start: "22:00", end: "06:00", every_min: 120 };
-    expect(isDue(night, undefined, at(23, 0))).toBe(true);
-    expect(isDue(night, undefined, at(12, 0))).toBe(false);
-    expect(
-      isDue(
-        night,
-        { last_done_at: at(23, 0).toISOString(), snoozed_until: null },
-        new Date(2026, 9, 13, 0, 30),
-      ),
-    ).toBe(false);
-    expect(
-      isDue(
-        night,
-        { last_done_at: at(23, 0).toISOString(), snoozed_until: null },
-        new Date(2026, 9, 13, 1, 0),
-      ),
-    ).toBe(true);
-  });
-
-  it("stays quiet while put off, and when paused", () => {
-    const snoozed = { last_done_at: at(10).toISOString(), snoozed_until: at(14, 30).toISOString() };
-    expect(isDue(WATER, snoozed, NOW)).toBe(false);
-    expect(isDue(WATER, snoozed, at(14, 30))).toBe(true);
-    expect(isDue({ ...WATER, enabled: false }, undefined, NOW)).toBe(false);
-    expect(dueRoutines([WATER, { ...WATER, id: "off", enabled: false }], {}, NOW).map((r) => r.id)).toEqual([
-      "water",
-    ]);
-  });
-
-  it("asks gently", () => {
-    expect(routinePrompt(WATER)).toBe("Time to drink some water?");
-    expect(routinePrompt({ ...WATER, title: "Eye drops." })).toBe("Time for eye drops?");
-    expect(routinePrompt({ ...WATER, title: "Change position" })).toBe("Time to change position?");
-  });
-});
-
-describe("the practice day", () => {
-  it("always has something next and a routine due, and its carer is a practice phone", async () => {
-    const day = practiceDay(NOW);
-    const a = agenda(day.items, day.marks[dayKey(NOW)] ?? {}, NOW);
-    expect(a.some((e) => e.status === "next")).toBe(true);
-    expect(dueRoutines(day.routines, day.routine_state, NOW).map((r) => r.id)).toEqual(["water"]);
-    const p = new PracticeDaily(() => NOW, false);
-    const s = await p.state(dayKey(NOW));
-    expect(s.carer).toMatchObject({ name: "Jordan", simulated: true });
-    expect(s.carer!.how).toContain("nobody real");
-  });
-
-  it("marks, routines and requests stay in the page, and the practice carer answers", async () => {
-    vi.useFakeTimers();
-    let now = NOW;
-    const p = new PracticeDaily(() => now, false);
-    await p.mark({ item_id: "physio", day: dayKey(NOW), status: "done" });
-    expect((await p.state(dayKey(NOW))).marks.physio!.status).toBe("done");
-    await p.mark({ item_id: "physio", day: dayKey(NOW), status: "clear" });
-    expect((await p.state(dayKey(NOW))).marks.physio).toBeUndefined();
-
-    await p.routineLater("water", 30);
-    let s = await p.state(dayKey(NOW));
-    expect(isDue(s.routines[0]!, s.routine_state.water, now)).toBe(false);
-    now = new Date(NOW.getTime() + 31 * 60_000);
-    expect(isDue(s.routines[0]!, s.routine_state.water, now)).toBe(true);
-    await p.routineDone("water");
-    s = await p.state(dayKey(NOW));
-    expect(isDue(s.routines[0]!, s.routine_state.water, now)).toBe(false);
-
-    const r = await p.request("help", "I'm cold");
-    expect(r).toMatchObject({ status: "delivered", simulated: true, carer: { name: "Jordan" }, reply: null });
-    vi.advanceTimersByTime(PRACTICE_REPLY_MS);
-    expect((await p.requests())[0]).toMatchObject({ reply: "coming", reply_words: "On my way" });
-  });
-
-  it("with telling a carer off, nobody is told", async () => {
-    const p = new PracticeDaily(() => NOW, false);
-    const s = await p.state(dayKey(NOW));
-    await p.saveSettings({ ...s.settings, carer_notify: false });
-    expect((await p.state(dayKey(NOW))).carer).toBeNull();
-    expect(await p.request("help", "I'm cold")).toMatchObject({ status: "shown", carer: null });
-  });
-
-  it("never keeps Calendar items", async () => {
-    const p = new PracticeDaily(() => NOW, false);
-    await p.saveItems([item({ id: "a" }), item({ id: "cal-0", fromCalendar: true })]);
-    expect((await p.state(dayKey(NOW))).items.map((i) => i.id)).toEqual(["a"]);
-  });
-});
-
-describe("the practice home", () => {
-  it("changes a device only through a prepared ticket, once", async () => {
-    const home = new PracticeHome(() => 1);
-    const p = await home.prepare("bedroom-lamp", "on");
-    if (!p.ok) throw new Error(p.error);
-    expect(p).toMatchObject({ summary: "Turn on: Bedroom lamp", confirm: false });
-    expect(await home.run(p.ticket, "wrong")).toMatchObject({ ok: false });
-    expect(await home.run(p.ticket, p.fingerprint)).toMatchObject({ ok: false }); // used up
-    const again = await home.prepare("bedroom-lamp", "on");
-    if (!again.ok) throw new Error(again.error);
-    expect(await home.run(again.ticket, again.fingerprint)).toEqual({
-      ok: true,
-      state: "On",
-      summary: "Turn on: Bedroom lamp",
+  it("refuses a lock or a door in its setup", async () => {
+    const home = new PracticeHome(() => 0);
+    const door = structuredClone(PRACTICE_SETUP);
+    door.devices.push({
+      id: "door",
+      name: "Front door",
+      kind: "other",
+      actions: [{ id: "u", label: "Unlock", shortcut: "Unlock" }],
     });
-    expect((await home.status()).devices.find((d) => d.id === "bedroom-lamp")!.state).toBe("On");
+    expect(await home.save(door)).toMatchObject({ ok: false, error: /never controls locks/ });
+    expect(PRACTICE_SETUP.devices.some((d) => /door|lock|garage|gate/i.test(d.name))).toBe(false);
   });
 
-  it("heating always asks for a confirmation, and Stop forgets what was waiting", async () => {
-    const home = new PracticeHome();
-    const p = await home.prepare("thermostat", "off");
-    expect(p).toMatchObject({ ok: true, confirm: true });
-    home.stopAll();
-    if (p.ok) expect((await home.run(p.ticket, p.fingerprint)).ok).toBe(false);
-  });
-
-  it("has no doors, locks or garages at all", async () => {
-    const names = (await new PracticeHome().status()).devices.flatMap((d) => [
-      d.name,
-      ...d.actions.map((a) => a.label),
-    ]);
-    expect(names.join(" ")).not.toMatch(/\b(door|lock|unlock|garage|gate)\b/i);
+  it("is used in the browser, and the Mac's home only inside the Mac app", () => {
+    vi.stubGlobal("localStorage", memoryStorage());
+    vi.stubGlobal("window", {});
+    expect(homeSource().kind).toBe("practice");
+    const real = {
+      status: vi.fn(),
+      save: vi.fn(),
+      shortcuts: vi.fn(),
+      run: vi.fn(async () => ({ ok: true, state: "On" })),
+    };
+    vi.stubGlobal("window", { agency: { agent: { send: () => {} }, home: real } });
+    const mac = homeSource();
+    expect(mac.kind).toBe("mac");
+    void mac.run("lamp", "on", true);
+    expect(real.run).toHaveBeenCalledWith("lamp", "on", true);
+    localStorage.setItem("agency.fakes", "home");
+    expect(homeSource().kind).toBe("practice");
   });
 });
 
 describe("telling a carer", () => {
-  it("carries the request in the address, checked on the way in", () => {
-    const path = tellPath("help", "I'm cold");
-    const q = new URLSearchParams(path.split("?")[1]);
-    expect(readTell(q)).toEqual({ kind: "help", text: "I'm cold" });
-    expect(readTell(new URLSearchParams("kind=alarm&text=x"))).toBeNull();
-    expect(readTell(new URLSearchParams("kind=help&text=%20%20"))).toBeNull();
-    expect(readTell(new URLSearchParams(`kind=help&text=${"a".repeat(300)}`))!.text).toHaveLength(160);
+  it("the practice carer sends exactly the prepared words, once", async () => {
+    const c = new PracticeCarer();
+    const p = await c.prepare("help", "I'm cold.");
+    expect(p.body).toContain("(not urgent): I'm cold.");
+    expect(p.to.simulated).toBe(true);
+    expect(await c.send(p.ticket)).toMatchObject({ status: "delivered", simulated: true });
+    await expect(c.send(p.ticket)).rejects.toThrow(/already sent/);
+    expect((await c.messages()).map((m) => m.body)).toEqual([p.body]);
   });
 
-  it("offers everyday requests, none of them emergencies", () => {
-    expect(HELP_REQUESTS.length).toBeLessThanOrEqual(7); // plus Lifeline: at most 8 choices
-    expect(HELP_REQUESTS.map((r) => r.text).join(" ")).not.toMatch(/emergency|breath|chok|911|pain/i);
+  it("the practice carer can be turned off", async () => {
+    const c = new PracticeCarer();
+    const p = await c.prepare("help", "Hello");
+    await c.save({ notify_enabled: false, carer_id: null });
+    await expect(c.prepare("help", "Hello")).rejects.toThrow(/off/);
+    await expect(c.send(p.ticket)).rejects.toThrow();
+  });
+
+  it("uses the coordinator outside practice, with the access token, and shows its refusal", async () => {
+    vi.stubGlobal("localStorage", memoryStorage());
+    localStorage.setItem("agency.token", "tok");
+    expect(carerSource()).toBe(coordinatorCarer);
+    const calls: { url: string; init: RequestInit }[] = [];
+    vi.stubGlobal("window", { location: { origin: "http://localhost" } });
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (url: string, init: RequestInit) => {
+        calls.push({ url, init });
+        return new Response(JSON.stringify({ detail: "Telling a carer is off." }), { status: 409 });
+      }),
+    );
+    await expect(coordinatorCarer.prepare("help", "I'm cold")).rejects.toThrow("Telling a carer is off.");
+    expect(calls[0]!.url).toMatch(/\/api\/daily\/prepare$/);
+    expect(new Headers(calls[0]!.init.headers).get("X-Agency-Token")).toBe("tok");
+    expect(JSON.parse(String(calls[0]!.init.body))).toEqual({ kind: "help", text: "I'm cold" });
+  });
+
+  it("says nothing was sent when the coordinator can't be reached", async () => {
+    vi.stubGlobal("localStorage", memoryStorage());
+    vi.stubGlobal("window", { location: { origin: "http://localhost" } });
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => Promise.reject(new TypeError("offline"))),
+    );
+    await expect(coordinatorCarer.send("t".repeat(20))).rejects.toThrow(/Nothing was sent/);
   });
 });
 
-describe("the Mac's Calendar", () => {
-  it("turns events into read-only items for today", () => {
-    const items = calendarItems([
-      { title: "Dentist", start: "09:30", allDay: false, location: "Main St", calendar: "Home" },
-      { title: "", start: "00:00", allDay: true, location: "", calendar: "Home" },
-    ]);
-    expect(items[0]).toMatchObject({ title: "Dentist", time: "09:30", note: "Main St", fromCalendar: true });
-    expect(items[1]).toMatchObject({ title: "Event", note: "All day" });
+describe("help requests", () => {
+  it("fit one page and are never emergencies", () => {
+    expect(HELP_REQUESTS.length).toBeLessThanOrEqual(6);
+    for (const h of HELP_REQUESTS) expect(h.words).not.toMatch(/emergenc|911|ambulance|can't breathe/i);
+  });
+});
+
+describe("storage that can't be used", () => {
+  it("keeps the day in memory for this page", () => {
+    vi.stubGlobal("localStorage", {
+      getItem: () => {
+        throw new Error("blocked");
+      },
+      setItem: () => {
+        throw new Error("blocked");
+      },
+      removeItem: () => {},
+    });
+    saveDaily(data({ items: [item("kept")] }));
+    expect(loadDaily().items.map((i) => i.id)).toEqual(["kept"]);
   });
 
-  it("says plainly when there is no Mac app, or an older one", async () => {
-    vi.stubGlobal("window", {});
-    vi.stubGlobal("localStorage", { getItem: () => null });
-    expect(await readCalendar()).toEqual({
-      ok: false,
-      error: "The Mac's Calendar needs the AGENCY Mac app.",
-    });
-    const call = vi.fn().mockRejectedValue(new Error("shell may not call calendar.today"));
-    vi.stubGlobal("window", { agency: { agent: { send() {} }, native: { call } } });
-    expect(await readCalendar()).toEqual({
-      ok: false,
-      error: "This version of the AGENCY Mac app can't read the Calendar yet.",
-    });
-    call.mockResolvedValue({ ok: true, events: [] });
-    expect(await readCalendar()).toEqual({ ok: true, events: [] });
-    expect(call).toHaveBeenLastCalledWith("calendar.today", {});
+  it("doesn't bring back an old day once storage works again", () => {
+    vi.stubGlobal("localStorage", memoryStorage());
+    expect(loadDaily()).toEqual(data());
   });
 });

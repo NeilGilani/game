@@ -1,309 +1,180 @@
 /**
- * The home, by eye, from the main process only (contract: os/contracts/src/home.ts).
+ * The home, by eye: runs the named Apple Shortcuts a helper set up for each device (os/contracts/src/home.ts).
  *
- * Rules (owner's standing rules: nothing real happens by default):
- * - Off until a helper turns it on in Settings (`HomeSettings.enabled`, default false), and only on a Mac.
- * - Only the devices and shortcuts a helper named. A window names a device and action by id; the shortcut is
- *   looked up here.
- * - No doors, locks, garage doors or gates: refused when saved (config.ts) and again before every run.
- * - Every run needs a ticket from `prepare` and its fingerprint back. A ticket is used once and runs out after a
- *   couple of minutes. Thermostats, heaters and actions a helper marked are shown on a confirmation screen first.
- * - One run at a time per device, a few runs a minute, no automatic retries. Stop ends a running shortcut and
- *   forgets every ticket.
- * - Each run is logged on this Mac only.
+ * Rules (owner's standing rules):
+ * - Off until a helper turns it on. macOS only.
+ * - A window names a device and an action by id; the shortcut's name comes from the saved setup, never from a
+ *   window. The setup is checked again here, on load, on save and before every run.
+ * - Never locks, doors, garage doors or gates (`refusedHomeReason`).
+ * - Heating, ovens and anything a helper marked need the person's confirmation look (`needsConfirmation`).
+ * - One shortcut at a time, a few a minute, no automatic retries, and Stop aborts a running one.
+ * - The setup lives in <userData>/home.json on this Mac.
  */
 
-import type { ChildProcess } from "node:child_process";
-import { createHash, randomBytes } from "node:crypto";
-import { appendFileSync, mkdirSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { dirname } from "node:path";
-import type {
-  HomeActionDef,
-  HomeDeviceDef,
-  HomeDeviceView,
-  HomePrepareResult,
-  HomeRunResult,
-  HomeSaveResult,
-  HomeSettings,
-  HomeShortcutsResult,
-  HomeStatus,
+import {
+  checkHomeSetup,
+  needsConfirmation,
+  refusedHomeReason,
+  type HomeRunResult,
+  type HomeSaveResult,
+  type HomeSetup,
+  type HomeShortcutsResult,
+  type HomeState,
+  type HomeStatus,
 } from "@agency/contracts";
 import type { Logger } from "../log";
-import { FORBIDDEN, FORBIDDEN_MESSAGE, HomeConfigError, validateHome } from "./config";
-import { listShortcuts, runShortcut, type Exec } from "./shortcuts";
+import {
+  LIST_ARGS,
+  LIST_TIMEOUT_MS,
+  RUN_TIMEOUT_MS,
+  describeRunFailure,
+  parseList,
+  runArgs,
+  type InputFile,
+  type ShortcutsRunner,
+} from "./shortcuts";
 
-export const TICKET_TTL_MS = 2 * 60_000;
 export const MAX_RUNS_PER_MINUTE = 12;
-const MAX_PENDING = 8;
 
-const OFF = "Home control is off. A helper can turn it on in Settings, My day.";
-
-interface Ticket {
-  fingerprint: string;
-  deviceId: string;
-  actionId: string;
-  /** The shortcut and input that were shown, so a later settings change can't swap what runs. */
-  shortcut: string;
-  input: string | undefined;
-  expiresAt: number;
-}
-
-interface Known {
-  state: string | null;
-  fromDevice: boolean;
-  at: number;
-}
+export const EMPTY_SETUP: HomeSetup = { enabled: false, devices: [] };
 
 export interface HomeDeps {
   platform: string;
-  settings: () => HomeSettings;
-  saveSettings: (settings: HomeSettings) => void;
-  exec: Exec;
-  logFile: string | null;
+  /** Where the setup is kept (<userData>/home.json). */
+  file: string;
+  run: ShortcutsRunner;
+  writeInput: (text: string) => Promise<InputFile>;
   log: Logger;
   now?: () => number;
 }
 
-/** "Turn on" + "Bedroom lamp" -> "Turn on: Bedroom lamp" (with a fixed input: "Set to (21): Thermostat"). */
-export function summarize(device: HomeDeviceDef, action: HomeActionDef): string {
-  const what = action.input ? ` (${action.input})` : "";
-  return `${action.label}${what}: ${device.name}`;
+/** The saved setup, checked; anything unreadable or invalid is the empty, switched-off setup. */
+export function loadHomeSetup(file: string): HomeSetup {
+  if (!existsSync(file)) return structuredClone(EMPTY_SETUP);
+  try {
+    const checked = checkHomeSetup(JSON.parse(readFileSync(file, "utf8")));
+    return checked.ok ? checked.setup : structuredClone(EMPTY_SETUP);
+  } catch {
+    return structuredClone(EMPTY_SETUP);
+  }
 }
 
 export class HomeControl {
-  private readonly tickets = new Map<string, Ticket>();
-  private readonly running = new Map<string, ChildProcess | null>();
-  private readonly known = new Map<string, Known>();
+  private setup: HomeSetup;
+  private readonly states: Record<string, HomeState> = {};
+  private running: AbortController | null = null;
   private runs: number[] = [];
-  private generation = 0;
+  private readonly now: () => number;
 
-  constructor(private readonly deps: HomeDeps) {}
-
-  private now(): number {
-    return this.deps.now?.() ?? Date.now();
+  constructor(private readonly deps: HomeDeps) {
+    this.setup = loadHomeSetup(deps.file);
+    this.now = deps.now ?? Date.now;
   }
 
-  get available(): boolean {
+  private get available(): boolean {
     return this.deps.platform === "darwin";
   }
 
-  private view(d: HomeDeviceDef): HomeDeviceView {
-    const k = this.known.get(d.id);
-    return {
-      id: d.id,
-      name: d.name,
-      kind: d.kind,
-      actions: d.actions.map((a) => ({ id: a.id, label: a.label, confirm: a.confirm })),
-      state: k?.state ?? null,
-      stateFromDevice: k?.fromDevice ?? false,
-      stateAt: k?.at ?? null,
-    };
-  }
-
   status(): HomeStatus {
-    const s = this.deps.settings();
-    if (!this.available)
-      return {
-        available: false,
-        reason: "Home control needs the AGENCY Mac app.",
-        enabled: false,
-        devices: [],
-      };
     return {
-      available: true,
-      enabled: s.enabled,
-      devices: s.enabled ? s.devices.map((d) => this.view(d)) : [],
+      available: this.available,
+      ...(this.available
+        ? {}
+        : { reason: "Home control uses Apple Shortcuts, so it needs the Mac app on macOS." }),
+      setup: structuredClone(this.setup),
+      states: { ...this.states },
     };
   }
 
-  settings(): HomeSettings {
-    return structuredClone(this.deps.settings());
-  }
-
-  setSettings(raw: unknown): HomeSaveResult {
-    let next: HomeSettings;
+  save(raw: unknown): HomeSaveResult {
+    const checked = checkHomeSetup(raw);
+    if (!checked.ok) return checked;
     try {
-      next = validateHome(raw);
+      mkdirSync(dirname(this.deps.file), { recursive: true });
+      const tmp = `${this.deps.file}.tmp`;
+      writeFileSync(tmp, JSON.stringify(checked.setup, null, 2), { mode: 0o600 });
+      renameSync(tmp, this.deps.file);
     } catch (err) {
-      if (err instanceof HomeConfigError) return { ok: false, error: err.message };
-      throw err;
+      this.deps.log.warn(`home: couldn't save the setup: ${(err as Error).message}`);
+      return { ok: false, error: "Couldn't save the home setup on this Mac." };
     }
-    this.deps.saveSettings(next);
-    // A changed setup voids anything prepared under the old one.
-    this.tickets.clear();
-    for (const id of [...this.known.keys()])
-      if (!next.devices.some((d) => d.id === id)) this.known.delete(id);
-    this.deps.log.info(`home control ${next.enabled ? "on" : "off"}, ${next.devices.length} devices`);
-    return { ok: true, settings: structuredClone(next) };
+    this.setup = checked.setup;
+    for (const id of Object.keys(this.states))
+      if (!this.setup.devices.some((d) => d.id === id)) delete this.states[id];
+    this.deps.log.info(`home: setup saved (${this.setup.devices.length} devices, on: ${this.setup.enabled})`);
+    return { ok: true, status: this.status() };
   }
 
   async shortcuts(): Promise<HomeShortcutsResult> {
-    if (!this.available) return { ok: false, error: "Shortcuts need the AGENCY Mac app on a Mac." };
-    return listShortcuts(this.deps.exec);
+    if (!this.available) return { ok: false, error: this.status().reason! };
+    const r = await this.deps.run(LIST_ARGS, LIST_TIMEOUT_MS);
+    if (r.code !== 0) return { ok: false, error: "Couldn't list the shortcuts on this Mac." };
+    return { ok: true, names: parseList(r.stdout) };
   }
 
-  /** Run each device's status shortcut (one at a time), keeping what they say. */
-  async refresh(): Promise<HomeStatus> {
-    const s = this.deps.settings();
-    if (!this.available || !s.enabled) return this.status();
-    const gen = this.generation;
-    for (const d of s.devices) {
-      if (!d.statusShortcut || FORBIDDEN.test(d.statusShortcut) || this.running.has(d.id)) continue;
-      if (gen !== this.generation) break;
-      const run = runShortcut(this.deps.exec, d.statusShortcut, undefined);
-      this.running.set(d.id, run.child);
-      const r = await run.done.finally(() => this.running.delete(d.id));
-      if (r.ok && r.output) this.known.set(d.id, { state: r.output, fromDevice: true, at: this.now() });
-    }
-    return this.status();
-  }
-
-  private find(
-    deviceId: unknown,
-    actionId: unknown,
-  ): { device: HomeDeviceDef; action: HomeActionDef } | null {
-    const device = this.deps.settings().devices.find((d) => d.id === deviceId);
+  async run(deviceId: unknown, actionId: unknown, confirmed: unknown): Promise<HomeRunResult> {
+    if (!this.available) return { ok: false, error: this.status().reason! };
+    if (!this.setup.enabled)
+      return {
+        ok: false,
+        error: "Home control is off. A helper can turn it on in Settings, My day and home.",
+      };
+    const device = this.setup.devices.find((d) => d.id === deviceId);
     const action = device?.actions.find((a) => a.id === actionId);
-    return device && action ? { device, action } : null;
-  }
-
-  prepare(deviceId: unknown, actionId: unknown): HomePrepareResult {
-    if (!this.available) return { ok: false, error: "Home control needs the AGENCY Mac app." };
-    if (!this.deps.settings().enabled) return { ok: false, error: OFF };
-    const found = this.find(deviceId, actionId);
-    if (!found)
-      return { ok: false, error: "That device or action isn't set up any more. Nothing was changed." };
-    const { device, action } = found;
-    if ([device.name, action.label, action.shortcut, action.input ?? ""].some((v) => FORBIDDEN.test(v)))
-      return { ok: false, error: FORBIDDEN_MESSAGE };
-    this.prune();
-    const ticket = randomBytes(16).toString("hex");
-    const fingerprint = createHash("sha256")
-      .update(JSON.stringify([ticket, device.id, action.id, action.shortcut, action.input ?? null]))
-      .digest("hex");
-    this.tickets.set(ticket, {
-      fingerprint,
-      deviceId: device.id,
-      actionId: action.id,
-      shortcut: action.shortcut,
-      input: action.input,
-      expiresAt: this.now() + TICKET_TTL_MS,
-    });
-    return {
-      ok: true,
-      ticket,
-      fingerprint,
-      device: device.name,
-      action: action.label,
-      confirm: action.confirm,
-      summary: summarize(device, action),
-    };
-  }
-
-  async run(ticket: unknown, fingerprint: unknown): Promise<HomeRunResult> {
-    const t = typeof ticket === "string" ? this.tickets.get(ticket) : undefined;
-    if (typeof ticket === "string") this.tickets.delete(ticket);
-    if (!t || typeof fingerprint !== "string" || t.fingerprint !== fingerprint)
-      return { ok: false, error: "This doesn't match what you chose, so nothing was changed." };
-    if (this.now() > t.expiresAt)
-      return { ok: false, error: "That choice ran out of time. Nothing was changed." };
-    if (!this.available) return { ok: false, error: "Home control needs the AGENCY Mac app." };
-    if (!this.deps.settings().enabled) return { ok: false, error: OFF };
-    // The setup may have changed since the choice was shown: run only exactly what was shown.
-    const found = this.find(t.deviceId, t.actionId);
-    if (!found || found.action.shortcut !== t.shortcut || found.action.input !== t.input)
-      return { ok: false, error: "The setup for this device changed. Nothing was changed; choose again." };
-    if (FORBIDDEN.test(t.shortcut) || (t.input && FORBIDDEN.test(t.input)))
-      return { ok: false, error: FORBIDDEN_MESSAGE };
-    if (this.running.has(t.deviceId))
-      return { ok: false, error: `Still working on the ${found.device.name}. Wait a moment.` };
+    if (!device || !action) return { ok: false, error: "That isn't one of your devices any more." };
+    const refused = refusedHomeReason(device.name, action.label, action.shortcut, action.input);
+    if (refused) return { ok: false, error: refused };
+    if (needsConfirmation(device, action) && confirmed !== true)
+      return { ok: false, error: `${device.name}: ${action.label} needs your confirmation look first.` };
+    if (this.running) return { ok: false, error: "Another device is still changing. Try again in a moment." };
     const now = this.now();
-    this.runs = this.runs.filter((x) => now - x < 60_000);
+    this.runs = this.runs.filter((t) => now - t < 60_000);
     if (this.runs.length >= MAX_RUNS_PER_MINUTE)
       return { ok: false, error: "That's a lot of changes in a minute. Wait a moment, then try again." };
     this.runs.push(now);
 
-    const gen = this.generation;
-    const run = runShortcut(this.deps.exec, t.shortcut, t.input);
-    this.running.set(t.deviceId, run.child);
-    const r = await run.done.finally(() => this.running.delete(t.deviceId));
-    const summary = summarize(found.device, found.action);
-    let result: HomeRunResult;
-    if (gen !== this.generation)
-      result = { ok: false, error: "Stopped. AGENCY stopped waiting for the shortcut; check the device." };
-    else if (!r.ok) result = { ok: false, error: r.error };
-    else {
-      const state = r.output ?? found.action.label;
-      this.known.set(t.deviceId, { state, fromDevice: r.output !== null, at: this.now() });
-      result = { ok: true, state, summary };
-    }
-    this.record(t, result);
-    return result;
-  }
-
-  cancel(ticket: unknown): void {
-    if (typeof ticket === "string") this.tickets.delete(ticket);
-  }
-
-  /** Stop: end any running shortcut and forget every ticket. */
-  stopAll(): void {
-    this.generation += 1;
-    this.tickets.clear();
-    for (const child of this.running.values()) {
-      try {
-        child?.kill("SIGTERM");
-      } catch {
-        /* already finished */
-      }
-    }
-  }
-
-  /** For tests. */
-  get pending(): number {
-    return this.tickets.size;
-  }
-
-  private prune(): void {
-    const now = this.now();
-    for (const [id, t] of this.tickets) if (now > t.expiresAt) this.tickets.delete(id);
-    while (this.tickets.size >= MAX_PENDING) {
-      const oldest = this.tickets.keys().next().value;
-      if (oldest === undefined) break;
-      this.tickets.delete(oldest);
-    }
-  }
-
-  private record(t: Ticket, result: HomeRunResult): void {
-    const line = {
-      at: new Date(this.now()).toISOString(),
-      device: t.deviceId,
-      action: t.actionId,
-      ok: result.ok,
-      ...(result.ok ? {} : { error: result.error }),
-    };
-    this.deps.log.info(`home ${t.deviceId}/${t.actionId}: ${result.ok ? "ok" : "failed"}`);
-    if (!this.deps.logFile) return;
+    const controller = new AbortController();
+    this.running = controller;
+    let input: InputFile | null = null;
     try {
-      mkdirSync(dirname(this.deps.logFile), { recursive: true });
-      appendFileSync(this.deps.logFile, JSON.stringify(line) + "\n");
+      if (action.input !== undefined) input = await this.deps.writeInput(action.input);
+      const r = await this.deps.run(
+        runArgs(action.shortcut, input?.path ?? null),
+        RUN_TIMEOUT_MS,
+        controller.signal,
+      );
+      if (r.code !== 0 || r.aborted) {
+        this.deps.log.warn(
+          `home: ${device.id}/${action.id} failed (code ${r.code}${r.timedOut ? ", timed out" : ""})`,
+        );
+        return { ok: false, error: describeRunFailure(r, action.shortcut) };
+      }
+      const state = action.state ?? action.label;
+      this.states[device.id] = { state, at: this.now() };
+      this.deps.log.info(`home: ${device.id}/${action.id} ran`);
+      return { ok: true, state };
     } catch (err) {
-      this.deps.log.warn(`could not write the home log: ${(err as Error).message}`);
+      this.deps.log.warn(`home: ${device.id}/${action.id}: ${(err as Error).message}`);
+      return { ok: false, error: `"${action.shortcut}" couldn't start. Nothing more was tried.` };
+    } finally {
+      this.running = null;
+      await input?.remove().catch(() => undefined);
     }
+  }
+
+  /** Stop: abort a shortcut that is still running. */
+  stopAll(): void {
+    this.running?.abort();
   }
 }
 
-/** The IPC operations the shell may call. */
-export function homeCall(home: HomeControl, op: string, args: unknown[]): Promise<unknown> | unknown {
-  if (op === "status") return home.status();
-  if (op === "refresh") return home.refresh();
-  if (op === "settings") return home.settings();
-  if (op === "setSettings") return home.setSettings(args[0]);
+/** The shell's calls, by operation name (IPC.home). */
+export function homeCall(home: HomeControl, op: string, args: unknown[]): Promise<unknown> {
+  if (op === "status") return Promise.resolve(home.status());
+  if (op === "save") return Promise.resolve(home.save(args[0]));
   if (op === "shortcuts") return home.shortcuts();
-  if (op === "prepare") return home.prepare(args[0], args[1]);
-  if (op === "run") return home.run(args[0], args[1]);
-  if (op === "cancel") {
-    home.cancel(args[0]);
-    return undefined;
-  }
-  throw new Error("unknown home operation");
+  if (op === "run") return home.run(args[0], args[1], args[2]);
+  return Promise.reject(new Error("unknown home operation"));
 }

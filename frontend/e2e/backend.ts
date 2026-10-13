@@ -4,7 +4,7 @@ import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 
-/** AGENCY_E2E_BACKEND_PORT lets several checkouts run end-to-end tests at once. */
+// AGENCY_E2E_BACKEND_PORT lets two checkouts run their end-to-end tests at the same time.
 const PORT = process.env.AGENCY_E2E_BACKEND_PORT ?? "8765";
 export const BACKEND = `http://127.0.0.1:${PORT}`;
 const backendDir = resolve(import.meta.dirname, "..", "..", "backend");
@@ -31,7 +31,7 @@ export class Coordinator {
           AGENCY_REASONING: "deterministic",
           AGENCY_FRONTEND_DIST: "/nonexistent",
           AGENCY_DEMO_CONTROLS: "1", // the tests use presenter faults and reset
-          // On another preview port (AGENCY_E2E_PORT), the coordinator must accept changes from it.
+          // The interface on another port (AGENCY_E2E_PORT) is one of AGENCY's own pages too.
           ...(process.env.AGENCY_E2E_PORT
             ? { AGENCY_ALLOWED_ORIGINS: `http://127.0.0.1:${process.env.AGENCY_E2E_PORT}` }
             : {}),
