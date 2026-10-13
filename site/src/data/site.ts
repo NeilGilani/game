@@ -30,7 +30,7 @@ export const REQUIREMENTS = {
   chips: "A Mac with Apple silicon (M1 or later) or an Intel processor",
   camera: "A webcam: the one built into a MacBook or iMac works",
   browser: "Google Chrome, for eye control on web pages (other apps work without it)",
-  ai: "A Google Gemini API key for tasks the AI agent plans itself. Without one, AGENCY runs its built-in tasks only.",
+  ai: "Nothing extra: the AI runs on AGENCY Cloud, so you don't need your own key. Without internet, AGENCY runs its built-in tasks.",
 };
 
 /**
