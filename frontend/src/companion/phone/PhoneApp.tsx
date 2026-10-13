@@ -102,6 +102,18 @@ function PairScreen({ initialCode, onPaired }: { initialCode: string; onPaired: 
   const [name, setName] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  // Scanning a new code while this page is open only changes the address after #: take the new code.
+  useEffect(() => {
+    const onHash = () => {
+      const next = codeFromHash(window.location.hash);
+      if (!next) return;
+      setCode(next);
+      setError(null);
+      history.replaceState(null, "", window.location.pathname);
+    };
+    window.addEventListener("hashchange", onHash);
+    return () => window.removeEventListener("hashchange", onHash);
+  }, []);
   const submit = async () => {
     setError(null);
     if (!/^\d{6}$/.test(code)) return setError("The code is the six numbers on the Mac's screen.");
@@ -307,9 +319,13 @@ export function HomeScreen() {
               ? "Camera: not known"
               : home.camera.ok
                 ? "Camera OK"
-                : home.camera.state !== "on"
-                  ? "Camera is off"
-                  : `Camera can't see ${name}'s eyes`
+                : home.camera.state === "running"
+                  ? `Camera can't see ${name}'s eyes`
+                  : home.camera.state === "error"
+                    ? "The camera has a problem"
+                    : home.camera.state === "off" || !home.camera.state
+                      ? "Camera is off"
+                      : "Camera is starting"
           }
         />
         <StatusRow

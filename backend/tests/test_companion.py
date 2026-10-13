@@ -111,6 +111,8 @@ def test_five_wrong_codes_cancel_the_code(c: C) -> None:
         res = c.phone().post("/phone/api/pair", json={"code": wrong, "name": "Mallory"})
         assert res.status_code == 403
         assert ("cancelled" in res.json()["detail"]) == (i == 4)
+        if i < 4:
+            assert res.json()["detail"] == f"That code is wrong. {4 - i} {'try' if i == 3 else 'tries'} left."
     # Even the right code is now refused.
     assert c.phone().post("/phone/api/pair", json={"code": code, "name": "Jordan"}).status_code == 403
 
@@ -431,11 +433,11 @@ def test_home_shows_running_camera_and_battery(c: C) -> None:
     quiet = phone.get("/phone/api/home").json()
     assert quiet["running"] is False and quiet["camera"]["ok"] is False and quiet["battery"]["known"] is False
     c.rt.service.now = real_now
-    c.mac.post("/api/lifeline/heartbeat", json={"signal_ready": True, "camera": "on", "face_visible": True})
+    c.mac.post("/api/lifeline/heartbeat", json={"signal_ready": True, "camera": "running", "face_visible": True})
     c.mac.post("/api/companion/presence", json={"battery_level": 0.82, "charging": True})
     home = phone.get("/phone/api/home").json()
     assert home["running"] is True
-    assert home["camera"] == {"state": "on", "ok": True, "face_visible": True, "eye_signal": True}
+    assert home["camera"] == {"state": "running", "ok": True, "face_visible": True, "eye_signal": True}
     assert home["battery"] == {"level": 0.82, "charging": True, "known": True}
     assert home["person"] == "Riley"
 

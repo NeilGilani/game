@@ -274,6 +274,7 @@ function ContactsSection({ setup, reload }: SectionProps) {
           return { ...c, id, name: c.name.trim(), address: c.address.replace(/\s+/g, "") };
         });
         const r = await phoneApi.change("contacts", { contacts });
+        setList(contacts); // keep the ids just given to new people, so the next save edits them
         await reload();
         return r;
       }}

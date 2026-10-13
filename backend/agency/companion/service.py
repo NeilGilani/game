@@ -147,7 +147,7 @@ class CompanionService:
             if left <= 0:
                 self._log(None, name, "device", f"A phone typed a wrong pairing code {CODE_TRIES} times. The code was cancelled.")
                 raise CompanionError("That code is wrong, and it has now been cancelled. Show a new code on the Mac.", 403)
-            raise CompanionError(f"That code is wrong. {_plural(left, 'try')} left.", 403)
+            raise CompanionError(f"That code is wrong. {left} {'try' if left == 1 else 'tries'} left.", 403)
         active = self.db.query("SELECT id FROM companion_devices WHERE revoked_at IS NULL")
         if len(active) >= MAX_DEVICES:
             raise CompanionError(f"{MAX_DEVICES} phones are already paired. Remove one on the Mac first.")
@@ -562,7 +562,7 @@ class CompanionService:
             "last_heard_at": monitor.get("last_heartbeat_at"),
             "camera": {
                 "state": camera,
-                "ok": bool(running and camera == "on" and beat.get("face_visible")),
+                "ok": bool(running and camera == "running" and beat.get("face_visible")),
                 "face_visible": bool(beat.get("face_visible")) if running else None,
                 "eye_signal": bool(beat.get("signal_ready")) if running else None,
             },

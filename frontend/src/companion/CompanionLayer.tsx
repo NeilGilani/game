@@ -73,7 +73,8 @@ function CompanionOnMac() {
   const [busy, setBusy] = useState(false);
   const [later, setLater] = useState<Set<number>>(new Set());
   const applying = useRef(new Set<number>());
-  const lastChange = useRef<number | null>(null);
+  const since = useRef<number | null>(null);
+  const announced = useRef(new Set<number>());
   const lastSnapshot = useRef("");
   const enabled = !!status?.enabled;
 
@@ -85,34 +86,42 @@ function CompanionOnMac() {
         setInbox([]);
         return;
       }
-      const [open, messages, log] = await Promise.all([
+      const [open, messages, firstLog] = await Promise.all([
         companionApi.open(),
         companionApi.inbox(),
         companionApi.changes(),
       ]);
       setInbox(messages);
+      let applied = false;
       for (const change of open) {
         if (change.status !== "waiting_mac" || applying.current.has(change.id)) continue;
+        applied = true;
         applying.current.add(change.id);
         const result = await applyChange(change, macParts());
         await companionApi.applied(change.id, result.ok, result.reason).catch(() => undefined);
         lastSnapshot.current = ""; // send the new state to phones at once
       }
-      // Show each change from a phone once, as it lands (not the history from before this screen started).
-      const newest = log[0]?.id ?? 0;
-      if (lastChange.current === null) {
-        lastChange.current = newest;
-      } else if (newest > lastChange.current) {
-        const fresh = log.filter(
-          (c) => c.id > (lastChange.current ?? 0) && c.device_id && c.status === "applied",
+      // Show each change from a phone once, when it has really happened (not the history from before this screen
+      // started). A change applied here only counts after the Mac has applied it, so read the log afterwards.
+      if (since.current === null)
+        since.current = Math.max(
+          0,
+          ...firstLog.filter((c) => !c.status.startsWith("waiting")).map((c) => c.id),
         );
-        lastChange.current = newest;
-        const latest = fresh[0];
-        if (latest) {
-          const text = noticeFor(latest);
-          setNotice(text);
-          announce(text);
-        }
+      const log = applied ? await companionApi.changes() : firstLog;
+      const fresh = log.filter(
+        (c) =>
+          c.id > (since.current ?? 0) &&
+          c.device_id &&
+          c.status === "applied" &&
+          !announced.current.has(c.id),
+      );
+      for (const c of fresh) announced.current.add(c.id);
+      const latest = fresh[0];
+      if (latest) {
+        const text = noticeFor(latest);
+        setNotice(text);
+        announce(text);
       }
     } catch {
       /* the coordinator is away: Lifeline's own banner says so; try again next time */
