@@ -168,6 +168,75 @@ describe("GeminiModel (Interactions API)", () => {
     }
   });
 
+  it("hands a busy model's turn to the next model at once, and the session stays on it", async () => {
+    const seen: string[] = [];
+    const model = new GeminiModel({
+      transport: async (r) => {
+        seen.push(r.model);
+        if (r.model === "gemini-3.8-flash") throw Object.assign(new Error("high demand"), { status: 503 });
+        if (r.model === "gemini-3.7-flash") throw Object.assign(new Error("rate limited"), { status: 429 });
+        return { status: "completed", steps: [] };
+      },
+    });
+    const s = model.start(opts());
+    await s.next("Summarise this page");
+    await s.next("And the next one");
+    expect(seen).toEqual([
+      "gemini-3.8-flash",
+      "gemini-3.7-flash",
+      "gemini-3.5-flash-lite",
+      "gemini-3.5-flash-lite",
+    ]);
+  });
+
+  it("never tries another model for a rejected key, a refused request or Stop", async () => {
+    for (const status of [400, 401, 403, 404]) {
+      const seen: string[] = [];
+      const model = new GeminiModel({
+        transport: async (r) => {
+          seen.push(r.model);
+          throw Object.assign(new Error("no"), { status });
+        },
+      });
+      await model
+        .start(opts())
+        .next("x")
+        .catch(() => undefined);
+      expect(seen).toEqual(["gemini-3.8-flash"]);
+    }
+    const stop = new AbortController();
+    const seen: string[] = [];
+    const model = new GeminiModel({
+      transport: async (r) => {
+        seen.push(r.model);
+        stop.abort();
+        throw Object.assign(new Error("aborted"), { name: "AbortError" });
+      },
+    });
+    await model
+      .start({ ...opts(), signal: stop.signal })
+      .next("x")
+      .catch(() => undefined);
+    expect(seen).toEqual(["gemini-3.8-flash"]);
+  });
+
+  it("says what failed when every model is busy", async () => {
+    const seen: string[] = [];
+    const model = new GeminiModel({
+      transport: async (r) => {
+        seen.push(r.model);
+        throw Object.assign(new Error("high demand"), { status: 503 });
+      },
+    });
+    const e = await model
+      .start(opts())
+      .next("x")
+      .catch((x: unknown) => x);
+    expect(seen).toHaveLength(3);
+    expect((e as ModelUnavailable).message).toMatch(/error \(503\)/);
+    expect((e as ModelUnavailable).retryable).toBe(true);
+  });
+
   it("translates Computer Use actions; unsupported ones are never faked", () => {
     expect(geminiComputerAction("type", { text: "hi", press_enter: true })).toEqual({
       kind: "type",

@@ -59,9 +59,13 @@ export interface GeminiOptions {
   transport?: GeminiTransport;
   /** How the model is reached, for the status: AGENCY's relay or a key of your own. */
   via?: "agency-cloud" | "own-key";
+  /** Tried in order when the model above is busy (rate limited, overloaded, unreachable). */
+  fallbackModels?: string[];
 }
 
 export const GEMINI_DEFAULT_MODEL = "gemini-3.8-flash";
+/** Gemini's models are often overloaded at different times; each of these also runs computer use. */
+export const GEMINI_FALLBACK_MODELS = ["gemini-3.7-flash", "gemini-3.5-flash-lite"];
 
 /**
  * Stateless mode resends the whole history every turn, and Gemini Computer Use returns a screenshot with every
@@ -120,6 +124,7 @@ const COMPUTER_ACTIONS = new Set([
 export class GeminiModel implements AgentModel {
   readonly provider = "gemini" as const;
   readonly model: string;
+  private readonly models: string[];
   readonly screenshotEveryComputerAction = true;
   readonly via: "agency-cloud" | "own-key";
   private readonly thinkingLevel: GeminiThinkingLevel;
@@ -129,6 +134,7 @@ export class GeminiModel implements AgentModel {
 
   constructor(opts: GeminiOptions) {
     this.model = opts.model ?? GEMINI_DEFAULT_MODEL;
+    this.models = [...new Set([this.model, ...(opts.fallbackModels ?? GEMINI_FALLBACK_MODELS)])];
     this.via = opts.via ?? "own-key";
     this.keepScreenshots = Math.max(1, opts.keepScreenshots ?? GEMINI_KEEP_SCREENSHOTS);
     // Low by default: each turn of a desktop task must come back in seconds, not tens of seconds.
@@ -143,7 +149,7 @@ export class GeminiModel implements AgentModel {
       this.transport = async (request, signal) =>
         (await client.interactions.create(request, {
           timeout,
-          maxRetries: 2,
+          maxRetries: 0, // a busy model hands over to the next one instead (see `busy`)
           fetchOptions: { signal },
         })) as GeminiResponse;
     }
@@ -166,6 +172,8 @@ export class GeminiModel implements AgentModel {
     }
     const custom = new Set(options.tools.map((t) => t.name));
     const history: GeminiStep[] = [];
+    // A session that had to move to a backup model stays on it: its history carries that model's steps.
+    let current = 0;
 
     return {
       next: async (input) => {
@@ -176,7 +184,7 @@ export class GeminiModel implements AgentModel {
           dropOldScreenshots(history, this.keepScreenshots);
         }
         const request: GeminiRequest = {
-          model: this.model,
+          model: this.models[current] ?? this.model,
           store: false,
           system_instruction: options.system,
           tools,
@@ -187,11 +195,19 @@ export class GeminiModel implements AgentModel {
           },
           input: [...history],
         };
-        let res: GeminiResponse;
-        try {
-          res = await this.transport(request, options.signal);
-        } catch (e) {
-          throw toUnavailable(e);
+        let res: GeminiResponse | undefined;
+        for (;;) {
+          try {
+            res = await this.transport(
+              { ...request, model: this.models[current] ?? this.model },
+              options.signal,
+            );
+            break;
+          } catch (e) {
+            const err = toUnavailable(e);
+            if (!busy(e) || current >= this.models.length - 1 || options.signal.aborted) throw err;
+            current += 1; // busy: the next model answers at once instead of a retry
+          }
         }
         const turn = this.parse(res, custom, options.computer);
         // Keep every model step exactly as received (thought signatures included); drop any echo of our input.
@@ -338,6 +354,16 @@ export function geminiComputerAction(name: string, args: Record<string, unknown>
     default:
       return { kind: "unsupported", name };
   }
+}
+
+/** Rate limited, overloaded or unreachable: another model may well answer. A rejected key or request won't. */
+function busy(error: unknown): boolean {
+  if (error instanceof Error && (error.name === "AbortError" || /abort/i.test(error.name))) return false;
+  const status =
+    typeof (error as { status?: unknown })?.status === "number" ? (error as { status: number }).status : null;
+  return status === null
+    ? !(error instanceof ModelUnavailable) || error.retryable
+    : status === 429 || status >= 500;
 }
 
 function toUnavailable(error: unknown): Error {
