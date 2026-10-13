@@ -43,6 +43,9 @@ import { GamesRoute } from "./games/GamesRoute";
 import { BrowserLink } from "./browser/BrowserLink";
 import { BrowserScreen } from "./browser/BrowserScreen";
 import { BrowserSettings } from "./browser/BrowserSettings";
+import { DailyNudge } from "./daily/DayCard";
+import { DailyRoute } from "./daily/DailyRoute";
+import { DaySettings } from "./daily/DaySettings";
 
 function onboarded(): boolean {
   try {
@@ -62,6 +65,7 @@ function Screen({ route }: { route: Route }) {
   if (a === "games") return <GamesRoute key={b ?? "hub"} segments={route.segments.slice(1)} />;
   if (a === "memory") return <MemoryExplorer segments={route.segments.slice(1)} />;
   if (a === "errands") return <Errands />;
+  if (a === "day") return <DailyRoute segments={route.segments.slice(1)} />;
   if (a === "internet") return <BrowserScreen route={route} />;
   if (a === "onboarding") return <Onboarding />;
   if (a === "settings" && !b) return <SettingsHub />;
@@ -74,6 +78,7 @@ function Screen({ route }: { route: Route }) {
   if (a === "settings" && b === "connection") return <SettingsView />;
   if (a === "settings" && b === "papers") return <PapersSettings />;
   if (a === "settings" && b === "browser") return <BrowserSettings />;
+  if (a === "settings" && b === "daily") return <DaySettings />;
   if (a === "papers" && b) return <PapersScreen key={b} action={b} />;
   if (a === "new" && !b) return <NewTask />;
   if (a === "new" && b === "phrases") return <Phrases />;
@@ -186,6 +191,7 @@ function Shell() {
       <LifelineOverlay />
       <InputLayer />
       <GazeAssist />
+      <DailyNudge />
     </div>
   );
 }

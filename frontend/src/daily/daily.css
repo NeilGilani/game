@@ -1,0 +1,268 @@
+/*
+ * My day (#/day) and its helper settings. One screen, never scrolled: tabs, a short heading, the content, and the
+ * bar with Home and paging always at the bottom. Targets are at least 96 px with 24 px between them.
+ */
+
+.day {
+  --day-target: 96px;
+  --day-gap: 24px;
+  flex: 1;
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr) auto;
+  gap: var(--day-gap);
+  max-width: 1400px;
+  width: 100%;
+  margin: 0 auto;
+  min-height: 0;
+}
+
+.day-tabs {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--day-gap);
+}
+.day-tab {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-height: var(--day-target);
+  border-radius: var(--radius);
+  border: 2px solid var(--line);
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+  font-size: 1.15rem;
+  font-weight: 650;
+  cursor: pointer;
+}
+.day-tab[aria-current="page"] {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.day-head h1 {
+  margin: 0;
+  font-size: 1.75rem;
+  line-height: 1.2;
+}
+.day-head h1:focus {
+  outline: none;
+}
+.day-sub {
+  margin: 6px 0 0;
+  color: var(--ink-2);
+  max-width: 80ch;
+}
+
+.day-body {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-height: 0;
+}
+.day-body > .flow-options {
+  flex: 1;
+}
+
+.day-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--day-gap);
+  flex-wrap: wrap;
+}
+.day-bar:empty {
+  display: none;
+}
+.day-bar .btn-xl {
+  min-height: var(--day-target);
+  min-width: 180px;
+}
+
+/* A day's list: when, what, and big actions on the same row. */
+.day-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--day-gap);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.day-row {
+  display: grid;
+  grid-template-columns: 130px minmax(0, 1fr) repeat(3, minmax(150px, auto));
+  align-items: center;
+  column-gap: var(--day-gap);
+  min-height: var(--day-target);
+  padding: 0 0 0 20px;
+  border-radius: var(--radius-lg);
+  border: 2px solid var(--line);
+  background: var(--surface);
+}
+.day-row[data-state="due"] {
+  border-color: color-mix(in srgb, var(--accent) 60%, var(--line));
+  background: var(--accent-soft);
+}
+.day-row[data-state="done"] {
+  opacity: 0.7;
+}
+.day-row[data-state="done"] .day-title {
+  text-decoration: line-through;
+}
+.day-when {
+  font-size: 1.15rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.day-what {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.day-title {
+  font-size: 1.2rem;
+  font-weight: 650;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.day-state {
+  color: var(--ink-2);
+  font-size: 0.95rem;
+}
+.day-act {
+  min-height: var(--day-target);
+  min-width: 150px;
+  justify-content: center;
+}
+
+.day-empty {
+  font-size: 1.1rem;
+  max-width: 70ch;
+}
+
+.day-practice {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  color: var(--ink-2);
+}
+
+.day-device .choice-sub {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Confirming: the exact action, then No on the left and Yes on the far right. */
+.day-confirm {
+  display: flex;
+  flex-direction: column;
+  gap: var(--day-gap);
+}
+.day-big {
+  margin: 0;
+  font-size: 1.35rem;
+  line-height: 1.4;
+  max-width: 70ch;
+}
+.day-quote {
+  margin: 0;
+  padding: 16px 20px;
+  border-left: 6px solid var(--accent);
+  border-radius: var(--radius);
+  background: var(--surface-2);
+  font-size: 1.2rem;
+  white-space: pre-line;
+  max-width: 70ch;
+}
+.day-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--day-gap);
+}
+.day-actions .btn-xl {
+  min-height: var(--day-target);
+  min-width: 220px;
+}
+
+/* Home's "My day" card sits among the usuals. */
+.usual.day-card {
+  background: var(--surface);
+}
+
+/* Helper settings (keyboard and mouse; the page may scroll). */
+.day-setup-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.day-setup-list > li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 16px;
+  border-radius: var(--radius);
+  background: var(--surface-2);
+}
+.day-setup-form,
+.day-setup-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 12px;
+}
+.day-setup-device {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  border: 2px solid var(--line);
+  border-radius: var(--radius);
+  padding: 12px 16px 16px;
+}
+.day-setup-device legend {
+  font-weight: 700;
+  padding: 0 6px;
+}
+.day-warning {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  margin: 0;
+  padding: 12px 16px;
+  border-radius: var(--radius);
+  background: var(--warn-soft);
+}
+
+@media (max-width: 1100px) {
+  .day-row {
+    grid-template-columns: 100px minmax(0, 1fr);
+    row-gap: 12px;
+    padding: 12px 16px;
+  }
+  .day-act {
+    grid-column: span 1;
+  }
+}
+@media (max-width: 650px) {
+  .day-tabs {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .day-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+:root[data-theme="contrast"] :is(.day-tab, .day-row, .day-quote, .day-setup-device) {
+  background: #000;
+  border-color: #fff;
+  color: #fff;
+}
+:root[data-theme="contrast"] .day-tab[aria-current="page"],
+:root[data-theme="contrast"] .day-row[data-state="due"] {
+  border-width: 4px;
+}

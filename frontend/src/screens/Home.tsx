@@ -4,6 +4,7 @@
  * screen at 1280 × 800 without scrolling.
  */
 import { useEffect, useState } from "react";
+import { DayCard } from "../daily/DayCard";
 import { AppIcon, BrandMark, Icon } from "../components/Icon";
 import { useLifeline } from "../lifeline/LifelineProvider";
 import { useAgent } from "../state/agent";
@@ -138,8 +139,8 @@ export function Home() {
     navigate(tile.path);
   };
 
-  // Setup, Continue and suggestions share three slots, including while memory loads.
-  const fixed = (resume ? 1 : 0) + (needsEyeSetup(input) ? 1 : 0);
+  // Setup, Continue, My day and suggestions share three slots, including while memory loads.
+  const fixed = (resume ? 1 : 0) + (needsEyeSetup(input) ? 1 : 0) + 1;
   const slots = (usuals ?? []).slice(0, Math.max(0, USUALS - fixed));
 
   return (
@@ -187,6 +188,7 @@ export function Home() {
               </span>
             </button>
           )}
+          <DayCard />
           {usuals === null
             ? Array.from({ length: Math.max(0, USUALS - fixed) }, (_, i) => (
                 <div key={i} className="usual usual-placeholder" aria-hidden />

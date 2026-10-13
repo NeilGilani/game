@@ -187,6 +187,13 @@ export function HelperSettings() {
       path: "/settings/papers",
     },
     {
+      id: "daily",
+      label: "My day and home",
+      sub: "Schedule, care reminders, home devices, telling a carer",
+      icon: "calendar",
+      path: "/settings/daily",
+    },
+    {
       id: "cases",
       label: "Cases and approvals",
       sub: "Every errand and decision",
