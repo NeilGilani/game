@@ -148,6 +148,14 @@ With `AGENCY_RELAY=off` and no key it says **Demo mode: built-in plans**. An Ant
   their own window (with QR codes so a real phone can answer when the coordinator is on the network), and optional
   real SMS and voice calls through Twilio.
 
+**The caregiver's phone companion** ([docs/CAREGIVER_COMPANION.md](docs/CAREGIVER_COMPANION.md))
+- A carer pairs their phone by scanning a QR code on the person's screen (home Wi-Fi only, no app, a key per phone
+  that the Mac can remove). From the phone they set up Lifeline contacts, safety settings, Talk phrases, favourite
+  sites, details for forms and the Papers folder; see that AGENCY is running, the camera and the battery; get
+  Lifeline alerts while the page is open; send a message or photo that appears big on the person's screen; and leave
+  hand-over notes. Every change shows on the person's screen with who made it, and anything that makes them less
+  safe, or adds a real phone number, waits for the person to allow it.
+
 **Flagship scenario:** arrange a wheelchair repair before Friday, check whether funding help may be available
 (without ever claiming coverage), and notify the caregiver, including a deliberate failure and recovery.
 Three more goals work end to end: reschedule an appointment (asks which one mid-workflow), prepare/submit/track an

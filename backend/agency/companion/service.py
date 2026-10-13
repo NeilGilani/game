@@ -543,7 +543,7 @@ class CompanionService:
                 "status": open_alert["status"],
                 "is_test": open_alert["is_test"],
                 "what": open_alert["what"],
-                "situation_label": open_alert.get("situation_label"),
+                "situation_label": open_alert.get("situation_label") if open_alert.get("situation") else None,
                 "urgency": open_alert.get("urgency"),
                 "acknowledged_by": open_alert.get("acknowledged_by"),
                 "respond_path": self._respond_path(open_alert["id"], device.get("contact_id")),

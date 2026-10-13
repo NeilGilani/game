@@ -4,6 +4,7 @@
  * context for the carer. Pairing goes through the real QR link; alerts through Lifeline's real response page.
  */
 import { resolve } from "node:path";
+import AxeBuilder from "@axe-core/playwright";
 import { type Browser, type BrowserContext, type Page, expect, test } from "@playwright/test";
 import { Coordinator } from "./backend";
 
@@ -292,3 +293,78 @@ test("security: unpaired phones see nothing, wrong codes and bursts are refused,
   await expect(phone.request.get("/phone/api/home")).rejects.toThrow();
   await ctx.close();
 });
+
+test("axe: the Caregiver phones screen and every phone screen have no WCAG A/AA violations", async ({
+  page: mac,
+  browser,
+}) => {
+  const tags = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"];
+  const violations = async (page: Page) =>
+    (await new AxeBuilder({ page }).withTags(tags).analyze()).violations.map(
+      (v) =>
+        `${v.id}: ${v.nodes
+          .map((n) => n.target.join(" "))
+          .slice(0, 3)
+          .join(" | ")}`,
+    );
+  const { link } = await showCode(mac);
+  for (const scheme of ["light", "dark"] as const) {
+    const ctx = await browser.newContext({
+      baseURL: PHONE,
+      viewport: { width: 390, height: 844 },
+      isMobile: true,
+      hasTouch: true,
+      colorScheme: scheme,
+    });
+    const phone = await ctx.newPage();
+    if (scheme === "light") {
+      await phone.goto(link);
+      await expect(phone.getByRole("heading", { name: "Pair with AGENCY" })).toBeVisible();
+      expect.soft(await violations(phone), "pair").toEqual([]);
+      await phone.getByLabel("Your name").fill("Jordan");
+      await phone.getByRole("button", { name: "Pair this phone" }).tap();
+      await expect(phone.getByRole("heading", { name: "Paired" })).toBeVisible();
+      expect.soft(await violations(phone), "link").toEqual([]);
+      await phone.getByRole("button", { name: "I'm Jordan" }).tap();
+      const token = await phone.evaluate(() => localStorage.getItem("agency.companion.token"));
+      await ctx.addInitScript((t) => localStorage.setItem("agency.companion.token", t ?? ""), token);
+    } else {
+      const token = await coordinatorToken(mac);
+      await ctx.addInitScript((t) => localStorage.setItem("agency.companion.token", t), token);
+    }
+    for (const path of [
+      "/#/home",
+      "/#/send",
+      "/#/notes",
+      "/#/setup",
+      "/#/setup/contacts",
+      "/#/setup/safety",
+      "/#/setup/phrases",
+      "/#/setup/sites",
+      "/#/setup/details",
+      "/#/setup/papers",
+    ]) {
+      await phone.goto(path);
+      await phone.waitForTimeout(700);
+      await expect(phone.locator("h1").first()).toBeVisible();
+      expect.soft(await violations(phone), `${scheme} ${path}`).toEqual([]);
+    }
+    await ctx.close();
+  }
+  // The Mac's own screen, with a phone paired and the change log filled in.
+  await mac.goto("/#/settings/companion");
+  await expect(mac.getByText(/gets Lifeline alerts as Jordan/)).toBeVisible();
+  expect.soft(await violations(mac), "mac settings").toEqual([]);
+});
+
+/** The dark-mode run reuses the paired phone: its key lives in the light context, so pair a second phone here. */
+async function coordinatorToken(mac: Page): Promise<string> {
+  await mac.goto("/#/settings/companion");
+  const code = await coordinator.api<{ code: string }>("/api/companion/pair", { method: "POST", body: "{}" });
+  const r = await fetch(`${PHONE}/phone/api/pair`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ code: code.code, name: "Morgan" }),
+  });
+  return ((await r.json()) as { token: string }).token;
+}

@@ -451,6 +451,7 @@ def test_the_phone_gets_its_own_alert_link_once_its_person_is_asked(c: C) -> Non
     c.mac.post(f"/api/lifeline/alerts/{alert_id}/now")
     home = c.phone(token=jordan).get("/phone/api/home").json()
     assert home["alert"]["status"] == "active"
+    assert home["alert"]["situation_label"] is None  # the person hasn't said what's wrong yet
     path = home["alert"]["respond_path"]
     assert path and path.startswith("/respond/")
     # Morgan is the next level: not asked yet, so no link.
