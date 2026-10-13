@@ -58,7 +58,7 @@ Also: `frontend/e2e/backend.ts` and `playwright.config.ts` take `AGENCY_E2E_PORT
 | frontend `npx eslint .` | clean |
 | frontend `npx prettier --check src tests e2e` | clean |
 | frontend e2e `e2e/daily.spec.ts` | 9 passed (practice mode and a real coordinator; fit at 1280 × 800 and 1440 × 900) |
-| frontend e2e, whole suite | FULL_SUITE_RESULT |
+| frontend e2e, whole suite | 71 passed, 3 failed, 3 skipped (12.9 min). The 3 failures (`camera-denied.spec.ts`, `eyes.spec.ts` "the drawn cursor", `gaze-ai.spec.ts` "sharp tracking") fail the same way on unmodified `main` (df6c814) on this Mac, so they are not from this branch |
 | backend `pytest -q` | 264 passed (14 new in `tests/test_daily.py`) |
 | backend `ruff check .`, `ruff format --check .`, `mypy agency` | clean |
 | `os/contracts` typecheck | passes |
