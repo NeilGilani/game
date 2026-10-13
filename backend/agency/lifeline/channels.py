@@ -44,7 +44,7 @@ class Outgoing:
     contact: Contact
     body: str
     voice_text: str
-    purpose: str  # "alert" | "stand_down" | "all_clear"
+    purpose: str  # "alert" | "stand_down" | "all_clear" | "update" | "daily" (a non-urgent request: text only)
     primary: bool  # contact belongs to the first escalation level
 
 
