@@ -27,6 +27,9 @@ from pydantic import BaseModel, Field
 
 from . import __version__
 from .assist import router as assist_router
+from .companion import CompanionError
+from .companion import build_router as companion_router
+from .companion.runtime import CompanionRuntime
 from .config import Settings, load_settings
 from .db import Database, dumps, loads, utcnow
 from .engine.engine import Engine, EngineError
@@ -150,6 +153,7 @@ class AppState:
         self.synapse: SynapseRouter = layer.router if layer else SynapseRouter(monitor=self.network)
         self.started_at = utcnow()
         self.held_on_start: list[str] = []
+        self.companion: CompanionRuntime
 
 
 def create_app(
@@ -196,6 +200,8 @@ def create_app(
         state = AppState(settings, db, engine, CaseRunner(engine, inline=inline_runner), chosen, lifeline, network)
         state.held_on_start = engine.reconcile_on_startup()
         app.state.agency = state
+        state.companion = CompanionRuntime(db, lifeline, state, settings.frontend_dist)
+        await state.companion.on_startup()
         supervisor = asyncio.create_task(lifeline.run(settings.lifeline_tick_s)) if settings.lifeline_loop else None
 
         retries: set[asyncio.Task[Any]] = set()  # held until done, so a retry can't be garbage-collected midway
@@ -225,6 +231,7 @@ def create_app(
                     task.cancel()
                     with contextlib.suppress(asyncio.CancelledError):
                         await task
+            await state.companion.shutdown()
             await state.runner.shutdown()
             db.close()
 
@@ -261,6 +268,10 @@ def create_app(
     @app.exception_handler(LifelineError)
     async def lifeline_error(_: Request, exc: LifelineError) -> JSONResponse:
         return JSONResponse({"detail": str(exc)}, status_code=409)
+
+    @app.exception_handler(CompanionError)
+    async def companion_error(_: Request, exc: CompanionError) -> JSONResponse:
+        return JSONResponse({"detail": str(exc)}, status_code=exc.status)
 
     @app.exception_handler(ServiceError)
     async def service_error(_: Request, exc: ServiceError) -> JSONResponse:
@@ -727,6 +738,7 @@ def create_app(
     app.include_router(respond_pages)
     app.include_router(memory_router())
     app.include_router(assist_router())
+    app.include_router(companion_router())
 
     if settings.frontend_dist and (settings.frontend_dist / "index.html").is_file():
         app.mount("/", StaticFiles(directory=settings.frontend_dist, html=True), name="frontend")

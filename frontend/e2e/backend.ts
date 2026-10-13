@@ -11,7 +11,8 @@ export class Coordinator {
   private proc: ChildProcess | null = null;
   readonly dbPath: string;
 
-  constructor() {
+  /** `env`: extra coordinator settings for one spec (e.g. the caregiver companion's phone server). */
+  constructor(private readonly env: Record<string, string> = {}) {
     this.dbPath = join(mkdtempSync(join(tmpdir(), "agency-e2e-")), "agency.db");
   }
 
@@ -28,6 +29,7 @@ export class Coordinator {
           AGENCY_REASONING: "deterministic",
           AGENCY_FRONTEND_DIST: "/nonexistent",
           AGENCY_DEMO_CONTROLS: "1", // the tests use presenter faults and reset
+          ...this.env,
         },
         stdio: "ignore",
       },

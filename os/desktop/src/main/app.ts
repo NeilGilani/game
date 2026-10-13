@@ -309,7 +309,7 @@ export class AgencyApp {
       return;
     }
     const sidecar = new Sidecar(
-      { ...spec, dataDir: this.opts.userData },
+      { ...spec, dataDir: this.opts.userData, companionDir: this.opts.paths.shellDir },
       this.client,
       createLogger("coordinator"),
     );
