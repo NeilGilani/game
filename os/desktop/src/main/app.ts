@@ -56,6 +56,8 @@ import { BridgeHost } from "./bridge";
 import { BrowserHost } from "./browser/host";
 import { browserCall } from "./browser/ipc";
 import { CoordinatorClient } from "./coordinator";
+import { HomeControl, homeCall } from "./home/control";
+import { runShortcuts, writeInputFile } from "./home/shortcuts";
 import { LifelineHost, type HeartbeatBody } from "./lifeline";
 import { createLogger, setLogDir } from "./log";
 import { Messaging, runOsascript } from "./messaging";
@@ -129,6 +131,8 @@ export class AgencyApp {
   lifeline: LifelineHost;
   /** Real texts and calls through the person's iPhone; off until turned on in Settings. */
   messaging: Messaging;
+  /** The home by eye: named Apple Shortcuts a helper set up (home/control.ts); off until turned on. */
+  home: HomeControl;
   permissions: Permissions;
   mouse: MouseGaze;
   gazeSource: HostStatus["gazeSource"] = "none";
@@ -166,6 +170,13 @@ export class AgencyApp {
       openUrl: (url) => electronShell.openExternal(url),
       logFile: join(opts.userData, "real-sends.jsonl"),
       log: createLogger("messaging"),
+    });
+    this.home = new HomeControl({
+      platform: process.platform,
+      file: join(opts.userData, "home.json"),
+      run: runShortcuts,
+      writeInput: writeInputFile,
+      log: createLogger("home"),
     });
     this.permissions = new Permissions({
       platform: process.platform,
@@ -860,6 +871,8 @@ export class AgencyApp {
   private async runStop(): Promise<StopAllResult> {
     // No real text or call goes out after Stop, even one already approved and waiting.
     this.messaging.cancelAll();
+    // A shortcut still running for the home is aborted.
+    this.home.stopAll();
     // The assistant does nothing more in AGENCY Browser until the person starts a new task.
     this.browser?.stopAgent();
     const result = await stopAll(
@@ -1135,6 +1148,8 @@ export class AgencyApp {
     // Real texts and calls: the shell only. Main resolves numbers and checks every rule itself (messaging.ts).
     handle(IPC.messaging, ["shell"], (_e, _role, op, arg) => this.messagingCall(String(op), arg));
     handle(IPC.papers, ["shell"], (_e, _role, op, ...args) => this.papers(String(op), args));
+    // The home: the shell only, and only the devices a helper saved (home/control.ts checks every run).
+    handle(IPC.home, ["shell"], (_e, _role, op, ...args) => homeCall(this.home, String(op), args));
     // AGENCY Browser: the shell only. Pages reach main only through their preload, checked by the browser host.
     handle(IPC.browser, ["shell"], (e, _role, op, ...args) => {
       if (!this.browser) throw new Error("AGENCY Browser is off.");

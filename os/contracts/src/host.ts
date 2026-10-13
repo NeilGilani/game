@@ -9,6 +9,7 @@
 import type { AgentCommand, AgentEvent } from "./agent";
 import type { BrowserApi } from "./browser";
 import type { GazeEvent } from "./gaze";
+import type { HomeApi } from "./home";
 import type { HelpSource, LifelineSignal } from "./lifeline";
 import type { NativeEvent, NativeMethod, NativeMethods, PermissionKind, PermissionStatus } from "./native";
 import type { SelectionEvent, Suggestion, Surface } from "./memory";
@@ -225,6 +226,8 @@ export interface AgencyApi {
   papers?: PapersApi;
   /** Shell only: AGENCY Browser (browser.ts; added additively, older hosts don't have it). */
   browser?: BrowserApi;
+  /** Shell only: lights, TV and more through named Apple Shortcuts (home.ts; added additively). */
+  home?: HomeApi;
 }
 
 /** "Order for real" in Settings: on or off, and the most one order may cost, in dollars. */

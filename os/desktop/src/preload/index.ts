@@ -29,6 +29,11 @@ import {
   type GazeEvent,
   type HelpResult,
   type HelpSource,
+  type HomeRunResult,
+  type HomeSaveResult,
+  type HomeSetup,
+  type HomeShortcutsResult,
+  type HomeStatus,
   type HostStatus,
   type LifelineSignal,
   type MessagingCheck,
@@ -203,6 +208,14 @@ const api: AgencyApi = {
     read: (name: string) => ipcRenderer.invoke(IPC.papers, "read", name) as Promise<Uint8Array>,
     saveCopy: (original: string, suffix: "filled" | "signed", bytes: Uint8Array) =>
       ipcRenderer.invoke(IPC.papers, "saveCopy", original, suffix, bytes) as Promise<{ name: string }>,
+  },
+  // Main allows the home from the shell only, and runs only shortcuts a helper saved (src/main/home/control.ts).
+  home: {
+    status: () => ipcRenderer.invoke(IPC.home, "status") as Promise<HomeStatus>,
+    save: (setup: HomeSetup) => ipcRenderer.invoke(IPC.home, "save", setup) as Promise<HomeSaveResult>,
+    shortcuts: () => ipcRenderer.invoke(IPC.home, "shortcuts") as Promise<HomeShortcutsResult>,
+    run: (deviceId: string, actionId: string, confirmed: boolean) =>
+      ipcRenderer.invoke(IPC.home, "run", deviceId, actionId, confirmed) as Promise<HomeRunResult>,
   },
   // Main allows AGENCY Browser from the shell only (the role is checked there, on every call).
   browser,
