@@ -4,6 +4,14 @@
 `agent/daily-living` in `~/agency-daily`; with the owner's agreement this one moved to `agent/daily-living-2` in its
 own worktree so neither overwrote the other. The team can compare the two and keep one.
 
+**This branch is for comparison and does not merge cleanly.** It includes origin/main up to `4cad676`. After that,
+`agent/daily-living` was merged into main, and it uses the same paths (`backend/agency/daily/`, `frontend/src/daily/`,
+`os/desktop/src/main/home/`), so merging this branch would conflict in 24 files. The owner chose to push it as-is so
+the team can compare. Pieces that may be worth carrying over onto main's version: the Mac Calendar through the native
+helper (`calendar.today`), the carer's reply page with the answer shown to the person, the dock reminder that never
+pushes a screen, the five-across Home layout for more than 12 apps, the e2e port overrides, and the extra axe
+coverage.
+
 ## What I built
 
 **My day**, a new Home tile (`/day`), and its setup in Settings, For a helper, My day. The full guide is
