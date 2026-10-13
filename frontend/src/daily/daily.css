@@ -41,6 +41,21 @@
   background: var(--accent-soft);
 }
 
+.day-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--day-gap);
+}
+.day-head-actions {
+  display: flex;
+  gap: var(--day-gap);
+  flex-shrink: 0;
+}
+.day-head-actions .btn-xl {
+  min-height: var(--day-target);
+  min-width: 180px;
+}
 .day-head h1 {
   margin: 0;
   font-size: 1.75rem;
@@ -63,6 +78,27 @@
 }
 .day-body > .flow-options {
   flex: 1;
+  /* Rows may shrink to the 96 px target (not Flow's 140 px) so two rows keep their 24 px gap on a 13-inch screen. */
+  grid-auto-rows: minmax(var(--day-target), 1fr);
+  max-height: 520px;
+}
+/* Tiles in My day are short: picture beside the words, so nothing is cut off. */
+.day-body > .flow-options .choice {
+  min-height: var(--day-target);
+  flex-direction: row;
+  justify-content: flex-start;
+  gap: 20px;
+  padding: 12px 24px;
+  text-align: left;
+}
+.day-body > .flow-options .choice-pic {
+  flex-shrink: 0;
+}
+.day-choice-text {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
 }
 
 .day-bar {
@@ -89,10 +125,9 @@
   list-style: none;
 }
 .day-row {
-  display: grid;
-  grid-template-columns: 130px minmax(0, 1fr) repeat(3, minmax(150px, auto));
+  display: flex;
   align-items: center;
-  column-gap: var(--day-gap);
+  gap: var(--day-gap);
   min-height: var(--day-target);
   padding: 0 0 0 20px;
   border-radius: var(--radius-lg);
@@ -110,11 +145,13 @@
   text-decoration: line-through;
 }
 .day-when {
+  flex: 0 0 110px;
   font-size: 1.15rem;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
 }
 .day-what {
+  flex: 1;
   display: flex;
   flex-direction: column;
   min-width: 0;
@@ -240,20 +277,13 @@
 
 @media (max-width: 1100px) {
   .day-row {
-    grid-template-columns: 100px minmax(0, 1fr);
-    row-gap: 12px;
+    flex-wrap: wrap;
     padding: 12px 16px;
-  }
-  .day-act {
-    grid-column: span 1;
   }
 }
 @media (max-width: 650px) {
   .day-tabs {
     grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-  .day-row {
-    grid-template-columns: minmax(0, 1fr);
   }
 }
 

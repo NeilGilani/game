@@ -177,8 +177,10 @@ export function HomeTiles() {
               <span className="choice-pic" aria-hidden>
                 <Icon name={KIND_ICON[d.kind]} size={44} />
               </span>
-              <span className="choice-label">{d.name}</span>
-              <span className="choice-sub">{stateLine(d, status!.states)}</span>
+              <span className="day-choice-text">
+                <span className="choice-label">{d.name}</span>
+                <span className="choice-sub">{stateLine(d, status!.states)}</span>
+              </span>
             </button>
           ))}
         </div>

@@ -53,6 +53,7 @@ export interface SentMessage {
   id: number;
   created_at: string;
   kind: string;
+  contact_id: string;
   contact_name: string;
   body: string;
   status: string;
@@ -166,6 +167,7 @@ export class PracticeCarer implements CarerSource {
       id: this.sent.length + 1,
       created_at: new Date().toISOString(),
       kind: "help",
+      contact_id: p.to.id,
       contact_name: p.to.name,
       body: p.body,
       status: "delivered",

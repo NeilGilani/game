@@ -18,7 +18,6 @@ import {
   nextDue,
   nextUp,
   occursOn,
-  ordered,
   routineDone,
   routineLater,
   sampleDay,
@@ -91,7 +90,7 @@ describe("My day", () => {
     expect(occursOn(item("a", { repeat: "weekly" }), "2026-10-20")).toBe(false);
   });
 
-  it("lists the day in time order with any-time items last, and keeps open ones first", () => {
+  it("lists the day in time order with any-time items last, and marking never reorders it", () => {
     const d = data({
       items: [item("late", { time: "15:00" }), item("any", { time: null }), item("early", { time: "08:00" })],
     });
@@ -99,10 +98,10 @@ describe("My day", () => {
     expect(entriesFor(d, TODAY, now).map((e) => e.item.id)).toEqual(["early", "late", "any"]);
     const early = entriesFor(d, TODAY, now)[0]!;
     const done = mark(d, early, "done", now);
-    expect(ordered(entriesFor(done, TODAY, now)).map((e) => [e.item.id, e.state])).toEqual([
+    expect(entriesFor(done, TODAY, now).map((e) => [e.item.id, e.state])).toEqual([
+      ["early", "done"],
       ["late", "open"],
       ["any", "open"],
-      ["early", "done"],
     ]);
     expect(entriesFor(unmark(done, early), TODAY, now)[0]!.state).toBe("open");
   });

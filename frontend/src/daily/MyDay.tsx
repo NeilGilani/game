@@ -17,11 +17,10 @@ import {
   LATER_MINUTES,
   longDay,
   mark,
-  ordered,
   unmark,
   type DayEntry,
 } from "./model";
-import { DayPage, HomeButton, pageOf, Paging } from "./parts";
+import { DayPage, HomeButton, pageOf, Paging, rowsPerPage } from "./parts";
 import { updateDaily, useDaily, useNow } from "./store";
 import { carerName, TellCarer, useCarer } from "./TellCarer";
 
@@ -42,10 +41,12 @@ export function MyDay() {
   const { view } = useCarer();
   const carer = carerName(view);
   const [page, setPage] = useState(0);
+  const [perPage] = useState(rowsPerPage);
   const [telling, setTelling] = useState<DayEntry | null>(null);
 
-  const entries = ordered(entriesFor(data, dayKey(now), now));
-  const p = pageOf(entries, page);
+  // Time order only: marking something never moves the rows under the person's gaze.
+  const entries = entriesFor(data, dayKey(now), now);
+  const p = pageOf(entries, page, perPage);
   const left = entries.filter((e) => e.state !== "done").length;
 
   if (telling)
@@ -74,15 +75,19 @@ export function MyDay() {
             ? "Everything on today's list is done."
             : `${left} still to do.`
       }
-      bar={
+      actions={
         <>
-          <HomeButton />
           <button className="btn btn-xl" onClick={() => readAloud(daySpeech(data, Date.now()))} data-dwell>
             <Icon name="speak" /> Read my day
           </button>
           <button className="btn btn-xl" onClick={() => navigate("/day/remind")} data-dwell>
             <Icon name="plus" /> Remind me
           </button>
+        </>
+      }
+      bar={
+        <>
+          <HomeButton />
           <span className="spacer" />
           <Paging page={p.page} pages={p.pages} onPage={setPage} />
         </>

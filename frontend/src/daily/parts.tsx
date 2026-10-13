@@ -22,18 +22,26 @@ export const CONFIRM_MS = 1500;
 
 export const PER_PAGE = 3;
 
+/** Rows per page: two on short screens (a 13-inch MacBook), three otherwise. Read once per screen. */
+export function rowsPerPage(): number {
+  return typeof window !== "undefined" && window.innerHeight < 880 ? 2 : PER_PAGE;
+}
+
 export function DayPage({
   tab,
   title,
   sub,
   children,
   bar,
+  actions,
 }: {
   tab: DayTab;
   title: string;
   sub?: ReactNode;
   children: ReactNode;
   bar: ReactNode;
+  /** Big buttons beside the heading (the bar keeps only Home and paging, so it never wraps). */
+  actions?: ReactNode;
 }) {
   // New choices under the gaze: pause selection briefly so a lingering look doesn't pick one.
   useEffect(() => {
@@ -55,10 +63,13 @@ export function DayPage({
         ))}
       </nav>
       <div className="day-head">
-        <h1 id="day-title" tabIndex={-1}>
-          {title}
-        </h1>
-        {sub && <p className="day-sub">{sub}</p>}
+        <div>
+          <h1 id="day-title" tabIndex={-1}>
+            {title}
+          </h1>
+          {sub && <p className="day-sub">{sub}</p>}
+        </div>
+        {actions && <div className="day-head-actions">{actions}</div>}
       </div>
       <div className="day-body">{children}</div>
       <div className="day-bar" role="group" aria-label="Move around">

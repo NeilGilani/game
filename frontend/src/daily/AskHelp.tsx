@@ -24,9 +24,10 @@ export function AskHelp() {
         tab="help"
         kind="help"
         words={chosen.words}
-        onDone={() => {
+        onDone={(sent) => {
           setTelling(false);
-          setChosen(null);
+          // Sent: back to all requests. Went back: still on this request, to say it out loud instead.
+          if (sent) setChosen(null);
         }}
       />
     );
@@ -52,16 +53,20 @@ export function AskHelp() {
             <span className="choice-pic" aria-hidden>
               <Icon name="speak" size={44} />
             </span>
-            <span className="choice-label">Say it out loud</span>
-            <span className="choice-sub">For someone nearby</span>
+            <span className="day-choice-text">
+              <span className="choice-label">Say it out loud</span>
+              <span className="choice-sub">For someone nearby</span>
+            </span>
           </button>
           {!off && (
             <button className="choice" onClick={() => setTelling(true)} data-dwell>
               <span className="choice-pic" aria-hidden>
                 <Icon name="message" size={44} />
               </span>
-              <span className="choice-label">Send to {carer}</span>
-              <span className="choice-sub">You'll see the message first</span>
+              <span className="day-choice-text">
+                <span className="choice-label">Send to {carer}</span>
+                <span className="choice-sub">You'll see the message first</span>
+              </span>
             </button>
           )}
         </div>

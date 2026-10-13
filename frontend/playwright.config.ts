@@ -4,6 +4,9 @@ import { defineConfig } from "@playwright/test";
 // Use the pre-installed Chromium when present (cloud dev boxes); otherwise Playwright's own.
 const bundled = "/opt/pw-browsers/chromium";
 const executablePath = process.env.PW_CHROMIUM ?? (existsSync(bundled) ? bundled : undefined);
+// Other ports, so two checkouts can run their end-to-end tests at the same time (defaults: 4173 and 8765).
+const port = process.env.AGENCY_E2E_PORT ?? "4173";
+const backendPort = process.env.AGENCY_E2E_BACKEND_PORT ?? "8765";
 
 export default defineConfig({
   testDir: "e2e",
@@ -13,15 +16,15 @@ export default defineConfig({
   fullyParallel: false,
   reporter: [["list"]],
   use: {
-    baseURL: "http://127.0.0.1:4173",
+    baseURL: `http://127.0.0.1:${port}`,
     viewport: { width: 1440, height: 900 },
     launchOptions: { executablePath },
     trace: "retain-on-failure",
   },
   webServer: {
-    command: "npm run build && npx vite preview --port 4173 --strictPort",
-    url: "http://127.0.0.1:4173",
-    env: { AGENCY_BACKEND_URL: "http://127.0.0.1:8765" },
+    command: `npm run build && npx vite preview --port ${port} --strictPort`,
+    url: `http://127.0.0.1:${port}`,
+    env: { AGENCY_BACKEND_URL: `http://127.0.0.1:${backendPort}` },
     reuseExistingServer: false,
     timeout: 120_000,
   },

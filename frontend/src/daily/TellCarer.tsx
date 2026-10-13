@@ -51,7 +51,8 @@ export function TellCarer({
   tab: DayTab;
   kind: RequestKind;
   words: string;
-  onDone: () => void;
+  /** `sent`: true when a message went; false when the person went back or it failed. */
+  onDone: (sent: boolean) => void;
 }) {
   const announce = useAnnounce();
   const [s, setS] = useState<Step>({ step: "preparing" });
@@ -73,7 +74,7 @@ export function TellCarer({
 
   const cancel = () => {
     if (s.step === "confirm") void carerSource().cancel(s.prepared.ticket);
-    onDone();
+    onDone(false);
   };
 
   const send = async (prepared: Prepared) => {
@@ -123,7 +124,12 @@ export function TellCarer({
       title={title}
       bar={
         s.step === "preparing" ? null : (
-          <button className="btn btn-xl btn-primary" onClick={onDone} data-dwell data-testid="day-tell-done">
+          <button
+            className="btn btn-xl btn-primary"
+            onClick={() => onDone(s.step === "sent")}
+            data-dwell
+            data-testid="day-tell-done"
+          >
             <Icon name="check" /> {s.step === "sent" ? "Done" : "Back"}
           </button>
         )

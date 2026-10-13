@@ -196,12 +196,6 @@ export function entriesFor(data: DailyData, day: string, now: number): DayEntry[
     });
 }
 
-/** Open items first, then "later", then done: what's left to do stays at the top. */
-export function ordered(entries: DayEntry[]): DayEntry[] {
-  const rank: Record<EntryState, number> = { open: 0, later: 1, done: 2 };
-  return [...entries].sort((a, b) => rank[a.state] - rank[b.state]);
-}
-
 export function mark(data: DailyData, entry: DayEntry, status: Mark["status"], now: number): DailyData {
   const value: Mark =
     status === "later" ? { status, at: now, until: now + LATER_MINUTES * 60_000 } : { status, at: now };

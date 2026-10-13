@@ -102,8 +102,10 @@ export function RemindMe() {
               <span className="choice-pic" aria-hidden>
                 <Icon name="clock" size={44} />
               </span>
-              <span className="choice-label">{w.label}</span>
-              <span className="choice-sub">{clock(w.time)}</span>
+              <span className="day-choice-text">
+                <span className="choice-label">{w.label}</span>
+                <span className="choice-sub">{clock(w.time)}</span>
+              </span>
             </button>
           ))}
         </div>

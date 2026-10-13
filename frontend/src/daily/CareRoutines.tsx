@@ -7,7 +7,7 @@ import { useState } from "react";
 import { Icon } from "../components/Icon";
 import { useAnnounce } from "../state/announcer";
 import { clockAt, every, isDue, nextDue, routineDone, routineLater, type Routine } from "./model";
-import { DayPage, HomeButton, pageOf, Paging } from "./parts";
+import { DayPage, HomeButton, pageOf, Paging, rowsPerPage } from "./parts";
 import { updateDaily, useDaily, useNow } from "./store";
 import { carerName, TellCarer, useCarer } from "./TellCarer";
 
@@ -22,6 +22,7 @@ export function CareRoutines() {
   const { view } = useCarer();
   const carer = carerName(view);
   const [page, setPage] = useState(0);
+  const [perPage] = useState(rowsPerPage);
   const [telling, setTelling] = useState<Routine | null>(null);
 
   if (telling)
@@ -36,9 +37,9 @@ export function CareRoutines() {
 
   const routines = data.routines
     .filter((r) => r.enabled)
-    .map((r) => ({ r, due: nextDue(r, now)! }))
-    .sort((a, b) => a.due - b.due);
-  const p = pageOf(routines, page);
+    // In the order they were set up: Done or Later never moves the rows under the person's gaze.
+    .map((r) => ({ r, due: nextDue(r, now)! }));
+  const p = pageOf(routines, page, perPage);
   const asking = routines.filter(({ r }) => isDue(r, now)).length;
 
   const done = (r: Routine) => {
