@@ -187,6 +187,13 @@ export function HelperSettings() {
       path: "/settings/papers",
     },
     {
+      id: "companion",
+      label: "Caregiver phones",
+      sub: "Set up from a phone, alerts, notes",
+      icon: "phone",
+      path: "/settings/companion",
+    },
+    {
       id: "cases",
       label: "Cases and approvals",
       sub: "Every errand and decision",

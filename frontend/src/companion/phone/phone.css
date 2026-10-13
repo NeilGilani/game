@@ -1,0 +1,431 @@
+/*
+ * The caregiver's phone: one hand, a quick look, bright light. Big type (20 px body), targets at least 56 px,
+ * high contrast (well above WCAG AA, so it holds up outdoors), the four places in reach at the bottom.
+ */
+:root {
+  --ph-bg: #ffffff;
+  --ph-card: #f1f2f4;
+  --ph-ink: #0b0b0c;
+  --ph-ink-2: #3a3a40;
+  --ph-line: #8a8a93;
+  --ph-accent: #0051a8;
+  --ph-accent-ink: #ffffff;
+  --ph-ok: #0f5a25;
+  --ph-ok-soft: #dff2e4;
+  --ph-warn: #8a3d00;
+  --ph-warn-soft: #ffefd9;
+  --ph-danger: #b00017;
+  --ph-danger-soft: #fde4e7;
+  --ph-test: #5b34a8;
+  --ph-tabs: 72px;
+  color-scheme: light dark;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --ph-bg: #000000;
+    --ph-card: #17181b;
+    --ph-ink: #f5f5f7;
+    --ph-ink-2: #c7c7cc;
+    --ph-line: #7c7c85;
+    --ph-accent: #4ea1ff;
+    --ph-accent-ink: #000000;
+    --ph-ok: #6fdc8c;
+    --ph-ok-soft: #10301a;
+    --ph-warn: #ffb35c;
+    --ph-warn-soft: #3a2608;
+    --ph-danger: #ff6b6b;
+    --ph-danger-soft: #3c0d12;
+    --ph-test: #b79bff;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+html {
+  -webkit-text-size-adjust: 100%;
+}
+body {
+  margin: 0;
+  background: var(--ph-bg);
+  color: var(--ph-ink);
+  font:
+    20px/1.45 "Atkinson Hyperlegible",
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    Roboto,
+    Arial,
+    sans-serif;
+}
+h1 {
+  font-size: 1.7rem;
+  line-height: 1.15;
+  margin: 0;
+}
+h2 {
+  font-size: 1.15rem;
+  margin: 0 0 8px;
+}
+p {
+  margin: 0;
+}
+a {
+  color: var(--ph-accent);
+}
+:focus-visible {
+  outline: 4px solid var(--ph-accent);
+  outline-offset: 2px;
+}
+
+.ph-main {
+  max-width: 34rem;
+  margin: 0 auto;
+  padding: max(16px, env(safe-area-inset-top)) 16px calc(var(--ph-tabs) + 24px + env(safe-area-inset-bottom));
+}
+.ph-pair {
+  padding-bottom: 32px;
+  display: grid;
+  gap: 16px;
+}
+.ph-stack {
+  display: grid;
+  gap: 16px;
+}
+.ph-row {
+  display: flex;
+  gap: 12px;
+}
+.ph-row > * {
+  flex: 1;
+}
+.ph-muted,
+.ph-sub {
+  color: var(--ph-ink-2);
+}
+.ph-sub {
+  display: block;
+  font-size: 0.85rem;
+}
+.ph-small {
+  font-size: 0.85rem;
+}
+
+/* Buttons and fields: big enough for a thumb, on the move. */
+.ph-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 60px;
+  padding: 10px 16px;
+  border-radius: 16px;
+  border: 2px solid var(--ph-line);
+  background: var(--ph-card);
+  color: var(--ph-ink);
+  font: inherit;
+  font-weight: 700;
+  text-align: center;
+  text-decoration: none;
+  cursor: pointer;
+}
+.ph-btn:disabled {
+  opacity: 0.6;
+}
+.ph-primary {
+  background: var(--ph-accent);
+  border-color: var(--ph-accent);
+  color: var(--ph-accent-ink);
+}
+.ph-danger {
+  background: var(--ph-danger);
+  border-color: var(--ph-danger);
+  color: #fff;
+}
+.ph-quiet {
+  background: transparent;
+}
+.ph-mini {
+  min-height: 48px;
+  min-width: 48px;
+  padding: 0 14px;
+  border-radius: 12px;
+  border: 2px solid var(--ph-line);
+  background: transparent;
+  color: var(--ph-ink);
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+.ph-field {
+  display: grid;
+  gap: 6px;
+}
+.ph-field > span {
+  font-weight: 700;
+}
+.ph-field input,
+.ph-field select,
+.ph-field textarea {
+  width: 100%;
+  min-height: 56px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  border: 2px solid var(--ph-line);
+  background: var(--ph-bg);
+  color: var(--ph-ink);
+  font: inherit;
+}
+.ph-field textarea {
+  min-height: 110px;
+  resize: vertical;
+}
+.ph-code-input {
+  font-size: 2rem !important;
+  letter-spacing: 0.3em;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+.ph-check {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-height: 56px;
+  font-weight: 600;
+}
+.ph-check input {
+  width: 30px;
+  height: 30px;
+  flex: none;
+  accent-color: var(--ph-accent);
+}
+.ph-file {
+  position: relative;
+  overflow: hidden;
+}
+.ph-file input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  font-size: 0;
+  cursor: pointer;
+}
+.ph-preview {
+  display: grid;
+  gap: 8px;
+}
+.ph-preview img {
+  width: 100%;
+  max-height: 320px;
+  object-fit: contain;
+  border-radius: 14px;
+  background: var(--ph-card);
+}
+
+/* Messages to the carer */
+.ph-error,
+.ph-ok,
+.ph-note {
+  padding: 12px 14px;
+  border-radius: 14px;
+  font-weight: 700;
+  border: 2px solid;
+}
+.ph-error {
+  background: var(--ph-danger-soft);
+  color: var(--ph-danger);
+}
+.ph-ok {
+  background: var(--ph-ok-soft);
+  color: var(--ph-ok);
+}
+.ph-note {
+  background: var(--ph-warn-soft);
+  color: var(--ph-warn);
+}
+
+.ph-card {
+  background: var(--ph-card);
+  border-radius: 18px;
+  padding: 14px 16px;
+}
+.ph-fieldset {
+  border: 0;
+  display: grid;
+  gap: 12px;
+  margin: 0;
+}
+.ph-fieldset legend {
+  font-weight: 700;
+  font-size: 1.1rem;
+  float: left;
+  width: 100%;
+  padding: 0;
+}
+.ph-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 10px;
+}
+.ph-editable li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--ph-line);
+}
+.ph-notes {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 12px;
+}
+.ph-note-text {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  margin-top: 6px;
+}
+.ph-back {
+  font-weight: 700;
+  text-decoration: none;
+  min-height: 48px;
+  display: inline-flex;
+  align-items: center;
+}
+
+/* Home */
+.ph-hello {
+  font-size: 1.5rem;
+}
+.ph-status {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 10px;
+}
+.ph-status-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 16px;
+  border-radius: 18px;
+  background: var(--ph-card);
+  font-weight: 700;
+  font-size: 1.1rem;
+}
+.ph-dot {
+  flex: none;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-weight: 700;
+  color: #fff;
+  background: var(--ph-line);
+}
+.ph-status-row[data-ok="yes"] .ph-dot {
+  background: var(--ph-ok);
+}
+.ph-status-row[data-ok="no"] {
+  background: var(--ph-danger-soft);
+}
+.ph-status-row[data-ok="no"] .ph-dot {
+  background: var(--ph-danger);
+}
+@media (prefers-color-scheme: dark) {
+  .ph-dot {
+    color: #000;
+  }
+}
+.ph-alert {
+  border-radius: 20px;
+  padding: 18px;
+  color: #fff;
+  background: var(--ph-danger);
+  display: grid;
+  gap: 10px;
+}
+.ph-alert[data-state="ok"] {
+  background: var(--ph-ok);
+}
+.ph-alert[data-state="test"] {
+  background: var(--ph-test);
+}
+.ph-alert h2 {
+  font-size: 1.5rem;
+  margin: 0;
+}
+@media (prefers-color-scheme: dark) {
+  .ph-alert {
+    color: #000;
+  }
+}
+.ph-on-alert {
+  background: #fff;
+  color: #000;
+  border-color: #fff;
+  font-size: 1.2rem;
+  min-height: 68px;
+}
+
+.ph-menu {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 10px;
+}
+.ph-menu-item {
+  display: block;
+  padding: 14px 16px;
+  min-height: 72px;
+  border-radius: 18px;
+  background: var(--ph-card);
+  color: var(--ph-ink);
+  text-decoration: none;
+}
+.ph-menu-label {
+  font-weight: 700;
+  font-size: 1.1rem;
+}
+
+/* The four places, in reach of a thumb. */
+.ph-tabs {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 10;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  min-height: var(--ph-tabs);
+  padding-bottom: env(safe-area-inset-bottom);
+  background: var(--ph-bg);
+  border-top: 2px solid var(--ph-line);
+}
+.ph-tab {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  min-height: var(--ph-tabs);
+  color: var(--ph-ink-2);
+  text-decoration: none;
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+.ph-tab-glyph {
+  font-size: 1.5rem;
+  line-height: 1;
+}
+.ph-tab[aria-current="page"] {
+  color: var(--ph-accent);
+  box-shadow: inset 0 4px 0 var(--ph-accent);
+}
