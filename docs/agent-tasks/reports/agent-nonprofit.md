@@ -91,3 +91,23 @@ The branch had already been merged into `main`. Merging the latest `origin/main`
 The privacy draft now covers the caregiver phones and My day features that landed with it (from their reports and
 spot checks of their code, not a full audit), and records the fixes in `4cad676`. Check results after the merge are
 below.
+
+Checks run on this Mac on 13 October 2026, after the merge (commit `9c86e2b`; this branch only changes Markdown):
+
+| Check | Result |
+|---|---|
+| `make check`: backend `ruff check`, `ruff format --check`, `mypy agency` | Clean (mypy: no issues in 64 source files) |
+| `make check`: backend pytest | 328 passed |
+| `make check`: frontend `eslint`, `prettier --check` (src, tests, e2e), `tsc -b` | Clean |
+| `make check`: frontend vitest | 251 passed (25 files) |
+| `make check`: frontend build (`tsc -b && vite build`) | Passed |
+| `make check`: os-check: contracts and desktop typecheck; desktop vitest | Passed; 184 passed |
+| os-check: agent (lint, format, typecheck, tests, build) | 252 passed |
+| os-check: browser-bridge | 103 passed |
+| os-check: gaze | 215 passed |
+| os-check: overlay | 67 passed |
+| os-check: sandbox-web | 13 passed |
+| os-check: tasks | 108 passed |
+| site: `npm run typecheck`, `npx vitest run`, `npm run build` | 0 errors; 61 passed (4 files); 8 pages built. `site/dist` restored afterwards |
+
+Not run: Playwright and Electron end-to-end tests, because this branch has no UI.
