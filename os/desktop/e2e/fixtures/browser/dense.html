@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Catalogue</title>
+    <style>
+      body { font: 11px/1.2 system-ui, sans-serif; margin: 16px; }
+      .grid { display: grid; grid-template-columns: repeat(10, 1fr); gap: 2px 6px; }
+      .grid a { font-size: 11px; }
+      .perm button { font-size: 12px; margin: 4px; }
+    </style>
+  </head>
+  <body>
+    <h1>Catalogue: every shelf</h1>
+    <p>Picked: <span id="picked">none</span></p>
+    <div class="grid" id="grid"></div>
+    <div class="perm">
+      <h2>Find a branch near me</h2>
+      <button id="where" type="button" onclick="navigator.geolocation.getCurrentPosition(() => (document.getElementById('perm').textContent = 'allowed'), () => (document.getElementById('perm').textContent = 'denied'))">Use my location</button>
+      <button id="cam" type="button" onclick="navigator.mediaDevices.getUserMedia({ video: true }).then(() => (document.getElementById('perm').textContent = 'camera on'), () => (document.getElementById('perm').textContent = 'camera denied'))">Video call a librarian</button>
+      <a id="dl" href="download/reading-list.txt">Download the reading list</a>
+      <p>Permission: <span id="perm">not asked</span></p>
+    </div>
+    <script>
+      const g = document.getElementById("grid");
+      for (let i = 1; i <= 120; i++) {
+        const a = document.createElement("a");
+        a.href = "#shelf-" + i;
+        a.textContent = "Shelf " + i;
+        a.onclick = (e) => {
+          e.preventDefault();
+          document.getElementById("picked").textContent = "Shelf " + i;
+        };
+        g.appendChild(a);
+      }
+    </script>
+  </body>
+</html>

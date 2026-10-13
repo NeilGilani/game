@@ -12,6 +12,8 @@
 | Atkinson Hyperlegible font (`@fontsource/atkinson-hyperlegible`) | bundled into the interface | SIL Open Font License 1.1 |
 | Atkinson Hyperlegible Next font (`@fontsource-variable/atkinson-hyperlegible-next` 5.3.0, Braille Institute of America) | served by the website (`site/`), text face | SIL Open Font License 1.1 |
 | Fraunces font (`@fontsource-variable/fraunces` 5.3.0, Undercase Type) | served by the website (`site/`), headline face | SIL Open Font License 1.1 |
+| Readability (`@mozilla/readability` 0.6.0, Mozilla), vendored unchanged apart from an ES module export | `os/desktop/src/browser-page/vendor/Readability.js` (with its license), bundled into AGENCY Browser's page preload (Reader view) | Apache License 2.0 |
+| AGENCY Browser's ad and tracker list | `os/desktop/src/main/browser/adblock.ts`: AGENCY's own short list of ad and tracker hosts, written for this project (no third-party filter list is included) | This repository's license |
 | React, Vite, FastAPI, Pydantic, Uvicorn, Anthropic Python SDK and other dependencies | `package.json`, `backend/requirements*.txt` | Their respective open-source licenses |
 
 The end-to-end camera test downloads MediaPipe's public sample image

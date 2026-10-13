@@ -27,6 +27,8 @@ const logDir = process.env.AGENCY_USER_DATA
   : join(app.getPath("home"), "Library", "Logs", "AGENCY");
 
 const test = process.env.AGENCY_TEST === "1";
+// Tests never save AGENCY Browser's downloads into the real Downloads folder.
+if (test) app.setPath("downloads", join(userData, "Downloads"));
 applyAiDefaults(process.env, test);
 
 // Development (`make os-dev`): the repository's .env, so the agent gets the same Gemini key as the coordinator.

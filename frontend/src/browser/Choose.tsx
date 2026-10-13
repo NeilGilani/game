@@ -1,22 +1,40 @@
 /**
  * Choosing on the page with the eyes, on a still picture of it (so nothing moves while the person looks):
  *
- * - Choose on page: a big number next to everything that can be chosen, never overlapping, with room around each;
- *   the side list has the same things by name (Buttons, Links, Boxes to type in), repeated names merged.
+ * - Choose on page: a big number touching everything that can be chosen, the thing outlined in the number's colour,
+ *   never overlapping, with room around each. A crowded page first shows a few big lettered areas: choosing one zooms
+ *   in on it, and its things get their numbers there. The side list has the same things by name (Buttons, Links,
+ *   Boxes to type in), repeated names merged.
  * - Zoom to choose: a look at a big, clear button chooses it; a look anywhere else opens a lens there, magnified.
  */
-import { useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { Icon } from "../components/Icon";
-import { groupTargets, labelSets, type LabelTarget } from "./labels";
+import { center, contains, type Rect } from "./geometry";
+import {
+  areasOf,
+  groupTargets,
+  labelSets,
+  needsAreas,
+  zoomInto,
+  zoomRect,
+  type Area,
+  type LabelTarget,
+  type PlacedLabel,
+  type Zoom,
+} from "./labels";
 import { directTargets, lensAt, zoomCells, type Lens } from "./magnifier";
 import type { PageFrame } from "./store";
 
 export interface ChooseView {
-  /** Which set of labels is showing ("More" moves on). */
+  /** Which set of numbers is showing ("More numbers" moves on). */
   set: number;
   /** Only these (a name in the list that appears more than once on the page). */
   only: string[] | null;
+  /** Zoomed in on this part of the page (page pixels), after choosing a lettered area. */
+  area?: Rect | null;
 }
+
+export const START_VIEW: ChooseView = { set: 0, only: null, area: null };
 
 function targetsOf(frame: PageFrame): LabelTarget[] {
   return frame.targets.map((t) => ({
@@ -28,68 +46,123 @@ function targetsOf(frame: PageFrame): LabelTarget[] {
   }));
 }
 
-export function useLabelSets(frame: PageFrame, view: ChooseView) {
-  return useMemo(() => {
-    const all = targetsOf(frame);
-    const pool = view.only ? all.filter((t) => view.only!.includes(t.ref)) : all;
-    return labelSets(pool, frame.viewport);
-  }, [frame, view.only]);
+export interface Choice {
+  /** Zoomed in on an area: how the picture is magnified. */
+  zoom: { focus: Rect; z: Zoom } | null;
+  /** Lettered areas first (a crowded page), or null. */
+  areas: Area[] | null;
+  /** Numbers, in sets ("More numbers"); empty while areas show. */
+  sets: PlacedLabel[][];
 }
 
-function Still({ frame }: { frame: PageFrame }) {
-  if (!frame.image) return <div className="bw-still bw-still-empty" />;
-  return (
-    <img
-      className="bw-still"
-      src={frame.image}
-      alt=""
-      style={{ width: frame.viewport.width, height: frame.viewport.height }}
-      draggable={false}
-    />
-  );
+/** What "Choose on page" shows for this picture and view. */
+export function useChoice(frame: PageFrame, view: ChooseView): Choice {
+  return useMemo(() => {
+    let pool = targetsOf(frame);
+    if (view.only) pool = pool.filter((t) => view.only!.includes(t.ref));
+    let zoom: Choice["zoom"] = null;
+    if (view.area) {
+      const focus = view.area;
+      const z = zoomInto(focus, frame.viewport);
+      pool = pool
+        .filter((t) => contains(focus, center(t.rect)))
+        .map((t) => ({ ...t, rect: zoomRect(t.rect, focus, z) }));
+      zoom = { focus, z };
+    }
+    const sets = labelSets(pool, frame.viewport);
+    // One level of areas: once zoomed in, the things there are big enough for numbers (in sets if need be).
+    const areas = !view.only && !zoom && needsAreas(sets, pool.length) ? areasOf(pool, frame.viewport) : null;
+    return areas && areas.length > 1 ? { zoom, areas, sets: [] } : { zoom, areas: null, sets };
+  }, [frame, view.only, view.area]);
 }
+
+/** An area chosen on screen (maybe already zoomed), as a part of the page to zoom into. */
+function areaOnPage(a: Area, zoom: Choice["zoom"]): Rect {
+  if (!zoom) return a.focus;
+  const { focus, z } = zoom;
+  return {
+    x: focus.x + (a.focus.x - z.dx) / z.scale,
+    y: focus.y + (a.focus.y - z.dy) / z.scale,
+    width: a.focus.width / z.scale,
+    height: a.focus.height / z.scale,
+  };
+}
+
+function Still({ frame, zoom }: { frame: PageFrame; zoom: Choice["zoom"] }) {
+  if (!frame.image) return <div className="bw-still bw-still-empty" />;
+  const style: CSSProperties = { width: frame.viewport.width, height: frame.viewport.height };
+  if (zoom) {
+    const { focus, z } = zoom;
+    style.transformOrigin = "0 0";
+    style.transform = `translate(${z.dx - focus.x * z.scale}px, ${z.dy - focus.y * z.scale}px) scale(${z.scale})`;
+  }
+  return <img className="bw-still" src={frame.image} alt="" style={style} draggable={false} />;
+}
+
+const box = (r: Rect): CSSProperties => ({ left: r.x, top: r.y, width: r.width, height: r.height });
 
 export function ChooseLayer({
   frame,
   view,
+  onView,
   onPick,
 }: {
   frame: PageFrame;
   view: ChooseView;
+  onView: (v: ChooseView) => void;
   onPick: (ref: string) => void;
 }) {
-  const sets = useLabelSets(frame, view);
-  const labels = sets[Math.min(view.set, Math.max(0, sets.length - 1))] ?? [];
+  const choice = useChoice(frame, view);
+  const labels = choice.sets[Math.min(view.set, Math.max(0, choice.sets.length - 1))] ?? [];
   const names = useMemo(() => new Map(frame.targets.map((t) => [t.ref, t])), [frame]);
   return (
-    <div className="bw-choose" role="group" aria-label="Choose on the page: look at a number">
-      <Still frame={frame} />
+    <div
+      className="bw-choose"
+      role="group"
+      aria-label={
+        choice.areas
+          ? "Choose on the page: look at a letter to zoom in"
+          : "Choose on the page: look at a number"
+      }
+      data-zoomed={choice.zoom ? "" : undefined}
+    >
+      <Still frame={frame} zoom={choice.zoom} />
       <div className="bw-choose-dim" aria-hidden />
-      {labels.map((l) => (
-        <div
-          key={`box-${l.ref}`}
-          className="bw-target-box"
-          aria-hidden
-          style={{ left: l.target.x, top: l.target.y, width: l.target.width, height: l.target.height }}
-        />
+      {choice.areas?.map((a) => (
+        <button
+          key={a.code}
+          className="bw-area"
+          style={box(a.hit)}
+          onClick={() => onView({ set: 0, only: null, area: areaOnPage(a, choice.zoom) })}
+          data-dwell
+          aria-label={`Area ${a.code}: ${a.refs.length} things. Zoom in here.`}
+        >
+          <span className="bw-area-chip">{a.code}</span>
+          <span className="bw-area-count">{a.refs.length} things</span>
+        </button>
       ))}
       {labels.map((l) => {
         const t = names.get(l.ref);
+        // The target's outline is part of its label, so a look at the number lights up its own thing.
         return (
           <button
             key={l.ref}
             className="bw-label"
-            data-kind={t?.kind}
-            style={{ left: l.hit.x, top: l.hit.y, width: l.hit.width, height: l.hit.height }}
+            style={box(l.hit)}
             onClick={() => onPick(l.ref)}
             data-dwell
             aria-label={`${l.code}: ${t?.name || t?.kind || "item"}`}
           >
+            <span
+              className="bw-target-box"
+              aria-hidden
+              style={box({ ...l.target, x: l.target.x - l.hit.x, y: l.target.y - l.hit.y })}
+            />
             <span className="bw-label-chip">{l.code}</span>
           </button>
         );
       })}
-      {labels.length === 0 && (
+      {!choice.areas && labels.length === 0 && (
         <div className="bw-choose-empty" role="status">
           Nothing to choose on this part of the page. Scroll, or look at Done.
         </div>
@@ -101,7 +174,7 @@ export function ChooseLayer({
 /** Room for one name in the side list (button, gap, and a group heading now and then). */
 const ENTRY_PX = 84;
 
-/** The side list: the same targets by name, grouped, with More and Done. */
+/** The side list: the same targets by name, grouped, with More numbers, Back to the whole page, and Done. */
 function ChooseList({
   frame,
   view,
@@ -115,20 +188,21 @@ function ChooseList({
   onPick: (ref: string) => void;
   onDone: () => void;
 }) {
-  const sets = useLabelSets(frame, view);
+  const choice = useChoice(frame, view);
+  const sets = choice.sets;
   const groups = useMemo(() => groupTargets(targetsOf(frame)), [frame]);
   const entries = useMemo(
     () => groups.flatMap((g) => g.entries.map((e, i) => ({ ...e, group: i === 0 ? g.title : null }))),
     [groups],
   );
   const [page, setPage] = useState(0);
-  const box = useRef<HTMLDivElement>(null);
+  const list = useRef<HTMLDivElement>(null);
   const [perPage, setPerPage] = useState(4);
-  // As many names as fit, decided once per picture so nothing moves while the person looks.
+  // As many names as fit, decided once per picture and view so nothing moves while the person looks.
   useLayoutEffect(() => {
-    const h = box.current?.clientHeight ?? 0;
+    const h = list.current?.clientHeight ?? 0;
     if (h > 0) setPerPage(Math.max(2, Math.floor(h / ENTRY_PX)));
-  }, [frame]);
+  }, [frame, view.area, view.only]);
   const pages = Math.max(1, Math.ceil(entries.length / perPage));
   const shown = entries.slice(page * perPage, page * perPage + perPage);
   return (
@@ -137,32 +211,33 @@ function ChooseList({
         <Icon name="check" size={30} />
         <span>Done choosing</span>
       </button>
-      {view.only ? (
-        <button className="bw-rail-btn" onClick={() => onView({ set: 0, only: null })} data-dwell>
-          <Icon name="labels" size={30} flat />
-          <span>Show all again</span>
+      {view.only || view.area ? (
+        <button className="bw-rail-btn" onClick={() => onView(START_VIEW)} data-dwell>
+          <Icon name={view.area ? "zoom-out" : "labels"} size={30} flat />
+          <span>{view.area ? "Whole page" : "Show all again"}</span>
         </button>
-      ) : (
-        sets.length > 1 && (
-          <button
-            className="bw-rail-btn"
-            onClick={() => onView({ ...view, set: (view.set + 1) % sets.length })}
-            data-dwell
-          >
-            <Icon name="more" size={30} flat />
-            <span>
-              More numbers ({Math.min(view.set, sets.length - 1) + 1} of {sets.length})
-            </span>
-          </button>
-        )
+      ) : null}
+      {sets.length > 1 && (
+        <button
+          className="bw-rail-btn"
+          onClick={() => onView({ ...view, set: (view.set + 1) % sets.length })}
+          data-dwell
+        >
+          <Icon name="more" size={30} flat />
+          <span>
+            More numbers ({Math.min(view.set, sets.length - 1) + 1} of {sets.length})
+          </span>
+        </button>
       )}
-      <div className="bw-list-items" ref={box}>
+      <div className="bw-list-items" ref={list}>
         {shown.map((e) => (
           <div key={`${e.name}-${e.refs[0]}`} className="bw-list-entry">
             {e.group && <span className="bw-list-group">{e.group}</span>}
             <button
               className="bw-list-btn"
-              onClick={() => (e.refs.length === 1 ? onPick(e.refs[0]!) : onView({ set: 0, only: e.refs }))}
+              onClick={() =>
+                e.refs.length === 1 ? onPick(e.refs[0]!) : onView({ set: 0, only: e.refs, area: null })
+              }
               data-dwell
             >
               <span className="bw-list-name">{e.name}</span>
@@ -223,7 +298,7 @@ export function ZoomLayer({
   const scale = lens ? lens.zoom : 1;
   return (
     <div className="bw-zoom" role="group" aria-label="Zoom to choose: look at the part of the page you want">
-      <Still frame={frame} />
+      <Still frame={frame} zoom={null} />
       {!lens && (
         <>
           {cells.map((c, i) => (

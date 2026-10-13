@@ -705,11 +705,16 @@
   background: rgb(10 18 32 / 26%);
   pointer-events: none;
 }
+/* One style everywhere: a yellow number with a dark edge, touching its thing, which is outlined in the same yellow. */
 .bw-target-box {
   position: absolute;
+  z-index: 0;
   border-radius: 6px;
-  outline: 2px solid color-mix(in srgb, var(--focus) 85%, #000);
-  background: rgb(255 214 10 / 16%);
+  border: 3px solid #ffd60a;
+  box-shadow:
+    0 0 0 1px #111,
+    inset 0 0 0 1px #111;
+  background: rgb(255 214 10 / 14%);
   pointer-events: none;
 }
 .bw-label {
@@ -722,6 +727,8 @@
   cursor: pointer;
 }
 .bw-label-chip {
+  position: relative;
+  z-index: 2;
   min-width: calc(100% - 12px);
   height: calc(100% - 12px);
   display: grid;
@@ -734,22 +741,71 @@
   font-size: 1.6rem;
   font-weight: 900;
   font-variant-numeric: tabular-nums;
-  box-shadow: 0 4px 12px rgb(0 0 0 / 35%);
+  box-shadow: 0 3px 10px rgb(0 0 0 / 30%);
 }
-.bw-label[data-kind="field"] .bw-label-chip,
-.bw-label[data-kind="list"] .bw-label-chip {
-  background: #8fd3ff;
+/* Looking at a number lights up its own thing. */
+.bw-label:hover .bw-target-box,
+.bw-label[data-dwell-active] .bw-target-box {
+  z-index: 1;
+  border-width: 4px;
+  background: rgb(255 214 10 / 45%);
+  box-shadow:
+    0 0 0 1px #111,
+    0 0 0 7px rgb(255 214 10 / 55%);
 }
-.bw-label[data-kind="link"] .bw-label-chip {
-  background: #ffffff;
+.bw-label:hover .bw-label-chip {
+  z-index: 3;
 }
 .bw-label[data-dwell-active] {
   outline: none;
 }
 .bw-label[data-dwell-active] .bw-label-chip {
+  z-index: 3;
   background: conic-gradient(var(--accent) calc(var(--dwell, 0) * 360deg), #ffd60a 0);
   color: #fff;
   text-shadow: 0 1px 2px #000;
+}
+/* A crowded page: big lettered areas first; choosing one zooms in on it. */
+.bw-area {
+  position: absolute;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 6px;
+  padding: 0;
+  border: 3px dashed rgb(255 255 255 / 85%);
+  border-radius: 18px;
+  background: rgb(10 18 32 / 12%);
+  outline: 4px solid transparent;
+  outline-offset: -8px;
+  cursor: pointer;
+}
+.bw-area:hover,
+.bw-area[data-dwell-active] {
+  border-style: solid;
+  border-color: #ffd60a;
+  background: rgb(255 214 10 / 16%);
+}
+.bw-area-chip {
+  min-width: 96px;
+  height: 96px;
+  display: grid;
+  place-items: center;
+  border-radius: 24px;
+  background: #ffd60a;
+  color: #111;
+  border: 4px solid #111;
+  font-size: 3rem;
+  font-weight: 900;
+  box-shadow: 0 4px 16px rgb(0 0 0 / 35%);
+}
+.bw-area-count {
+  padding: 4px 14px;
+  border-radius: 999px;
+  background: #111;
+  color: #fff;
+  font-size: 1rem;
+  font-weight: 750;
 }
 .bw-label[data-dwell-active]::after,
 .bw-cell[data-dwell-active]::after,
@@ -1084,6 +1140,25 @@
   gap: 16px;
   padding: 4px 12px 12px;
 }
+.bw-tabs-grid[data-dense] {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-auto-rows: minmax(0, 1fr);
+  align-content: stretch;
+  overflow: hidden;
+}
+.bw-tabs-grid[data-dense] .bw-tabcard-main {
+  flex: 1;
+  min-height: 0;
+  padding-bottom: 8px;
+}
+.bw-tabs-grid[data-dense] .bw-tabcard-pic {
+  flex: 1;
+  height: auto;
+  min-height: 48px;
+}
+.bw-tabs-grid[data-dense] .bw-tabcard-close {
+  min-height: 64px;
+}
 .bw-tabcard {
   position: relative;
   display: flex;
@@ -1344,6 +1419,9 @@
   flex: 1;
   overflow: auto;
 }
+.bw-ask-task > * {
+  flex-shrink: 0;
+}
 .bw-ask-option {
   position: relative;
   min-height: 70px;
@@ -1415,6 +1493,10 @@
   display: flex;
   flex-direction: column;
   gap: 6px;
+}
+.bw-ask-steps .bw-ask-steps-more {
+  padding-left: 40px;
+  font-size: 0.85rem;
 }
 .bw-ask-steps li {
   display: flex;
@@ -1503,6 +1585,12 @@
 .bw-ask-confirm {
   display: flex;
   gap: 10px;
+  /* Approve and No stay in view on a short screen, over the details if need be. */
+  position: sticky;
+  bottom: 0;
+  z-index: 1;
+  padding: 8px 0 2px;
+  background: var(--surface);
 }
 .bw-ask-actions .btn,
 .bw-ask-confirm .btn {

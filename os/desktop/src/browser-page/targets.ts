@@ -199,6 +199,8 @@ export type Inspection =
       x: number;
       y: number;
       hit: boolean;
+      /** The link's address, when it is a link (main explains links Chromium would silently refuse). */
+      href: string | null;
     };
 
 function submitsForm(el: Element): boolean {
@@ -234,6 +236,7 @@ export function inspect(ref: string): Inspection {
   const top = document.elementFromPoint(x, y);
   const role = roleOf(el) ?? "clickable";
   const name = nameOf(el);
+  const link = el.closest("a[href]") as HTMLAnchorElement | null;
   return {
     kind: "click",
     name,
@@ -247,6 +250,7 @@ export function inspect(ref: string): Inspection {
     x,
     y,
     hit: !!top && (top === el || el.contains(top)),
+    href: link ? link.href.slice(0, 2000) : null,
   };
 }
 

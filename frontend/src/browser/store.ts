@@ -31,6 +31,8 @@ export interface Notice extends BrowserNotice {
   id: number;
   tabId: number | null;
   at: number;
+  /** The tab's page when it was said: a message about a page goes away when the tab moves on. */
+  url: string | null;
 }
 
 export interface AgentActivity {
@@ -68,9 +70,14 @@ function set(next: Partial<BrowserSnapshot>): void {
 
 function onEvent(e: BrowserEvent): void {
   switch (e.type) {
-    case "state":
-      set({ state: e.state });
+    case "state": {
+      const urls = new Map(e.state.tabs.map((t) => [t.id, t.url]));
+      set({
+        state: e.state,
+        notices: snap.notices.filter((n) => n.tabId === null || urls.get(n.tabId) === n.url),
+      });
       return;
+    }
     case "prompt":
       set({ prompts: [...snap.prompts.filter((p) => p.id !== e.prompt.id), e.prompt] });
       return;
@@ -79,9 +86,16 @@ function onEvent(e: BrowserEvent): void {
       return;
     case "notice":
       set({
-        notices: [...snap.notices, { ...e.notice, id: ++noticeSeq, tabId: e.tabId, at: Date.now() }].slice(
-          -4,
-        ),
+        notices: [
+          ...snap.notices,
+          {
+            ...e.notice,
+            id: ++noticeSeq,
+            tabId: e.tabId,
+            at: Date.now(),
+            url: e.tabId === null ? null : (snap.state?.tabs.find((t) => t.id === e.tabId)?.url ?? null),
+          },
+        ].slice(-4),
       });
       return;
     case "field":

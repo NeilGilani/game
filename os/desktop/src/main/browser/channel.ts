@@ -7,7 +7,11 @@ import type { WebContents } from "electron";
 import { IPC } from "@agency/contracts";
 
 export class PageGone extends Error {
-  constructor(message = "The page changed or closed before it answered.") {
+  constructor(
+    message = "The page changed or closed before it answered.",
+    /** True when the page went away because it moved on to another page (often because of the request itself). */
+    readonly navigated = false,
+  ) {
     super(message);
   }
 }
@@ -96,12 +100,12 @@ export class PageChannel {
   }
 
   /** The page went away (navigated, crashed, closed): its open requests fail now instead of timing out. */
-  dropFor(contentsId: number): void {
+  dropFor(contentsId: number, navigated = false): void {
     for (const [id, p] of this.pending) {
       if (p.contentsId !== contentsId) continue;
       this.pending.delete(id);
       clearTimeout(p.timer);
-      p.reject(new PageGone());
+      p.reject(new PageGone(undefined, navigated));
     }
   }
 }

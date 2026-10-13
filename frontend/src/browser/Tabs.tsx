@@ -52,7 +52,12 @@ export function TabsOverlay({
           <span>New tab</span>
         </button>
       </div>
-      <div className="bw-tabs-grid" data-count={state.tabs.length}>
+      {/* Every tab fits on one screen (at most 12): nothing to scroll with the eyes. */}
+      <div
+        className="bw-tabs-grid"
+        data-count={state.tabs.length}
+        data-dense={state.tabs.length > 8 || undefined}
+      >
         {state.tabs.map((t) => (
           <div key={t.id} className="bw-tabcard" data-active={t.id === state.activeId || undefined}>
             <button

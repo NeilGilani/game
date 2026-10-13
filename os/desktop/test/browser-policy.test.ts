@@ -14,6 +14,7 @@ import {
 import { parseReply } from "../src/main/browser/channel";
 import { fieldOp, rect, scrollRequest, tabId } from "../src/main/browser/ipc";
 import {
+  blockedLinkReason,
   checkPermission,
   chromeUserAgent,
   decideNavigation,
@@ -341,5 +342,18 @@ describe("checking the shell's calls and pages' replies", () => {
     expect(parseReply({ id: 1.5, ok: true })).toBeNull();
     expect(parseReply(null)).toBeNull();
     expect(parseReply({ id: 2, ok: false, error: "e".repeat(1000) })?.error?.length).toBe(300);
+  });
+});
+
+describe("links Chromium refuses without a word", () => {
+  it("say why for files and browser pages, and leave every other link to the page", () => {
+    expect(blockedLinkReason("file:///etc/hosts")).toBe(
+      "Files on this computer can't be opened in AGENCY Browser.",
+    );
+    expect(blockedLinkReason("chrome://settings")).toMatch(/off limits/);
+    expect(blockedLinkReason("https://example.com/")).toBeNull();
+    expect(blockedLinkReason("javascript:void(0)")).toBeNull();
+    expect(blockedLinkReason("mailto:a@b.c")).toBeNull();
+    expect(blockedLinkReason("not a url")).toBeNull();
   });
 });

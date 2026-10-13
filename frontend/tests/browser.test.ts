@@ -1,7 +1,17 @@
 /** AGENCY Browser's pure parts in the shell: the address box, labels on the page, the lens, gliding scroll. */
 import { describe, expect, it } from "vitest";
-import { overlaps, type Rect } from "../src/browser/geometry";
-import { groupTargets, labelSets, layoutLabels, readingOrder, type LabelTarget } from "../src/browser/labels";
+import { inflate, overlaps, type Rect } from "../src/browser/geometry";
+import {
+  areasOf,
+  groupTargets,
+  labelSets,
+  layoutLabels,
+  needsAreas,
+  readingOrder,
+  zoomInto,
+  zoomRect,
+  type LabelTarget,
+} from "../src/browser/labels";
 import { decideAt, directTargets, lensAt, spreadHits, zoomCells } from "../src/browser/magnifier";
 import { displayUrl, parseOmnibox, searchUrl, suggestions } from "../src/browser/omnibox";
 import { glideSpeed } from "../src/browser/glide";
@@ -131,24 +141,66 @@ describe("labels on the page", () => {
     expect(new Set(sets.flat().map((l) => l.ref)).size).toBe(sets.flat().length);
   });
 
-  it("keeps a label next to its own element", () => {
+  it("puts every label touching its own element, never away from it", () => {
     const { placed } = layoutLabels([T("a", 400, 300, 120, 24)], viewport);
-    const l = placed[0]!;
-    const near =
-      Math.abs(l.chip.x + l.chip.width / 2 - 460) < 200 && Math.abs(l.chip.y + l.chip.height / 2 - 312) < 120;
-    expect(near).toBe(true);
+    expect(overlaps(placed[0]!.chip, placed[0]!.target)).toBe(true);
+    // A crowded row of links: every label still touches its link, and no label touches another link.
+    const row = Array.from({ length: 8 }, (_, i) => T(`l${i}`, 100 + i * 90, 200, 70, 18));
+    const sets = labelSets(row, viewport);
+    for (const l of sets.flat()) {
+      expect(overlaps(l.chip, l.target)).toBe(true);
+      for (const t of row) if (t.ref !== l.ref) expect(overlaps(l.chip, t.rect)).toBe(false);
+    }
   });
 
   it("doesn't hide a small link's words, or its neighbours, when there is room", () => {
     const row = [T("a", 100, 20, 60, 18), T("b", 180, 20, 60, 18), T("c", 260, 20, 60, 18)];
     const { placed } = layoutLabels(row, viewport);
-    for (const l of placed) for (const t of row) expect(overlaps(l.chip, t.rect)).toBe(false);
+    for (const l of placed)
+      for (const t of row)
+        expect(overlaps(l.chip, t.ref === l.ref ? inflate(t.rect, -4) : t.rect)).toBe(false);
   });
 
   it("puts a big card's label on its corner", () => {
     const { placed } = layoutLabels([T("card", 100, 100, 300, 200, "button")], viewport);
     expect(placed[0]!.chip.x).toBe(104);
     expect(placed[0]!.chip.y).toBe(104);
+  });
+
+  it("numbers in reading order, all the same size", () => {
+    const targets = [T("b", 500, 100, 80, 18), T("a", 100, 100, 80, 18), T("c", 100, 400, 80, 18)];
+    const { placed } = layoutLabels(targets, viewport);
+    expect(placed.map((l) => `${l.code}${l.ref}`)).toEqual(["1a", "2b", "3c"]);
+    expect(new Set(placed.map((l) => l.chip.width)).size).toBe(1);
+  });
+
+  it("splits a crowded page into lettered areas, then zooms into one", () => {
+    const targets: LabelTarget[] = [];
+    for (let r = 0; r < 20; r++)
+      for (let c = 0; c < 10; c++) targets.push(T(`s${r}-${c}`, 10 + c * 98, 10 + r * 16, 60, 13));
+    const sets = labelSets(targets, viewport);
+    expect(needsAreas(sets, targets.length)).toBe(true);
+    expect(needsAreas(labelSets(targets.slice(0, 3), viewport), 3)).toBe(false);
+    const areas = areasOf(targets, viewport);
+    // As coarse as possible, but few enough things in each (at most 5 across and 3 down).
+    expect(areas.length).toBeGreaterThanOrEqual(6);
+    expect(areas.length).toBeLessThanOrEqual(15);
+    expect(areas.map((a) => a.code).join("")).toBe("ABCDEFGHIJKLMNO".slice(0, areas.length));
+    expect(areasOf(targets.slice(0, 40), viewport).length).toBeLessThan(areas.length);
+    // Every thing is in exactly one area, and areas don't overlap.
+    expect(areas.flatMap((a) => a.refs).sort()).toEqual(targets.map((t) => t.ref).sort());
+    expect(noOverlaps(areas.map((a) => a.hit))).toBe(true);
+    // Zooming in on an area: it fills the screen (centred, at most 4 times), its things magnified with it.
+    const a = areas[0]!;
+    const z = zoomInto(a.focus, viewport);
+    expect(z.scale).toBeGreaterThan(1.5);
+    expect(z.scale).toBeLessThanOrEqual(4);
+    const shown = zoomRect(a.focus, a.focus, z);
+    expect(shown.x).toBeGreaterThanOrEqual(-0.01);
+    expect(shown.y).toBeGreaterThanOrEqual(-0.01);
+    expect(shown.x + shown.width).toBeLessThanOrEqual(viewport.width + 0.01);
+    expect(shown.y + shown.height).toBeLessThanOrEqual(viewport.height + 0.01);
+    expect(Math.max(shown.width / viewport.width, shown.height / viewport.height)).toBeGreaterThan(0.99);
   });
 
   it("groups the side list by kind and merges repeated names", () => {

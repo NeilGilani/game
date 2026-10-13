@@ -18,7 +18,7 @@ import { useInput } from "../state/input";
 import { navigate, type Route } from "../state/router";
 import { AskPanel } from "./AskPanel";
 import { AddressOverlay } from "./Address";
-import { ChooseLayer, ZoomLayer, ZoomRail, type ChooseView } from "./Choose";
+import { ChooseLayer, START_VIEW, ZoomLayer, ZoomRail, type ChooseView } from "./Choose";
 import type { Lens } from "./magnifier";
 import { FormPanel } from "./FormPanel";
 import { Reader } from "./Reader";
@@ -143,7 +143,7 @@ function BrowserApp({ api, taskParam }: { api: BrowserApi; taskParam: string | n
   const tab = state?.tabs.find((t) => t.id === state.activeId) ?? null;
   const [mode, setMode] = useState<Mode>("live");
   const [frame, setFrame] = useState<PageFrame | null>(null);
-  const [chooseView, setChooseView] = useState<ChooseView>({ set: 0, only: null });
+  const [chooseView, setChooseView] = useState<ChooseView>(START_VIEW);
   const [lens, setLens] = useState<Lens | null>(null);
   const [form, setForm] = useState<{ tabId: number; field: PageField } | null>(null);
   const [sheet, setSheet] = useState<Sheet | null>(null);
@@ -214,7 +214,7 @@ function BrowserApp({ api, taskParam }: { api: BrowserApi; taskParam: string | n
         return;
       }
       setFrame(f);
-      setChooseView({ set: 0, only: null });
+      setChooseView(START_VIEW);
       setLens(null);
       setMode(next);
       say(
@@ -543,7 +543,12 @@ function BrowserApp({ api, taskParam }: { api: BrowserApi; taskParam: string | n
           ) : tab.error ? (
             <ErrorPage tab={tab} api={api} />
           ) : mode === "choose" && frame ? (
-            <ChooseLayer frame={frame} view={chooseView} onPick={(ref) => void activate(ref)} />
+            <ChooseLayer
+              frame={frame}
+              view={chooseView}
+              onView={setChooseView}
+              onPick={(ref) => void activate(ref)}
+            />
           ) : mode === "zoom" && frame ? (
             <ZoomLayer frame={frame} lens={lens} onLens={setLens} onPick={(ref) => void activate(ref)} />
           ) : !live && frame?.image ? (

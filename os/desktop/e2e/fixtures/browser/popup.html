@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Library events</title>
+    <style>
+      body { font: 16px/1.5 system-ui, sans-serif; margin: 24px; }
+      #cookies { position: fixed; left: 0; right: 0; bottom: 0; background: #1f2937; color: #fff; padding: 20px 24px; display: flex; gap: 12px; align-items: center; }
+      #cookies p { flex: 1; margin: 0; }
+      #cookies button { font-size: 14px; }
+    </style>
+  </head>
+  <body>
+    <h1>Events this month</h1>
+    <p>Book swap on Tuesday. Knitting circle on Thursday. Story time every morning at 10.</p>
+    <p>Choice: <span id="choice">none</span></p>
+    <div id="cookies" role="region" aria-label="Cookies">
+      <p>We use cookies to remember your settings and to measure visits. You can accept all cookies or only the necessary ones.</p>
+      <button type="button" onclick="choose('accept')">Accept all</button>
+      <button type="button" onclick="choose('reject')">Reject all</button>
+      <button type="button" onclick="choose('settings')">Cookie settings</button>
+    </div>
+    <script>
+      function choose(c) {
+        document.getElementById("choice").textContent = c;
+        document.getElementById("cookies").remove();
+      }
+    </script>
+  </body>
+</html>

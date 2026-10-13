@@ -127,12 +127,21 @@ export function AgentProvider({ children }: { children: ReactNode }) {
 
   useEffect(
     () =>
-      link.onEvent((e) =>
+      link.onEvent((e) => {
+        // A task started elsewhere (the overlay, or AGENCY Browser's agent run by main): show it here too, so its
+        // questions and approvals can be answered from the shell.
+        const adopt = e.type === "task.started" && !order.current.includes(e.taskId);
+        if (adopt) order.current = [e.taskId, ...order.current];
         setTasks((all) => {
-          const t = all[e.taskId];
-          return t ? { ...all, [e.taskId]: reduceTask(t, e, Date.now()) } : all;
-        }),
-      ),
+          const now = Date.now();
+          const t =
+            all[e.taskId] ??
+            (e.type === "task.started"
+              ? newTask({ id: e.taskId, goal: e.goal, origin: "flow", dryRun: e.dryRun }, now)
+              : undefined);
+          return t ? { ...all, [e.taskId]: reduceTask(t, e, now) } : all;
+        });
+      }),
     [link],
   );
 

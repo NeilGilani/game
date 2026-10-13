@@ -27,6 +27,28 @@ const BLOCKED_SCHEMES: Record<string, string> = {
   "agency:": "That is part of AGENCY itself, not a web page.",
 };
 
+/** Links Chromium refuses from a web page without telling anyone; AGENCY says why instead. */
+const SILENT_SCHEMES = new Set([
+  "file:",
+  "chrome:",
+  "chrome-extension:",
+  "devtools:",
+  "view-source:",
+  "filesystem:",
+  "agency:",
+]);
+
+/** The reason a link can't open, for a link that would otherwise do nothing at all; null for any other link. */
+export function blockedLinkReason(href: string): string | null {
+  let u: URL;
+  try {
+    u = new URL(href);
+  } catch {
+    return null;
+  }
+  return SILENT_SCHEMES.has(u.protocol) ? (BLOCKED_SCHEMES[u.protocol] ?? null) : null;
+}
+
 /** True for this computer: localhost, *.localhost and loopback addresses. */
 export function isLocalHost(hostname: string): boolean {
   const h = hostname.toLowerCase().replace(/^\[|\]$/g, "");

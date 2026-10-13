@@ -61,6 +61,13 @@ export interface AgentBrowserDeps {
 
 export class AgentBrowserError extends Error {}
 
+/** A tab call's page moved on to another page before it answered (a click that opens a page does this). */
+export class PageMovedOn extends Error {
+  constructor() {
+    super("The page moved on to another page.");
+  }
+}
+
 const SIGN_IN =
   /\b(sign ?in|log ?in|log ?on|sign ?on|continue with (google|apple|facebook|microsoft|amazon|email)|use (a )?passkey)\b/i;
 
@@ -240,7 +247,13 @@ export class AgentBrowser {
       }
       // For the page's own reading, the page checks again right before the click: if the page changed since the
       // person approved (a different total), the click doesn't happen.
-      await tab.call("agent.click", { ref, key: d.consequential ? d.key : undefined }, 20_000);
+      try {
+        await tab.call("agent.click", { ref, key: d.consequential ? d.key : undefined }, 20_000);
+      } catch (e) {
+        // The click itself opened the next page, taking the old page's answer with it. The next reading of the
+        // page shows what really happened (the ordering pack checks the confirmation, for one).
+        if (!(e instanceof PageMovedOn)) throw e;
+      }
       await tab.settle(15_000);
     } finally {
       this.deps.acting?.(null, tab.id);

@@ -14,7 +14,7 @@
  * - pages talk only to main, through their preload, and main checks the sender and the frame of every message.
  */
 
-import { existsSync } from "node:fs";
+import { copyFileSync, existsSync, mkdirSync, renameSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import {
   BrowserWindow,
@@ -52,7 +52,7 @@ import {
 } from "@agency/contracts";
 import type { Logger } from "../log";
 import { isBlockedAd } from "./adblock";
-import { AgentBrowser, type AgentTab } from "./agent";
+import { AgentBrowser, PageMovedOn, type AgentTab } from "./agent";
 import { writeWebSettings } from "./agentweb";
 import { PageCallError, PageChannel, PageGone } from "./channel";
 import {
@@ -64,6 +64,7 @@ import {
   loadError,
   routePermission,
   safeFilename,
+  blockedLinkReason,
   securityOf,
   sensitiveKind,
   siteLabel,
@@ -139,6 +140,8 @@ export class BrowserHost {
 
   constructor(private readonly opts: BrowserHostOptions) {
     this.store = new BrowserStore(join(opts.userData, "browser"));
+    // Downloads nobody said yes to before AGENCY last quit.
+    rmSync(this.pendingDir, { recursive: true, force: true });
     this.session = electronSession.fromPartition(opts.partition ?? BROWSER_PARTITION);
     this.configureSession();
     this.syncAgentSettings();
@@ -308,7 +311,7 @@ export class BrowserHost {
     });
     wc.on("did-start-navigation", (e) => {
       if (!e.isMainFrame || e.isSameDocument) return;
-      this.channel.dropFor(wc.id);
+      this.channel.dropFor(wc.id, true);
       tab.navs += 1;
     });
     wc.on("did-start-loading", () => {
@@ -749,6 +752,7 @@ export class BrowserHost {
           x: number;
           y: number;
           hit: boolean;
+          href: string | null;
         };
     let ins: Inspection;
     try {
@@ -762,6 +766,12 @@ export class BrowserHost {
     if (ins.kind === "field") return { kind: "field", field: ins.field };
     if (ins.kind === "list")
       return { kind: "list", ref, label: ins.label, options: ins.options, selected: ins.selected };
+    // Chromium ignores these links without a word, so say why nothing happens, and don't click.
+    const silent = ins.href ? blockedLinkReason(ins.href) : null;
+    if (silent) {
+      this.notice(tab.id, silent, "warn");
+      return { kind: "done", navigated: false };
+    }
     if (ins.consequential && !confirmed)
       return {
         kind: "confirm",
@@ -1020,15 +1030,34 @@ export class BrowserHost {
     });
   }
 
+  /** Downloads wait here until the person says yes; only then do they move into Downloads. */
+  private get pendingDir(): string {
+    return join(this.opts.userData, "browser", "pending-downloads");
+  }
+
   private onDownload(item: DownloadItem, contents: WebContents): void {
-    const dir = this.opts.downloadsDir();
-    const name = uniqueName(safeFilename(item.getFilename()), (c) => existsSync(join(dir, c)));
-    // Saved into Downloads only after the person says yes; until then nothing is kept.
-    item.setSavePath(join(dir, name));
+    const name = safeFilename(item.getFilename());
+    const id = `d${++this.promptSeq}`;
+    // A small file can finish before anyone is asked, so it never goes straight into Downloads.
+    mkdirSync(this.pendingDir, { recursive: true, mode: 0o700 });
+    const staged = join(this.pendingDir, `${id}-${name}`);
+    item.setSavePath(staged);
     item.pause();
     const tabId = this.byContents.get(contents.id) ?? null;
-    const id = `d${++this.promptSeq}`;
     const total = item.getTotalBytes();
+    const discard = () => rmSync(staged, { force: true });
+    const keep = () => {
+      try {
+        const dir = this.opts.downloadsDir();
+        mkdirSync(dir, { recursive: true });
+        const final = uniqueName(name, (c) => existsSync(join(dir, c)));
+        moveFile(staged, join(dir, final));
+        this.notice(tabId, `Saved “${final}” in Downloads.`, "info");
+      } catch {
+        discard();
+        this.notice(tabId, `“${name}” couldn't be saved in Downloads.`, "warn");
+      }
+    };
     this.openPrompt(
       {
         id,
@@ -1040,16 +1069,22 @@ export class BrowserHost {
         program: isProgram(name),
       },
       (a) => {
-        if (a === "save" && item.getState() !== "cancelled") {
-          item.resume();
-          item.once("done", (_e, state) =>
-            this.notice(
-              tabId,
-              state === "completed" ? `Saved “${name}” in Downloads.` : `“${name}” didn't download.`,
-              state === "completed" ? "info" : "warn",
-            ),
-          );
-        } else item.cancel();
+        const state = item.getState();
+        if (a !== "save" || state === "cancelled" || state === "interrupted") {
+          if (state === "progressing") item.cancel();
+          discard();
+          if (a === "save") this.notice(tabId, `“${name}” didn't download.`, "warn");
+          return;
+        }
+        if (state === "completed") return keep();
+        item.once("done", (_e, done) => {
+          if (done === "completed") keep();
+          else {
+            discard();
+            this.notice(tabId, `“${name}” didn't download.`, "warn");
+          }
+        });
+        item.resume();
       },
     );
   }
@@ -1154,6 +1189,7 @@ export class BrowserHost {
         this.call<T>(t, method, params ?? {}, timeoutMs).catch((e: unknown) => {
           // Page text never goes back to the agent: only these plain reasons.
           if (e instanceof PageCallError) throw new Error(e.message);
+          if (e instanceof PageGone && e.navigated) throw new PageMovedOn();
           throw new Error(e instanceof PageGone ? e.message : "The page didn't answer.");
         }),
       load: async (url, timeoutMs) => {
@@ -1184,5 +1220,15 @@ export class BrowserHost {
       }
       await sleep(100);
     }
+  }
+}
+
+/** Rename, or copy then remove when Downloads is on another disk. */
+function moveFile(from: string, to: string): void {
+  try {
+    renameSync(from, to);
+  } catch {
+    copyFileSync(from, to);
+    rmSync(from, { force: true });
   }
 }

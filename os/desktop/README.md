@@ -91,6 +91,32 @@ report needing a virtual audio device such as Loopback). So a real call offers t
 | `AGENCY_USER_DATA` | Data directory (default `~/Library/Application Support/AGENCY`) |
 | `AGENCY_TEST=1` | Test mode: windowed, no single-instance lock, `globalThis.__agency` for Playwright |
 
+## AGENCY Browser
+
+A web browser inside the shell (Home, Internet), made for the eyes and with the assistant built in.
+
+- **Main** (`src/main/browser/`): `host.ts` keeps the tabs, each a `WebContentsView` in its own persistent session
+  (`persist:agency-browser`) with `sandbox`, `contextIsolation`, `webSecurity` on and no Node. Only the active tab's
+  view is in the window, placed where the shell asks (`layout`), and hidden whenever the shell draws over the page
+  (choosing, reader, tabs, any sheet) and always while a Lifeline alert is up. `policy.ts` holds the rules: only
+  http and https (http with a Not secure strip), never `file:`, `chrome:`, devtools or AGENCY's own services;
+  permissions are asked per site with big choices (the camera is never a page's); downloads wait for a yes in a
+  folder of their own before they move into Downloads. `window.open` and `target=_blank` become tabs here.
+- **Page preload** (`src/browser-page/`, built to `out/browser-preload/index.cjs`): runs in the isolated world and
+  gives the page nothing. It answers main's requests only (targets on screen, fields, reader text, pop-ups, video),
+  reusing the AGENCY Bridge's page code. Clicks are real input from main (`sendInputEvent`).
+- **Choosing**: the shell shows a still picture of the page with big numbers touching each thing (or lettered areas
+  first on a crowded page, then zoomed in), a magnifying lens, scroll zones, the eye keyboard for forms, a reader
+  view and big video controls. No gaze data reaches a page.
+- **The assistant**: tasks started from Ask AGENCY (and Food and Shopping orders) run the same agent runtime and
+  guard as with Chrome; main answers the agent's `bridge` calls from `agent.ts` instead of the Chrome extension.
+  Anything consequential needs the person's approval; passwords, cards and codes are never typed; banking, health
+  and government sites are read-only unless each step is approved. Settings (For a helper, AGENCY Browser) choose
+  between AGENCY Browser and Chrome and write the guard's web limits (`agentweb.ts`).
+- `AGENCY_BROWSER=0` turns it off (the shell then opens sites in the system browser).
+- Tests: `test/browser-*.test.ts` (rules, the agent's tools, the page code) and `e2e/browser.spec.ts` (the app with
+  local pages from `e2e/fixtures/browser`, and the real agent ordering on the sandbox shop).
+
 ## For the other instances
 
 - **Overlay (Instance 3)**: build to `os/overlay/dist/index.html`. You're loaded with

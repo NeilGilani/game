@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Maple Street Library</title>
+    <style>
+      body { font: 16px/1.5 Georgia, serif; margin: 0; color: #222; background: #fbfaf7; }
+      header { background: #2f4858; color: #fff; padding: 12px 24px; display: flex; gap: 18px; align-items: center; }
+      header a { color: #fff; font-size: 14px; }
+      main { max-width: 900px; margin: 24px auto; padding: 0 24px; }
+      .cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+      .card { background: #fff; border: 1px solid #ddd; border-radius: 8px; padding: 12px; }
+      .card a { font-size: 13px; }
+      button { font-size: 14px; }
+      footer { padding: 24px; font-size: 12px; color: #666; }
+      footer a { margin-right: 10px; }
+      #status { font-weight: bold; }
+    </style>
+  </head>
+  <body>
+    <header>
+      <strong>Maple Street Library</strong>
+      <a href="article.html">Stories</a>
+      <a href="form.html">Join the library</a>
+      <a href="video.html">Videos</a>
+      <a href="popup.html">Events</a>
+      <a href="dense.html">Catalogue</a>
+    </header>
+    <main>
+      <h1>Welcome to the library</h1>
+      <p>Open every day from 9 to 5. Borrow books, films and music, or join a reading group.</p>
+      <p>Status: <span id="status">nothing pressed yet</span></p>
+      <button id="hello" type="button" onclick="document.getElementById('status').textContent = 'pressed ' + (event.isTrusted ? 'by a person' : 'by a script')">Say hello</button>
+      <h2>This week</h2>
+      <div class="cards">
+        <div class="card"><h3>Gardening club</h3><a href="article.html#garden">Read more</a></div>
+        <div class="card"><h3>Film night</h3><a href="video.html">Read more</a></div>
+        <div class="card"><h3>Book swap</h3><a href="popup.html">Read more</a></div>
+      </div>
+      <h2>Elsewhere</h2>
+      <p>
+        <a id="newtab" href="article.html" target="_blank">Open the story in a new tab</a> ·
+        <button id="popup-window" type="button" onclick="window.open('form.html', 'join')">Open the form in a new window</button>
+      </p>
+      <p>
+        <a id="file-link" href="file:///etc/hosts">A file on this computer</a> ·
+        <a id="js-link" href="javascript:void(0)">A script link</a>
+      </p>
+    </main>
+    <footer>
+      <a href="article.html">About</a><a href="form.html">Contact</a><a href="dense.html">Accessibility</a><a href="popup.html">Privacy</a>
+    </footer>
+  </body>
+</html>

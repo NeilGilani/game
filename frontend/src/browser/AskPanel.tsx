@@ -114,9 +114,15 @@ function Approval({ a, onDecide }: { a: ApprovalRequest; onDecide: (d: "approve"
     const t = window.setTimeout(() => setReady(true), 1500);
     return () => window.clearTimeout(t);
   }, [confirming]);
+  // The few that matter most, so Approve and No stay in view without scrolling.
+  const rank = (k: string) => {
+    const i = ["Total", "Amount", "Item 1", "Site", "Where"].indexOf(k);
+    return i < 0 ? 99 : i;
+  };
   const details = Object.entries(a.details)
-    .filter(([k]) => !/^(Why I'm asking|Agent's description)$/.test(k))
-    .slice(0, 8);
+    .filter(([k]) => !/^(Why I'm asking|Agent's description|Button)$/.test(k))
+    .sort(([x], [y]) => rank(x) - rank(y))
+    .slice(0, 3);
   const amount = a.details.Total ?? a.details.Amount;
   return (
     <div className="bw-ask-approval" data-testid="browser-approval">
@@ -180,6 +186,10 @@ function TaskBody({ t, onAgain }: { t: TaskView; onAgain: () => void }) {
   useEffect(() => () => reading.current?.stop(), []);
   const finished = isFinished(t);
   const running = t.steps.find((s) => s.status === "running");
+  // Only the latest steps, so a question or an approval is always in full view (nothing to scroll).
+  const keep = t.phase === "approval" ? 0 : t.phase === "question" ? 1 : 5;
+  const shown = keep > 0 ? t.steps.slice(-keep) : [];
+  const hidden = t.steps.length - shown.length;
   return (
     <div className="bw-ask-task" aria-live="polite">
       <div className="bw-ask-goal">
@@ -193,9 +203,14 @@ function TaskBody({ t, onAgain }: { t: TaskView; onAgain: () => void }) {
         </span>
         <h3>{t.goal}</h3>
       </div>
-      {t.steps.length > 0 && (
+      {shown.length > 0 && (
         <ol className="bw-ask-steps" aria-label="Steps">
-          {t.steps.map((s) => (
+          {hidden > 0 && (
+            <li className="bw-ask-steps-more">
+              {hidden} earlier {hidden === 1 ? "step" : "steps"}
+            </li>
+          )}
+          {shown.map((s) => (
             <li key={s.id} data-status={s.status}>
               <Icon
                 name={
