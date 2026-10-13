@@ -46,6 +46,8 @@ import { BrowserSettings } from "./browser/BrowserSettings";
 import { DailyNudge } from "./daily/DayCard";
 import { DailyRoute } from "./daily/DailyRoute";
 import { DaySettings } from "./daily/DaySettings";
+import { CompanionLayer } from "./companion/CompanionLayer";
+import { CompanionSettings } from "./companion/CompanionSettings";
 
 function onboarded(): boolean {
   try {
@@ -79,6 +81,7 @@ function Screen({ route }: { route: Route }) {
   if (a === "settings" && b === "papers") return <PapersSettings />;
   if (a === "settings" && b === "browser") return <BrowserSettings />;
   if (a === "settings" && b === "daily") return <DaySettings />;
+  if (a === "settings" && b === "companion") return <CompanionSettings />;
   if (a === "papers" && b) return <PapersScreen key={b} action={b} />;
   if (a === "new" && !b) return <NewTask />;
   if (a === "new" && b === "phrases") return <Phrases />;
@@ -188,6 +191,7 @@ function Shell() {
         <Screen route={route} />
       </main>
       <EyeKeyboard />
+      <CompanionLayer />
       <LifelineOverlay />
       <InputLayer />
       <GazeAssist />

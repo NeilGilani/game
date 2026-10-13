@@ -194,6 +194,13 @@ export function HelperSettings() {
       path: "/settings/daily",
     },
     {
+      id: "companion",
+      label: "Caregiver phones",
+      sub: "Set up from a phone, alerts, notes",
+      icon: "phone",
+      path: "/settings/companion",
+    },
+    {
       id: "cases",
       label: "Cases and approvals",
       sub: "Every errand and decision",
@@ -399,12 +406,17 @@ export function VoiceSettings() {
 
 // ---- Memory -----------------------------------------------------------------------------------------------------
 
-async function memoryCall(path: string, method: string): Promise<boolean> {
+async function memoryCall(path: string, method: string, body?: unknown): Promise<boolean> {
   const headers = new Headers();
   const token = accessToken();
   if (token) headers.set("X-Agency-Token", token);
+  if (body !== undefined) headers.set("Content-Type", "application/json");
   try {
-    const r = await fetch(`${coordinatorUrl()}${path}`, { method, headers });
+    const r = await fetch(`${coordinatorUrl()}${path}`, {
+      method,
+      headers,
+      body: body === undefined ? undefined : JSON.stringify(body),
+    });
     return r.ok;
   } catch {
     return false;
@@ -484,7 +496,7 @@ export function MemorySettings() {
           onConfirm={() => {
             setConfirmAll(false);
             void (async () => {
-              const ok = demo || (await memoryCall("/api/memory/forget-all", "POST"));
+              const ok = demo || (await memoryCall("/api/memory/forget-all", "POST", { confirm: true }));
               if (ok) setHidden((items ?? []).map((s) => s.nodeId));
               const text = ok ? "Everything was erased." : "Couldn't erase. Try again.";
               setNotice(text);

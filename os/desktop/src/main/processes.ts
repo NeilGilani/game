@@ -259,6 +259,8 @@ export interface SidecarSpec {
   args: string[];
   cwd: string;
   dataDir: string;
+  /** The built interface (frontend/dist): the caregiver companion's phone page is served from it. */
+  companionDir?: string | null;
 }
 
 export class Sidecar {
@@ -291,6 +293,8 @@ export class Sidecar {
         AGENCY_DB_PATH: `${this.spec.dataDir}/agency.db`,
         // The desktop app serves the interface itself (agency://shell).
         AGENCY_FRONTEND_DIST: "/nonexistent",
+        // ...but caregivers' phones get their page from the coordinator's phone server (when turned on).
+        ...(this.spec.companionDir ? { AGENCY_COMPANION_DIST: this.spec.companionDir } : {}),
         PYTHONUNBUFFERED: "1",
       },
     });
