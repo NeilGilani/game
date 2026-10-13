@@ -295,6 +295,7 @@ export class FakeNative implements NativeClient {
         return { ok: true };
       },
       "speech.voices": () => ({ voices: [...this.voices] }),
+      "calendar.today": () => ({ ok: true as const, events: [] }),
       "speech.listen": ({ on }) => {
         if (on) {
           const missing = (["microphone", "speech-recognition"] as const).find(

@@ -29,6 +29,7 @@ export const NATIVE_ALLOWED: Record<WindowRole, readonly NativeMethod[]> = {
     "speech.say",
     "speech.voices",
     "speech.listen",
+    "calendar.today",
   ],
   overlay: [
     "ax.press",

@@ -26,6 +26,47 @@ public struct VoiceRecord: Equatable, Sendable {
   }
 }
 
+/// One event from the Calendar app, as My day shows it. Local wall-clock start ("14:30").
+public struct CalendarEventRecord: Equatable, Sendable {
+  public var title: String
+  public var start: String
+  public var allDay: Bool
+  public var location: String
+  public var calendar: String
+  public init(title: String, start: String, allDay: Bool, location: String, calendar: String) {
+    self.title = title
+    self.start = start
+    self.allDay = allDay
+    self.location = location
+    self.calendar = calendar
+  }
+
+  /// At most `max` characters, one line.
+  static func clip(_ s: String, _ max: Int) -> String {
+    let line = s.components(separatedBy: .newlines).joined(separator: " ").trimmingCharacters(in: .whitespaces)
+    return line.count > max ? String(line.prefix(max)) : line
+  }
+
+  public var json: JSONValue {
+    ["title": .string(Self.clip(title, 200)), "start": .string(start), "allDay": .bool(allDay),
+     "location": .string(Self.clip(location, 200)), "calendar": .string(Self.clip(calendar, 80))]
+  }
+}
+
+/// Why today's events can't be read, in words a helper can act on.
+public enum CalendarProblem: Error, Equatable, Sendable {
+  case notAllowed
+  case unavailable(String)
+
+  public var message: String {
+    switch self {
+    case .notAllowed:
+      return "AGENCY isn't allowed to read the Calendar. A helper can allow it in System Settings > Privacy & Security > Calendars, next to AGENCY."
+    case .unavailable(let why): return why
+    }
+  }
+}
+
 public enum MouseButton: String, Sendable { case left, right }
 
 /// Everything macOS-specific, behind one protocol so the server (validation, permissions, rate limiting,
@@ -55,11 +96,17 @@ public protocol NativePlatform: AnyObject {
   func say(text: String, voiceId: String?, rate: Double?) throws
   func voices(completion: @escaping ([VoiceRecord]) -> Void)
   func listen(on: Bool, locale: String?) throws
+  /// Today's events from the Calendar app (read-only). Asks for Calendar access the first time.
+  func calendarToday(completion: @escaping (Result<[CalendarEventRecord], CalendarProblem>) -> Void)
   /// Platform part of the kill switch: stop speaking, release anything held.
   func stopAll()
 }
 
 extension NativePlatform {
+  public func calendarToday(completion: @escaping (Result<[CalendarEventRecord], CalendarProblem>) -> Void) {
+    completion(.failure(.unavailable("Reading the Calendar isn't available here.")))
+  }
+
   public func permissionState(_ kind: PermissionKind) -> PermissionState { permissionStatus()[kind] ?? .notDetermined }
 
   func firstMissing(_ required: [PermissionKind]) -> PermissionKind? {
@@ -286,6 +333,19 @@ public final class NativeServer: @unchecked Sendable {
     on(.speechVoices) { [unowned self] _, reply in
       self.platform.voices { list in
         reply(.success(["voices": .array(list.map { ["id": .string($0.id), "name": .string($0.name), "personal": .bool($0.personal)] })]))
+      }
+    }
+
+    // Read-only; problems (no permission) come back as { ok: false, error } so the screen can say what to do.
+    on(.calendarToday, queue: workQueue) { [unowned self] _, reply in
+      self.platform.calendarToday { result in
+        switch result {
+        case .success(let events):
+          let sorted = events.sorted { ($0.allDay ? "" : $0.start) < ($1.allDay ? "" : $1.start) }
+          reply(.success(["ok": true, "events": .array(sorted.prefix(50).map(\.json))]))
+        case .failure(let problem):
+          reply(.success(["ok": false, "error": .string(problem.message)]))
+        }
       }
     }
 

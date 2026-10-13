@@ -84,6 +84,10 @@ const config = {
         "AGENCY turns what the other person says on a call into words on your screen, on this Mac.",
       NSAppleEventsUsageDescription:
         "AGENCY uses Messages to send the texts you approve, to your saved people, from your own number.",
+      NSCalendarsFullAccessUsageDescription:
+        "AGENCY shows today's Calendar events in My day. It only reads them, on this Mac, and never saves or sends them.",
+      NSCalendarsUsageDescription:
+        "AGENCY shows today's Calendar events in My day. It only reads them, on this Mac, and never saves or sends them.",
       LSApplicationCategoryType: "public.app-category.productivity",
     },
   },

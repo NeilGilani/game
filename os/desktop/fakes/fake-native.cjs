@@ -31,7 +31,13 @@ function send(msg) {
 const NOT_REAL =
   "this is AGENCY's stand-in macOS helper, which can't open apps. Build agency-native (os/native-macos) to open real apps";
 
-const app = { bundleId: "com.example.fake", name: "Fake App", path: "/Applications/Fake.app", running: true, frontmost: true };
+const app = {
+  bundleId: "com.example.fake",
+  name: "Fake App",
+  path: "/Applications/Fake.app",
+  running: true,
+  frontmost: true,
+};
 const permissions = {
   camera: "granted",
   accessibility: "granted",
@@ -48,8 +54,22 @@ const methods = {
     owner: app.bundleId,
     truncated: false,
     targets: [
-      { id: "fake.ok", rect: { x: 400, y: 400, width: 160, height: 120 }, role: "button", label: "OK", source: "ax", owner: app.bundleId },
-      { id: "fake.cancel", rect: { x: 600, y: 400, width: 160, height: 120 }, role: "button", label: "Cancel", source: "ax", owner: app.bundleId },
+      {
+        id: "fake.ok",
+        rect: { x: 400, y: 400, width: 160, height: 120 },
+        role: "button",
+        label: "OK",
+        source: "ax",
+        owner: app.bundleId,
+      },
+      {
+        id: "fake.cancel",
+        rect: { x: 600, y: 400, width: 160, height: 120 },
+        role: "button",
+        label: "Cancel",
+        source: "ax",
+        owner: app.bundleId,
+      },
     ],
   }),
   "ax.press": ({ targetId }) => ({ ok: typeof targetId === "string" && targetId.startsWith("fake.") }),
@@ -68,6 +88,11 @@ const methods = {
   "speech.say": () => ({ ok: true }),
   "speech.voices": () => ({ voices: [{ id: "fake.voice", name: "Fake Voice", personal: false }] }),
   "speech.listen": () => ({ ok: true }),
+  // A made-up event, so My day's Calendar path can be seen without a real Calendar.
+  "calendar.today": () => ({
+    ok: true,
+    events: [{ title: "Fake calendar event", start: "23:55", allDay: false, location: "", calendar: "Fake" }],
+  }),
   "input.stopAll": () => {
     stopped += 1;
     return { ok: true };

@@ -11,6 +11,7 @@ final class MacPlatform: NativePlatform, @unchecked Sendable {
   let input = SyntheticInput()
   let apps = AppsService()
   let speech: SpeechService
+  let calendar = CalendarService()
   private var lastPermissions: [PermissionKind: PermissionState] = [:]
   private var permissionTimer: Timer?
 
@@ -147,6 +148,9 @@ final class MacPlatform: NativePlatform, @unchecked Sendable {
   func say(text: String, voiceId: String?, rate: Double?) throws { try speech.say(text: text, voiceId: voiceId, rate: rate) }
   func voices(completion: @escaping ([VoiceRecord]) -> Void) { speech.voices(completion: completion) }
   func listen(on: Bool, locale: String?) throws { try speech.listen(on: on, locale: locale) }
+  func calendarToday(completion: @escaping (Result<[CalendarEventRecord], CalendarProblem>) -> Void) {
+    calendar.today(completion: completion)
+  }
 
   func stopAll() {
     speech.stopSpeaking()
