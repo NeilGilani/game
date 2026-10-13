@@ -6,6 +6,9 @@ endorsement you don't have.*
 
 **Before you send any of these**
 
+- These drafts say "open-source". That's only true once a licence is added to the repository (see
+  `../licence-decision-memo.md`). Until then, say "free, with public source code".
+
 - Attach or link the [one-page summary](one-page-summary.md), not the whole repository.
 - Don't send a download link to a clinician or family as if AGENCY were ready for daily use. It isn't: nobody with
   ALS has used it yet, and the Mac app isn't signed. Offer a demo call instead.

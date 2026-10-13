@@ -11,7 +11,8 @@ presented as someone with ALS unless they are, and they have agreed in writing.*
 - No stock footage of patients. No music swells over claims. No "life-saving".
 - Captions burned in, and a separate `.vtt` file. Audio description of the visuals in the narration itself, so the
   video works with no picture.
-- End card with the website and the words "Free. Open source. Not a medical device."
+- End card with the website and the words "Free. Open source. Not a medical device." ("Open source" only once a
+  licence is added; see `../licence-decision-memo.md`.)
 
 `[[TEAM: who narrates? A team member's own voice is best. If you use a synthetic voice, say so in the credits.]]`
 

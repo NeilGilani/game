@@ -8,6 +8,8 @@ Keep it to one page at 11 pt: if you add a line, remove one. Fill every [[TEAM]]
 
 **Free, open-source eye control for the Mac, for people who can only move their eyes.**
 
+`[[TEAM: "open-source" is only true once a LICENSE is in the repository. Until then write "free, with public source code".]]`
+
 `[[TEAM: website]]` · `[[TEAM: email]]` · github.com/NeilGilani/game
 
 ## The problem
