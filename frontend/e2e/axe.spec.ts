@@ -32,6 +32,13 @@ const SCREENS = [
   "/#/lifeline",
   "/#/lifeline/setup",
   "/#/preferences",
+  "/#/day",
+  "/#/day/today",
+  "/#/day/routines",
+  "/#/day/home",
+  "/#/day/help",
+  "/#/day/tell?kind=help&text=I%27m%20cold",
+  "/#/settings/day",
 ];
 
 for (const theme of ["light", "dark", "contrast"]) {
@@ -59,3 +66,37 @@ for (const theme of ["light", "dark", "contrast"]) {
     }
   });
 }
+
+test("axe: My day with a full practice day and practice home", async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem("agency.onboarded", "1");
+    localStorage.setItem("agency.fakes", "memory,agent,native,daily,home");
+    localStorage.setItem("agency.preferences", JSON.stringify({ reduced_motion: true }));
+  });
+  for (const path of [
+    "/#/day",
+    "/#/day/today",
+    "/#/day/routines",
+    "/#/day/home",
+    "/#/day/tell?kind=help&text=Hi",
+    "/#/settings",
+  ]) {
+    await page.goto(path);
+    await page.waitForTimeout(1000);
+    const result = await new AxeBuilder({ page })
+      .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"])
+      .analyze();
+    expect
+      .soft(
+        result.violations.map(
+          (v) =>
+            `${v.id}: ${v.nodes
+              .map((n) => n.target.join(" "))
+              .slice(0, 3)
+              .join(" | ")}`,
+        ),
+        path,
+      )
+      .toEqual([]);
+  }
+});
