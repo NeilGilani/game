@@ -15,7 +15,7 @@ checked on 12 October 2026; anything we couldn't confirm is marked "unverified".
    "powered environmental control systems" ([21 CFR 890.3725](https://www.law.cornell.edu/cfr/text/21/890.3725)) as
    devices when "intended for medical purposes". So the first question for ORCA is whether a study of AGENCY is
    FDA-regulated research. The answer depends on AGENCY's intended use and the claims made about it (see
-   [Regulatory questions](#regulatory-questions)). If it is, review goes to WCG (which costs money) or to a clinical
+   [Regulatory questions](#10a-regulatory-questions)). If it is, review goes to WCG (which costs money) or to a clinical
    partner's IRB.
 2. **Who is PI.** At UCSC "your faculty sponsor should be listed as PI and will certify the submission"; the student
    is co-PI ([UCSC initial submission](https://officeofresearch.ucsc.edu/compliance/irb/initial-submission/)).
