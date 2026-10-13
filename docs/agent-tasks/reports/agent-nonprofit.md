@@ -18,7 +18,7 @@ LICENSE file was added.
 | `outreach/family-faq.md` | Is it safe, what does it cost, what happens to my data, and more |
 | `pilot-study-plan.md` | Feasibility study for UCSC's IRB: research questions, progression criteria, eligibility, sample size reasoning, procedures, consent for people who can't speak or write (UCSC's rules, FDA guidance, impartial witness, Civil Code §14, capacity, H&S §24178 surrogates), cited outcome measures with eye-gaze notes and licences, data handling, risks, stopping rules, regulatory questions, timeline |
 | `licence-decision-memo.md` | Options A to D given the RealEye AGPL/commercial dual licence (its commercial terms quoted), recommendation (AGPL-3.0-or-later, CC BY 4.0 docs, DCO), lawyer questions, an email to RealEye |
-| `privacy-and-terms/privacy-policy.md` | Part 1: privacy policy describing what the code on `main` does. Part 2: 18 gaps between the code and the promises, with file references |
+| `privacy-and-terms/privacy-policy.md` | Part 1: privacy policy describing what the code on `main` does. Part 2: 20 gaps between the code and the promises, with file references |
 | `privacy-and-terms/terms-of-use.md` | Terms of use, including AGENCY Cloud, what AGENCY is not, and what the agent does before approval |
 
 Every decision or blank is marked `[[TEAM: ...]]`.
@@ -64,14 +64,14 @@ Association and UCSC ORCA) are ready to send once a name and contact are filled 
 - `site/src/pages/privacy.astro` overstates several things (whole-screen screenshots described as "the app it's
   working in"; Synapse-Mesh routing described as always on; memory described as never leaving the Mac; the web demo
   sending more than task text).
-- Settings' "Erase everything" always fails: `frontend/src/screens/OsSettings.tsx:394-404` posts no body, and
-  `backend/agency/memory/api.py:139` needs `{"confirm": true}`.
+- Settings' "Erase everything" always failed (no `{"confirm": true}` body); fixed on `main` in `4cad676`, but it
+  still only erases Memory.
 - The demo seed pre-sets Lifeline and dispatch consent (`backend/agency/services/seed.py:74-76`, `108-113`), and
   that consent carries over when real contacts are added (`backend/agency/lifeline/service.py:117-124`).
 - Talk AI finishing is on by default without a consent step (`frontend/src/talk/Board.tsx:52-58`); Talk replies'
   consent preview doesn't show everything sent (`frontend/src/talk/Listen.tsx:81-97`).
 - There's no user-facing AI-off switch, and no age check despite Gemini's 18+ rule.
-- `site/src/data/site.ts:33` says a Gemini key is needed; AGENCY Cloud makes that untrue.
+- `site/src/data/site.ts` said a Gemini key is needed; fixed on `main` in `4cad676`.
 - `THIRD_PARTY.md` describes RealEye's no-fee licence more broadly than its text.
 
 Full list with references: `docs/launch/privacy-and-terms/privacy-policy.md`, Part 2.
@@ -84,3 +84,10 @@ Full list with references: `docs/launch/privacy-and-terms/privacy-policy.md`, Pa
 3. Fix the privacy gaps (at least correct the live privacy page and the erase button) before any outreach that
    points people to the app.
 4. Work with an SLP advisor on the pilot plan's measures and consent materials; submit in January.
+
+## Update, 13 October 2026
+
+The branch had already been merged into `main`. Merging the latest `origin/main` (to `412b760`) was a fast-forward.
+The privacy draft now covers the caregiver phones and My day features that landed with it (from their reports and
+spot checks of their code, not a full audit), and records the fixes in `4cad676`. Check results after the merge are
+below.

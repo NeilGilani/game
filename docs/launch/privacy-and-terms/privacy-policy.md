@@ -1,6 +1,8 @@
 # AGENCY privacy policy (draft)
 
-*Draft, 12 October 2026, written by reading the code on `main` (commit `df6c814`). Not legal advice: a lawyer who
+*Draft, 12 October 2026, written by reading the code on `main` (commit `df6c814`); updated 13 October 2026 for
+`412b760` (caregiver phones, My day, and the "Erase everything" fix), from those features' reports and spot checks
+of their code. Not legal advice: a lawyer who
 knows California health-privacy law (CMIA), the FTC Health Breach Notification Rule and Washington's My Health My Data
 Act should review it before it goes live (see `docs/NONPROFIT_PLAN.md`, section 5). Two parts: the policy itself,
 written for families, and a list for the team of places where the code and the promises don't match yet.*
@@ -112,6 +114,36 @@ When Lifeline raises an alert, it contacts the people you chose, in your order:
 
 Lifeline only contacts people after you (or the person setting it up with you) give permission in Lifeline setup.
 Without permission, it only sounds the alarm on the computer.
+
+### Caregiver phones (off unless a helper turns them on)
+
+A helper can turn on **Caregiver phones** in Settings. While it's on, AGENCY runs a small web server on your Mac
+that only answers phones on your home network, and only phones that were paired by scanning a code on your screen
+(the code works once, for 5 minutes). Each paired phone can be removed from the Mac at any time. Turning Caregiver
+phones off stops the server.
+
+- **What a paired phone can see:** whether AGENCY is running, whether the camera is on, the Mac's battery, Watch over
+  me and check-ins, open and recent Lifeline alerts (and the alert page, once Lifeline has contacted that carer),
+  hand-over notes, and when you saw their messages.
+- **What a paired phone can change:** contacts, details for forms, Talk phrases, favourite sites, the Papers folder
+  and safety settings. Adding or changing a real phone number, removing a contact, or turning a protection off waits
+  until you look at **Allow**. Every change shows on your screen with who made it, and is listed under "Who changed
+  what".
+- **Messages and photos** from carers are kept on your Mac; photos are kept only for the 20 most recent messages.
+  Hand-over notes are kept on your Mac. Details for forms sent from a phone are erased from AGENCY's database once
+  your screen has saved them.
+- **On your home network the connection isn't encrypted** unless someone sets up a certificate. Use it only on a
+  home network you trust.
+
+### Telling a carer (off unless turned on)
+
+**My day** can send a short, non-urgent request ("I'm cold", "Turn me, please") to one carer you chose. You see the
+exact words and who will get them, and look again to send. It goes to a practice phone, or by text message only if
+Twilio is set up (Twilio then receives the carer's number and the words). It never places a call and never raises an
+alert. Your day's appointments, care reminders and home devices are kept on your Mac.
+
+**Home control** in the Mac app runs only Apple Shortcuts that a helper saved, never locks or doors. Each shortcut
+then does whatever it was built to do, which may involve other services you set up.
 
 ### Real messages and orders (off unless turned on)
 
@@ -226,7 +258,9 @@ code is outside this task's area. Each item needs a decision: change the code, o
 | Web demo sends "the task's text" | Also Talk replies (heard line, recent and board phrases) and sentence completions | `frontend/src/demo/webDemo.ts:257-263`; `site/functions/api/assist/*.ts` |
 | "never types, reads or stores" passwords, codes, card numbers | Typing is blocked in code, but full-screen screenshots can show them, and Lifeline stores a dispatch-cancel PIN and an entry note (e.g. a key-safe code) unencrypted | `os/agent/src/policy/secrets.ts`; `backend/agency/lifeline/models.py:101-102` |
 
-Also: `site/src/data/site.ts:33` says a Gemini key is needed for AI tasks; AGENCY Cloud is the default, so it isn't.
+Fixed on `main` on 13 October 2026 (`4cad676`): `site/src/data/site.ts` no longer says a Gemini key is needed, and
+`site/src/pages/inside.astro` now says the agent sees "a screenshot of the screen". `privacy.astro` itself still has
+the wording in the table above.
 
 ### Behaviour to fix or decide on
 
@@ -243,9 +277,8 @@ Also: `site/src/data/site.ts:33` says a Gemini key is needed for AI tasks; AGENC
    doesn't mention that pictures go to the AI (`os/desktop/src/main/permissions.ts:36-40`).
 6. **Memory to the agent:** consider sending sensitive items only with Private mode off *and* an explicit choice,
    or making Private mode the default.
-7. **"Erase everything" in Settings always fails.** It posts `/api/memory/forget-all` with no body; the API requires
-   `{"confirm": true}` and returns 422 (`frontend/src/screens/OsSettings.tsx:394-404`; `backend/agency/memory/api.py:139`).
-   Even the working "Forget everything" in Memory leaves Talk history, cases, audit, Lifeline, Papers details and
+7. **"Erase everything" in Settings only erases Memory.** The 422 failure (no `{"confirm": true}` body) was fixed on
+   `main` on 13 October 2026 (`4cad676`). Like "Forget everything" in Memory, it still leaves Talk history, cases, audit, Lifeline, Papers details and
    signature, browser history, logs and calibration. A real "delete everything" is roadmap item "Data at rest".
 8. **No retention limits** for cases, audit events or Lifeline history (`backend/agency/db.py`). Decide how long to
    keep them.
@@ -275,3 +308,10 @@ Also: `site/src/data/site.ts:33` says a Gemini key is needed for AI tasks; AGENC
 18. **Chrome voices:** in a browser (not the Mac app), text-to-speech may pick a Google network voice that sends the
     text to Google (no `localService` filter, `os/tasks/src/talk/speech.ts:61-79`; inference about Chrome's
     behaviour). The Mac app uses on-device voices.
+19. **Caregiver phones** use plain HTTP on the home network unless `AGENCY_COMPANION_TLS_CERT`/`_KEY` are set, and
+    the server listens on `0.0.0.0` (`backend/agency/companion/config.py:74-77`); it refuses non-private addresses
+    and checks Host headers (`companion/security.py`). Carer messages, photos (last 20) and notes are stored
+    unencrypted in the coordinator database (`companion/service.py:474-487`). Decide retention for messages and
+    notes, and whether the privacy page should name each thing a paired phone can see.
+20. **This draft covers the caregiver companion and My day from their reports and spot checks, not a full audit.**
+    Re-audit them before publishing.

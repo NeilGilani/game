@@ -17,7 +17,7 @@ regulatory or tax advice. Background research is in [`docs/NONPROFIT_PLAN.md`](.
 | [outreach/family-faq.md](outreach/family-faq.md) | Honest answers: is it safe, what does it cost, what happens to my data |
 | [pilot-study-plan.md](pilot-study-plan.md) | Feasibility study plan for UCSC's IRB: questions, measures, consent by eye gaze, data, risks, stopping rules |
 | [licence-decision-memo.md](licence-decision-memo.md) | Code licence options given RealEye's AGPL model; recommendation: AGPL-3.0-or-later |
-| [privacy-and-terms/privacy-policy.md](privacy-and-terms/privacy-policy.md) | Privacy policy matched to what the code does today, plus 18 gaps between the code and the promises |
+| [privacy-and-terms/privacy-policy.md](privacy-and-terms/privacy-policy.md) | Privacy policy matched to what the code does today, plus 20 gaps between the code and the promises |
 | [privacy-and-terms/terms-of-use.md](privacy-and-terms/terms-of-use.md) | Terms of use, including the AI relay and what AGENCY is not |
 
 ## What we learned that changes plans
@@ -33,8 +33,8 @@ regulatory or tax advice. Background research is in [`docs/NONPROFIT_PLAN.md`](.
    alternative way of signing, or a waiver.
 5. **The live privacy page overstates some things.** Notably: the agent sends pictures of the *whole* screen, not
    just the app; Talk's AI sentence finishing is on by default and sends recent phrases without a consent step;
-   Synapse-Mesh isn't used unless someone runs it; there's no user-facing "AI off" switch; and Settings' "Erase
-   everything" button always fails. Details and file references in
+   Synapse-Mesh isn't used unless someone runs it; and there's no user-facing "AI off" switch. (Settings' "Erase
+   everything" button was fixed on 13 October, but it still only erases Memory.) Details and file references in
    [the privacy draft, Part 2](privacy-and-terms/privacy-policy.md#part-2-for-the-team-gaps-to-close-before-publishing).
 6. **"Open-source" isn't true yet.** The code is public but has no licence. Don't use the word in grants or
    outreach until a LICENSE file exists.
@@ -55,7 +55,7 @@ regulatory or tax advice. Background research is in [`docs/NONPROFIT_PLAN.md`](.
 | **Fri 30 Oct** | Submit the LOI (the real deadline is **Tue 3 Nov, 1 p.m. Eastern = 10 a.m. Pacific**) | Leave a margin for ProposalCentral problems | [LOI](als-association-loi.md) |
 | **Mon 2 Nov, 12 p.m. ET** | MIT Solve, only if you decide it's worth it | Optional | [Grant pipeline](grant-pipeline.md) |
 | **Before any outreach** | Choose a public contact email; fill `[[TEAM]]` markers in the one-pager and emails; send SLP and ALS Network emails | Advisors before users | [Emails](outreach/emails.md) |
-| **Before publishing the privacy policy** | Fix or accept the 18 gaps (at minimum: correct `site/src/pages/privacy.astro`, fix "Erase everything", add an AI-off switch, rethink default-on AI finishing and whole-screen screenshots) | The live page doesn't match the code | [Privacy draft, Part 2](privacy-and-terms/privacy-policy.md#part-2-for-the-team-gaps-to-close-before-publishing) |
+| **Before publishing the privacy policy** | Fix or accept the 20 gaps (at minimum: correct `site/src/pages/privacy.astro`, make "Erase everything" erase everything, add an AI-off switch, rethink default-on AI finishing and whole-screen screenshots) | The live page doesn't match the code | [Privacy draft, Part 2](privacy-and-terms/privacy-policy.md#part-2-for-the-team-gaps-to-close-before-publishing) |
 | **Sun 15 Nov** | CITRIS Tech for Social Good application | $500 to $5,000, quick | [Grant pipeline](grant-pipeline.md) |
 | **Early Dec** | Protocol and consent materials drafted with an SLP and the faculty PI | IRB submission in January | [Pilot plan](pilot-study-plan.md) |
 
@@ -66,4 +66,5 @@ regulatory or tax advice. Background research is in [`docs/NONPROFIT_PLAN.md`](.
 - Sutter Health (Forbes Norris) IRB and reliance process.
 - Licence terms for QUEST 2.0, PIADS, ALSFRS-R and the Zarit Burden Interview.
 - Several grant details marked "partial" in the pipeline (2027 dates, sponsor eligibility).
-- The privacy draft describes the code on `main` at `df6c814`; it wasn't checked by running the app.
+- The privacy draft describes the code on `main` at `df6c814`, plus the caregiver companion and My day (merged
+  13 October) from their reports and spot checks; it wasn't checked by running the app.
