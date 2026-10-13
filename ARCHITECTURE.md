@@ -228,6 +228,8 @@ the real person; its tuning is kept on the device (`vision/tuning.ts`).
 | GET | `/api/lifeline/outbox`, `/api/lifeline/report` | Simulated phones; response-time report |
 | POST | `/api/lifeline/demo/checkin-now` | Presenter: ask for a check-in now |
 | GET, POST | `/respond/{token}`, `/respond/{token}/ack` · `decline` · `resolve` | The contact's response page (outside `/api`; the token is the credential) |
+| GET/POST/PUT/DELETE | `/api/companion/...` | Caregiver phones, from the person's screen: on/off, pairing codes, paired phones, changes waiting for the person or the Mac, messages to show, notes ([docs/CAREGIVER_COMPANION.md](docs/CAREGIVER_COMPANION.md)) |
+| GET/POST/PUT | `/phone/api/...` on port 8470 | The caregiver's phone companion: its own server on the home network, only while turned on, per-device keys; no route into `/api` |
 
 When `AGENCY_API_TOKEN` is set, every `/api` route except `/api/health` requires `X-Agency-Token`.
 

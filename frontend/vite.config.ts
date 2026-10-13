@@ -28,7 +28,12 @@ export default defineConfig({
     strictPort: true,
     proxy,
   },
-  build: { target: "es2022", sourcemap: true },
+  build: {
+    target: "es2022",
+    sourcemap: true,
+    // companion.html is the caregiver's phone companion, served only by the coordinator's phone server.
+    rollupOptions: { input: { main: "index.html", companion: "companion.html" } },
+  },
   test: {
     include: ["tests/**/*.test.ts"],
     environment: "node",
