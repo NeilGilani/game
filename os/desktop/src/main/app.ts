@@ -58,6 +58,9 @@ import { browserCall } from "./browser/ipc";
 import { CoordinatorClient } from "./coordinator";
 import { LifelineHost, type HeartbeatBody } from "./lifeline";
 import { createLogger, setLogDir } from "./log";
+import { HomeControl, homeCall } from "./home/control";
+import { loadHome, saveHome } from "./home/config";
+import { realExec } from "./home/shortcuts";
 import { Messaging, runOsascript } from "./messaging";
 import { MouseGaze } from "./mouse-gaze";
 import { displayFolder, listPapers, readPaper, saveCopy, validFolder } from "./papers";
@@ -129,6 +132,8 @@ export class AgencyApp {
   lifeline: LifelineHost;
   /** Real texts and calls through the person's iPhone; off until turned on in Settings. */
   messaging: Messaging;
+  /** Lights, TV and more through Shortcuts a helper named (home/); off until turned on in Settings. */
+  home: HomeControl;
   permissions: Permissions;
   mouse: MouseGaze;
   gazeSource: HostStatus["gazeSource"] = "none";
@@ -166,6 +171,19 @@ export class AgencyApp {
       openUrl: (url) => electronShell.openExternal(url),
       logFile: join(opts.userData, "real-sends.jsonl"),
       log: createLogger("messaging"),
+    });
+    const homeFile = join(opts.userData, "home.json");
+    let homeSettings = loadHome(homeFile);
+    this.home = new HomeControl({
+      platform: process.platform,
+      settings: () => homeSettings,
+      saveSettings: (s) => {
+        homeSettings = s;
+        saveHome(homeFile, s);
+      },
+      exec: realExec,
+      logFile: join(opts.userData, "home-actions.jsonl"),
+      log: createLogger("home"),
     });
     this.permissions = new Permissions({
       platform: process.platform,
@@ -860,6 +878,8 @@ export class AgencyApp {
   private async runStop(): Promise<StopAllResult> {
     // No real text or call goes out after Stop, even one already approved and waiting.
     this.messaging.cancelAll();
+    // No home shortcut runs after Stop, and one already running is ended.
+    this.home.stopAll();
     // The assistant does nothing more in AGENCY Browser until the person starts a new task.
     this.browser?.stopAgent();
     const result = await stopAll(
@@ -1135,6 +1155,8 @@ export class AgencyApp {
     // Real texts and calls: the shell only. Main resolves numbers and checks every rule itself (messaging.ts).
     handle(IPC.messaging, ["shell"], (_e, _role, op, arg) => this.messagingCall(String(op), arg));
     handle(IPC.papers, ["shell"], (_e, _role, op, ...args) => this.papers(String(op), args));
+    // The home: the shell only. Main looks up every shortcut and checks every rule itself (home/control.ts).
+    handle(IPC.home, ["shell"], (_e, _role, op, ...args) => homeCall(this.home, String(op), args));
     // AGENCY Browser: the shell only. Pages reach main only through their preload, checked by the browser host.
     handle(IPC.browser, ["shell"], (e, _role, op, ...args) => {
       if (!this.browser) throw new Error("AGENCY Browser is off.");

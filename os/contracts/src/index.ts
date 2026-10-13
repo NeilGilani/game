@@ -1,6 +1,7 @@
 export * from "./agent";
 export * from "./browser";
 export * from "./gaze";
+export * from "./home";
 export * from "./host";
 export * from "./ipc";
 export * from "./lifeline";
