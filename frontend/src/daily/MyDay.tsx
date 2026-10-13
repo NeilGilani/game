@@ -13,9 +13,11 @@ import {
   daySummary,
   dayKey,
   dueRoutines,
+  formatClock,
   formatTime,
   KIND_LABEL,
   laterTime,
+  nextDue,
   routinePrompt,
   type AgendaEntry,
 } from "./day";
@@ -159,7 +161,7 @@ export function MyDayHub() {
               due.length
                 ? `${due.length} to answer`
                 : nextRoutine
-                  ? `${nextRoutine.title}, later`
+                  ? `${nextRoutine.title} at ${formatClock(nextDue(nextRoutine, state?.routine_state[nextRoutine.id], now))}`
                   : state?.routines.length
                     ? "All answered"
                     : "None set up yet"

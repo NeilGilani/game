@@ -2762,11 +2762,11 @@ h2 {
 @media (min-width: 1101px) {
   .home-tiles:has(> .home-tile:nth-child(13)) {
     grid-template-columns: repeat(5, minmax(0, 1fr));
-    gap: 6px 20px;
+    gap: 24px;
   }
   .home-tiles:has(> .home-tile:nth-child(13)) .home-tile-icon {
-    width: clamp(88px, 6.9vw, 136px);
-    height: clamp(88px, 6.9vw, 136px);
+    width: clamp(76px, 6vw, 136px);
+    height: clamp(76px, 6vw, 136px);
   }
 }
 .home-tile-icon {
