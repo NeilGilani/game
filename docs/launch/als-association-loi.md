@@ -6,7 +6,7 @@
 
 **Deadline:** Tuesday **3 November 2026, 1 p.m. Eastern**, through ProposalCentral (Grant Maker: The ALS
 Association). The RFA prints "1 p.m. US EDT", but daylight saving time ends on 1 November, so 1 p.m. Eastern that
-day is **10 a.m. Pacific**. Submit by 31 October to be safe.
+day is **10 a.m. Pacific**. Submit by Friday 30 October to be safe.
 
 **Source:** the FY27 Assistive Technology RFA, "Revised September 21, 2026"
 ([RFA PDF](https://www.als.org/sites/default/files/2026-09/Assistive%20Tech%20RFA_FY27.pdf), reached from

@@ -71,8 +71,8 @@ Most funders need a legal entity to pay. AGENCY has none yet. Four routes, and w
 
 | Date | What | Owner |
 |---|---|---|
-| By 17 Oct | Email ResearchGrants@als.org (draft in the LOI file); open a ProposalCentral account | `[[TEAM]]` |
-| By 17 Oct | Find a UCSC faculty or staff advisor (needed for CITRIS, VentureWell, NIDILRR, PVA, and the IRB) | `[[TEAM]]` |
+| By 16 Oct | Email ResearchGrants@als.org (draft in the LOI file); open a ProposalCentral account | `[[TEAM]]` |
+| By 16 Oct | Find a UCSC faculty or staff advisor (needed for CITRIS, VentureWell, NIDILRR, PVA, and the IRB) | `[[TEAM]]` |
 | 19 Oct | CITRIS Tech for Social Good info session (check the call page) | `[[TEAM]]` |
 | By 26 Oct | Decide the ALS applicant organisation and licence | All |
 | 2 Nov, 12 p.m. ET | MIT Solve, if you decide to apply | `[[TEAM]]` |
