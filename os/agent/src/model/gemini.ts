@@ -361,9 +361,15 @@ function busy(error: unknown): boolean {
   if (error instanceof Error && (error.name === "AbortError" || /abort/i.test(error.name))) return false;
   const status =
     typeof (error as { status?: unknown })?.status === "number" ? (error as { status: number }).status : null;
+  if (status === 400 && safetyBlock(error)) return true; // seen live on harmless requests while Gemini was overloaded
   return status === null
     ? !(error instanceof ModelUnavailable) || error.retryable
     : status === 429 || status >= 500;
+}
+
+/** Google's "Request blocked due to safety violations": under load it also fires on plain requests ("what is this"). */
+function safetyBlock(error: unknown): boolean {
+  return /blocked due to safety|safety violation/i.test((error as Error)?.message ?? "");
 }
 
 function toUnavailable(error: unknown): Error {
@@ -374,6 +380,11 @@ function toUnavailable(error: unknown): Error {
     return new ModelUnavailable("The Gemini API key was not accepted.", false);
   if (status === 404) return new ModelUnavailable("The configured Gemini model was not found.", false);
   if (status === 429) return new ModelUnavailable("Gemini is busy right now (rate limit).", true);
+  if (status === 400 && safetyBlock(error))
+    return new ModelUnavailable(
+      "Google's safety check stopped this request. It sometimes does this by mistake when it's busy: try again in a minute.",
+      true,
+    );
   if (status === 400)
     return new ModelUnavailable(`Gemini could not take this request: ${(error as Error).message}`, false);
   if (status !== null) return new ModelUnavailable(`Gemini returned an error (${status}).`, status >= 500);

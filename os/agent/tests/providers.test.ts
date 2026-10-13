@@ -220,6 +220,36 @@ describe("GeminiModel (Interactions API)", () => {
     expect(seen).toEqual(["gemini-3.8-flash"]);
   });
 
+  it("treats Google's spurious safety block like a busy model, and says so in plain words if every model blocks", async () => {
+    const seen: string[] = [];
+    const blocked = () =>
+      Object.assign(
+        new Error(
+          "Request blocked due to safety violations (harmful content). Please modify your input and retry.",
+        ),
+        {
+          status: 400,
+        },
+      );
+    const model = new GeminiModel({
+      transport: async (r) => {
+        seen.push(r.model);
+        if (r.model === "gemini-3.8-flash") throw blocked();
+        return { status: "completed", steps: [] };
+      },
+    });
+    await model.start(opts()).next("what is this");
+    expect(seen).toEqual(["gemini-3.8-flash", "gemini-3.7-flash"]);
+
+    const always = new GeminiModel({ transport: async () => Promise.reject(blocked()) });
+    const e = await always
+      .start(opts())
+      .next("what is this")
+      .catch((x: unknown) => x);
+    expect((e as ModelUnavailable).message).toMatch(/safety check stopped this request/);
+    expect((e as ModelUnavailable).retryable).toBe(true);
+  });
+
   it("says what failed when every model is busy", async () => {
     const seen: string[] = [];
     const model = new GeminiModel({
