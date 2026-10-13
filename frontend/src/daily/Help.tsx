@@ -133,8 +133,8 @@ export function Tell() {
 
   if (phase.at === "big")
     return (
-      <div className="flow day" aria-label="Shown big" data-testid="day-big">
-        <p className="day-big" role="status">
+      <div className="flow day" aria-label="Shown big">
+        <p className="day-big" role="status" data-testid="day-big">
           {tell.text}
         </p>
         <div />

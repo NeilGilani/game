@@ -10,5 +10,8 @@
   <true/>
   <key>com.apple.security.device.audio-input</key>
   <true/>
+  <!-- My day reads today's Calendar events (read-only), only after a helper turns it on. -->
+  <key>com.apple.security.personal-information.calendars</key>
+  <true/>
 </dict>
 </plist>

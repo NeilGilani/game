@@ -20,5 +20,9 @@
   <string>AGENCY listens during calls you start so it can show you what the other person says.</string>
   <key>NSSpeechRecognitionUsageDescription</key>
   <string>AGENCY turns speech on calls into text on this Mac only, so you can read what was said.</string>
+  <key>NSCalendarsFullAccessUsageDescription</key>
+  <string>AGENCY shows today's Calendar events in My day. It only reads them, on this Mac, and never saves or sends them.</string>
+  <key>NSCalendarsUsageDescription</key>
+  <string>AGENCY shows today's Calendar events in My day. It only reads them, on this Mac, and never saves or sends them.</string>
 </dict>
 </plist>

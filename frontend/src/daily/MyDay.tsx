@@ -204,7 +204,8 @@ export function MyDayHub() {
   );
 }
 
-const PER_PAGE = 3;
+/** Two plans a page: six choices and the bar, and it fits a 1280 × 800 screen. */
+const PER_PAGE = 2;
 
 function statusText(e: AgendaEntry): string {
   if (e.status === "done") return "Done";
@@ -306,12 +307,17 @@ export function Today() {
   const entries = entriesFor(state, calendar.items, now);
   const [page, setPage] = useState<number | null>(null);
   const due = state ? dueRoutines(state.routines, state.routine_state, now) : [];
-  // Open on the page with what's next.
+  const pages = Math.max(1, Math.ceil(entries.length / PER_PAGE));
+  // Open on the page with what's next, once. After that the page only changes when the person turns it, so
+  // marking something done never moves the plans under their eyes.
   const nextAt = Math.max(
     0,
     entries.findIndex((e) => e.status === "next" || e.status === "later"),
   );
-  const pages = Math.max(1, Math.ceil(entries.length / PER_PAGE));
+  const loaded = state !== null;
+  useEffect(() => {
+    if (loaded && page === null) setPage(Math.floor(nextAt / PER_PAGE));
+  }, [loaded, page, nextAt]);
   const current = Math.min(page ?? Math.floor(nextAt / PER_PAGE), pages - 1);
   const shown = entries.slice(current * PER_PAGE, current * PER_PAGE + PER_PAGE);
   const empty = state && entries.length === 0;

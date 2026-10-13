@@ -45,7 +45,6 @@ import { BrowserScreen } from "./browser/BrowserScreen";
 import { BrowserSettings } from "./browser/BrowserSettings";
 import { DailyRoute } from "./daily/DailyRoute";
 import { DailySettings } from "./daily/DailySettings";
-import { RoutineNudge } from "./daily/RoutineNudge";
 
 function onboarded(): boolean {
   try {
@@ -184,7 +183,6 @@ function Shell() {
       >
         <ConnectionBanner />
         <ScanResultBanner />
-        <RoutineNudge />
         {tools && <div style={{ height: 16 }} />}
         <Screen route={route} />
       </main>

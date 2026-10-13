@@ -13,6 +13,7 @@ import type { Suggestion } from "../state/contracts";
 import { memory } from "../state/memory";
 import { navigate } from "../state/router";
 import { isFinished, needsPerson, type TaskView } from "../state/tasks";
+import { useDueNote } from "../daily/RoutineNudge";
 
 interface Tile {
   id: string;
@@ -127,6 +128,14 @@ export function Home() {
   const unfinished = agent.tasks.filter((t) => !isFinished(t) || needsPerson(t));
   const resume = unfinished[0];
   const watching = !!ll.status?.monitor.armed;
+  const dueNote = useDueNote();
+  /** A tile's second line: what's live on it now, else its usual words. */
+  const subOf = (tile: Tile) =>
+    tile.id === "lifeline" && watching
+      ? "Watch over me is on"
+      : tile.id === "day" && dueNote
+        ? dueNote
+        : tile.sub;
 
   const startUsual = (s: Suggestion) => {
     if (!s.task) return;
@@ -226,16 +235,14 @@ export function Home() {
             data-tile={tile.id}
             onClick={() => open(tile)}
             data-dwell
-            aria-label={`${tile.label}: ${tile.id === "lifeline" && watching ? "Watch over me is on" : tile.sub}`}
+            aria-label={`${tile.label}: ${subOf(tile)}`}
           >
             <span className="home-tile-icon" aria-hidden>
               <AppIcon name={tile.icon} size={108} />
             </span>
             <span className="home-tile-caption" aria-hidden>
               <span className="home-tile-label">{tile.label}</span>
-              <span className="home-tile-sub">
-                {tile.id === "lifeline" && watching ? "Watch over me is on" : tile.sub}
-              </span>
+              <span className="home-tile-sub">{subOf(tile)}</span>
             </span>
           </button>
         ))}

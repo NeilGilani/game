@@ -178,7 +178,7 @@ import Testing
     #expect(names == [
       "permissions.status", "permissions.request", "ax.targets", "ax.press", "input.click", "input.scroll",
       "input.type", "input.key", "apps.list", "apps.launch", "apps.activate", "apps.frontmost", "screen.capture",
-      "speech.say", "speech.voices", "speech.listen", "input.stopAll", "input.drag", "apps.hide",
+      "speech.say", "speech.voices", "speech.listen", "input.stopAll", "input.drag", "apps.hide", "calendar.today",
     ])
     #expect(!NativeMethodName.allCases.map(\.rawValue).contains { $0.contains("quit") })
   }

@@ -51,6 +51,19 @@ export interface NativeMethods {
   "input.drag": { params: { from: { x: number; y: number }; to: { x: number; y: number } }; result: { ok: boolean; error?: string } };
   /** Added in v0 (additive). Quitting apps is not here: it goes through the agent's approval. */
   "apps.hide": { params: { bundleId: string }; result: { ok: boolean } };
+  /**
+   * Read-only: today's events from the Calendar app, for My day. Added in v0 (additive). Asks for Calendar access the
+   * first time; without it, `ok: false` with what a helper must do. Never writes, never keeps a copy.
+   */
+  "calendar.today": {
+    params: Record<string, never>;
+    result:
+      | {
+          ok: true;
+          events: { title: string; start: string; allDay: boolean; location: string; calendar: string }[];
+        }
+      | { ok: false; error: string };
+  };
   /** Global kill switch: stop all synthetic input immediately. */
   "input.stopAll": { params: Record<string, never>; result: { ok: boolean } };
 }

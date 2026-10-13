@@ -1,15 +1,15 @@
 /**
- * A gentle routine prompt on other screens ("Time to drink some water?"), with Done, put off, and Tell my carer.
+ * A gentle routine prompt everywhere else: a dock button ("Drink some water?") and a line on Home's My day tile.
  *
- * Nothing moves under the gaze: the prompt only appears when the screen changes, never in the middle of one. It
- * stays away from Lifeline, Talk, calibration and My day itself (which shows its own), and it never blocks
+ * Nothing moves under the gaze: the dock button only appears when the screen changes, never in the middle of one.
+ * It stays away from Lifeline, Talk, calibration and My day itself (which shows its own), and it never blocks
  * anything: ignoring it is fine.
  */
 import { useEffect, useRef, useState } from "react";
 import { readAloud } from "../papers/speak";
-import { useRoute } from "../state/router";
+import { navigate, useRoute } from "../state/router";
 import { dayKey, dueRoutines, routinePrompt } from "./day";
-import { RoutineActions } from "./MyDay";
+import { Icon } from "../components/Icon";
 import { dailySource } from "./source";
 import type { DailyState, Routine } from "./types";
 
@@ -27,7 +27,30 @@ export const QUIET_SCREENS = new Set([
 
 const CHECK_MS = 60_000;
 
-export function RoutineNudge() {
+/** For Home's My day tile: the routine waiting for an answer ("Time to drink some water?"), or null. */
+export function useDueNote(): string | null {
+  const [note, setNote] = useState<string | null>(null);
+  useEffect(() => {
+    let live = true;
+    dailySource()
+      .state(dayKey(new Date()))
+      .then((s) => {
+        const due = dueRoutines(s.routines, s.routine_state, new Date());
+        if (live) setNote(due[0] ? routinePrompt(due[0]) : null);
+      })
+      .catch(() => undefined);
+    return () => {
+      live = false;
+    };
+  }, []);
+  return note;
+}
+
+/**
+ * The dock button for a waiting routine ("Drink some water?"). It opens Routines, where Done and Later are one look
+ * away. In the dock it never pushes a screen's choices around, and it only appears when the screen changes.
+ */
+export function RoutineDockButton() {
   const route = useRoute();
   const [state, setState] = useState<DailyState | null>(null);
   const [shown, setShown] = useState<Routine | null>(null);
@@ -56,16 +79,26 @@ export function RoutineNudge() {
     };
   }, []);
 
-  // Decide what to show only when the screen changes.
+  // Decide what to show only when the screen changes, never in the middle of one. Fresh data each time, so a
+  // routine just answered or put off doesn't come back.
   useEffect(() => {
-    if (quiet || !state) {
+    if (quiet) {
       setShown(null);
       return;
     }
-    const due = dueRoutines(state.routines, state.routine_state, new Date());
-    setShown(due[0] ?? null);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [route.path, quiet, state === null]);
+    let live = true;
+    dailySource()
+      .state(dayKey(new Date()))
+      .then((s) => {
+        if (!live) return;
+        setState(s);
+        setShown(dueRoutines(s.routines, s.routine_state, new Date())[0] ?? null);
+      })
+      .catch(() => live && setShown(null));
+    return () => {
+      live = false;
+    };
+  }, [route.path, quiet]);
 
   useEffect(() => {
     if (!shown || !state?.settings.speak_prompts || spoken.current.has(shown.id)) return;
@@ -74,20 +107,17 @@ export function RoutineNudge() {
   }, [shown, state?.settings.speak_prompts]);
 
   if (!shown || quiet) return null;
+  const label = shown.title.length > 22 ? `${shown.title.slice(0, 21)}…` : shown.title;
   return (
-    <section className="panel day-nudge" aria-label="A gentle reminder" data-testid="day-nudge">
-      <p className="day-nudge-text">{routinePrompt(shown)}</p>
-      <RoutineActions
-        routine={shown}
-        compact
-        onDone={() => {
-          setShown(null);
-          void dailySource()
-            .state(dayKey(new Date()))
-            .then(setState)
-            .catch(() => undefined);
-        }}
-      />
-    </section>
+    <button
+      className="btn dock-btn day-dock"
+      onClick={() => navigate("/day/routines")}
+      data-dwell
+      data-testid="day-nudge"
+      aria-label={`${routinePrompt(shown)} Open routines.`}
+    >
+      <Icon name="bell" size={30} />
+      <span>{label}?</span>
+    </button>
   );
 }

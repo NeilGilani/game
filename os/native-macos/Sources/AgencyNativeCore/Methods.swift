@@ -22,8 +22,10 @@ public enum NativeMethodName: String, CaseIterable, Sendable {
   case inputStopAll = "input.stopAll"
   case inputDrag = "input.drag"
   case appsHide = "apps.hide"
+  /// Read-only: today's events from the Calendar app, for My day. Added in v0 (additive).
+  case calendarToday = "calendar.today"
 
-  /// Methods in os/contracts/src/native.ts as of CONTRACTS_VERSION 0 (including the additive drag and hide).
+  /// Methods in os/contracts/src/native.ts as of CONTRACTS_VERSION 0 (including the additive drag, hide and calendar).
   public static let contractMethods: [NativeMethodName] = allCases
 
   /// Permissions that must be granted before the method can do anything.

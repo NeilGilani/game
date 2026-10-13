@@ -1,5 +1,12 @@
 /* My day: calm, big, nothing moving. Targets are at least 96 px. */
 
+/* Content keeps its natural height: on a short screen the page scrolls instead of the bar covering choices. */
+.flow.day {
+  flex: 1 0 auto;
+  min-height: auto;
+  grid-template-rows: auto auto auto;
+  align-content: start;
+}
 .day-head .eyebrow {
   flex-wrap: wrap;
 }
@@ -21,11 +28,15 @@
   gap: 20px;
   min-height: 0;
 }
-.day-options {
-  grid-auto-rows: minmax(140px, 1fr);
+.day-options,
+.day-options[data-count="4"],
+.day-options[data-count="5"],
+.day-options[data-count="6"] {
+  grid-auto-rows: minmax(140px, 180px);
+  max-height: none;
 }
 .day-options[data-count="5"] {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
 }
 .day-options[data-count="8"],
 .day-options[data-count="7"] {
@@ -129,20 +140,9 @@
   line-height: 1.1;
 }
 
-.day-nudge {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px 24px;
-  margin: 0 0 16px;
+.day-dock {
   border: 2px solid var(--accent);
-  background: color-mix(in srgb, var(--accent-soft) 60%, var(--surface));
-}
-.day-nudge-text {
-  margin: 0;
-  font-size: 1.4rem;
-  font-weight: 700;
+  background: color-mix(in srgb, var(--accent-soft) 70%, var(--surface));
 }
 
 /* Settings (a helper with a mouse and keyboard). */

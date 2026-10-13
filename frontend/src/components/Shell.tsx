@@ -11,6 +11,7 @@ import { useLifeline } from "../lifeline/LifelineProvider";
 import { useAgent } from "../state/agent";
 import { nextTextField } from "./EyeKeyboard";
 import { AppIcon, BrandMark, Icon } from "./Icon";
+import { RoutineDockButton } from "../daily/RoutineNudge";
 
 function useInputChip(): { text: string; tone: string } {
   const input = useInput();
@@ -124,6 +125,7 @@ export function TopBar() {
           <Icon name="keyboard" size={30} />
           <span>Keyboard</span>
         </button>
+        <RoutineDockButton />
         {input.usesCamera && input.status === "running" && (
           <button
             className="btn dock-btn"

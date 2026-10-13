@@ -13,6 +13,8 @@ final class FakePlatform: NativePlatform, @unchecked Sendable {
   var typeDelay: TimeInterval = 0
   /// Called after each typed chunk (to move focus mid-typing, for example).
   var afterType: ((FakePlatform) -> Void)?
+  /// What calendar.today finds (nil: not allowed).
+  var calendarEvents: [CalendarEventRecord]? = []
 
   func record(_ s: String) { lock.lock(); _log.append(s); lock.unlock() }
 
@@ -56,6 +58,10 @@ final class FakePlatform: NativePlatform, @unchecked Sendable {
   func voices(completion: @escaping ([VoiceRecord]) -> Void) { completion([VoiceRecord(id: "v1", name: "Me", personal: true)]) }
   func listen(on: Bool, locale: String?) throws { record("listen \(on)") }
   func stopAll() { record("stopAll") }
+  func calendarToday(completion: @escaping (Result<[CalendarEventRecord], CalendarProblem>) -> Void) {
+    record("calendarToday")
+    if let events = calendarEvents { completion(.success(events)) } else { completion(.failure(.notAllowed)) }
+  }
 }
 
 struct Harness {
@@ -275,5 +281,23 @@ final class Box: @unchecked Sendable {
     // Turning listening off always works.
     #expect(h.call("speech.listen", ["on": false])["result"] == ["ok": true])
     #expect(h.call("speech.listen", [:])["error"]?["code"] == -32602)
+  }
+
+  @Test func calendarTodayIsReadOnlyOrderedAndPlainWhenNotAllowed() {
+    let h = Harness()
+    h.platform.calendarEvents = [
+      CalendarEventRecord(title: "Physio\nvisit", start: "15:00", allDay: false, location: "Home", calendar: "Care"),
+      CalendarEventRecord(title: "Birthday", start: "00:00", allDay: true, location: "", calendar: "Family"),
+      CalendarEventRecord(title: "Dentist", start: "09:30", allDay: false, location: String(repeating: "x", count: 300), calendar: "Care"),
+    ]
+    let r = h.call("calendar.today")["result"]
+    #expect(r?["ok"] == true)
+    guard case .array(let events)? = r?["events"] else { Issue.record("no events"); return }
+    #expect(events.map { $0["title"]?.stringValue } == ["Birthday", "Dentist", "Physio visit"])
+    #expect(events[1]["location"]?.stringValue?.count == 200)
+    h.platform.calendarEvents = nil
+    let denied = h.call("calendar.today")["result"]
+    #expect(denied?["ok"] == false)
+    #expect(denied?["error"]?.stringValue?.contains("Privacy & Security > Calendars") == true)
   }
 }

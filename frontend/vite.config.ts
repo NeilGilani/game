@@ -11,6 +11,7 @@ const backend = process.env.AGENCY_BACKEND_URL ?? "http://127.0.0.1:8000";
 const proxy = {
   "/api": { target: backend, changeOrigin: true },
   "/respond": { target: backend, changeOrigin: true },
+  "/carer": { target: backend, changeOrigin: true },
 };
 
 export default defineConfig({

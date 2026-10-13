@@ -150,9 +150,13 @@ const PRACTICE_CARERS = [
 export const PRACTICE_REPLY_MS = 4000;
 
 function roundUp(now: Date, minutes: number): string {
-  const d = new Date(now.getTime() + minutes * 60_000);
+  // Late in the evening, plan from 7:30 pm so the practice plans stay apart and on today.
+  const late = new Date(now);
+  late.setHours(19, 30, 0, 0);
+  const base = now > late ? late : now;
+  const d = new Date(base.getTime() + minutes * 60_000);
   d.setMinutes(Math.ceil(d.getMinutes() / 15) * 15, 0, 0);
-  return d.getDate() === now.getDate() ? hhmmOf(d) : "23:45";
+  return hhmmOf(d);
 }
 
 /** A practice day built around now, so there is always something next. Fictional, and labelled practice. */
