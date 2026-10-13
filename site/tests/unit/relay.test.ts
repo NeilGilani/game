@@ -400,7 +400,7 @@ describe("POST /api/relay/v1/interactions", () => {
       [{ ...turn(), generation_config: { max_output_tokens: 100_000 } }, 400],
       [{ ...turn(), input: [{ type: "google_search_call" }] }, 400],
       [{ ...turn(), input: [] }, 400],
-      [{ ...turn(), model: "gemini-3.5-flash-lite" }, 400],
+      [{ ...turn(), model: "gemini-3.5-pro" }, 400],
     ];
     for (const [payload, code] of cases) {
       const res = await interactions({ request: await signed(path, a, payload), env });
