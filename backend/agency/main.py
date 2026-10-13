@@ -28,6 +28,7 @@ from pydantic import BaseModel, Field
 from . import __version__
 from .assist import router as assist_router
 from .config import Settings, load_settings
+from .daily import build_routers as daily_routers
 from .db import Database, dumps, loads, utcnow
 from .engine.engine import Engine, EngineError
 from .engine.runner import CaseRunner
@@ -727,6 +728,9 @@ def create_app(
     app.include_router(respond_pages)
     app.include_router(memory_router())
     app.include_router(assist_router())
+    daily_api, carer_pages = daily_routers()
+    app.include_router(daily_api)
+    app.include_router(carer_pages)
 
     if settings.frontend_dist and (settings.frontend_dist / "index.html").is_file():
         app.mount("/", StaticFiles(directory=settings.frontend_dist, html=True), name="frontend")
