@@ -1,0 +1,206 @@
+/* My day: calm, big, nothing moving. Targets are at least 96 px. */
+
+.day-head .eyebrow {
+  flex-wrap: wrap;
+}
+.day-practice {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 999px;
+  background: var(--warn-soft, #fff1c9);
+  color: var(--ink);
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+.day-help {
+  font-size: 1.1rem;
+}
+.day-body {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  min-height: 0;
+}
+.day-options {
+  grid-auto-rows: minmax(140px, 1fr);
+}
+.day-options[data-count="5"] {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+.day-options[data-count="8"],
+.day-options[data-count="7"] {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.day-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 24px;
+  align-items: stretch;
+}
+.day-actions .btn-xl {
+  min-height: 96px;
+  min-width: 180px;
+  font-size: 1.2rem;
+}
+.day-actions-compact .btn-xl {
+  min-width: 150px;
+}
+
+.day-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.day-item,
+.day-routine {
+  display: grid;
+  grid-template-columns: 150px minmax(0, 1fr) auto;
+  gap: 24px;
+  align-items: center;
+  padding: 16px 20px;
+  border-radius: var(--radius-lg, 20px);
+  border: 2px solid var(--line);
+  background: var(--surface);
+}
+.day-routine {
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+.day-item[data-status="next"],
+.day-routine[data-due="true"] {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent-soft) 60%, var(--surface));
+}
+.day-item[data-status="done"] {
+  opacity: 0.72;
+}
+.day-item[data-status="done"] .day-item-title {
+  text-decoration: line-through;
+}
+.day-item-when {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.day-item-time {
+  font-size: 1.5rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.day-item-status {
+  font-size: 0.98rem;
+  color: var(--ink-2);
+  font-weight: 600;
+}
+.day-item-what {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+.day-item-title {
+  font-size: 1.4rem;
+  font-weight: 700;
+  line-height: 1.2;
+}
+.day-item-note {
+  color: var(--ink-2);
+}
+.day-error {
+  color: var(--danger);
+  font-weight: 600;
+}
+
+.day-wait,
+.day-done {
+  font-size: 1.2rem;
+  font-weight: 600;
+}
+.day-big {
+  margin: 0;
+  display: grid;
+  place-items: center;
+  text-align: center;
+  font-size: clamp(3rem, 8vw, 6rem);
+  font-weight: 800;
+  line-height: 1.1;
+}
+
+.day-nudge {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px 24px;
+  margin: 0 0 16px;
+  border: 2px solid var(--accent);
+  background: color-mix(in srgb, var(--accent-soft) 60%, var(--surface));
+}
+.day-nudge-text {
+  margin: 0;
+  font-size: 1.4rem;
+  font-weight: 700;
+}
+
+/* Settings (a helper with a mouse and keyboard). */
+.day-settings-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.day-settings-list li {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+}
+.day-days {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  border: 0;
+  padding: 0;
+}
+.day-check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.day-device-edit {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 12px 16px;
+}
+.day-phone-requests {
+  margin-top: 12px;
+  border-top: 1px solid var(--line);
+  padding-top: 8px;
+}
+
+@media (max-width: 900px) {
+  .day-item {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .day-routine {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .day-options[data-count="5"],
+  .day-options[data-count="7"],
+  .day-options[data-count="8"] {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .day-actions .btn-xl {
+    flex: 1 1 140px;
+    min-width: 0;
+  }
+}

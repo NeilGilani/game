@@ -25,6 +25,7 @@ interface Tile {
 
 export const HOME_TILES: Tile[] = [
   { id: "talk", label: "Talk", sub: "Say something out loud", icon: "speak", path: "/talk" },
+  { id: "day", label: "My day", sub: "Plans, home & help", icon: "calendar", path: "/day" },
   { id: "call", label: "Call someone", sub: "Friends & family", icon: "phone", path: "/flow/call" },
   { id: "food", label: "Food", sub: "Order a meal", icon: "food", path: "/flow/food" },
   { id: "messages", label: "Messages", sub: "Send a message", icon: "message", path: "/flow/messages" },

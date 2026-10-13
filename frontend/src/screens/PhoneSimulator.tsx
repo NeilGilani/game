@@ -14,6 +14,7 @@ import { ErrorNote } from "../components/common";
 import { SimulatedBadge } from "../components/status";
 import { clockTime, contactLabel } from "../lifeline/describe";
 import { usePoll } from "../state/usePoll";
+import { PhoneRequests } from "../daily/PhoneRequests";
 
 export function PhoneSimulator() {
   const status = usePoll<LifelineStatus>(() => lifelineApi.status(), 2000, "phones-status");
@@ -92,6 +93,7 @@ export function PhoneSimulator() {
                   ))}
                 </ol>
               )}
+              <PhoneRequests contactId={c.id} />
             </section>
           );
         })}
