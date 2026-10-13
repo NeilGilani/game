@@ -408,6 +408,59 @@ MIGRATIONS: list[tuple[int, str, str]] = [
         )
         """,
     ),
+    (
+        6,
+        "caregiver companion: paired phones, pairing codes, changes, notes, messages",
+        """
+        CREATE TABLE companion_devices (
+            id TEXT PRIMARY KEY,
+            name TEXT NOT NULL,
+            contact_id TEXT,
+            token_hash TEXT NOT NULL UNIQUE,
+            created_at TEXT NOT NULL,
+            last_seen_at TEXT,
+            revoked_at TEXT
+        );
+        CREATE TABLE companion_pairing (
+            id TEXT PRIMARY KEY,
+            code_hash TEXT NOT NULL,
+            created_at TEXT NOT NULL,
+            expires_at TEXT NOT NULL,
+            attempts INTEGER NOT NULL DEFAULT 0,
+            used_at TEXT,
+            device_id TEXT
+        );
+        CREATE TABLE companion_changes (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            device_id TEXT,
+            author TEXT NOT NULL,
+            kind TEXT NOT NULL,
+            summary TEXT NOT NULL,
+            payload TEXT NOT NULL,
+            status TEXT NOT NULL,
+            reason TEXT,
+            created_at TEXT NOT NULL,
+            settled_at TEXT
+        );
+        CREATE INDEX idx_companion_changes_status ON companion_changes(status);
+        CREATE TABLE companion_notes (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            device_id TEXT,
+            author TEXT NOT NULL,
+            text TEXT NOT NULL,
+            created_at TEXT NOT NULL
+        );
+        CREATE TABLE companion_messages (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            device_id TEXT NOT NULL,
+            author TEXT NOT NULL,
+            text TEXT NOT NULL,
+            photo TEXT,
+            created_at TEXT NOT NULL,
+            seen_at TEXT
+        )
+        """,
+    ),
 ]
 
 
