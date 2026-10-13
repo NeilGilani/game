@@ -75,7 +75,7 @@ export const DEFAULT_LIMITS = {
 };
 export type Limits = typeof DEFAULT_LIMITS;
 
-export const GENERATE_MODELS = ["gemini-3.8-flash", "gemini-3.5-flash-lite"];
+export const GENERATE_MODELS = ["gemini-3.8-flash", "gemini-3.5-flash-lite", "gemini-3.7-flash"];
 export const AGENT_MODELS = ["gemini-3.8-flash"];
 
 export const GENERATE_MAX_BYTES = 200_000;

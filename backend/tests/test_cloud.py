@@ -228,7 +228,7 @@ def test_gemini_errors_through_the_relay_read_as_they_do_with_a_local_key() -> N
     relay = FakeRelay(lambda body: refusal(429, "upstream", "Resource exhausted"))
     provider = relay.provider()
     assert plan_json(provider) is None
-    assert len(relay.generated) == 2  # busy: the other model was tried
+    assert len(relay.generated) == 3  # busy: the other models were tried (main, quick, backup)
     assert provider.last_error == "rate limited"
 
     relay = FakeRelay(lambda body: answer(PLAN, finish="SAFETY"))

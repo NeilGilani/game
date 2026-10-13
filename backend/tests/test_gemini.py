@@ -18,7 +18,13 @@ from fastapi.testclient import TestClient
 from google import genai
 from google.genai import types
 
-from agency.reasoning.provider import AnthropicProvider, DisabledProvider, GeminiProvider, build_provider
+from agency.reasoning.provider import (
+    GEMINI_BACKUP_MODEL,
+    AnthropicProvider,
+    DisabledProvider,
+    GeminiProvider,
+    build_provider,
+)
 from conftest import make_client, start_repair, step, tune
 from test_api_and_provider import plan_from_baseline
 
@@ -354,8 +360,20 @@ def test_when_both_models_fail_the_error_names_each_model() -> None:
     fake = FakeGemini(lambda body: api_error(404, "NOT_FOUND", "not found"))
     provider = fake.provider()
     assert asyncio.run(provider._call_json("explain", "x", LIST)) is None
-    assert provider.status()["last_error"] == f"model {MODEL} was not found; model {fast} was not found"
+    assert provider.status()["last_error"] == (
+        f"model {MODEL} was not found; model {fast} was not found; model {GEMINI_BACKUP_MODEL} was not found"
+    )
     assert provider.last_model is None
+
+
+def test_when_both_usual_models_are_busy_the_backup_model_answers() -> None:
+    fast = fast_model()
+    busy = api_error(503, "UNAVAILABLE", "overloaded")
+    fake = by_model({MODEL: busy, fast: busy, GEMINI_BACKUP_MODEL: {"paragraphs": ["ok"]}})
+    provider = fake.provider()
+    assert asyncio.run(provider.explain({"headline": "x"})) == ["ok"]
+    assert [model_of(r) for r in fake.requests] == [MODEL, fast, GEMINI_BACKUP_MODEL]
+    assert provider.last_model == GEMINI_BACKUP_MODEL
 
 
 def test_a_rejected_key_is_not_retried_on_the_other_model() -> None:

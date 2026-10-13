@@ -454,6 +454,8 @@ def gemini_api_key() -> str | None:
 # Synapse's fast lane: everyday requests (a short plan, replies, a sentence ending) go to Flash-Lite first, which
 # answers in about a second. If a model is busy or rate limited, the other one answers at once instead of a retry.
 GEMINI_FAST_MODEL = "gemini-3.5-flash-lite"
+# Tried last, when both of the above are busy: Gemini's models are often overloaded at different times.
+GEMINI_BACKUP_MODEL = "gemini-3.7-flash"
 # A busy or limited model: move on to the next one immediately.
 _GEMINI_BUSY = {429, 500, 502, 503, 504}
 MIN_DEADLINE_S = 10.0  # the API refuses deadlines under 10 s ("Minimum allowed deadline is 10s")
@@ -467,6 +469,7 @@ class GeminiProvider(CloudProvider):
     name: ClassVar[str] = "google"
     label: ClassVar[str] = "Gemini"
     fast_model: str = field(default_factory=lambda: os.environ.get("AGENCY_GEMINI_FAST_MODEL") or GEMINI_FAST_MODEL)
+    backup_model: str = field(default_factory=lambda: os.environ.get("AGENCY_GEMINI_BACKUP_MODEL", GEMINI_BACKUP_MODEL))
     fast_client: Any = None
     # A model that failed for a reason of its own (not found, request rejected) while the other model answered:
     # shown in the status so a configuration mistake is never hidden by the fallback.
@@ -568,11 +571,11 @@ class GeminiProvider(CloudProvider):
         lane, effort, system = self.lane, effort or self.effort, self.system_prompt()
         # Fast lane: the quick model, then the main one. Otherwise the main model, then the quick one.
         order = [self.fast_model, self.model] if lane == "fast" else [self.model, self.fast_model]
-        order = list(dict.fromkeys(m for m in order if m))
+        order = list(dict.fromkeys(m for m in [*order, self.backup_model] if m))
         response, answered_by, failures = None, None, []
         for i, model in enumerate(order):
             last = i == len(order) - 1
-            client = self.client if (model == self.model and lane != "fast") else self.fast_client
+            client = self.client if (model != self.fast_model and lane != "fast") else self.fast_client
             try:
                 response = await client.aio.models.generate_content(
                     model=model, contents=user, config=self._config(schema, effort, max_tokens, model, system)
