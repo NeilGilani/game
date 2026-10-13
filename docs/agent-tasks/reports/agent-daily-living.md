@@ -51,6 +51,11 @@ Also: `frontend/e2e/backend.ts` and `playwright.config.ts` take `AGENCY_E2E_PORT
 
 ## Test results (run here, on this Mac, 12 October 2026)
 
+After merging the latest `origin/main` (with the caregiver companion; conflicts were "keep both" in `main.py`,
+`App.tsx`, `OsSettings.tsx` and `e2e/backend.ts`): backend pytest 328 passed; frontend vitest 251 passed (25 files);
+tsc, eslint, prettier, ruff, mypy clean; contracts and desktop typecheck pass; desktop vitest 184 passed; e2e
+`daily`, `screens`, `flows`, `desktop-ui` and `lifeline` specs 34 passed. Before the merge:
+
 | Check | Result |
 |---|---|
 | frontend `npx tsc -b` | passes |
